@@ -1178,17 +1178,17 @@ func do_zen(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if !HAS_ARMS(ch) {
 		send_to_char(ch, libc.CString("You have no available arms!\r\n"))
 		return
-	} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 && (ch.Limb_condition[2]) < 0 {
+	} else if (ch.Limb_condition[0]) > 0 && (ch.Limb_condition[0]) < 50 && (ch.Limb_condition[1]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken right arm has damaged it more!@n\r\n"))
-		ch.Limb_condition[1] -= rand_number(3, 5)
-		if (ch.Limb_condition[1]) < 0 {
+		ch.Limb_condition[0] -= rand_number(3, 5)
+		if (ch.Limb_condition[0]) < 0 {
 			act(libc.CString("@RYour right arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's right arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
-	} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 && (ch.Limb_condition[1]) < 0 {
+	} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 && (ch.Limb_condition[0]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken left arm has damaged it more!@n\r\n"))
-		ch.Limb_condition[2] -= rand_number(3, 5)
-		if (ch.Limb_condition[2]) < 0 {
+		ch.Limb_condition[1] -= rand_number(3, 5)
+		if (ch.Limb_condition[1]) < 0 {
 			act(libc.CString("@RYour left arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's left arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
@@ -1483,17 +1483,17 @@ func do_zen(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@G$n @Craises $s blade above $s head, and closes $s eyes. The edge of the blade begins to glow a soft blue as the blade begins to throb with excess energy. Peels of lighting begin to arc from the blade in all directions as $e opens $s eyes and instantly moves past @g$N's@C body while slashing with the pure energy of $s resolve! A large explosion of energy erupts across @g$N's@C arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				dmg *= int64(calc_critical(ch, 1))
 				if rand_number(1, 100) >= 80 && !IS_NPC(vict) && !AFF_FLAGGED(vict, AFF_SANCTUARY) {
-					if (vict.Limb_condition[2]) > 0 && !is_sparring(ch) && rand_number(1, 2) == 2 {
+					if (vict.Limb_condition[1]) > 0 && !is_sparring(ch) && rand_number(1, 2) == 2 {
 						act(libc.CString("@RYour attack severs $N's left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@R$n's attack severs your left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						act(libc.CString("@R$N's left arm is severered in the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
-						vict.Limb_condition[2] = 0
+						vict.Limb_condition[1] = 0
 						remove_limb(vict, 2)
-					} else if (vict.Limb_condition[1]) > 0 && !is_sparring(ch) {
+					} else if (vict.Limb_condition[0]) > 0 && !is_sparring(ch) {
 						act(libc.CString("@RYour attack severs $N's right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@R$n's attack severs your right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						act(libc.CString("@R$N's right arm is severered in the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
-						vict.Limb_condition[1] = 0
+						vict.Limb_condition[0] = 0
 						remove_limb(vict, 1)
 					}
 				}
@@ -1505,17 +1505,17 @@ func do_zen(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@G$n @Craises $s blade above $s head, and closes $s eyes. The edge of the blade begins to glow a soft blue as the blade begins to throb with excess energy. Peels of lighting begin to arc from the blade in all directions as $e opens $s eyes and instantly moves past @g$N's@C body while slashing with the pure energy of $s resolve! A large explosion of energy erupts across @g$N's@C leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				dmg *= int64(calc_critical(ch, 1))
 				if rand_number(1, 100) >= 80 && !IS_NPC(vict) && !AFF_FLAGGED(vict, AFF_SANCTUARY) {
-					if (vict.Limb_condition[4]) > 0 && !is_sparring(ch) && rand_number(1, 2) == 2 {
+					if (vict.Limb_condition[3]) > 0 && !is_sparring(ch) && rand_number(1, 2) == 2 {
 						act(libc.CString("@RYour attack severs $N's left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@R$n's attack severs your left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						act(libc.CString("@R$N's left leg is severered in the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
-						vict.Limb_condition[4] = 0
+						vict.Limb_condition[3] = 0
 						remove_limb(vict, 4)
-					} else if (vict.Limb_condition[3]) > 0 && !is_sparring(ch) {
+					} else if (vict.Limb_condition[2]) > 0 && !is_sparring(ch) {
 						act(libc.CString("@RYour attack severs $N's right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@R$n's attack severs your right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						act(libc.CString("@R$N's right leg is severered in the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
-						vict.Limb_condition[3] = 0
+						vict.Limb_condition[2] = 0
 						remove_limb(vict, 3)
 					}
 				}
@@ -1717,9 +1717,9 @@ func do_malice(ch *char_data, argument *byte, cmd int, subcmd int) {
 		} else {
 			dmg = damtype(ch, 36, skill, attperc)
 			if time_info.Hours <= 15 {
-				dmg *= int64(1.25)
+				dmg += int64(float64(dmg) + .25)
 			} else if time_info.Hours <= 22 {
-				dmg *= int64(1.4)
+				dmg += int64(float64(dmg) * .4)
 			}
 			switch rand_number(1, 6) {
 			case 1:
@@ -1887,9 +1887,9 @@ func do_nova(ch *char_data, argument *byte, cmd int, subcmd int) {
 		act(libc.CString("@C$n@W gathers $s charged energy and clenches $s upheld fists at either side of $s body while crouching down. A hot glow of energy begins to form around $s body in the shape of a sphere! Suddenly a shockwave of heat and energy erupts out into the surrounding area as @C$n's@W glorious @yS@Yt@Wa@wr @cN@Co@Wv@wa@W is born!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		dmg = damtype(ch, 53, skill, attperc)
 		if time_info.Hours <= 15 {
-			dmg *= int64(1.25)
+			dmg += int64(float64(dmg) * .25)
 		} else if time_info.Hours <= 22 {
-			dmg *= int64(1.4)
+			dmg += int64(float64(dmg) * .4)
 		}
 		for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; vict != nil; vict = next_v {
 			next_v = vict.Next_in_room
@@ -3025,7 +3025,7 @@ func do_throw(ch *char_data, argument *byte, cmd int, subcmd int) {
 				damage -= int64(float64(damage) * 0.2)
 			}
 			if GET_OBJ_VNUM(obj) == 5899 || GET_OBJ_VNUM(obj) == 5898 {
-				damage *= int64(0.35)
+				damage += int64(float64(damage) * .35)
 			}
 			hurt(0, 0, ch, vict, nil, damage, 0)
 			obj_from_char(obj)
@@ -3236,7 +3236,7 @@ func do_selfd(ch *char_data, argument *byte, cmd int, subcmd int) {
 		ch.Charge = 0
 		dmg += int64(float64(ch.Basepl) * 0.6)
 		dmg += ch.Basest
-		dmg *= int64(1.5)
+		dmg += int64(float64(dmg) * .5)
 		ch.Hit = 1
 		ch.Suppressed = 0
 		ch.Suppression = 0

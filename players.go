@@ -321,9 +321,9 @@ func load_char(name *byte, ch *char_data) int {
 		ch.Combatexpertise = 0
 		ch.Powerattack = 0
 		ch.Limb_condition[0] = 0
+		ch.Limb_condition[0] = 0
 		ch.Limb_condition[1] = 0
 		ch.Limb_condition[2] = 0
-		ch.Limb_condition[3] = 0
 		ch.Lboard[0] = PFDEF_BOARD
 		ch.Lboard[1] = PFDEF_BOARD
 		ch.Lboard[2] = PFDEF_BOARD
@@ -611,13 +611,13 @@ func load_char(name *byte, ch *char_data) int {
 				} else if libc.StrCmp(&tag[0], libc.CString("LFPC")) == 0 {
 					ch.Lifeperc = libc.Atoi(libc.GoString(&line[0]))
 				} else if libc.StrCmp(&tag[0], libc.CString("Lila")) == 0 {
-					ch.Limb_condition[2] = libc.Atoi(libc.GoString(&line[0]))
-				} else if libc.StrCmp(&tag[0], libc.CString("Lill")) == 0 {
-					ch.Limb_condition[4] = libc.Atoi(libc.GoString(&line[0]))
-				} else if libc.StrCmp(&tag[0], libc.CString("Lira")) == 0 {
 					ch.Limb_condition[1] = libc.Atoi(libc.GoString(&line[0]))
-				} else if libc.StrCmp(&tag[0], libc.CString("Lirl")) == 0 {
+				} else if libc.StrCmp(&tag[0], libc.CString("Lill")) == 0 {
 					ch.Limb_condition[3] = libc.Atoi(libc.GoString(&line[0]))
+				} else if libc.StrCmp(&tag[0], libc.CString("Lira")) == 0 {
+					ch.Limb_condition[0] = libc.Atoi(libc.GoString(&line[0]))
+				} else if libc.StrCmp(&tag[0], libc.CString("Lirl")) == 0 {
+					ch.Limb_condition[2] = libc.Atoi(libc.GoString(&line[0]))
 				} else if libc.StrCmp(&tag[0], libc.CString("Lint")) == 0 {
 					ch.Lastint = libc.Time(libc.Atoi(libc.GoString(&line[0])))
 				} else if libc.StrCmp(&tag[0], libc.CString("Lpla")) == 0 {
@@ -1416,17 +1416,17 @@ func save_char(ch *char_data) {
 	if (ch.Lboard[4]) != PFDEF_BOARD {
 		stdio.Fprintf(fl, "Boab: %ld\n", ch.Lboard[4])
 	}
+	if (ch.Limb_condition[0]) != PFDEF_BOARD {
+		stdio.Fprintf(fl, "Lira: %d\n", ch.Limb_condition[0])
+	}
 	if (ch.Limb_condition[1]) != PFDEF_BOARD {
-		stdio.Fprintf(fl, "Lira: %d\n", ch.Limb_condition[1])
+		stdio.Fprintf(fl, "Lila: %d\n", ch.Limb_condition[1])
 	}
 	if (ch.Limb_condition[2]) != PFDEF_BOARD {
-		stdio.Fprintf(fl, "Lila: %d\n", ch.Limb_condition[2])
+		stdio.Fprintf(fl, "Lirl: %d\n", ch.Limb_condition[2])
 	}
 	if (ch.Limb_condition[3]) != PFDEF_BOARD {
-		stdio.Fprintf(fl, "Lirl: %d\n", ch.Limb_condition[3])
-	}
-	if (ch.Limb_condition[4]) != PFDEF_BOARD {
-		stdio.Fprintf(fl, "Lill: %d\n", ch.Limb_condition[4])
+		stdio.Fprintf(fl, "Lill: %d\n", ch.Limb_condition[3])
 	}
 	if ch.Crank != PFDEF_CRANK {
 		stdio.Fprintf(fl, "Clar: %d\n", ch.Crank)

@@ -181,7 +181,7 @@ func search_room(ch *char_data) {
 			}
 			prob = int(float64(vict.Aff_abils.Dex) + float64(vict.Aff_abils.Intel)*0.6 + float64(GET_SKILL(vict, SKILL_HIDE)) + float64(GET_SKILL(vict, SKILL_MOVE_SILENTLY)))
 			if AFF_FLAGGED(vict, AFF_LIQUEFIED) {
-				prob *= int(1.5)
+				prob += int(float64(prob) * .5)
 			}
 			if int(ch.Race) == RACE_MUTANT && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) {
 				perc += 5
@@ -3144,40 +3144,40 @@ func look_at_char(i *char_data, ch *char_data) {
 	}
 	send_to_char(ch, libc.CString("\r\n"))
 	if !IS_NPC(i) {
-		if (i.Limb_condition[1]) >= 50 && !PLR_FLAGGED(i, PLR_CRARM) {
-			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), i.Limb_condition[1], "%", "%")
-		} else if (i.Limb_condition[1]) > 0 && !PLR_FLAGGED(i, PLR_CRARM) {
-			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), i.Limb_condition[1], "%", "%")
-		} else if (i.Limb_condition[1]) > 0 && PLR_FLAGGED(i, PLR_CRARM) {
-			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), i.Limb_condition[1], "%", "%")
-		} else if (i.Limb_condition[1]) <= 0 {
+		if (i.Limb_condition[0]) >= 50 && !PLR_FLAGGED(i, PLR_CRARM) {
+			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), i.Limb_condition[0], "%", "%")
+		} else if (i.Limb_condition[0]) > 0 && !PLR_FLAGGED(i, PLR_CRARM) {
+			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), i.Limb_condition[0], "%", "%")
+		} else if (i.Limb_condition[0]) > 0 && PLR_FLAGGED(i, PLR_CRARM) {
+			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), i.Limb_condition[0], "%", "%")
+		} else if (i.Limb_condition[0]) <= 0 {
 			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @rMissing.            @D]@n\r\n"))
 		}
-		if (i.Limb_condition[2]) >= 50 && !PLR_FLAGGED(i, PLR_CLARM) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), i.Limb_condition[2], "%", "%")
-		} else if (i.Limb_condition[2]) > 0 && !PLR_FLAGGED(i, PLR_CLARM) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), i.Limb_condition[2], "%", "%")
-		} else if (i.Limb_condition[2]) > 0 && PLR_FLAGGED(i, PLR_CLARM) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), i.Limb_condition[2], "%", "%")
-		} else if (i.Limb_condition[2]) <= 0 {
+		if (i.Limb_condition[1]) >= 50 && !PLR_FLAGGED(i, PLR_CLARM) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), i.Limb_condition[1], "%", "%")
+		} else if (i.Limb_condition[1]) > 0 && !PLR_FLAGGED(i, PLR_CLARM) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), i.Limb_condition[1], "%", "%")
+		} else if (i.Limb_condition[1]) > 0 && PLR_FLAGGED(i, PLR_CLARM) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), i.Limb_condition[1], "%", "%")
+		} else if (i.Limb_condition[1]) <= 0 {
 			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @rMissing.            @D]@n\r\n"))
 		}
-		if (i.Limb_condition[3]) >= 50 && !PLR_FLAGGED(i, PLR_CLARM) {
-			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), i.Limb_condition[3], "%", "%")
-		} else if (i.Limb_condition[3]) > 0 && !PLR_FLAGGED(i, PLR_CRLEG) {
-			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), i.Limb_condition[3], "%", "%")
-		} else if (i.Limb_condition[3]) > 0 && PLR_FLAGGED(i, PLR_CRLEG) {
-			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), i.Limb_condition[3], "%", "%")
-		} else if (i.Limb_condition[3]) <= 0 {
+		if (i.Limb_condition[2]) >= 50 && !PLR_FLAGGED(i, PLR_CLARM) {
+			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), i.Limb_condition[2], "%", "%")
+		} else if (i.Limb_condition[2]) > 0 && !PLR_FLAGGED(i, PLR_CRLEG) {
+			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), i.Limb_condition[2], "%", "%")
+		} else if (i.Limb_condition[2]) > 0 && PLR_FLAGGED(i, PLR_CRLEG) {
+			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), i.Limb_condition[2], "%", "%")
+		} else if (i.Limb_condition[2]) <= 0 {
 			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @rMissing.            @D]@n\r\n"))
 		}
-		if (i.Limb_condition[4]) >= 50 && !PLR_FLAGGED(i, PLR_CLLEG) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), i.Limb_condition[4], "%", "%")
-		} else if (i.Limb_condition[4]) > 0 && !PLR_FLAGGED(i, PLR_CLLEG) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), i.Limb_condition[4], "%", "%")
-		} else if (i.Limb_condition[4]) > 0 && PLR_FLAGGED(i, PLR_CLLEG) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), i.Limb_condition[4], "%", "%")
-		} else if (i.Limb_condition[4]) <= 0 {
+		if (i.Limb_condition[3]) >= 50 && !PLR_FLAGGED(i, PLR_CLLEG) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), i.Limb_condition[3], "%", "%")
+		} else if (i.Limb_condition[3]) > 0 && !PLR_FLAGGED(i, PLR_CLLEG) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), i.Limb_condition[3], "%", "%")
+		} else if (i.Limb_condition[3]) > 0 && PLR_FLAGGED(i, PLR_CLLEG) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), i.Limb_condition[3], "%", "%")
+		} else if (i.Limb_condition[3]) <= 0 {
 			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @rMissing.             @D]@n\r\n"))
 		}
 		if PLR_FLAGGED(i, PLR_HEAD) {
@@ -6696,40 +6696,40 @@ func do_status(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if !PLR_FLAGGED(ch, PLR_HEAD) {
 			send_to_char(ch, libc.CString("            @D[@cHead        @D: @rMissing.         @D]@n\r\n"))
 		}
-		if (ch.Limb_condition[1]) >= 50 && !PLR_FLAGGED(ch, PLR_CRARM) {
-			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), ch.Limb_condition[1], "%", "%")
-		} else if (ch.Limb_condition[1]) > 0 && !PLR_FLAGGED(ch, PLR_CRARM) {
-			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), ch.Limb_condition[1], "%", "%")
-		} else if (ch.Limb_condition[1]) > 0 && PLR_FLAGGED(ch, PLR_CRARM) {
-			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), ch.Limb_condition[1], "%", "%")
-		} else if (ch.Limb_condition[1]) <= 0 {
+		if (ch.Limb_condition[0]) >= 50 && !PLR_FLAGGED(ch, PLR_CRARM) {
+			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), ch.Limb_condition[0], "%", "%")
+		} else if (ch.Limb_condition[0]) > 0 && !PLR_FLAGGED(ch, PLR_CRARM) {
+			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), ch.Limb_condition[0], "%", "%")
+		} else if (ch.Limb_condition[0]) > 0 && PLR_FLAGGED(ch, PLR_CRARM) {
+			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), ch.Limb_condition[0], "%", "%")
+		} else if (ch.Limb_condition[0]) <= 0 {
 			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @rMissing.         @D]@n\r\n"))
 		}
-		if (ch.Limb_condition[2]) >= 50 && !PLR_FLAGGED(ch, PLR_CLARM) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), ch.Limb_condition[2], "%", "%")
-		} else if (ch.Limb_condition[2]) > 0 && !PLR_FLAGGED(ch, PLR_CLARM) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), ch.Limb_condition[2], "%", "%")
-		} else if (ch.Limb_condition[2]) > 0 && PLR_FLAGGED(ch, PLR_CLARM) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), ch.Limb_condition[2], "%", "%")
-		} else if (ch.Limb_condition[2]) <= 0 {
+		if (ch.Limb_condition[1]) >= 50 && !PLR_FLAGGED(ch, PLR_CLARM) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), ch.Limb_condition[1], "%", "%")
+		} else if (ch.Limb_condition[1]) > 0 && !PLR_FLAGGED(ch, PLR_CLARM) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), ch.Limb_condition[1], "%", "%")
+		} else if (ch.Limb_condition[1]) > 0 && PLR_FLAGGED(ch, PLR_CLARM) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), ch.Limb_condition[1], "%", "%")
+		} else if (ch.Limb_condition[1]) <= 0 {
 			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @rMissing.         @D]@n\r\n"))
 		}
-		if (ch.Limb_condition[3]) >= 50 && !PLR_FLAGGED(ch, PLR_CLARM) {
-			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), ch.Limb_condition[3], "%", "%")
-		} else if (ch.Limb_condition[3]) > 0 && !PLR_FLAGGED(ch, PLR_CRLEG) {
-			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), ch.Limb_condition[3], "%", "%")
-		} else if (ch.Limb_condition[3]) > 0 && PLR_FLAGGED(ch, PLR_CRLEG) {
-			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), ch.Limb_condition[3], "%", "%")
-		} else if (ch.Limb_condition[3]) <= 0 {
+		if (ch.Limb_condition[2]) >= 50 && !PLR_FLAGGED(ch, PLR_CLARM) {
+			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), ch.Limb_condition[2], "%", "%")
+		} else if (ch.Limb_condition[2]) > 0 && !PLR_FLAGGED(ch, PLR_CRLEG) {
+			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), ch.Limb_condition[2], "%", "%")
+		} else if (ch.Limb_condition[2]) > 0 && PLR_FLAGGED(ch, PLR_CRLEG) {
+			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), ch.Limb_condition[2], "%", "%")
+		} else if (ch.Limb_condition[2]) <= 0 {
 			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @rMissing.         @D]@n\r\n"))
 		}
-		if (ch.Limb_condition[4]) >= 50 && !PLR_FLAGGED(ch, PLR_CLLEG) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), ch.Limb_condition[4], "%", "%")
-		} else if (ch.Limb_condition[4]) > 0 && !PLR_FLAGGED(ch, PLR_CLLEG) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), ch.Limb_condition[4], "%", "%")
-		} else if (ch.Limb_condition[4]) > 0 && PLR_FLAGGED(ch, PLR_CLLEG) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), ch.Limb_condition[4], "%", "%")
-		} else if (ch.Limb_condition[4]) <= 0 {
+		if (ch.Limb_condition[3]) >= 50 && !PLR_FLAGGED(ch, PLR_CLLEG) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), ch.Limb_condition[3], "%", "%")
+		} else if (ch.Limb_condition[3]) > 0 && !PLR_FLAGGED(ch, PLR_CLLEG) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), ch.Limb_condition[3], "%", "%")
+		} else if (ch.Limb_condition[3]) > 0 && PLR_FLAGGED(ch, PLR_CLLEG) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), ch.Limb_condition[3], "%", "%")
+		} else if (ch.Limb_condition[3]) <= 0 {
 			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @rMissing.         @D]@n\r\n"))
 		}
 		if (int(ch.Race) == RACE_SAIYAN || int(ch.Race) == RACE_HALFBREED) && PLR_FLAGGED(ch, PLR_STAIL) {

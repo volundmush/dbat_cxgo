@@ -110,9 +110,18 @@ func group_bonus(ch *char_data, type_ int) int {
 	return FALSE
 }
 func mutant_limb_regen(ch *char_data) {
-	if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 {
+	if (ch.Limb_condition[0]) > 0 && (ch.Limb_condition[0]) < 50 {
 		act(libc.CString("The bones in your right arm have mended them selves."), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("$n starts moving $s right arm gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
+		ch.Limb_condition[0] = 100
+	} else if (ch.Limb_condition[0]) <= 0 {
+		act(libc.CString("Your right arm begins to grow back very quickly. Within moments it is whole again!"), TRUE, ch, nil, nil, TO_CHAR)
+		act(libc.CString("$n's right arm starts to regrow! Within moments the arm is whole again!."), TRUE, ch, nil, nil, TO_ROOM)
+		ch.Limb_condition[0] = 100
+	}
+	if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 {
+		act(libc.CString("The bones in your left arm have mended them selves."), TRUE, ch, nil, nil, TO_CHAR)
+		act(libc.CString("$n starts moving $s left arm gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
 		ch.Limb_condition[1] = 100
 	} else if (ch.Limb_condition[1]) <= 0 {
 		act(libc.CString("Your right arm begins to grow back very quickly. Within moments it is whole again!"), TRUE, ch, nil, nil, TO_CHAR)
@@ -120,8 +129,8 @@ func mutant_limb_regen(ch *char_data) {
 		ch.Limb_condition[1] = 100
 	}
 	if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 {
-		act(libc.CString("The bones in your left arm have mended them selves."), TRUE, ch, nil, nil, TO_CHAR)
-		act(libc.CString("$n starts moving $s left arm gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
+		act(libc.CString("The bones in your right leg have mended them selves."), TRUE, ch, nil, nil, TO_CHAR)
+		act(libc.CString("$n starts moving $s right leg gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
 		ch.Limb_condition[2] = 100
 	} else if (ch.Limb_condition[2]) <= 0 {
 		act(libc.CString("Your right arm begins to grow back very quickly. Within moments it is whole again!"), TRUE, ch, nil, nil, TO_CHAR)
@@ -129,22 +138,13 @@ func mutant_limb_regen(ch *char_data) {
 		ch.Limb_condition[2] = 100
 	}
 	if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 {
-		act(libc.CString("The bones in your right leg have mended them selves."), TRUE, ch, nil, nil, TO_CHAR)
-		act(libc.CString("$n starts moving $s right leg gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
+		act(libc.CString("The bones in your left leg have mended them selves."), TRUE, ch, nil, nil, TO_CHAR)
+		act(libc.CString("$n starts moving $s left leg gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
 		ch.Limb_condition[3] = 100
 	} else if (ch.Limb_condition[3]) <= 0 {
 		act(libc.CString("Your right arm begins to grow back very quickly. Within moments it is whole again!"), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("$n's right arm starts to regrow! Within moments the arm is whole again!."), TRUE, ch, nil, nil, TO_ROOM)
 		ch.Limb_condition[3] = 100
-	}
-	if (ch.Limb_condition[4]) > 0 && (ch.Limb_condition[4]) < 50 {
-		act(libc.CString("The bones in your left leg have mended them selves."), TRUE, ch, nil, nil, TO_CHAR)
-		act(libc.CString("$n starts moving $s left leg gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
-		ch.Limb_condition[4] = 100
-	} else if (ch.Limb_condition[4]) <= 0 {
-		act(libc.CString("Your right arm begins to grow back very quickly. Within moments it is whole again!"), TRUE, ch, nil, nil, TO_CHAR)
-		act(libc.CString("$n's right arm starts to regrow! Within moments the arm is whole again!."), TRUE, ch, nil, nil, TO_ROOM)
-		ch.Limb_condition[4] = 100
 	}
 }
 func pick_n_throw(ch *char_data, buf *byte) int {
@@ -1526,24 +1526,24 @@ func handle_corpse_condition(corpse *obj_data, ch *char_data) {
 		corpse.Short_description = libc.StrDup(&descBuf[0])
 	}
 	if !IS_NPC(ch) {
-		if (ch.Limb_condition[1]) <= 0 {
+		if (ch.Limb_condition[0]) <= 0 {
 			corpse.Value[VAL_CORPSE_RARM] = 0
-		} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 {
+		} else if (ch.Limb_condition[0]) > 0 && (ch.Limb_condition[0]) < 50 {
 			corpse.Value[VAL_CORPSE_RARM] = 2
 		}
-		if (ch.Limb_condition[2]) <= 0 {
+		if (ch.Limb_condition[1]) <= 0 {
 			corpse.Value[VAL_CORPSE_LARM] = 0
-		} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 {
+		} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 {
 			corpse.Value[VAL_CORPSE_LARM] = 2
 		}
-		if (ch.Limb_condition[3]) <= 0 {
+		if (ch.Limb_condition[2]) <= 0 {
 			corpse.Value[VAL_CORPSE_RLEG] = 0
-		} else if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 {
+		} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 {
 			corpse.Value[VAL_CORPSE_RLEG] = 2
 		}
-		if (ch.Limb_condition[4]) <= 0 {
+		if (ch.Limb_condition[3]) <= 0 {
 			corpse.Value[VAL_CORPSE_LLEG] = 0
-		} else if (ch.Limb_condition[4]) > 0 && (ch.Limb_condition[4]) < 50 {
+		} else if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 {
 			corpse.Value[VAL_CORPSE_LLEG] = 2
 		}
 		return
@@ -1961,10 +1961,10 @@ func raw_kill(ch *char_data, killer *char_data) {
 		}()) > 0x464F) {
 			ch.Affected_by[int(AFF_SPIRIT/32)] |= 1 << (int(AFF_SPIRIT % 32))
 			ch.Affected_by[int(AFF_ETHEREAL/32)] |= 1 << (int(AFF_ETHEREAL % 32))
+			ch.Limb_condition[0] = 100
 			ch.Limb_condition[1] = 100
 			ch.Limb_condition[2] = 100
 			ch.Limb_condition[3] = 100
-			ch.Limb_condition[4] = 100
 			ch.Act[int(PLR_HEAD/32)] |= bitvector_t(int32(1 << (int(PLR_HEAD % 32))))
 			if !PRF_FLAGGED(ch, PRF_LKEEP) {
 				if PLR_FLAGGED(ch, PLR_CLLEG) {
@@ -2080,10 +2080,10 @@ func raw_kill(ch *char_data, killer *char_data) {
 				char_to_room(ch, real_room(16100))
 			}
 			look_at_room(ch.In_room, ch, 0)
+			ch.Limb_condition[0] = 100
 			ch.Limb_condition[1] = 100
 			ch.Limb_condition[2] = 100
 			ch.Limb_condition[3] = 100
-			ch.Limb_condition[4] = 100
 			ch.Act[int(PLR_HEAD/32)] |= bitvector_t(int32(1 << (int(PLR_HEAD % 32))))
 			Crash_delete_crashfile(ch)
 			update_pos(ch)

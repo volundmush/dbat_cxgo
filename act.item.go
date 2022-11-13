@@ -988,7 +988,7 @@ func do_twohand(ch *char_data, argument *byte, cmd int, subcmd int) {
 	} else if (ch.Equipment[WEAR_WIELD2]) != nil && !PLR_FLAGGED(ch, PLR_THANDW) {
 		send_to_char(ch, libc.CString("You have something in your offhand already and can't two hand wield your main weapon.\r\n"))
 		return
-	} else if ((ch.Limb_condition[1]) <= 0 || (ch.Limb_condition[2]) <= 0) && !PLR_FLAGGED(ch, PLR_THANDW) {
+	} else if ((ch.Limb_condition[0]) <= 0 || (ch.Limb_condition[1]) <= 0) && !PLR_FLAGGED(ch, PLR_THANDW) {
 		send_to_char(ch, libc.CString("Kind of hard with only one arm...\r\n"))
 		return
 	} else if PLR_FLAGGED(ch, PLR_THANDW) {

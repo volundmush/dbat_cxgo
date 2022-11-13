@@ -657,10 +657,10 @@ func do_rpp(ch *char_data, argument *byte, cmd int, subcmd int) {
 				ch.Hit = gear_pl(ch)
 				ch.Mana = ch.Max_mana
 				ch.Move = ch.Max_move
+				ch.Limb_condition[0] = 100
 				ch.Limb_condition[1] = 100
 				ch.Limb_condition[2] = 100
 				ch.Limb_condition[3] = 100
-				ch.Limb_condition[4] = 100
 				ch.Act[int(PLR_HEAD/32)] |= bitvector_t(int32(1 << (int(PLR_HEAD % 32))))
 				ch.Act[int(PLR_PDEATH/32)] &= bitvector_t(int32(^(1 << (int(PLR_PDEATH % 32)))))
 				char_from_room(ch)
@@ -3412,7 +3412,7 @@ func do_implant(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if libc.StrCmp(&arg[0], libc.CString("rarm")) == 0 {
-		if (vict.Limb_condition[1]) >= 1 {
+		if (vict.Limb_condition[0]) >= 1 {
 			if vict != ch {
 				send_to_char(ch, libc.CString("They already have a right arm!\r\n"))
 			}
@@ -3438,7 +3438,7 @@ func do_implant(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	} else if libc.StrCmp(&arg[0], libc.CString("larm")) == 0 {
-		if (vict.Limb_condition[2]) >= 1 {
+		if (vict.Limb_condition[1]) >= 1 {
 			if vict != ch {
 				send_to_char(ch, libc.CString("They already have a left arm!\r\n"))
 			}
@@ -3464,7 +3464,7 @@ func do_implant(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	} else if libc.StrCmp(&arg[0], libc.CString("rleg")) == 0 {
-		if (vict.Limb_condition[3]) >= 1 {
+		if (vict.Limb_condition[2]) >= 1 {
 			if vict != ch {
 				send_to_char(ch, libc.CString("They already have a right leg!\r\n"))
 			}
@@ -3490,7 +3490,7 @@ func do_implant(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	} else if libc.StrCmp(&arg[0], libc.CString("lleg")) == 0 {
-		if (vict.Limb_condition[4]) >= 1 {
+		if (vict.Limb_condition[3]) >= 1 {
 			if vict != ch {
 				send_to_char(ch, libc.CString("They already have a left leg!\r\n"))
 			}
@@ -5981,39 +5981,39 @@ func do_regenerate(ch *char_data, argument *byte, cmd int, subcmd int) {
 		null_affect(ch, AFF_BURNED)
 	}
 	if !IS_NPC(ch) {
-		if (ch.Limb_condition[1]) <= 0 {
+		if (ch.Limb_condition[0]) <= 0 {
 			act(libc.CString("You regrow your right arm!"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("$n regrows $s right arm!"), TRUE, ch, nil, nil, TO_ROOM)
-			ch.Limb_condition[1] = 100
-		} else if (ch.Limb_condition[1]) >= 0 && (ch.Limb_condition[1]) < 50 {
+			ch.Limb_condition[0] = 100
+		} else if (ch.Limb_condition[0]) >= 0 && (ch.Limb_condition[0]) < 50 {
 			act(libc.CString("Your broken right arm mends itself!"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("$n regenerates $s broken right arm!"), TRUE, ch, nil, nil, TO_ROOM)
-			ch.Limb_condition[1] = 100
+			ch.Limb_condition[0] = 100
 		}
-		if (ch.Limb_condition[2]) <= 0 {
-			ch.Limb_condition[2] = 100
+		if (ch.Limb_condition[1]) <= 0 {
+			ch.Limb_condition[1] = 100
 			act(libc.CString("You regrow your left arm!"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("$n regrows $s left arm!"), TRUE, ch, nil, nil, TO_ROOM)
-		} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 {
+		} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 {
 			act(libc.CString("Your broken left arm mends itself!"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("$n regenerates $s broken left arm!"), TRUE, ch, nil, nil, TO_ROOM)
-			ch.Limb_condition[2] = 100
-		}
-		if (ch.Limb_condition[4]) <= 0 {
-			ch.Limb_condition[4] = 100
-			act(libc.CString("You regrow your left leg!"), TRUE, ch, nil, nil, TO_CHAR)
-			act(libc.CString("$n regrows $s left leg!"), TRUE, ch, nil, nil, TO_ROOM)
-		} else if (ch.Limb_condition[4]) > 0 && (ch.Limb_condition[4]) < 50 {
-			act(libc.CString("Your broken left leg mends itself!"), TRUE, ch, nil, nil, TO_CHAR)
-			act(libc.CString("$n regenerates $s broken left leg!"), TRUE, ch, nil, nil, TO_ROOM)
-			ch.Limb_condition[4] = 100
+			ch.Limb_condition[1] = 100
 		}
 		if (ch.Limb_condition[3]) <= 0 {
 			ch.Limb_condition[3] = 100
+			act(libc.CString("You regrow your left leg!"), TRUE, ch, nil, nil, TO_CHAR)
+			act(libc.CString("$n regrows $s left leg!"), TRUE, ch, nil, nil, TO_ROOM)
+		} else if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 {
+			act(libc.CString("Your broken left leg mends itself!"), TRUE, ch, nil, nil, TO_CHAR)
+			act(libc.CString("$n regenerates $s broken left leg!"), TRUE, ch, nil, nil, TO_ROOM)
+			ch.Limb_condition[3] = 100
+		}
+		if (ch.Limb_condition[2]) <= 0 {
+			ch.Limb_condition[2] = 100
 			act(libc.CString("You regrow your right leg!"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("$n regrows $s right leg!"), TRUE, ch, nil, nil, TO_ROOM)
-		} else if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 {
-			ch.Limb_condition[3] = 100
+		} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 {
+			ch.Limb_condition[2] = 100
 			act(libc.CString("Your broken right leg mends itself!"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("$n regenerates $s broken right leg!"), TRUE, ch, nil, nil, TO_ROOM)
 		}
@@ -7887,10 +7887,10 @@ func do_heal(ch *char_data, argument *byte, cmd int, subcmd int) {
 			act(libc.CString("$n@w no longer looks as if they could drink an ocean.@n"), TRUE, vict, nil, nil, TO_ROOM)
 			vict.Affected_by[int(AFF_HYDROZAP/32)] &= ^(1 << (int(AFF_HYDROZAP % 32)))
 		}
+		vict.Limb_condition[0] = 100
 		vict.Limb_condition[1] = 100
 		vict.Limb_condition[2] = 100
 		vict.Limb_condition[3] = 100
-		vict.Limb_condition[4] = 100
 		if float64(vict.Lifeforce) <= float64(GET_LIFEMAX(vict))*0.5 && int(vict.Race) != RACE_ANDROID {
 			vict.Lifeforce += int64(float64(GET_LIFEMAX(ch)) * 0.35)
 			if vict.Lifeforce > int64(GET_LIFEMAX(ch)) {
@@ -7935,10 +7935,10 @@ func do_heal(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 		}
 		vict.Affected_by[int(AFF_BLIND/32)] &= ^(1 << (int(AFF_BLIND % 32)))
+		vict.Limb_condition[0] = 100
 		vict.Limb_condition[1] = 100
 		vict.Limb_condition[2] = 100
 		vict.Limb_condition[3] = 100
-		vict.Limb_condition[4] = 100
 		if !PLR_FLAGGED(vict, PLR_TAIL) && (int(vict.Race) == RACE_BIO || int(vict.Race) == RACE_ICER) {
 			vict.Act[int(PLR_TAIL/32)] |= bitvector_t(int32(1 << (int(PLR_TAIL % 32))))
 		}
@@ -12518,13 +12518,13 @@ func check_eq(ch *char_data) {
 				perform_remove(ch, i)
 				return
 			}
-			if obj == (ch.Equipment[WEAR_WIELD1]) && (ch.Limb_condition[1]) <= 0 {
+			if obj == (ch.Equipment[WEAR_WIELD1]) && (ch.Limb_condition[0]) <= 0 {
 				act(libc.CString("@WWithout your right arm you let go of @c$p@W!@n"), FALSE, ch, obj, nil, TO_CHAR)
 				act(libc.CString("@C$n@W lets go of @c$p@W!@n"), FALSE, ch, obj, nil, TO_ROOM)
 				perform_remove(ch, i)
 				return
 			}
-			if obj == (ch.Equipment[WEAR_WIELD2]) && (ch.Limb_condition[2]) <= 0 {
+			if obj == (ch.Equipment[WEAR_WIELD2]) && (ch.Limb_condition[1]) <= 0 {
 				act(libc.CString("@WWithout your left arm you let go of @c$p@W!@n"), FALSE, ch, obj, nil, TO_CHAR)
 				act(libc.CString("@C$n@W lets go of @c$p@W!@n"), FALSE, ch, obj, nil, TO_ROOM)
 				perform_remove(ch, i)

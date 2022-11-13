@@ -774,8 +774,8 @@ func cut_limb(ch *char_data, vict *char_data, wlvl int, hitspot int) {
 	} else {
 		if !IS_NPC(vict) {
 			if HAS_ARMS(vict) && rand_number(1, 2) == 2 {
-				if (vict.Limb_condition[2]) > 0 {
-					vict.Limb_condition[2] = 0
+				if (vict.Limb_condition[1]) > 0 {
+					vict.Limb_condition[1] = 0
 					if PLR_FLAGGED(vict, PLR_CLARM) {
 						vict.Act[int(PLR_CLARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLARM % 32)))))
 					}
@@ -783,8 +783,8 @@ func cut_limb(ch *char_data, vict *char_data, wlvl int, hitspot int) {
 					act(libc.CString("@RYOU lose your left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@R$N@r loses $s left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 					remove_limb(vict, 2)
-				} else if (vict.Limb_condition[1]) > 0 {
-					vict.Limb_condition[1] = 100
+				} else if (vict.Limb_condition[0]) > 0 {
+					vict.Limb_condition[0] = 100
 					if PLR_FLAGGED(vict, PLR_CRARM) {
 						vict.Act[int(PLR_CRARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRARM % 32)))))
 					}
@@ -794,8 +794,8 @@ func cut_limb(ch *char_data, vict *char_data, wlvl int, hitspot int) {
 					remove_limb(vict, 1)
 				}
 			} else {
-				if (vict.Limb_condition[4]) > 0 {
-					vict.Limb_condition[4] = 100
+				if (vict.Limb_condition[3]) > 0 {
+					vict.Limb_condition[3] = 100
 					if PLR_FLAGGED(vict, PLR_CLLEG) {
 						vict.Act[int(PLR_CLLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLLEG % 32)))))
 					}
@@ -803,8 +803,8 @@ func cut_limb(ch *char_data, vict *char_data, wlvl int, hitspot int) {
 					act(libc.CString("@RYOU lose your left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@R$N@r loses $s left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 					remove_limb(vict, 4)
-				} else if (vict.Limb_condition[3]) > 0 {
-					vict.Limb_condition[3] = 100
+				} else if (vict.Limb_condition[2]) > 0 {
+					vict.Limb_condition[2] = 100
 					if PLR_FLAGGED(vict, PLR_CRLEG) {
 						vict.Act[int(PLR_CRLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRLEG % 32)))))
 					}
@@ -1046,13 +1046,13 @@ func roll_hitloc(ch *char_data, vict *char_data, skill int) int {
 		location = rand_number(4, 5)
 	}
 	if !IS_NPC(vict) {
-		if location == 4 && (vict.Limb_condition[1]) <= 0 && (vict.Limb_condition[2]) <= 0 {
+		if location == 4 && (vict.Limb_condition[0]) <= 0 && (vict.Limb_condition[1]) <= 0 {
 			location = 5
 		}
-		if location == 5 && (vict.Limb_condition[3]) <= 0 && (vict.Limb_condition[4]) <= 0 {
+		if location == 5 && (vict.Limb_condition[2]) <= 0 && (vict.Limb_condition[3]) <= 0 {
 			location = 4
 		}
-		if location == 4 && (vict.Limb_condition[1]) <= 0 && (vict.Limb_condition[2]) <= 0 {
+		if location == 4 && (vict.Limb_condition[0]) <= 0 && (vict.Limb_condition[1]) <= 0 {
 			location = 1
 		}
 	}
@@ -1236,11 +1236,11 @@ func hurt_limb(ch *char_data, vict *char_data, chance int, area int, power int64
 	}
 	if !is_sparring(ch) {
 		if area == 0 {
-			if (vict.Limb_condition[2])-dmg <= 0 {
+			if (vict.Limb_condition[1])-dmg <= 0 {
 				act(libc.CString("@RYour attack @YDESTROYS @r$N's@R left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@r$n's@R attack @YDESTROYS@R YOUR left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@r$n's@R attack @YDESTROYS @r$N's@R left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				vict.Limb_condition[2] = 0
+				vict.Limb_condition[1] = 0
 				if PLR_FLAGGED(vict, PLR_THANDW) {
 					vict.Act[int(PLR_THANDW/32)] &= bitvector_t(int32(^(1 << (int(PLR_THANDW % 32)))))
 				}
@@ -1248,16 +1248,16 @@ func hurt_limb(ch *char_data, vict *char_data, chance int, area int, power int64
 					vict.Act[int(PLR_CLARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLARM % 32)))))
 				}
 				remove_limb(vict, 2)
-			} else if (vict.Limb_condition[2]) > 0 {
-				vict.Limb_condition[2] -= dmg
+			} else if (vict.Limb_condition[1]) > 0 {
+				vict.Limb_condition[1] -= dmg
 				act(libc.CString("@RYour attack hurts @r$N's@R left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@r$n's@R attack hurts YOUR left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@r$n's@R attack hurts @r$N's@R left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-			} else if (vict.Limb_condition[1])-dmg <= 0 {
+			} else if (vict.Limb_condition[0])-dmg <= 0 {
 				act(libc.CString("@RYour attack @YDESTROYS @r$N's@R right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@r$n's@R attack @YDESTROYS@R YOUR right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@r$n's@R attack @YDESTROYS @r$N's@R right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				vict.Limb_condition[1] = 0
+				vict.Limb_condition[0] = 0
 				if PLR_FLAGGED(vict, PLR_THANDW) {
 					vict.Act[int(PLR_THANDW/32)] &= bitvector_t(int32(^(1 << (int(PLR_THANDW % 32)))))
 				}
@@ -1265,34 +1265,17 @@ func hurt_limb(ch *char_data, vict *char_data, chance int, area int, power int64
 					vict.Act[int(PLR_CRARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRARM % 32)))))
 				}
 				remove_limb(vict, 2)
-			} else if (vict.Limb_condition[1]) > 0 {
-				vict.Limb_condition[1] -= dmg
+			} else if (vict.Limb_condition[0]) > 0 {
+				vict.Limb_condition[0] -= dmg
 				act(libc.CString("@RYour attack hurts @r$N's@R right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@r$n's@R attack hurts YOUR right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@r$n's@R attack hurts @r$N's@R right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 			}
 		} else if area == 1 {
-			if (vict.Limb_condition[4])-dmg <= 0 {
+			if (vict.Limb_condition[3])-dmg <= 0 {
 				act(libc.CString("@RYour attack @YDESTROYS @r$N's@R left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@r$n's@R attack @YDESTROYS@R YOUR left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@r$n's@R attack @YDESTROYS @r$N's@R left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				vict.Limb_condition[4] = 0
-				if PLR_FLAGGED(vict, PLR_THANDW) {
-					vict.Act[int(PLR_THANDW/32)] &= bitvector_t(int32(^(1 << (int(PLR_THANDW % 32)))))
-				}
-				if PLR_FLAGGED(vict, PLR_CLLEG) {
-					vict.Act[int(PLR_CLLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLLEG % 32)))))
-				}
-				remove_limb(vict, 2)
-			} else if (vict.Limb_condition[4]) > 0 {
-				vict.Limb_condition[4] -= dmg
-				act(libc.CString("@RYour attack hurts @r$N's@R left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
-				act(libc.CString("@r$n's@R attack hurts YOUR left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
-				act(libc.CString("@r$n's@R attack hurts @r$N's@R left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-			} else if (vict.Limb_condition[3])-dmg <= 0 {
-				act(libc.CString("@RYour attack @YDESTROYS @r$N's@R right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
-				act(libc.CString("@r$n's@R attack @YDESTROYS@R YOUR right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
-				act(libc.CString("@r$n's@R attack @YDESTROYS @r$N's@R right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				vict.Limb_condition[3] = 0
 				if PLR_FLAGGED(vict, PLR_THANDW) {
 					vict.Act[int(PLR_THANDW/32)] &= bitvector_t(int32(^(1 << (int(PLR_THANDW % 32)))))
@@ -1303,6 +1286,23 @@ func hurt_limb(ch *char_data, vict *char_data, chance int, area int, power int64
 				remove_limb(vict, 2)
 			} else if (vict.Limb_condition[3]) > 0 {
 				vict.Limb_condition[3] -= dmg
+				act(libc.CString("@RYour attack hurts @r$N's@R left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
+				act(libc.CString("@r$n's@R attack hurts YOUR left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
+				act(libc.CString("@r$n's@R attack hurts @r$N's@R left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
+			} else if (vict.Limb_condition[2])-dmg <= 0 {
+				act(libc.CString("@RYour attack @YDESTROYS @r$N's@R right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
+				act(libc.CString("@r$n's@R attack @YDESTROYS@R YOUR right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
+				act(libc.CString("@r$n's@R attack @YDESTROYS @r$N's@R right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
+				vict.Limb_condition[2] = 0
+				if PLR_FLAGGED(vict, PLR_THANDW) {
+					vict.Act[int(PLR_THANDW/32)] &= bitvector_t(int32(^(1 << (int(PLR_THANDW % 32)))))
+				}
+				if PLR_FLAGGED(vict, PLR_CLLEG) {
+					vict.Act[int(PLR_CLLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLLEG % 32)))))
+				}
+				remove_limb(vict, 2)
+			} else if (vict.Limb_condition[2]) > 0 {
+				vict.Limb_condition[2] -= dmg
 				act(libc.CString("@RYour attack hurts @r$N's@R right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@r$n's@R attack hurts YOUR right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@r$n's@R attack hurts @r$N's@R right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)

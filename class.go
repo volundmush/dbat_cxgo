@@ -134,10 +134,10 @@ func do_start(ch *char_data) {
 	ch.Player_specials.Pref[int(PRF_HINTS/32)] |= bitvector_t(int32(1 << (int(PRF_HINTS % 32))))
 	ch.Player_specials.Pref[int(PRF_NOMUSIC/32)] |= bitvector_t(int32(1 << (int(PRF_NOMUSIC % 32))))
 	ch.Player_specials.Pref[int(PRF_DISPHP/32)] |= bitvector_t(int32(1 << (int(PRF_DISPHP % 32))))
+	ch.Limb_condition[0] = 100
 	ch.Limb_condition[1] = 100
 	ch.Limb_condition[2] = 100
 	ch.Limb_condition[3] = 100
-	ch.Limb_condition[4] = 100
 	ch.Act[int(PLR_HEAD/32)] |= bitvector_t(int32(1 << (int(PLR_HEAD % 32))))
 	ch.Skill_slots = 30
 	if int(ch.Race) == RACE_HUMAN {

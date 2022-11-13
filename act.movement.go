@@ -1240,7 +1240,7 @@ func do_move(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	}
-	if !IS_NPC(ch) && (ch.Limb_condition[1]) <= 0 && (ch.Limb_condition[2]) <= 0 && (ch.Limb_condition[3]) <= 0 && (ch.Limb_condition[4]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
+	if !IS_NPC(ch) && (ch.Limb_condition[0]) <= 0 && (ch.Limb_condition[1]) <= 0 && (ch.Limb_condition[2]) <= 0 && (ch.Limb_condition[3]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
 		send_to_char(ch, libc.CString("Unless you fly, you can't get far with no limbs.\r\n"))
 		return
 	}
@@ -1355,69 +1355,69 @@ func do_move(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if ROOM_FLAGGED(ch.In_room, ROOM_SPACE) && ch.Admlevel < 1 {
 			send_to_char(ch, libc.CString("You struggle to cross the vast distance.\r\n"))
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*6)
-		} else if (ch.Limb_condition[3]) <= 0 && (ch.Limb_condition[4]) <= 0 && (ch.Limb_condition[1]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
+		} else if (ch.Limb_condition[2]) <= 0 && (ch.Limb_condition[3]) <= 0 && (ch.Limb_condition[0]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
 			act(libc.CString("@wYou slowly pull yourself along with your arm...@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@C$n@w slowly pulls $mself along with one arm...@n"), TRUE, ch, nil, nil, TO_ROOM)
-			if (ch.Limb_condition[2]) < 50 {
+			if (ch.Limb_condition[1]) < 50 {
 				send_to_char(ch, libc.CString("@RYour left arm is damaged by the forced use!@n\r\n"))
-				ch.Limb_condition[2] -= rand_number(1, 5)
-				if (ch.Limb_condition[1]) <= 0 {
+				ch.Limb_condition[1] -= rand_number(1, 5)
+				if (ch.Limb_condition[0]) <= 0 {
 					act(libc.CString("@RYour left arm falls apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 					act(libc.CString("@r$n's@R left arm falls apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 				}
 			}
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*5)
-		} else if (ch.Limb_condition[3]) <= 0 && (ch.Limb_condition[4]) <= 0 && (ch.Limb_condition[2]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
+		} else if (ch.Limb_condition[2]) <= 0 && (ch.Limb_condition[3]) <= 0 && (ch.Limb_condition[1]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
 			act(libc.CString("@wYou slowly pull yourself along with your arm...@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@C$n@w slowly pulls $mself along with one arm...@n"), TRUE, ch, nil, nil, TO_ROOM)
-			if (ch.Limb_condition[1]) < 50 {
+			if (ch.Limb_condition[0]) < 50 {
 				send_to_char(ch, libc.CString("@RYour right arm is damaged by the forced use!@n\r\n"))
-				ch.Limb_condition[1] -= rand_number(1, 5)
-				if (ch.Limb_condition[1]) <= 0 {
+				ch.Limb_condition[0] -= rand_number(1, 5)
+				if (ch.Limb_condition[0]) <= 0 {
 					act(libc.CString("@RYour right arm falls apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 					act(libc.CString("@r$n's@R right arm falls apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 				}
 			}
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*5)
-		} else if (ch.Limb_condition[3]) <= 0 && (ch.Limb_condition[4]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
+		} else if (ch.Limb_condition[2]) <= 0 && (ch.Limb_condition[3]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
 			act(libc.CString("@wYou slowly pull yourself along with your arms...@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@C$n@w slowly pulls $mself along with one arms...@n"), TRUE, ch, nil, nil, TO_ROOM)
-			if (ch.Limb_condition[2]) < 50 {
+			if (ch.Limb_condition[1]) < 50 {
 				send_to_char(ch, libc.CString("@RYour left arm is damaged by the forced use!@n\r\n"))
-				ch.Limb_condition[2] -= rand_number(1, 5)
-				if (ch.Limb_condition[2]) <= 0 {
+				ch.Limb_condition[1] -= rand_number(1, 5)
+				if (ch.Limb_condition[1]) <= 0 {
 					act(libc.CString("@RYour left arm falls apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 					act(libc.CString("@r$n's@R left arm falls apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 				}
 			}
-			if (ch.Limb_condition[1]) < 50 {
+			if (ch.Limb_condition[0]) < 50 {
 				send_to_char(ch, libc.CString("@RYour right arm is damaged by the forced use!@n\r\n"))
-				ch.Limb_condition[1] -= rand_number(1, 5)
-				if (ch.Limb_condition[1]) <= 0 {
+				ch.Limb_condition[0] -= rand_number(1, 5)
+				if (ch.Limb_condition[0]) <= 0 {
 					act(libc.CString("@RYour right arm falls apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 					act(libc.CString("@r$n's@R right arm falls apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 				}
 			}
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
-		} else if (ch.Limb_condition[3]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
+		} else if (ch.Limb_condition[2]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
 			act(libc.CString("@wYou hop on one leg...@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@C$n@w hops on one leg...@n"), TRUE, ch, nil, nil, TO_ROOM)
-			if (ch.Limb_condition[4]) < 50 {
+			if (ch.Limb_condition[3]) < 50 {
 				send_to_char(ch, libc.CString("@RYour left leg is damaged by the forced use!@n\r\n"))
-				ch.Limb_condition[4] -= rand_number(1, 5)
-				if (ch.Limb_condition[4]) <= 0 {
+				ch.Limb_condition[3] -= rand_number(1, 5)
+				if (ch.Limb_condition[3]) <= 0 {
 					act(libc.CString("@RYour left leg falls apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 					act(libc.CString("@r$n's@R left leg falls apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 				}
 			}
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*2)
-		} else if (ch.Limb_condition[4]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
+		} else if (ch.Limb_condition[3]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
 			act(libc.CString("@wYou hop on one leg...@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@C$n@w hops on one leg...@n"), TRUE, ch, nil, nil, TO_ROOM)
-			if (ch.Limb_condition[3]) < 50 {
+			if (ch.Limb_condition[2]) < 50 {
 				send_to_char(ch, libc.CString("@RYour right leg is damaged by the forced use!@n\r\n"))
-				ch.Limb_condition[3] -= rand_number(1, 5)
-				if (ch.Limb_condition[3]) <= 0 {
+				ch.Limb_condition[2] -= rand_number(1, 5)
+				if (ch.Limb_condition[2]) <= 0 {
 					act(libc.CString("@RYour right leg falls apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 					act(libc.CString("@r$n's@R right leg falls apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 				}
@@ -3083,7 +3083,7 @@ func do_stand(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You are knocked out cold for right now!\r\n"))
 		return
 	}
-	if !IS_NPC(ch) && (ch.Limb_condition[3]) <= 0 && (ch.Limb_condition[4]) <= 0 {
+	if !IS_NPC(ch) && (ch.Limb_condition[2]) <= 0 && (ch.Limb_condition[3]) <= 0 {
 		send_to_char(ch, libc.CString("With what legs will you be standing up on?\r\n"))
 		return
 	}

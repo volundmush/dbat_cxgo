@@ -1458,19 +1458,19 @@ func enter_player_game(d *descriptor_data) int {
 		d.Character.Lifeforce = int64(GET_LIFEMAX(d.Character))
 	}
 	if PLR_FLAGGED(d.Character, PLR_RARM) {
-		d.Character.Limb_condition[1] = 100
+		d.Character.Limb_condition[0] = 100
 		d.Character.Act[int(PLR_RARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_RARM % 32)))))
 	}
 	if PLR_FLAGGED(d.Character, PLR_LARM) {
-		d.Character.Limb_condition[2] = 100
+		d.Character.Limb_condition[1] = 100
 		d.Character.Act[int(PLR_LARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_LARM % 32)))))
 	}
 	if PLR_FLAGGED(d.Character, PLR_LLEG) {
-		d.Character.Limb_condition[4] = 100
+		d.Character.Limb_condition[3] = 100
 		d.Character.Act[int(PLR_LLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_LLEG % 32)))))
 	}
 	if PLR_FLAGGED(d.Character, PLR_RLEG) {
-		d.Character.Limb_condition[3] = 100
+		d.Character.Limb_condition[2] = 100
 		d.Character.Act[int(PLR_RLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_RLEG % 32)))))
 	}
 	d.Character.Combine = -1

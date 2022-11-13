@@ -2819,10 +2819,10 @@ func do_restore(ch *char_data, argument *byte, cmd int, subcmd int) {
 		vict.Move = vict.Max_move
 		vict.Ki = vict.Max_ki
 		vict.Affected_by[int(AFF_BLIND/32)] &= ^(1 << (int(AFF_BLIND % 32)))
+		vict.Limb_condition[0] = 100
 		vict.Limb_condition[1] = 100
 		vict.Limb_condition[2] = 100
 		vict.Limb_condition[3] = 100
-		vict.Limb_condition[4] = 100
 		vict.Act[int(PLR_HEAD/32)] |= bitvector_t(int32(1 << (int(PLR_HEAD % 32))))
 		if !IS_NPC(vict) && ch.Admlevel >= ADMLVL_VICE {
 			if vict.Admlevel >= ADMLVL_IMMORT {
@@ -4828,10 +4828,10 @@ func do_raise(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	vict.Mana = vict.Max_mana
 	vict.Move = vict.Max_move
+	vict.Limb_condition[0] = 100
 	vict.Limb_condition[1] = 100
 	vict.Limb_condition[2] = 100
 	vict.Limb_condition[3] = 100
-	vict.Limb_condition[4] = 100
 	vict.Act[int(PLR_HEAD/32)] |= bitvector_t(int32(1 << (int(PLR_HEAD % 32))))
 	vict.Act[int(PLR_PDEATH/32)] &= bitvector_t(int32(^(1 << (int(PLR_PDEATH % 32)))))
 	char_from_room(vict)

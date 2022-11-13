@@ -812,33 +812,33 @@ func mag_points(level int, ch *char_data, victim *char_data, spellnum int) {
 			act(libc.CString("$n@w's burns are now healed.@n"), TRUE, victim, nil, nil, TO_ROOM)
 			victim.Affected_by[int(AFF_BURNED/32)] &= ^(1 << (int(AFF_BURNED % 32)))
 		}
-		if (victim.Limb_condition[1]) <= 0 {
+		if (victim.Limb_condition[0]) <= 0 {
 			send_to_char(victim, libc.CString("Your right arm grows back!\r\n"))
+			victim.Limb_condition[0] = 100
+		} else if (victim.Limb_condition[0]) < 50 {
+			send_to_char(victim, libc.CString("Your right arm is no longer broken!\r\n"))
+			victim.Limb_condition[0] = 100
+		}
+		if (victim.Limb_condition[1]) <= 0 {
+			send_to_char(victim, libc.CString("Your left arm grows back!\r\n"))
 			victim.Limb_condition[1] = 100
 		} else if (victim.Limb_condition[1]) < 50 {
-			send_to_char(victim, libc.CString("Your right arm is no longer broken!\r\n"))
+			send_to_char(victim, libc.CString("Your left arm is no longer broken!\r\n"))
 			victim.Limb_condition[1] = 100
 		}
 		if (victim.Limb_condition[2]) <= 0 {
-			send_to_char(victim, libc.CString("Your left arm grows back!\r\n"))
+			send_to_char(victim, libc.CString("Your right leg grows back!\r\n"))
 			victim.Limb_condition[2] = 100
 		} else if (victim.Limb_condition[2]) < 50 {
-			send_to_char(victim, libc.CString("Your left arm is no longer broken!\r\n"))
+			send_to_char(victim, libc.CString("Your right leg is no longer broken!\r\n"))
 			victim.Limb_condition[2] = 100
 		}
 		if (victim.Limb_condition[3]) <= 0 {
-			send_to_char(victim, libc.CString("Your right leg grows back!\r\n"))
+			send_to_char(victim, libc.CString("Your left leg grows back!\r\n"))
 			victim.Limb_condition[3] = 100
 		} else if (victim.Limb_condition[3]) < 50 {
-			send_to_char(victim, libc.CString("Your right leg is no longer broken!\r\n"))
-			victim.Limb_condition[3] = 100
-		}
-		if (victim.Limb_condition[4]) <= 0 {
-			send_to_char(victim, libc.CString("Your left leg grows back!\r\n"))
-			victim.Limb_condition[4] = 100
-		} else if (victim.Limb_condition[4]) < 50 {
 			send_to_char(victim, libc.CString("Your left leg is no longer broken!\r\n"))
-			victim.Limb_condition[4] = 100
+			victim.Limb_condition[3] = 100
 		}
 	case ART_WHOLENESS_OF_BODY:
 		healing = int(victim.Max_hit - victim.Hit)

@@ -5271,10 +5271,10 @@ func HAS_MOON(ch *char_data) bool {
 	return ROOM_FLAGGED(ch.In_room, ROOM_VEGETA) || ROOM_FLAGGED(ch.In_room, ROOM_EARTH) || ROOM_FLAGGED(ch.In_room, ROOM_FRIGID) || ROOM_FLAGGED(ch.In_room, ROOM_AETHER)
 }
 func HAS_ARMS(ch *char_data) bool {
-	return (IS_NPC(ch) && (MOB_FLAGGED(ch, MOB_LARM) || MOB_FLAGGED(ch, MOB_RARM)) || (ch.Limb_condition[1]) > 0 || (ch.Limb_condition[2]) > 0 || PLR_FLAGGED(ch, PLR_CRARM) || PLR_FLAGGED(ch, PLR_CLARM)) && (ch.Grappling == nil && ch.Grappled == nil || ch.Grappling != nil && ch.Grap == 3 || ch.Grappled != nil && ch.Grap != 1 && ch.Grap != 4)
+	return (IS_NPC(ch) && (MOB_FLAGGED(ch, MOB_LARM) || MOB_FLAGGED(ch, MOB_RARM)) || (ch.Limb_condition[0]) > 0 || (ch.Limb_condition[1]) > 0 || PLR_FLAGGED(ch, PLR_CRARM) || PLR_FLAGGED(ch, PLR_CLARM)) && (ch.Grappling == nil && ch.Grappled == nil || ch.Grappling != nil && ch.Grap == 3 || ch.Grappled != nil && ch.Grap != 1 && ch.Grap != 4)
 }
 func HAS_LEGS(ch *char_data) bool {
-	return (IS_NPC(ch) && (MOB_FLAGGED(ch, MOB_LLEG) || MOB_FLAGGED(ch, MOB_RLEG)) || (ch.Limb_condition[3]) > 0 || (ch.Limb_condition[4]) > 0 || PLR_FLAGGED(ch, PLR_CRLEG) || PLR_FLAGGED(ch, PLR_CLLEG)) && (ch.Grappling == nil && ch.Grappled == nil || ch.Grappling != nil && ch.Grap == 3 || ch.Grappled != nil && ch.Grap != 1)
+	return (IS_NPC(ch) && (MOB_FLAGGED(ch, MOB_LLEG) || MOB_FLAGGED(ch, MOB_RLEG)) || (ch.Limb_condition[2]) > 0 || (ch.Limb_condition[3]) > 0 || PLR_FLAGGED(ch, PLR_CRLEG) || PLR_FLAGGED(ch, PLR_CLLEG)) && (ch.Grappling == nil && ch.Grappled == nil || ch.Grappling != nil && ch.Grap == 3 || ch.Grappled != nil && ch.Grap != 1)
 }
 func OUTSIDE(ch *char_data) bool {
 	return OUTSIDE_ROOMFLAG(ch) && OUTSIDE_SECTTYPE(ch)

@@ -1367,72 +1367,72 @@ func heal_limb(ch *char_data) {
 		healrate += 5
 	}
 	if healrate > 0 {
-		if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 {
-			if (ch.Limb_condition[1])+healrate >= 50 {
+		if (ch.Limb_condition[0]) > 0 && (ch.Limb_condition[0]) < 50 {
+			if (ch.Limb_condition[0])+healrate >= 50 {
 				act(libc.CString("You realize your right arm is no longer broken."), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("$n starts moving $s right arm gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
+				ch.Limb_condition[0] += healrate
+				recovered = TRUE
+			} else {
+				ch.Limb_condition[0] += healrate
+				send_to_char(ch, libc.CString("Your right arm feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[0], "%", "%")
+			}
+		} else if (ch.Limb_condition[0])+healrate < 100 {
+			ch.Limb_condition[0] += healrate
+			send_to_char(ch, libc.CString("Your right arm feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[0], "%", "%")
+		} else if (ch.Limb_condition[0]) < 100 && (ch.Limb_condition[0])+healrate >= 100 {
+			ch.Limb_condition[0] = 100
+			send_to_char(ch, libc.CString("Your right arm has fully recovered.\r\n"))
+		}
+		if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 {
+			if (ch.Limb_condition[1])+healrate >= 50 {
+				act(libc.CString("You realize your left arm is no longer broken."), TRUE, ch, nil, nil, TO_CHAR)
+				act(libc.CString("$n starts moving $s left arm gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
 				ch.Limb_condition[1] += healrate
 				recovered = TRUE
 			} else {
 				ch.Limb_condition[1] += healrate
-				send_to_char(ch, libc.CString("Your right arm feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[1], "%", "%")
+				send_to_char(ch, libc.CString("Your left arm feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[0], "%", "%")
 			}
 		} else if (ch.Limb_condition[1])+healrate < 100 {
 			ch.Limb_condition[1] += healrate
-			send_to_char(ch, libc.CString("Your right arm feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[1], "%", "%")
+			send_to_char(ch, libc.CString("Your left arm feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[1], "%", "%")
 		} else if (ch.Limb_condition[1]) < 100 && (ch.Limb_condition[1])+healrate >= 100 {
 			ch.Limb_condition[1] = 100
-			send_to_char(ch, libc.CString("Your right arm has fully recovered.\r\n"))
+			send_to_char(ch, libc.CString("Your left arm has fully recovered.\r\n"))
 		}
 		if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 {
 			if (ch.Limb_condition[2])+healrate >= 50 {
-				act(libc.CString("You realize your left arm is no longer broken."), TRUE, ch, nil, nil, TO_CHAR)
-				act(libc.CString("$n starts moving $s left arm gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
+				act(libc.CString("You realize your right leg is no longer broken."), TRUE, ch, nil, nil, TO_CHAR)
+				act(libc.CString("$n starts moving $s right leg gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
 				ch.Limb_condition[2] += healrate
 				recovered = TRUE
 			} else {
 				ch.Limb_condition[2] += healrate
-				send_to_char(ch, libc.CString("Your left arm feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[1], "%", "%")
+				send_to_char(ch, libc.CString("Your right leg feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[0], "%", "%")
 			}
 		} else if (ch.Limb_condition[2])+healrate < 100 {
 			ch.Limb_condition[2] += healrate
-			send_to_char(ch, libc.CString("Your left arm feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[2], "%", "%")
+			send_to_char(ch, libc.CString("Your right leg feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[2], "%", "%")
 		} else if (ch.Limb_condition[2]) < 100 && (ch.Limb_condition[2])+healrate >= 100 {
 			ch.Limb_condition[2] = 100
-			send_to_char(ch, libc.CString("Your left arm has fully recovered.\r\n"))
+			send_to_char(ch, libc.CString("Your right leg has fully recovered.\r\n"))
 		}
 		if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 {
 			if (ch.Limb_condition[3])+healrate >= 50 {
-				act(libc.CString("You realize your right leg is no longer broken."), TRUE, ch, nil, nil, TO_CHAR)
-				act(libc.CString("$n starts moving $s right leg gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
+				act(libc.CString("You realize your left leg is no longer broken."), TRUE, ch, nil, nil, TO_CHAR)
+				act(libc.CString("$n starts moving $s left leg gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
 				ch.Limb_condition[3] += healrate
 				recovered = TRUE
 			} else {
 				ch.Limb_condition[3] += healrate
-				send_to_char(ch, libc.CString("Your right leg feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[1], "%", "%")
+				send_to_char(ch, libc.CString("Your left leg feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[0], "%", "%")
 			}
 		} else if (ch.Limb_condition[3])+healrate < 100 {
 			ch.Limb_condition[3] += healrate
-			send_to_char(ch, libc.CString("Your right leg feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[3], "%", "%")
+			send_to_char(ch, libc.CString("Your left leg feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[3], "%", "%")
 		} else if (ch.Limb_condition[3]) < 100 && (ch.Limb_condition[3])+healrate >= 100 {
 			ch.Limb_condition[3] = 100
-			send_to_char(ch, libc.CString("Your right leg has fully recovered.\r\n"))
-		}
-		if (ch.Limb_condition[4]) > 0 && (ch.Limb_condition[4]) < 50 {
-			if (ch.Limb_condition[4])+healrate >= 50 {
-				act(libc.CString("You realize your left leg is no longer broken."), TRUE, ch, nil, nil, TO_CHAR)
-				act(libc.CString("$n starts moving $s left leg gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
-				ch.Limb_condition[4] += healrate
-				recovered = TRUE
-			} else {
-				ch.Limb_condition[4] += healrate
-				send_to_char(ch, libc.CString("Your left leg feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[1], "%", "%")
-			}
-		} else if (ch.Limb_condition[4])+healrate < 100 {
-			ch.Limb_condition[4] += healrate
-			send_to_char(ch, libc.CString("Your left leg feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[4], "%", "%")
-		} else if (ch.Limb_condition[4]) < 100 && (ch.Limb_condition[4])+healrate >= 100 {
-			ch.Limb_condition[4] = 100
 			send_to_char(ch, libc.CString("Your left leg as fully recovered.\r\n"))
 		}
 		if !PLR_FLAGGED(ch, PLR_BANDAGED) && recovered == TRUE {

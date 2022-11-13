@@ -949,17 +949,17 @@ func do_tslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if !HAS_ARMS(ch) {
 		send_to_char(ch, libc.CString("You have no available arms!\r\n"))
 		return
-	} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 && (ch.Limb_condition[2]) < 0 {
+	} else if (ch.Limb_condition[0]) > 0 && (ch.Limb_condition[0]) < 50 && (ch.Limb_condition[1]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken right arm has damaged it more!@n\r\n"))
-		ch.Limb_condition[1] -= rand_number(3, 5)
-		if (ch.Limb_condition[1]) < 0 {
+		ch.Limb_condition[0] -= rand_number(3, 5)
+		if (ch.Limb_condition[0]) < 0 {
 			act(libc.CString("@RYour right arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's right arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
-	} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 && (ch.Limb_condition[1]) < 0 {
+	} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 && (ch.Limb_condition[0]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken left arm has damaged it more!@n\r\n"))
-		ch.Limb_condition[2] -= rand_number(3, 5)
-		if (ch.Limb_condition[2]) < 0 {
+		ch.Limb_condition[1] -= rand_number(3, 5)
+		if (ch.Limb_condition[1]) < 0 {
 			act(libc.CString("@RYour left arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's left arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
@@ -1273,17 +1273,17 @@ func do_tslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@C$n @Wchannels $s charged ki into the blade of $s sword. @rF@Rl@Ya@rm@Ri@Yn@rg @gg@Gre@wen@W energy burns around the blade as $e draws it up to attack. Two blindingly quick slashes connect with @c$N@W's arm as $e flies past, leaving a green after-image behind!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				dmg *= int64(calc_critical(ch, 1))
 				if rand_number(1, 100) >= 70 && !IS_NPC(vict) && !AFF_FLAGGED(vict, AFF_SANCTUARY) {
-					if (vict.Limb_condition[2]) > 0 && !is_sparring(ch) && rand_number(1, 2) == 2 {
+					if (vict.Limb_condition[1]) > 0 && !is_sparring(ch) && rand_number(1, 2) == 2 {
 						act(libc.CString("@RYour attack severs $N's left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@R$n's attack severs your left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						act(libc.CString("@R$N's left arm is severered in the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
-						vict.Limb_condition[2] = 0
+						vict.Limb_condition[1] = 0
 						remove_limb(vict, 2)
-					} else if (vict.Limb_condition[1]) > 0 && !is_sparring(ch) {
+					} else if (vict.Limb_condition[0]) > 0 && !is_sparring(ch) {
 						act(libc.CString("@RYour attack severs $N's right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@R$n's attack severs your right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						act(libc.CString("@R$N's right arm is severered in the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
-						vict.Limb_condition[1] = 0
+						vict.Limb_condition[0] = 0
 						remove_limb(vict, 1)
 					}
 				}
@@ -1295,17 +1295,17 @@ func do_tslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@C$n @Wchannels $s charged ki into the blade of $s sword. @rF@Rl@Ya@rm@Ri@Yn@rg @gg@Gre@wen@W energy burns around the blade as $e draws it up to attack. Two blindingly quick slashes connect with @c$N@W's leg as $e flies past, leaving a green after-image behind!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				dmg *= int64(calc_critical(ch, 1))
 				if rand_number(1, 100) >= 70 && !IS_NPC(vict) && !AFF_FLAGGED(vict, AFF_SANCTUARY) {
-					if (vict.Limb_condition[4]) > 0 && !is_sparring(ch) && rand_number(1, 2) == 2 {
+					if (vict.Limb_condition[3]) > 0 && !is_sparring(ch) && rand_number(1, 2) == 2 {
 						act(libc.CString("@RYour attack severs $N's left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@R$n's attack severs your left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						act(libc.CString("@R$N's left leg is severered in the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
-						vict.Limb_condition[4] = 0
+						vict.Limb_condition[3] = 0
 						remove_limb(vict, 4)
-					} else if (vict.Limb_condition[3]) > 0 && !is_sparring(ch) {
+					} else if (vict.Limb_condition[2]) > 0 && !is_sparring(ch) {
 						act(libc.CString("@RYour attack severs $N's right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@R$n's attack severs your right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						act(libc.CString("@R$N's right leg is severered in the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
-						vict.Limb_condition[3] = 0
+						vict.Limb_condition[2] = 0
 						remove_limb(vict, 3)
 					}
 				}
@@ -2548,17 +2548,17 @@ func do_pslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if !HAS_ARMS(ch) {
 		send_to_char(ch, libc.CString("You have no available arms!\r\n"))
 		return
-	} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 && (ch.Limb_condition[2]) < 0 {
+	} else if (ch.Limb_condition[0]) > 0 && (ch.Limb_condition[0]) < 50 && (ch.Limb_condition[1]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken right arm has damaged it more!@n\r\n"))
-		ch.Limb_condition[1] -= rand_number(3, 5)
-		if (ch.Limb_condition[1]) < 0 {
+		ch.Limb_condition[0] -= rand_number(3, 5)
+		if (ch.Limb_condition[0]) < 0 {
 			act(libc.CString("@RYour right arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's right arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
-	} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 && (ch.Limb_condition[1]) < 0 {
+	} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 && (ch.Limb_condition[0]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken left arm has damaged it more!@n\r\n"))
-		ch.Limb_condition[2] -= rand_number(3, 5)
-		if (ch.Limb_condition[2]) < 0 {
+		ch.Limb_condition[1] -= rand_number(3, 5)
+		if (ch.Limb_condition[1]) < 0 {
 			act(libc.CString("@RYour left arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's left arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
@@ -4183,17 +4183,17 @@ func do_ddslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if !HAS_ARMS(ch) {
 		send_to_char(ch, libc.CString("You have no available arms!\r\n"))
 		return
-	} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 && (ch.Limb_condition[2]) < 0 {
+	} else if (ch.Limb_condition[0]) > 0 && (ch.Limb_condition[0]) < 50 && (ch.Limb_condition[1]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken right arm has damaged it more!@n\r\n"))
-		ch.Limb_condition[1] -= rand_number(3, 5)
-		if (ch.Limb_condition[1]) < 0 {
+		ch.Limb_condition[0] -= rand_number(3, 5)
+		if (ch.Limb_condition[0]) < 0 {
 			act(libc.CString("@RYour right arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's right arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
-	} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 && (ch.Limb_condition[1]) < 0 {
+	} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 && (ch.Limb_condition[0]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken left arm has damaged it more!@n\r\n"))
-		ch.Limb_condition[2] -= rand_number(3, 5)
-		if (ch.Limb_condition[2]) < 0 {
+		ch.Limb_condition[1] -= rand_number(3, 5)
+		if (ch.Limb_condition[1]) < 0 {
 			act(libc.CString("@RYour left arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's left arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
@@ -5692,17 +5692,17 @@ func do_kienzan(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@C$n@W raises $s hand above $s head and pools $s charged ki above $s flattened palm. Slowly a golden spinning disk of energy grows from the ki. With the attack complete $e shouts '@yK@Yi@we@yn@Yz@wa@yn@W!' and throws it! @C$n@W watches as it slices into @c$N@W's arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				dmg *= int64(calc_critical(ch, 1))
 				if rand_number(1, 100) >= 70 && !IS_NPC(vict) && !AFF_FLAGGED(vict, AFF_SANCTUARY) {
-					if (vict.Limb_condition[2]) > 0 && !is_sparring(ch) && rand_number(1, 2) == 2 {
+					if (vict.Limb_condition[1]) > 0 && !is_sparring(ch) && rand_number(1, 2) == 2 {
 						act(libc.CString("@RYour attack severes $N's left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@R$n's attack severes your left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						act(libc.CString("@R$N's left arm is severed in the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-						vict.Limb_condition[2] = 0
+						vict.Limb_condition[1] = 0
 						remove_limb(vict, 2)
-					} else if (vict.Limb_condition[1]) > 0 && !is_sparring(ch) {
+					} else if (vict.Limb_condition[0]) > 0 && !is_sparring(ch) {
 						act(libc.CString("@RYour attack severes $N's right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@R$n's attack severes your right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						act(libc.CString("@R$N's right arm is severed in the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-						vict.Limb_condition[1] = 0
+						vict.Limb_condition[0] = 0
 						remove_limb(vict, 1)
 					}
 				}
@@ -5714,17 +5714,17 @@ func do_kienzan(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@C$n@W raises $s hand above $s head and pools $s charged ki above $s flattened palm. Slowly a golden spinning disk of energy grows from the ki. With the attack complete $e shouts '@yK@Yi@we@yn@Yz@wa@yn@W!' and throws it! @C$n@W watches as it slices into @c$N@W's leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				dmg *= int64(calc_critical(ch, 1))
 				if rand_number(1, 100) >= 70 && !IS_NPC(vict) && !AFF_FLAGGED(vict, AFF_SANCTUARY) {
-					if (vict.Limb_condition[4]) > 0 && !is_sparring(ch) && rand_number(1, 2) == 2 {
+					if (vict.Limb_condition[3]) > 0 && !is_sparring(ch) && rand_number(1, 2) == 2 {
 						act(libc.CString("@RYour attack severes $N's left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@R$n's attack severes your left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						act(libc.CString("@R$N's left leg is severed in the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-						vict.Limb_condition[4] = 0
+						vict.Limb_condition[3] = 0
 						remove_limb(vict, 4)
-					} else if (vict.Limb_condition[3]) > 0 && !is_sparring(ch) {
+					} else if (vict.Limb_condition[2]) > 0 && !is_sparring(ch) {
 						act(libc.CString("@RYour attack severes $N's right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@R$n's attack severes your right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						act(libc.CString("@R$N's right leg is severed in the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-						vict.Limb_condition[3] = 0
+						vict.Limb_condition[2] = 0
 						remove_limb(vict, 3)
 					}
 				}
@@ -10173,17 +10173,17 @@ func do_attack2(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if !HAS_ARMS(ch) {
 		send_to_char(ch, libc.CString("With what arms!?\r\n"))
 		return
-	} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 && (ch.Limb_condition[2]) < 0 {
+	} else if (ch.Limb_condition[0]) > 0 && (ch.Limb_condition[0]) < 50 && (ch.Limb_condition[1]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken right arm has damaged it more!@n\r\n"))
-		ch.Limb_condition[1] -= rand_number(3, 5)
-		if (ch.Limb_condition[1]) < 0 {
+		ch.Limb_condition[0] -= rand_number(3, 5)
+		if (ch.Limb_condition[0]) < 0 {
 			act(libc.CString("@RYour right arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's right arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
-	} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 && (ch.Limb_condition[1]) < 0 {
+	} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 && (ch.Limb_condition[0]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken left arm has damaged it more!@n\r\n"))
-		ch.Limb_condition[2] -= rand_number(3, 5)
-		if (ch.Limb_condition[2]) < 0 {
+		ch.Limb_condition[1] -= rand_number(3, 5)
+		if (ch.Limb_condition[1]) < 0 {
 			act(libc.CString("@RYour left arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's left arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
@@ -12783,17 +12783,17 @@ func do_roundhouse(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	if limb_ok(ch, 1) == 0 {
 		return
-	} else if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 && (ch.Limb_condition[4]) < 0 {
+	} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 && (ch.Limb_condition[3]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken right leg has damaged it more!@n\r\n"))
-		ch.Limb_condition[3] -= rand_number(3, 5)
-		if (ch.Limb_condition[3]) < 0 {
+		ch.Limb_condition[2] -= rand_number(3, 5)
+		if (ch.Limb_condition[2]) < 0 {
 			act(libc.CString("@RYour right leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's right leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
-	} else if (ch.Limb_condition[4]) > 0 && (ch.Limb_condition[4]) < 50 && (ch.Limb_condition[3]) < 0 {
+	} else if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 && (ch.Limb_condition[2]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken left leg has damaged it more!@n\r\n"))
-		ch.Limb_condition[4] -= rand_number(3, 5)
-		if (ch.Limb_condition[4]) < 0 {
+		ch.Limb_condition[3] -= rand_number(3, 5)
+		if (ch.Limb_condition[3]) < 0 {
 			act(libc.CString("@RYour left leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's left leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
@@ -13303,17 +13303,17 @@ func do_kick(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	if limb_ok(ch, 1) == 0 {
 		return
-	} else if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 && (ch.Limb_condition[4]) < 0 {
+	} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 && (ch.Limb_condition[3]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken right leg has damaged it more!@n\r\n"))
-		ch.Limb_condition[3] -= rand_number(3, 5)
-		if (ch.Limb_condition[3]) < 0 {
+		ch.Limb_condition[2] -= rand_number(3, 5)
+		if (ch.Limb_condition[2]) < 0 {
 			act(libc.CString("@RYour right leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's right leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
-	} else if (ch.Limb_condition[4]) > 0 && (ch.Limb_condition[4]) < 50 && (ch.Limb_condition[3]) < 0 {
+	} else if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 && (ch.Limb_condition[2]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken left leg has damaged it more!@n\r\n"))
-		ch.Limb_condition[4] -= rand_number(3, 5)
-		if (ch.Limb_condition[4]) < 0 {
+		ch.Limb_condition[3] -= rand_number(3, 5)
+		if (ch.Limb_condition[3]) < 0 {
 			act(libc.CString("@RYour left leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's left leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
@@ -13562,17 +13562,17 @@ func do_knee(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	if limb_ok(ch, 1) == 0 {
 		return
-	} else if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 && (ch.Limb_condition[4]) < 0 {
+	} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 && (ch.Limb_condition[3]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken right leg has damaged it more!@n\r\n"))
-		ch.Limb_condition[3] -= rand_number(3, 5)
-		if (ch.Limb_condition[3]) < 0 {
+		ch.Limb_condition[2] -= rand_number(3, 5)
+		if (ch.Limb_condition[2]) < 0 {
 			act(libc.CString("@RYour right leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's right leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
-	} else if (ch.Limb_condition[4]) > 0 && (ch.Limb_condition[4]) < 50 && (ch.Limb_condition[3]) < 0 {
+	} else if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 && (ch.Limb_condition[2]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken left leg has damaged it more!@n\r\n"))
-		ch.Limb_condition[4] -= rand_number(3, 5)
-		if (ch.Limb_condition[4]) < 0 {
+		ch.Limb_condition[3] -= rand_number(3, 5)
+		if (ch.Limb_condition[3]) < 0 {
 			act(libc.CString("@RYour left leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's left leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}

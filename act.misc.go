@@ -477,32 +477,32 @@ func resolve_song(ch *char_data) {
 							if vict.Move > vict.Max_move {
 								vict.Move = vict.Max_move
 							}
+							if (vict.Limb_condition[0]) < 100 {
+								vict.Limb_condition[0] += int((float64(skill) * 0.1) + 1)
+								if (vict.Limb_condition[0]) > 100 {
+									send_to_char(vict, libc.CString("Your right arm is no longer broken!@n\r\n"))
+									vict.Limb_condition[0] = 100
+								}
+							}
 							if (vict.Limb_condition[1]) < 100 {
 								vict.Limb_condition[1] += int((float64(skill) * 0.1) + 1)
 								if (vict.Limb_condition[1]) > 100 {
-									send_to_char(vict, libc.CString("Your right arm is no longer broken!@n\r\n"))
+									send_to_char(vict, libc.CString("Your left arm is no longer broken!@n\r\n"))
 									vict.Limb_condition[1] = 100
 								}
 							}
 							if (vict.Limb_condition[2]) < 100 {
 								vict.Limb_condition[2] += int((float64(skill) * 0.1) + 1)
 								if (vict.Limb_condition[2]) > 100 {
-									send_to_char(vict, libc.CString("Your left arm is no longer broken!@n\r\n"))
+									send_to_char(vict, libc.CString("Your right leg is no longer broken!@n\r\n"))
 									vict.Limb_condition[2] = 100
 								}
 							}
-							if (vict.Limb_condition[3]) < 100 {
+							if (vict.Limb_condition[0]) < 100 {
 								vict.Limb_condition[3] += int((float64(skill) * 0.1) + 1)
 								if (vict.Limb_condition[3]) > 100 {
-									send_to_char(vict, libc.CString("Your right leg is no longer broken!@n\r\n"))
-									vict.Limb_condition[3] = 100
-								}
-							}
-							if (vict.Limb_condition[1]) < 100 {
-								vict.Limb_condition[4] += int((float64(skill) * 0.1) + 1)
-								if (vict.Limb_condition[4]) > 100 {
 									send_to_char(vict, libc.CString("Your left leg is no longer broken!@n\r\n"))
-									vict.Limb_condition[4] = 100
+									vict.Limb_condition[3] = 100
 								}
 							}
 							if vict != ch {
