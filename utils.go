@@ -1,9 +1,9 @@
 package main
 
-import "C"
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"unicode"
 	"unsafe"
 )
 
@@ -37,6 +37,9 @@ const SECS_PER_REAL_MIN = 60
 const SECS_PER_REAL_HOUR = 3600
 const SECS_PER_REAL_DAY = 86400
 const SECS_PER_REAL_YEAR = 31536000
+const SEEK_SET = 0
+const SEEK_CUR = 1
+const SEEK_END = 2
 
 type xap_dir struct {
 	Total    int
@@ -70,13 +73,13 @@ func dispel_ash(ch *char_data) {
 				extract_obj(ash)
 			}
 		} else if ash.Cost == 2 {
-			if int(ch.Aff_abils.Intel+10) > roll {
+			if int(ch.Aff_abils.Intel)+10 > roll {
 				act(libc.CString("@GYou clear the air with the shockwaves of your power!@n"), TRUE, ch, ash, nil, TO_CHAR)
 				act(libc.CString("@C$n@G clears the air with the shockwaves of $s power!@n"), TRUE, ch, ash, nil, TO_ROOM)
 				extract_obj(ash)
 			}
 		} else if ash.Cost == 1 {
-			if int(ch.Aff_abils.Intel+20) > roll {
+			if int(ch.Aff_abils.Intel)+20 > roll {
 				act(libc.CString("@GYou clear the air with the shockwaves of your power!@n"), TRUE, ch, ash, nil, TO_CHAR)
 				act(libc.CString("@C$n@G clears the air with the shockwaves of $s power!@n"), TRUE, ch, ash, nil, TO_ROOM)
 				extract_obj(ash)
@@ -306,7 +309,7 @@ func report_party_health(ch *char_data) *byte {
 		stdio.Sprintf(&result4[0], "@D[@BU@D]@cCharge@D:@B%7lld@w%s @cCharge@D:@B%7lld@w%s @cCharge@D:@B%7lld@w%s @cCharge@D:@B%7lld@w%s@D[@BU@D]@n\n", kiperc1, "%", kiperc2, "%", kiperc3, "%", kiperc4, "%")
 		stdio.Sprintf(&result5[0], "@D[@BP@D]@gSt@D:%s%12s @gSt@D:%s%12s @gSt@D:%s%12s @gSt@D:%s%12s@D[@BP@D]@n", excol[stam1], exhaust[stam1], excol[stam2], exhaust[stam2], excol[stam3], exhaust[stam3], excol[stam4], exhaust[stam4])
 		stdio.Sprintf(&result_party_health[0], "%s%s%s%s%s\n", &result1[0], &result2[0], &result3[0], &result4[0], &result5[0])
-		ch.Temp_prompt = C.strdup(&result_party_health[0])
+		ch.Temp_prompt = libc.StrDup(&result_party_health[0])
 		return ch.Temp_prompt
 	} else if ch.Master != nil && AFF_FLAGGED(ch.Master, AFF_GROUP) {
 		party1 = ch.Master
@@ -465,7 +468,7 @@ func report_party_health(ch *char_data) *byte {
 		stdio.Sprintf(&result4[0], "@D[@BU@D]@cCharge@D:@B%7lld@w%s @cCharge@D:@B%7lld@w%s @cCharge@D:@B%7lld@w%s @cCharge@D:@B%7lld@w%s@D[@BU@D]@n\n", kiperc1, "%", kiperc2, "%", kiperc3, "%", kiperc4, "%")
 		stdio.Sprintf(&result5[0], "@D[@BP@D]@gSt@D:%s%12s @gSt@D:%s%12s @gSt@D:%s%12s @gSt@D:%s%12s@D[@BP@D]@n", excol[stam1], exhaust[stam1], excol[stam2], exhaust[stam2], excol[stam3], exhaust[stam3], excol[stam4], exhaust[stam4])
 		stdio.Sprintf(&result_party_health[0], "%s%s%s%s%s\n", &result1[0], &result2[0], &result3[0], &result4[0], &result5[0])
-		ch.Temp_prompt = C.strdup(&result_party_health[0])
+		ch.Temp_prompt = libc.StrDup(&result_party_health[0])
 		return ch.Temp_prompt
 	} else {
 		return libc.CString("")
@@ -505,7 +508,7 @@ func null_affect(ch *char_data, aff_flag int) {
 	)
 	for af = ch.Affected; af != nil; af = next_af {
 		next_af = af.Next
-		if af.Location == APPLY_NONE && af.Bitvector == bitvector_t(aff_flag) {
+		if af.Location == APPLY_NONE && int(af.Bitvector) == aff_flag {
 			affect_remove(ch, af)
 		}
 	}
@@ -523,7 +526,7 @@ func assign_affect(ch *char_data, aff_flag int, skill int, dur int, str int, con
 		af[num].Duration = int16(dur)
 		af[num].Modifier = 0
 		af[num].Location = APPLY_NONE
-		af[num].Bitvector = bitvector_t(aff_flag)
+		af[num].Bitvector = bitvector_t(int32(aff_flag))
 		affect_join(ch, &af[num], FALSE != 0, FALSE != 0, FALSE != 0, FALSE != 0)
 		num += 1
 	}
@@ -532,7 +535,7 @@ func assign_affect(ch *char_data, aff_flag int, skill int, dur int, str int, con
 		af[num].Duration = int16(dur)
 		af[num].Modifier = str
 		af[num].Location = APPLY_STR
-		af[num].Bitvector = bitvector_t(aff_flag)
+		af[num].Bitvector = bitvector_t(int32(aff_flag))
 		affect_join(ch, &af[num], FALSE != 0, FALSE != 0, FALSE != 0, FALSE != 0)
 		num += 1
 	}
@@ -541,7 +544,7 @@ func assign_affect(ch *char_data, aff_flag int, skill int, dur int, str int, con
 		af[num].Duration = int16(dur)
 		af[num].Modifier = con
 		af[num].Location = APPLY_CON
-		af[num].Bitvector = bitvector_t(aff_flag)
+		af[num].Bitvector = bitvector_t(int32(aff_flag))
 		affect_join(ch, &af[num], FALSE != 0, FALSE != 0, FALSE != 0, FALSE != 0)
 		num += 1
 	}
@@ -550,7 +553,7 @@ func assign_affect(ch *char_data, aff_flag int, skill int, dur int, str int, con
 		af[num].Duration = int16(dur)
 		af[num].Modifier = intel
 		af[num].Location = APPLY_INT
-		af[num].Bitvector = bitvector_t(aff_flag)
+		af[num].Bitvector = bitvector_t(int32(aff_flag))
 		affect_join(ch, &af[num], FALSE != 0, FALSE != 0, FALSE != 0, FALSE != 0)
 		num += 1
 	}
@@ -559,7 +562,7 @@ func assign_affect(ch *char_data, aff_flag int, skill int, dur int, str int, con
 		af[num].Duration = int16(dur)
 		af[num].Modifier = agl
 		af[num].Location = APPLY_DEX
-		af[num].Bitvector = bitvector_t(aff_flag)
+		af[num].Bitvector = bitvector_t(int32(aff_flag))
 		affect_join(ch, &af[num], FALSE != 0, FALSE != 0, FALSE != 0, FALSE != 0)
 		num += 1
 	}
@@ -568,7 +571,7 @@ func assign_affect(ch *char_data, aff_flag int, skill int, dur int, str int, con
 		af[num].Duration = int16(dur)
 		af[num].Modifier = spd
 		af[num].Location = APPLY_CHA
-		af[num].Bitvector = bitvector_t(aff_flag)
+		af[num].Bitvector = bitvector_t(int32(aff_flag))
 		affect_join(ch, &af[num], FALSE != 0, FALSE != 0, FALSE != 0, FALSE != 0)
 		num += 1
 	}
@@ -577,7 +580,7 @@ func assign_affect(ch *char_data, aff_flag int, skill int, dur int, str int, con
 		af[num].Duration = int16(dur)
 		af[num].Modifier = wis
 		af[num].Location = APPLY_WIS
-		af[num].Bitvector = bitvector_t(aff_flag)
+		af[num].Bitvector = bitvector_t(int32(aff_flag))
 		affect_join(ch, &af[num], FALSE != 0, FALSE != 0, FALSE != 0, FALSE != 0)
 		num += 1
 	}
@@ -597,31 +600,31 @@ func sec_roll_check(ch *char_data) int {
 }
 func get_measure(ch *char_data, height int, weight int) int {
 	var amt int = 0
-	if !PLR_FLAGGED(ch, PLR_OOZARU) && (ch.Race != RACE_ICER || !IS_TRANSFORMED(ch)) && (ch.Genome[0]) < 9 {
+	if !PLR_FLAGGED(ch, PLR_OOZARU) && (int(ch.Race) != RACE_ICER || !IS_TRANSFORMED(ch)) && (ch.Genome[0]) < 9 {
 		if height > 0 {
 			amt = height
 		} else if weight > 0 {
 			amt = weight
 		}
-	} else if ch.Race == RACE_ICER && PLR_FLAGGED(ch, PLR_TRANS1) {
+	} else if int(ch.Race) == RACE_ICER && PLR_FLAGGED(ch, PLR_TRANS1) {
 		if height > 0 {
 			amt = height * 3
 		} else if weight > 0 {
 			amt = weight * 4
 		}
-	} else if ch.Race == RACE_ICER && PLR_FLAGGED(ch, PLR_TRANS2) {
+	} else if int(ch.Race) == RACE_ICER && PLR_FLAGGED(ch, PLR_TRANS2) {
 		if height > 0 {
 			amt = height * 3
 		} else if weight > 0 {
 			amt = weight * 5
 		}
-	} else if ch.Race == RACE_ICER && PLR_FLAGGED(ch, PLR_TRANS3) {
+	} else if int(ch.Race) == RACE_ICER && PLR_FLAGGED(ch, PLR_TRANS3) {
 		if height > 0 {
 			amt = int(float64(height) * 1.5)
 		} else if weight > 0 {
 			amt = weight * 2
 		}
-	} else if ch.Race == RACE_ICER && PLR_FLAGGED(ch, PLR_TRANS4) {
+	} else if int(ch.Race) == RACE_ICER && PLR_FLAGGED(ch, PLR_TRANS4) {
 		if height > 0 {
 			amt = height * 2
 		} else if weight > 0 {
@@ -658,15 +661,15 @@ func physical_cost(ch *char_data, skill int) int64 {
 	var cou1 int = rand_number(1, 20) + 1
 	var cou2 int = cou1 + rand_number(1, 6)
 	result += int64(rand_number(cou1, cou2))
-	if (ch.Skills[SKILL_STYLE]) >= 100 {
+	if int(ch.Skills[SKILL_STYLE]) >= 100 {
 		result -= int64(float64(result) * 0.4)
-	} else if (ch.Skills[SKILL_STYLE]) >= 75 {
-		if ch.Chclass == CLASS_TSUNA {
+	} else if int(ch.Skills[SKILL_STYLE]) >= 75 {
+		if int(ch.Chclass) == CLASS_TSUNA {
 			result -= int64(float64(result) * 0.4)
-		} else if ch.Chclass == CLASS_TAPION && (skill == SKILL_PUNCH || skill == SKILL_KICK) {
+		} else if int(ch.Chclass) == CLASS_TAPION && (skill == SKILL_PUNCH || skill == SKILL_KICK) {
 			result -= int64(float64(result) * 0.35)
-		} else if ch.Chclass == CLASS_JINTO {
-			if (ch.Skills[skill]) >= 100 {
+		} else if int(ch.Chclass) == CLASS_JINTO {
+			if int(ch.Skills[skill]) >= 100 {
 				result -= int64(float64(result) * 0.45)
 			} else {
 				result -= int64(float64(result) * 0.25)
@@ -674,10 +677,10 @@ func physical_cost(ch *char_data, skill int) int64 {
 		} else {
 			result -= int64(float64(result) * 0.25)
 		}
-	} else if (ch.Skills[SKILL_STYLE]) >= 50 {
+	} else if int(ch.Skills[SKILL_STYLE]) >= 50 {
 		result -= int64(float64(result) * 0.25)
 	}
-	if ch.Race == RACE_ANDROID {
+	if int(ch.Race) == RACE_ANDROID {
 		result *= int64(0.25)
 	}
 	return result
@@ -703,7 +706,7 @@ func trans_cost(ch *char_data, trans int) int {
 }
 func trans_req(ch *char_data, trans int) int {
 	var requirement int = 0
-	if ch.Race == RACE_HUMAN {
+	if int(ch.Race) == RACE_HUMAN {
 		switch trans {
 		case 1:
 			if ch.Transclass == 1 {
@@ -739,7 +742,7 @@ func trans_req(ch *char_data, trans int) int {
 			}
 		}
 	}
-	if ch.Race == RACE_HALFBREED {
+	if int(ch.Race) == RACE_HALFBREED {
 		switch trans {
 		case 1:
 			if ch.Transclass == 1 {
@@ -767,7 +770,7 @@ func trans_req(ch *char_data, trans int) int {
 			}
 		}
 	}
-	if ch.Race == RACE_SAIYAN {
+	if int(ch.Race) == RACE_SAIYAN {
 		if PLR_FLAGGED(ch, PLR_LSSJ) {
 			switch trans {
 			case 1:
@@ -824,7 +827,7 @@ func trans_req(ch *char_data, trans int) int {
 			}
 		}
 	}
-	if ch.Race == RACE_NAMEK {
+	if int(ch.Race) == RACE_NAMEK {
 		switch trans {
 		case 1:
 			if ch.Transclass == 1 {
@@ -860,7 +863,7 @@ func trans_req(ch *char_data, trans int) int {
 			}
 		}
 	}
-	if ch.Race == RACE_ICER {
+	if int(ch.Race) == RACE_ICER {
 		switch trans {
 		case 1:
 			if ch.Transclass == 1 {
@@ -896,7 +899,7 @@ func trans_req(ch *char_data, trans int) int {
 			}
 		}
 	}
-	if ch.Race == RACE_MAJIN {
+	if int(ch.Race) == RACE_MAJIN {
 		switch trans {
 		case 1:
 			if ch.Transclass == 1 {
@@ -924,7 +927,7 @@ func trans_req(ch *char_data, trans int) int {
 			}
 		}
 	}
-	if ch.Race == RACE_TRUFFLE {
+	if int(ch.Race) == RACE_TRUFFLE {
 		switch trans {
 		case 1:
 			if ch.Transclass == 1 {
@@ -952,7 +955,7 @@ func trans_req(ch *char_data, trans int) int {
 			}
 		}
 	}
-	if ch.Race == RACE_MUTANT {
+	if int(ch.Race) == RACE_MUTANT {
 		switch trans {
 		case 1:
 			if ch.Transclass == 1 {
@@ -980,7 +983,7 @@ func trans_req(ch *char_data, trans int) int {
 			}
 		}
 	}
-	if ch.Race == RACE_KAI {
+	if int(ch.Race) == RACE_KAI {
 		switch trans {
 		case 1:
 			if ch.Transclass == 1 {
@@ -1008,7 +1011,7 @@ func trans_req(ch *char_data, trans int) int {
 			}
 		}
 	}
-	if ch.Race == RACE_KONATSU {
+	if int(ch.Race) == RACE_KONATSU {
 		switch trans {
 		case 1:
 			if ch.Transclass == 1 {
@@ -1036,7 +1039,7 @@ func trans_req(ch *char_data, trans int) int {
 			}
 		}
 	}
-	if ch.Race == RACE_ANDROID {
+	if int(ch.Race) == RACE_ANDROID {
 		switch trans {
 		case 1:
 			if ch.Transclass == 1 {
@@ -1088,7 +1091,7 @@ func trans_req(ch *char_data, trans int) int {
 			}
 		}
 	}
-	if ch.Race == RACE_BIO {
+	if int(ch.Race) == RACE_BIO {
 		switch trans {
 		case 1:
 			if ch.Transclass == 1 {
@@ -1134,49 +1137,49 @@ func customWrite(ch *char_data, obj *obj_data) {
 	var line [256]byte
 	var prev [256]byte
 	var buf [64936]byte
-	var fl *C.FILE
-	var file *C.FILE
+	var fl *stdio.File
+	var file *stdio.File
 	if get_filename(&fname[0], uint64(40), CUSTOME_FILE, ch.Desc.User) == 0 {
 		basic_mud_log(libc.CString("ERROR: Custom unable to be saved to user file!"))
 		return
 	}
-	if (func() *C.FILE {
-		file = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "r")))
+	if (func() *stdio.File {
+		file = stdio.FOpen(libc.GoString(&fname[0]), "r")
 		return file
 	}()) == nil {
 		basic_mud_log(libc.CString("ERROR: Custom unable to be saved to user file!"))
 		return
 	}
-	for C.feof(file) == 0 {
+	for int(file.IsEOF()) == 0 {
 		get_line(file, &line[0])
-		if C.strcasecmp(&prev[0], &line[0]) != 0 {
-			stdio.Sprintf(&buf[C.strlen(&buf[0])], "%s\n", &line[0])
+		if libc.StrCaseCmp(&prev[0], &line[0]) != 0 {
+			stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "%s\n", &line[0])
 		}
 		prev[0] = '\x00'
 		stdio.Sprintf(&prev[0], libc.GoString(&line[0]))
 	}
-	C.fclose(file)
+	file.Close()
 	if get_filename(&fname[0], uint64(40), CUSTOME_FILE, ch.Desc.User) == 0 {
 		basic_mud_log(libc.CString("ERROR: Custom unable to be saved to user file!"))
 		return
 	}
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "w")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(&fname[0]), "w")
 		return fl
 	}()) == nil {
 		basic_mud_log(libc.CString("ERROR: Custom unable to be saved to user file!"))
 		return
 	}
-	stdio.Sprintf(&buf[C.strlen(&buf[0])], "%s\n", obj.Short_description)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", &buf[0])
-	C.fclose(fl)
+	stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "%s\n", obj.Short_description)
+	stdio.Fprintf(fl, "%s\n", &buf[0])
+	fl.Close()
 }
 func customRead(d *descriptor_data, type_ int, name *byte) {
 	var (
 		fname  [40]byte
 		line   [256]byte
 		filler [256]byte
-		fl     *C.FILE
+		fl     *stdio.File
 		buf    [64936]byte
 	)
 	if type_ == 1 {
@@ -1184,48 +1187,48 @@ func customRead(d *descriptor_data, type_ int, name *byte) {
 			basic_mud_log(libc.CString("ERROR: Custom unable to be read from user file!"))
 			return
 		}
-		if (func() *C.FILE {
-			fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "r")))
+		if (func() *stdio.File {
+			fl = stdio.FOpen(libc.GoString(&fname[0]), "r")
 			return fl
 		}()) == nil {
 			basic_mud_log(libc.CString("ERROR: Custom file unable to be read!"))
 			return
 		}
 		var buf [64936]byte
-		for C.feof(fl) == 0 {
+		for int(fl.IsEOF()) == 0 {
 			get_line(fl, &line[0])
-			if C.strcasecmp(&filler[0], &line[0]) != 0 {
-				stdio.Sprintf(&buf[C.strlen(&buf[0])], "%s\n", &line[0])
+			if libc.StrCaseCmp(&filler[0], &line[0]) != 0 {
+				stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "%s\n", &line[0])
 			}
 			filler[0] = '\x00'
 			line[0] = '\x00'
 			stdio.Sprintf(&filler[0], libc.GoString(&line[0]))
 		}
 		send_to_char(d.Character, &buf[0])
-		C.fclose(fl)
+		fl.Close()
 		return
 	} else {
 		if get_filename(&fname[0], uint64(40), CUSTOME_FILE, d.User) == 0 {
 			basic_mud_log(libc.CString("ERROR: Custom unable to be read from user file!"))
 			return
 		}
-		if (func() *C.FILE {
-			fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "r")))
+		if (func() *stdio.File {
+			fl = stdio.FOpen(libc.GoString(&fname[0]), "r")
 			return fl
 		}()) == nil {
 			basic_mud_log(libc.CString("ERROR: Custom file unable to be read!"))
 			return
 		}
-		for C.feof(fl) == 0 {
+		for int(fl.IsEOF()) == 0 {
 			get_line(fl, &line[0])
-			if C.strcasecmp(&filler[0], &line[0]) != 0 {
-				stdio.Sprintf(&buf[C.strlen(&buf[0])], "%s\n", &line[0])
+			if libc.StrCaseCmp(&filler[0], &line[0]) != 0 {
+				stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "%s\n", &line[0])
 			}
 			filler[0] = '\x00'
 			stdio.Sprintf(&filler[0], libc.GoString(&line[0]))
 		}
 		write_to_output(d, &buf[0])
-		C.fclose(fl)
+		fl.Close()
 	}
 }
 func customCreate(d *descriptor_data) {
@@ -1236,63 +1239,63 @@ func customCreate(d *descriptor_data) {
 		return
 	}
 	var fname [40]byte
-	var fl *C.FILE
+	var fl *stdio.File
 	if get_filename(&fname[0], uint64(40), CUSTOME_FILE, d.User) == 0 {
 		return
 	}
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "w")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(&fname[0]), "w")
 		return fl
 	}()) == nil {
 		basic_mud_log(libc.CString("ERROR: could not create custom file."))
 		return
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "@D--@RUser @GC@gustom@Gs@D--@n\n")
+	stdio.Fprintf(fl, "@D--@RUser @GC@gustom@Gs@D--@n\n")
 	d.Customfile = 1
-	C.fclose(fl)
+	fl.Close()
 }
 func show_softcap(ch *char_data) int64 {
 	var capamt int64 = 0
-	if ch.Race == RACE_ANDROID && PLR_FLAGGED(ch, PLR_ABSORB) || ch.Race != RACE_ANDROID && ch.Race != RACE_BIO && ch.Race != RACE_MAJIN {
+	if int(ch.Race) == RACE_ANDROID && PLR_FLAGGED(ch, PLR_ABSORB) || int(ch.Race) != RACE_ANDROID && int(ch.Race) != RACE_BIO && int(ch.Race) != RACE_MAJIN {
 		if GET_LEVEL(ch) > 90 && GET_LEVEL(ch) <= 99 {
 			capamt = int64(GET_LEVEL(ch) * 1500000)
-			if ch.Race == RACE_KANASSAN || ch.Race == RACE_DEMON {
+			if int(ch.Race) == RACE_KANASSAN || int(ch.Race) == RACE_DEMON {
 				capamt = int64(GET_LEVEL(ch) * 2000000)
 			}
 		}
 		if GET_LEVEL(ch) > 80 && GET_LEVEL(ch) <= 90 {
 			capamt = int64(GET_LEVEL(ch) * 800000)
-			if ch.Race == RACE_KANASSAN || ch.Race == RACE_DEMON {
+			if int(ch.Race) == RACE_KANASSAN || int(ch.Race) == RACE_DEMON {
 				capamt = int64(GET_LEVEL(ch) * 1000000)
 			}
 		}
 		if GET_LEVEL(ch) > 70 && GET_LEVEL(ch) <= 80 {
 			capamt = int64(GET_LEVEL(ch) * 250000)
-			if ch.Race == RACE_KANASSAN || ch.Race == RACE_DEMON {
+			if int(ch.Race) == RACE_KANASSAN || int(ch.Race) == RACE_DEMON {
 				capamt = int64(GET_LEVEL(ch) * 300000)
 			}
 		}
 		if GET_LEVEL(ch) > 60 && GET_LEVEL(ch) <= 70 {
 			capamt = int64(GET_LEVEL(ch) * 200000)
-			if ch.Race == RACE_KANASSAN || ch.Race == RACE_DEMON {
+			if int(ch.Race) == RACE_KANASSAN || int(ch.Race) == RACE_DEMON {
 				capamt = int64(GET_LEVEL(ch) * 250000)
 			}
 		}
 		if GET_LEVEL(ch) > 50 && GET_LEVEL(ch) <= 60 {
 			capamt = int64(GET_LEVEL(ch) * 80000)
-			if ch.Race == RACE_KANASSAN || ch.Race == RACE_DEMON {
+			if int(ch.Race) == RACE_KANASSAN || int(ch.Race) == RACE_DEMON {
 				capamt = int64(GET_LEVEL(ch) * 100000)
 			}
 		}
 		if GET_LEVEL(ch) > 40 && GET_LEVEL(ch) <= 50 {
 			capamt = int64(GET_LEVEL(ch) * 20000)
-			if ch.Race == RACE_KANASSAN || ch.Race == RACE_DEMON {
+			if int(ch.Race) == RACE_KANASSAN || int(ch.Race) == RACE_DEMON {
 				capamt = int64(GET_LEVEL(ch) * 40000)
 			}
 		}
 		if GET_LEVEL(ch) > 30 && GET_LEVEL(ch) <= 40 {
 			capamt = int64(GET_LEVEL(ch) * 15000)
-			if ch.Race == RACE_KANASSAN || ch.Race == RACE_DEMON {
+			if int(ch.Race) == RACE_KANASSAN || int(ch.Race) == RACE_DEMON {
 				capamt = int64(GET_LEVEL(ch) * 25000)
 			}
 		}
@@ -1365,20 +1368,20 @@ func disp_align(ch *char_data) *byte {
 func senseCreate(ch *char_data) {
 	var (
 		fname [40]byte
-		fl    *C.FILE
+		fl    *stdio.File
 	)
 	if get_filename(&fname[0], uint64(40), SENSE_FILE, GET_NAME(ch)) == 0 {
 		return
 	}
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "w")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(&fname[0]), "w")
 		return fl
 	}()) == nil {
 		basic_mud_log(libc.CString("ERROR: could not save sense memory of, %s, to filename, %s."), GET_NAME(ch), &fname[0])
 		return
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "0\n")
-	C.fclose(fl)
+	stdio.Fprintf(fl, "0\n")
+	fl.Close()
 	return
 }
 func read_sense_memory(ch *char_data, vict *char_data) int {
@@ -1387,7 +1390,7 @@ func read_sense_memory(ch *char_data, vict *char_data) int {
 		line   [256]byte
 		known  int = FALSE
 		idnums int = -1337
-		fl     *C.FILE
+		fl     *stdio.File
 	)
 	if vict == nil {
 		basic_mud_log(libc.CString("Noone."))
@@ -1396,19 +1399,19 @@ func read_sense_memory(ch *char_data, vict *char_data) int {
 	if get_filename(&fname[0], uint64(40), SENSE_FILE, GET_NAME(ch)) == 0 {
 		senseCreate(ch)
 	}
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "r")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(&fname[0]), "r")
 		return fl
 	}()) == nil {
 		return 2
 	}
 	if vict == ch {
-		C.fclose(fl)
+		fl.Close()
 		return 0
 	}
-	for C.feof(fl) == 0 {
+	for int(fl.IsEOF()) == 0 {
 		get_line(fl, &line[0])
-		__isoc99_sscanf(&line[0], libc.CString("%d\n"), &idnums)
+		stdio.Sscanf(&line[0], "%d\n", &idnums)
 		if IS_NPC(vict) {
 			if idnums == int(GET_MOB_VNUM(vict)) {
 				known = TRUE
@@ -1419,7 +1422,7 @@ func read_sense_memory(ch *char_data, vict *char_data) int {
 			}
 		}
 	}
-	C.fclose(fl)
+	fl.Close()
 	if known == TRUE {
 		return 1
 	} else {
@@ -1428,11 +1431,11 @@ func read_sense_memory(ch *char_data, vict *char_data) int {
 }
 func sense_memory_write(ch *char_data, vict *char_data) {
 	var (
-		file      *C.FILE
+		file      *stdio.File
 		fname     [40]byte
 		line      [256]byte
 		idnums    [500]int = [500]int{}
-		fl        *C.FILE
+		fl        *stdio.File
 		count     int = 0
 		x         int = 0
 		id_sample int
@@ -1440,24 +1443,24 @@ func sense_memory_write(ch *char_data, vict *char_data) {
 	if get_filename(&fname[0], uint64(40), SENSE_FILE, GET_NAME(ch)) == 0 {
 		senseCreate(ch)
 	}
-	if (func() *C.FILE {
-		file = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "r")))
+	if (func() *stdio.File {
+		file = stdio.FOpen(libc.GoString(&fname[0]), "r")
 		return file
 	}()) == nil {
 		return
 	}
-	for C.feof(file) == 0 || count < 498 {
+	for int(file.IsEOF()) == 0 || count < 498 {
 		get_line(file, &line[0])
-		__isoc99_sscanf(&line[0], libc.CString("%d\n"), &id_sample)
+		stdio.Sscanf(&line[0], "%d\n", &id_sample)
 		idnums[count] = id_sample
 		count++
 	}
-	C.fclose(file)
+	file.Close()
 	if get_filename(&fname[0], uint64(40), SENSE_FILE, GET_NAME(ch)) == 0 {
 		return
 	}
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "w")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(&fname[0]), "w")
 		return fl
 	}()) == nil {
 		basic_mud_log(libc.CString("ERROR: could not save sense memory file, %s, to filename, %s."), GET_NAME(ch), &fname[0])
@@ -1467,22 +1470,22 @@ func sense_memory_write(ch *char_data, vict *char_data) {
 		if x == 0 || idnums[x-1] != idnums[x] {
 			if !IS_NPC(vict) {
 				if idnums[x] != int(vict.Id) {
-					stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", idnums[x])
+					stdio.Fprintf(fl, "%d\n", idnums[x])
 				}
 			} else {
 				if idnums[x] != int(GET_MOB_VNUM(vict)) {
-					stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", idnums[x])
+					stdio.Fprintf(fl, "%d\n", idnums[x])
 				}
 			}
 		}
 		x++
 	}
 	if !IS_NPC(vict) {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", vict.Id)
+		stdio.Fprintf(fl, "%d\n", vict.Id)
 	} else {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", GET_MOB_VNUM(vict))
+		stdio.Fprintf(fl, "%d\n", GET_MOB_VNUM(vict))
 	}
-	C.fclose(fl)
+	fl.Close()
 	return
 }
 func roll_pursue(ch *char_data, vict *char_data) int {
@@ -1531,7 +1534,7 @@ func roll_pursue(ch *char_data, vict *char_data) int {
 						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k.Follower.In_room)))).Number
 					}
 					return -1
-				}()) == room_vnum(inroom) && k.Follower.Position >= POS_STANDING && (!AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(k.Follower, AFF_GROUP)) {
+				}()) == room_vnum(inroom) && int(k.Follower.Position) >= POS_STANDING && (!AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(k.Follower, AFF_GROUP)) {
 					act(libc.CString("You follow $N."), TRUE, k.Follower, nil, unsafe.Pointer(ch), TO_CHAR)
 					act(libc.CString("$n follows after $N."), TRUE, k.Follower, nil, unsafe.Pointer(ch), TO_NOTVICT)
 					act(libc.CString("$n follows after you."), TRUE, k.Follower, nil, unsafe.Pointer(ch), TO_VICT)
@@ -1928,9 +1931,9 @@ func randomize_eq(obj *obj_data) {
 		}
 		var dice int = rand_number(2, 12)
 		if dice >= 10 {
-			obj.Extra_flags[int(ITEM_SLOT2/32)] |= bitvector_t(1 << (int(ITEM_SLOT2 % 32)))
+			obj.Extra_flags[int(ITEM_SLOT2/32)] |= bitvector_t(int32(1 << (int(ITEM_SLOT2 % 32))))
 		} else if dice >= 7 {
-			obj.Extra_flags[int(ITEM_SLOT1/32)] |= bitvector_t(1 << (int(ITEM_SLOT1 % 32)))
+			obj.Extra_flags[int(ITEM_SLOT1/32)] |= bitvector_t(int32(1 << (int(ITEM_SLOT1 % 32))))
 		}
 	}
 }
@@ -2408,7 +2411,7 @@ func block_calc(ch *char_data) int {
 	} else {
 		return 1
 	}
-	if GET_SPEEDI(ch) < GET_SPEEDI(blocker) && blocker.Position > POS_SITTING {
+	if GET_SPEEDI(ch) < GET_SPEEDI(blocker) && int(blocker.Position) > POS_SITTING {
 		if !AFF_FLAGGED(blocker, AFF_BLIND) && !PLR_FLAGGED(blocker, PLR_EYEC) {
 			var minimum int = int(blocker.Aff_abils.Cha) + rand_number(5, 20)
 			if minimum > 100 {
@@ -2442,13 +2445,13 @@ func block_calc(ch *char_data) int {
 			ch.Blocked = nil
 			blocker.Blocks = nil
 		}
-	} else if blocker.Position <= POS_SITTING {
+	} else if int(blocker.Position) <= POS_SITTING {
 		act(libc.CString("$n proves $s great skill and escapes from $N!"), TRUE, ch, nil, unsafe.Pointer(blocker), TO_NOTVICT)
 		act(libc.CString("$n proves $s great skill and escapes from you!"), TRUE, ch, nil, unsafe.Pointer(blocker), TO_VICT)
 		act(libc.CString("Using your great skill you manage to escape from $N!"), TRUE, ch, nil, unsafe.Pointer(blocker), TO_CHAR)
 		ch.Blocked = nil
 		blocker.Blocks = nil
-	} else if blocker.Position > POS_SITTING {
+	} else if int(blocker.Position) > POS_SITTING {
 		act(libc.CString("$n proves $s great skill and escapes from $N's attempted block!"), TRUE, ch, nil, unsafe.Pointer(blocker), TO_NOTVICT)
 		act(libc.CString("$n proves $s great skill and escapes from your attempted block!"), TRUE, ch, nil, unsafe.Pointer(blocker), TO_VICT)
 		act(libc.CString("Using your great skill you manage to escape from $N's attempted block!"), TRUE, ch, nil, unsafe.Pointer(blocker), TO_CHAR)
@@ -2463,7 +2466,7 @@ func molt_threshold(ch *char_data) int64 {
 		max       int64 = 2000000000
 	)
 	max *= 250
-	if ch.Race != RACE_ARLIAN {
+	if int(ch.Race) != RACE_ARLIAN {
 		return 0
 	} else if ch.Moltlevel < 100 {
 		threshold = int64(((float64(ch.Moltlevel+1) * (float64(ch.Max_hit) * 0.02)) * float64(ch.Aff_abils.Con)) / 4)
@@ -2512,7 +2515,7 @@ func armor_evolve(ch *char_data) int {
 	return value
 }
 func handle_evolution(ch *char_data, dmg int64) {
-	if IS_NPC(ch) || ch.Race != RACE_ARLIAN {
+	if IS_NPC(ch) || int(ch.Race) != RACE_ARLIAN {
 		return
 	}
 	var moltgain int64 = 0
@@ -2574,7 +2577,7 @@ func handle_evolution(ch *char_data, dmg int64) {
 func demon_refill_lf(ch *char_data, num int64) {
 	var tch *char_data = nil
 	for tch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; tch != nil; tch = tch.Next_in_room {
-		if tch.Race != RACE_DEMON {
+		if int(tch.Race) != RACE_DEMON {
 			continue
 		}
 		if tch.Lifeforce >= int64(GET_LIFEMAX(tch)) {
@@ -2618,9 +2621,9 @@ func mob_talk(ch *char_data, speech *byte) {
 func mob_respond(ch *char_data, vict *char_data, speech *byte) int {
 	if ch != nil && vict != nil {
 		if !IS_NPC(ch) && IS_NPC(vict) {
-			if (C.strstr(speech, libc.CString("hello")) != nil || C.strstr(speech, libc.CString("greet")) != nil || C.strstr(speech, libc.CString("Hello")) != nil || C.strstr(speech, libc.CString("Greet")) != nil) && vict.Fighting == nil {
+			if (libc.StrStr(speech, libc.CString("hello")) != nil || libc.StrStr(speech, libc.CString("greet")) != nil || libc.StrStr(speech, libc.CString("Hello")) != nil || libc.StrStr(speech, libc.CString("Greet")) != nil) && vict.Fighting == nil {
 				send_to_room(vict.In_room, libc.CString("\r\n"))
-				if vict.Race == RACE_HUMAN || vict.Race == RACE_HALFBREED {
+				if int(vict.Race) == RACE_HUMAN || int(vict.Race) == RACE_HALFBREED {
 					switch rand_number(1, 4) {
 					case 1:
 						act(libc.CString("@w$n@W says, '@CYes, hello to you as well $N.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
@@ -2631,7 +2634,7 @@ func mob_respond(ch *char_data, vict *char_data, speech *byte) int {
 					case 4:
 						act(libc.CString("@w$n@W says, '@CGreetings, $N. What are you up to?@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
 					}
-				} else if vict.Race == RACE_SAIYAN {
+				} else if int(vict.Race) == RACE_SAIYAN {
 					switch rand_number(1, 4) {
 					case 1:
 						act(libc.CString("@w$n@W says, '@CHmph, hi.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
@@ -2642,7 +2645,7 @@ func mob_respond(ch *char_data, vict *char_data, speech *byte) int {
 					case 4:
 						act(libc.CString("@w$n@W says, '@C$N, you are not welcome around me.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
 					}
-				} else if vict.Race == RACE_ICER {
+				} else if int(vict.Race) == RACE_ICER {
 					switch rand_number(1, 4) {
 					case 1:
 						act(libc.CString("@w$n@W says, '@CHa ha... Yes, hello.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
@@ -2653,7 +2656,7 @@ func mob_respond(ch *char_data, vict *char_data, speech *byte) int {
 					case 4:
 						act(libc.CString("@w$n@W says, '@C$N, you are below me. Now begone.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
 					}
-				} else if vict.Race == RACE_KONATSU {
+				} else if int(vict.Race) == RACE_KONATSU {
 					switch rand_number(1, 4) {
 					case 1:
 						act(libc.CString("@w$n@W says, '@CGreetings, $N, may your travels be well.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
@@ -2664,7 +2667,7 @@ func mob_respond(ch *char_data, vict *char_data, speech *byte) int {
 					case 4:
 						act(libc.CString("@w$n@W says, '@C$N, it is nice to meet you.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
 					}
-				} else if vict.Race == RACE_NAMEK {
+				} else if int(vict.Race) == RACE_NAMEK {
 					switch rand_number(1, 4) {
 					case 1:
 						act(libc.CString("@w$n@W says, '@CHello.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
@@ -2675,7 +2678,7 @@ func mob_respond(ch *char_data, vict *char_data, speech *byte) int {
 					case 4:
 						act(libc.CString("@w$n@W says, '@C$N, greetings.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
 					}
-				} else if vict.Race == RACE_ARLIAN {
+				} else if int(vict.Race) == RACE_ARLIAN {
 					switch rand_number(1, 4) {
 					case 1:
 						act(libc.CString("@w$n@W says, '@CPeace, stranger.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
@@ -2686,31 +2689,31 @@ func mob_respond(ch *char_data, vict *char_data, speech *byte) int {
 					case 4:
 						act(libc.CString("@w$n@W says, '@C...Hello.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
 					}
-				} else if vict.Race == RACE_ANDROID {
+				} else if int(vict.Race) == RACE_ANDROID {
 					act(libc.CString("@w$n@W says, '@C...@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
-				} else if vict.Race == RACE_MAJIN {
+				} else if int(vict.Race) == RACE_MAJIN {
 					switch rand_number(1, 2) {
 					case 1:
 						act(libc.CString("@w$n@W says, '@CHa ha...@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
 					case 2:
 						act(libc.CString("@w$n@W says, '@CHello. What candy you want to be?@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
 					}
-				} else if vict.Race == RACE_TRUFFLE {
+				} else if int(vict.Race) == RACE_TRUFFLE {
 					switch rand_number(1, 3) {
 					case 1:
-						if ch.Race == RACE_SAIYAN {
+						if int(ch.Race) == RACE_SAIYAN {
 							act(libc.CString("@w$n@W says, '@CEwww, dirty monkey...@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
 						} else {
 							act(libc.CString("@w$n@W says, '@CHello.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
 						}
 					case 2:
-						if ch.Race == RACE_SAIYAN {
+						if int(ch.Race) == RACE_SAIYAN {
 							act(libc.CString("@w$n@W says, '@CEwww, dirty monkey...@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
 						} else {
 							act(libc.CString("@w$n@W says, '@C$N, hello. You are a curious individual.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
 						}
 					case 3:
-						if ch.Race == RACE_SAIYAN {
+						if int(ch.Race) == RACE_SAIYAN {
 							act(libc.CString("@w$n@W says, '@CEwww, dirty monkey...@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
 						} else {
 							act(libc.CString("@w$n@W says, '@C$N, hello. What's your IQ?@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
@@ -2720,7 +2723,7 @@ func mob_respond(ch *char_data, vict *char_data, speech *byte) int {
 					act(libc.CString("Hmph, yeah hi."), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
 				}
 			}
-			if (C.strstr(speech, libc.CString("spar")) != nil || C.strstr(speech, libc.CString("Spar")) != nil) && vict.Fighting == nil {
+			if (libc.StrStr(speech, libc.CString("spar")) != nil || libc.StrStr(speech, libc.CString("Spar")) != nil) && vict.Fighting == nil {
 				send_to_room(vict.In_room, libc.CString("\r\n"))
 				if GET_LEVEL(vict) > 4 && vict.Alignment >= 0 {
 					var (
@@ -2728,7 +2731,7 @@ func mob_respond(ch *char_data, vict *char_data, speech *byte) int {
 						remember int = FALSE
 					)
 					for names = vict.Mob_specials.Memory; names != nil && remember == 0; names = (*memory_rec)(unsafe.Pointer(names.Next)) {
-						if names.Id != ch.Idnum {
+						if int(names.Id) != int(ch.Idnum) {
 							continue
 						}
 						remember = TRUE
@@ -2760,10 +2763,10 @@ func mob_respond(ch *char_data, vict *char_data, speech *byte) int {
 					} else {
 						if MOB_FLAGGED(vict, MOB_SPAR) {
 							act(libc.CString("@w$n@W says, '@C$N, fine our match will wait till later then.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
-							vict.Act[int(MOB_SPAR/32)] &= bitvector_t(^(1 << (int(MOB_SPAR % 32))))
+							vict.Act[int(MOB_SPAR/32)] &= bitvector_t(int32(^(1 << (int(MOB_SPAR % 32)))))
 						} else {
 							act(libc.CString("@w$n@W says, '@C$N, sure. I'll spar with you.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
-							vict.Act[int(MOB_SPAR/32)] |= bitvector_t(1 << (int(MOB_SPAR % 32)))
+							vict.Act[int(MOB_SPAR/32)] |= bitvector_t(int32(1 << (int(MOB_SPAR % 32))))
 						}
 						return 0
 					}
@@ -2775,17 +2778,17 @@ func mob_respond(ch *char_data, vict *char_data, speech *byte) int {
 					return 1
 				}
 			}
-			if C.strstr(speech, libc.CString("goodbye")) != nil || C.strstr(speech, libc.CString("Goodbye")) != nil || C.strstr(speech, libc.CString("bye")) != nil || C.strstr(speech, libc.CString("Bye")) != nil {
+			if libc.StrStr(speech, libc.CString("goodbye")) != nil || libc.StrStr(speech, libc.CString("Goodbye")) != nil || libc.StrStr(speech, libc.CString("bye")) != nil || libc.StrStr(speech, libc.CString("Bye")) != nil {
 				send_to_room(vict.In_room, libc.CString("\r\n"))
 				if vict.Alignment >= 0 {
-					if vict.Sex == SEX_MALE {
-						if ch.Sex == SEX_FEMALE {
+					if int(vict.Sex) == SEX_MALE {
+						if int(ch.Sex) == SEX_FEMALE {
 							act(libc.CString("@w$n@W says, '@C$N, goodbye babe.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
 						} else {
 							act(libc.CString("@w$n@W says, '@C$N, goodbye.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
 						}
-					} else if vict.Sex == SEX_FEMALE {
-						if ch.Sex == SEX_MALE {
+					} else if int(vict.Sex) == SEX_FEMALE {
+						if int(ch.Sex) == SEX_MALE {
 							act(libc.CString("@w$n@W says, '@C$N, goodbye...@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
 						} else {
 							act(libc.CString("@w$n@W says, '@C$N, bye.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
@@ -2795,14 +2798,14 @@ func mob_respond(ch *char_data, vict *char_data, speech *byte) int {
 					}
 				}
 				if vict.Alignment < 0 {
-					if vict.Sex == SEX_MALE {
-						if ch.Sex == SEX_FEMALE {
+					if int(vict.Sex) == SEX_MALE {
+						if int(ch.Sex) == SEX_FEMALE {
 							act(libc.CString("@w$n@W says, '@CGoodbye. Eh heh heh.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
 						} else {
 							act(libc.CString("@w$n@W says, '@CSo long and good ridance.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
 						}
-					} else if vict.Sex == SEX_FEMALE {
-						if ch.Sex == SEX_MALE {
+					} else if int(vict.Sex) == SEX_FEMALE {
+						if int(ch.Sex) == SEX_MALE {
 							act(libc.CString("@w$n@W says, '@CGoodbye then...@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
 						} else {
 							act(libc.CString("@w$n@W says, '@C$N, no one wanted you around anyway.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
@@ -2812,7 +2815,7 @@ func mob_respond(ch *char_data, vict *char_data, speech *byte) int {
 					}
 				}
 			}
-			if C.strstr(speech, libc.CString("train")) != nil || C.strstr(speech, libc.CString("Train")) != nil || C.strstr(speech, libc.CString("exercise")) != nil || C.strstr(speech, libc.CString("Exercise")) != nil {
+			if libc.StrStr(speech, libc.CString("train")) != nil || libc.StrStr(speech, libc.CString("Train")) != nil || libc.StrStr(speech, libc.CString("exercise")) != nil || libc.StrStr(speech, libc.CString("Exercise")) != nil {
 				send_to_room(vict.In_room, libc.CString("\r\n"))
 				if vict.Alignment >= 0 && !MOB_FLAGGED(vict, MOB_NOKILL) {
 					if GET_LEVEL(vict) > 4 && GET_LEVEL(vict) < 10 {
@@ -2867,7 +2870,7 @@ func handle_racial(ch *char_data, type_ int) *byte {
 	var intro [100]byte
 	intro[0] = '\x00'
 	if type_ == 0 {
-		if ch.Race == RACE_HALFBREED {
+		if int(ch.Race) == RACE_HALFBREED {
 			if ch.Player_specials.Racial_pref == 1 {
 				stdio.Sprintf(&intro[0], "human")
 			} else if ch.Player_specials.Racial_pref == 2 {
@@ -2875,7 +2878,7 @@ func handle_racial(ch *char_data, type_ int) *byte {
 			} else {
 				stdio.Sprintf(&intro[0], "%s", race_names[ch.Race])
 			}
-		} else if ch.Race == RACE_ANDROID {
+		} else if int(ch.Race) == RACE_ANDROID {
 			if ch.Player_specials.Racial_pref == 1 {
 				stdio.Sprintf(&intro[0], "android")
 			} else if ch.Player_specials.Racial_pref == 2 {
@@ -2885,13 +2888,13 @@ func handle_racial(ch *char_data, type_ int) *byte {
 			} else {
 				stdio.Sprintf(&intro[0], "%s", race_names[ch.Race])
 			}
-		} else if ch.Race == RACE_SAIYAN && PLR_FLAGGED(ch, PLR_TAILHIDE) {
+		} else if int(ch.Race) == RACE_SAIYAN && PLR_FLAGGED(ch, PLR_TAILHIDE) {
 			stdio.Sprintf(&intro[0], "human")
 		} else {
 			stdio.Sprintf(&intro[0], "%s", race_names[ch.Race])
 		}
 	} else {
-		if ch.Race == RACE_HALFBREED {
+		if int(ch.Race) == RACE_HALFBREED {
 			if ch.Player_specials.Racial_pref == 1 || PLR_FLAGGED(ch, PLR_TAILHIDE) {
 				stdio.Sprintf(&intro[0], "Human")
 			} else if ch.Player_specials.Racial_pref == 2 && !PLR_FLAGGED(ch, PLR_TAILHIDE) {
@@ -2901,7 +2904,7 @@ func handle_racial(ch *char_data, type_ int) *byte {
 			} else {
 				stdio.Sprintf(&intro[0], "%s", pc_race_types[ch.Race])
 			}
-		} else if ch.Race == RACE_ANDROID {
+		} else if int(ch.Race) == RACE_ANDROID {
 			if ch.Player_specials.Racial_pref == 1 {
 				stdio.Sprintf(&intro[0], "Android")
 			} else if ch.Player_specials.Racial_pref == 2 {
@@ -2911,7 +2914,7 @@ func handle_racial(ch *char_data, type_ int) *byte {
 			} else {
 				stdio.Sprintf(&intro[0], "%s", pc_race_types[ch.Race])
 			}
-		} else if ch.Race == RACE_SAIYAN && PLR_FLAGGED(ch, PLR_TAILHIDE) {
+		} else if int(ch.Race) == RACE_SAIYAN && PLR_FLAGGED(ch, PLR_TAILHIDE) {
 			stdio.Sprintf(&intro[0], "human")
 		} else {
 			stdio.Sprintf(&intro[0], "%s", pc_race_types[ch.Race])
@@ -2929,29 +2932,29 @@ func introd_calc(ch *char_data) *byte {
 	if IS_NPC(ch) {
 		return libc.CString("IAMERROR")
 	}
-	if ch.Race == RACE_HALFBREED {
+	if int(ch.Race) == RACE_HALFBREED {
 		if ch.Player_specials.Racial_pref == 1 {
-			race = C.strdup(libc.CString("human"))
+			race = libc.CString("human")
 		} else if ch.Player_specials.Racial_pref == 2 {
-			race = C.strdup(libc.CString("saiyan"))
+			race = libc.CString("saiyan")
 		} else {
-			race = C.strdup(JUGGLERACE(ch))
+			race = libc.StrDup(JUGGLERACE(ch))
 		}
-		sex = C.strdup(MAFE(ch))
-	} else if ch.Race == RACE_ANDROID {
+		sex = libc.StrDup(MAFE(ch))
+	} else if int(ch.Race) == RACE_ANDROID {
 		if ch.Player_specials.Racial_pref == 1 {
-			race = C.strdup(libc.CString("android"))
+			race = libc.CString("android")
 		} else if ch.Player_specials.Racial_pref == 2 {
-			race = C.strdup(libc.CString("human"))
+			race = libc.CString("human")
 		} else if ch.Player_specials.Racial_pref == 3 {
-			race = C.strdup(libc.CString("robotic-humanoid"))
+			race = libc.CString("robotic-humanoid")
 		} else {
-			race = C.strdup(JUGGLERACE(ch))
+			race = libc.StrDup(JUGGLERACE(ch))
 		}
-		sex = C.strdup(MAFE(ch))
+		sex = libc.StrDup(MAFE(ch))
 	} else {
-		sex = C.strdup(MAFE(ch))
-		race = C.strdup(JUGGLERACE(ch))
+		sex = libc.StrDup(MAFE(ch))
+		race = libc.StrDup(JUGGLERACE(ch))
 	}
 	stdio.Sprintf(&intro[0], "%s %s %s", AN(sex), sex, race)
 	if sex != nil {
@@ -2990,7 +2993,7 @@ func soft_cap(ch *char_data, type_ int64) bool {
 	if IS_NPC(ch) {
 		return TRUE != 0
 	}
-	if ch.Race == RACE_KANASSAN || ch.Race == RACE_DEMON {
+	if int(ch.Race) == RACE_KANASSAN || int(ch.Race) == RACE_DEMON {
 		if type_ == 0 {
 			var base int64 = ch.Basepl
 			if base > int64(GET_LEVEL(ch)*2000000) && GET_LEVEL(ch) > 90 && GET_LEVEL(ch) <= 99 {
@@ -3096,7 +3099,7 @@ func soft_cap(ch *char_data, type_ int64) bool {
 				return TRUE != 0
 			}
 		}
-	} else if ch.Race == RACE_ANDROID && PLR_FLAGGED(ch, PLR_ABSORB) || ch.Race != RACE_ANDROID && ch.Race != RACE_BIO && ch.Race != RACE_MAJIN {
+	} else if int(ch.Race) == RACE_ANDROID && PLR_FLAGGED(ch, PLR_ABSORB) || int(ch.Race) != RACE_ANDROID && int(ch.Race) != RACE_BIO && int(ch.Race) != RACE_MAJIN {
 		if type_ == 0 {
 			var base int64 = ch.Basepl
 			if base > int64(GET_LEVEL(ch)*1500000) && GET_LEVEL(ch) > 90 && GET_LEVEL(ch) <= 99 {
@@ -3203,7 +3206,7 @@ func soft_cap(ch *char_data, type_ int64) bool {
 			}
 		}
 		return TRUE != 0
-	} else if ch.Race == RACE_ANDROID {
+	} else if int(ch.Race) == RACE_ANDROID {
 		var softcap int64 = ch.Basepl + ch.Baseki + ch.Basest
 		if type_ > 0 {
 			softcap += type_
@@ -3231,7 +3234,7 @@ func soft_cap(ch *char_data, type_ int64) bool {
 		} else {
 			return TRUE != 0
 		}
-	} else if ch.Race == RACE_MAJIN {
+	} else if int(ch.Race) == RACE_MAJIN {
 		var softcap int64 = ch.Basepl + ch.Baseki + ch.Basest
 		if GET_LEVEL(ch) > 90 && GET_LEVEL(ch) <= 99 && softcap > int64(GET_LEVEL(ch)*4500000) {
 			return FALSE != 0
@@ -3256,7 +3259,7 @@ func soft_cap(ch *char_data, type_ int64) bool {
 		} else {
 			return TRUE != 0
 		}
-	} else if ch.Race == RACE_BIO {
+	} else if int(ch.Race) == RACE_BIO {
 		var softcap int64 = ch.Basepl + ch.Baseki + ch.Basest
 		if GET_LEVEL(ch) > 90 && GET_LEVEL(ch) <= 99 && softcap > int64(GET_LEVEL(ch)*4500000) {
 			return FALSE != 0
@@ -3287,7 +3290,7 @@ func soft_cap(ch *char_data, type_ int64) bool {
 func grav_cost(ch *char_data, num int64) int {
 	var cost int = 0
 	if num == 0 {
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10 && ch.Max_hit < 5000 && ch.Chclass != CLASS_BARDOCK && !IS_NPC(ch) {
+		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10 && ch.Max_hit < 5000 && int(ch.Chclass) != CLASS_BARDOCK && !IS_NPC(ch) {
 			send_to_char(ch, libc.CString("You sweat bullets straining against the current gravity.\r\n"))
 		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 20 && ch.Max_hit < 20000 {
 			send_to_char(ch, libc.CString("You sweat bullets straining against the current gravity.\r\n"))
@@ -3315,7 +3318,7 @@ func grav_cost(ch *char_data, num int64) int {
 			send_to_char(ch, libc.CString("You sweat bullets straining against the current gravity.\r\n"))
 		}
 		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity != 0 {
-			if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10 && ch.Chclass == CLASS_BARDOCK && !IS_NPC(ch) {
+			if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10 && int(ch.Chclass) == CLASS_BARDOCK && !IS_NPC(ch) {
 				cost = 0
 			} else {
 				cost = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity * (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity
@@ -3330,7 +3333,7 @@ func grav_cost(ch *char_data, num int64) int {
 		}
 	}
 	if num >= 1 {
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10 && ch.Chclass == CLASS_BARDOCK && !IS_NPC(ch) {
+		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10 && int(ch.Chclass) == CLASS_BARDOCK && !IS_NPC(ch) {
 			cost = 0
 		} else {
 			cost = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity * (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity
@@ -3612,11 +3615,11 @@ func improve_skill(ch *char_data, skill int, num int) {
 	if ch.Forgeting == skill {
 		return
 	}
-	if (ch.Skills[skill]) >= 90 {
+	if int(ch.Skills[skill]) >= 90 {
 		roll += 800
-	} else if (ch.Skills[skill]) >= 75 {
+	} else if int(ch.Skills[skill]) >= 75 {
 		roll += 600
-	} else if (ch.Skills[skill]) >= 50 {
+	} else if int(ch.Skills[skill]) >= 50 {
 		roll += 400
 	}
 	if skill == SKILL_PARRY || skill == SKILL_DODGE || skill == SKILL_BARRIER || skill == SKILL_BLOCK || skill == SKILL_ZANZOKEN || skill == SKILL_TSKIN {
@@ -3642,13 +3645,13 @@ func improve_skill(ch *char_data, skill int, num int) {
 	if ch.Fighting != nil && IS_NPC(ch.Fighting) && MOB_FLAGGED(ch.Fighting, MOB_DUMMY) {
 		roll -= 100
 	}
-	if ch.Race == RACE_TRUFFLE || ch.Race == RACE_BIO && ((ch.Genome[0]) == 6 || (ch.Genome[1]) == 6) {
+	if int(ch.Race) == RACE_TRUFFLE || int(ch.Race) == RACE_BIO && ((ch.Genome[0]) == 6 || (ch.Genome[1]) == 6) {
 		roll *= int(0.5)
-	} else if ch.Race == RACE_MAJIN {
+	} else if int(ch.Race) == RACE_MAJIN {
 		roll += int(float64(roll) * 0.3)
-	} else if ch.Race == RACE_BIO && skill == SKILL_ABSORB {
+	} else if int(ch.Race) == RACE_BIO && skill == SKILL_ABSORB {
 		roll -= int(float64(roll) * 0.15)
-	} else if ch.Race == RACE_HOSHIJIN && (skill == SKILL_PUNCH || skill == SKILL_KICK || skill == SKILL_KNEE || skill == SKILL_ELBOW || skill == SKILL_UPPERCUT || skill == SKILL_ROUNDHOUSE || skill == SKILL_SLAM || skill == SKILL_HEELDROP || skill == SKILL_DAGGER || skill == SKILL_SWORD || skill == SKILL_CLUB || skill == SKILL_GUN || skill == SKILL_SPEAR || skill == SKILL_BRAWL) {
+	} else if int(ch.Race) == RACE_HOSHIJIN && (skill == SKILL_PUNCH || skill == SKILL_KICK || skill == SKILL_KNEE || skill == SKILL_ELBOW || skill == SKILL_UPPERCUT || skill == SKILL_ROUNDHOUSE || skill == SKILL_SLAM || skill == SKILL_HEELDROP || skill == SKILL_DAGGER || skill == SKILL_SWORD || skill == SKILL_CLUB || skill == SKILL_GUN || skill == SKILL_SPEAR || skill == SKILL_BRAWL) {
 		roll = int(float64(roll) * 0.3)
 	}
 	if ch.Fighting != nil && IS_NPC(ch.Fighting) && MOB_FLAGGED(ch.Fighting, MOB_DUMMY) {
@@ -3665,13 +3668,13 @@ func improve_skill(ch *char_data, skill int, num int) {
 	if roll < 300 {
 		roll = 300
 	}
-	if rand_number(1, roll) > int((ch.Aff_abils.Intel*2)+ch.Aff_abils.Wis) {
+	if rand_number(1, roll) > ((int(ch.Aff_abils.Intel) * 2) + int(ch.Aff_abils.Wis)) {
 		return
 	}
 	if percent > 99 || percent <= 0 {
 		return
 	}
-	if ch.Race == RACE_MAJIN && GET_SKILL(ch, skill) >= 75 {
+	if int(ch.Race) == RACE_MAJIN && GET_SKILL(ch, skill) >= 75 {
 		switch skill {
 		case 407:
 			fallthrough
@@ -3723,13 +3726,13 @@ func improve_skill(ch *char_data, skill int, num int) {
 		default:
 			return
 		}
-	} else if ch.Race == RACE_MAJIN && skill == 425 {
+	} else if int(ch.Race) == RACE_MAJIN && skill == 425 {
 		roll += 250
 	}
-	if (ch.Chclass == CLASS_JINTO || ch.Chclass == CLASS_TSUNA || ch.Chclass == CLASS_DABURA || ch.Chclass == CLASS_TAPION && GET_SKILL(ch, SKILL_SENSE) >= 75) && skill == SKILL_SENSE {
+	if (int(ch.Chclass) == CLASS_JINTO || int(ch.Chclass) == CLASS_TSUNA || int(ch.Chclass) == CLASS_DABURA || int(ch.Chclass) == CLASS_TAPION && GET_SKILL(ch, SKILL_SENSE) >= 75) && skill == SKILL_SENSE {
 		return
 	}
-	if (ch.Chclass == CLASS_BARDOCK || ch.Chclass == CLASS_KURZAK || ch.Chclass == CLASS_FRIEZA || ch.Chclass == CLASS_GINYU || ch.Chclass == CLASS_ANDSIX && GET_SKILL(ch, SKILL_SENSE) >= 50) && skill == SKILL_SENSE {
+	if (int(ch.Chclass) == CLASS_BARDOCK || int(ch.Chclass) == CLASS_KURZAK || int(ch.Chclass) == CLASS_FRIEZA || int(ch.Chclass) == CLASS_GINYU || int(ch.Chclass) == CLASS_ANDSIX && GET_SKILL(ch, SKILL_SENSE) >= 50) && skill == SKILL_SENSE {
 		return
 	}
 	newpercent = 1
@@ -3743,14 +3746,14 @@ func improve_skill(ch *char_data, skill int, num int) {
 	if newpercent >= 1 {
 		stdio.Sprintf(&skillbuf[0], "@WYou feel you have learned something new about @G%s@W.@n\r\n", spell_info[skill].Name)
 		send_to_char(ch, &skillbuf[0])
-		if (ch.Skills[skill]) >= 100 {
+		if int(ch.Skills[skill]) >= 100 {
 			send_to_char(ch, libc.CString("You learned a lot by mastering that skill.\r\n"))
 			if perf_skill(skill) != 0 {
 				send_to_char(ch, libc.CString("You can now choose a perfection for this skill (help perfection).\r\n"))
 			}
-			if ch.Race == RACE_KONATSU && skill == SKILL_PARRY {
+			if int(ch.Race) == RACE_KONATSU && skill == SKILL_PARRY {
 				for {
-					ch.Skills[skill] = (ch.Skills[skill]) + 5
+					ch.Skills[skill] = int8(int(ch.Skills[skill]) + 5)
 					if true {
 						break
 					}
@@ -3825,20 +3828,20 @@ func CAP(txt *byte) *byte {
 	var i int
 	for i = 0; *(*byte)(unsafe.Add(unsafe.Pointer(txt), i)) != '\x00' && (*(*byte)(unsafe.Add(unsafe.Pointer(txt), i)) == '@' && IS_COLOR_CHAR(int8(*(*byte)(unsafe.Add(unsafe.Pointer(txt), i+1))))); i += 2 {
 	}
-	*(*byte)(unsafe.Add(unsafe.Pointer(txt), i)) = byte(int8(C.toupper(int(*(*byte)(unsafe.Add(unsafe.Pointer(txt), i))))))
+	*(*byte)(unsafe.Add(unsafe.Pointer(txt), i)) = byte(int8(unicode.ToUpper(rune(*(*byte)(unsafe.Add(unsafe.Pointer(txt), i))))))
 	return txt
 }
 func strlwr(s *byte) *byte {
 	if s != nil {
 		var p *byte
 		for p = s; *p != 0; p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1)) {
-			*p = byte(int8(C.tolower(int(*p))))
+			*p = byte(int8(unicode.ToLower(rune(*p))))
 		}
 	}
 	return s
 }
 func prune_crlf(txt *byte) {
-	var i int = int(C.strlen(txt) - 1)
+	var i int = libc.StrLen(txt) - 1
 	for *(*byte)(unsafe.Add(unsafe.Pointer(txt), i)) == '\n' || *(*byte)(unsafe.Add(unsafe.Pointer(txt), i)) == '\r' {
 		*(*byte)(unsafe.Add(unsafe.Pointer(txt), func() int {
 			p := &i
@@ -3858,8 +3861,8 @@ func log_death_trap(ch *char_data) {
 }
 func basic_mud_vlog(format *byte, args libc.ArgList) {
 	var (
-		ct     int64 = C.time(nil)
-		time_s *byte = C.asctime(C.localtime(&ct))
+		ct     libc.Time = libc.GetTime(nil)
+		time_s *byte     = libc.AscTime(libc.LocalTime(&ct))
 	)
 	if logfile == nil {
 		puts(libc.CString("SYSERR: Using log() before stream was initialized!"))
@@ -3868,11 +3871,11 @@ func basic_mud_vlog(format *byte, args libc.ArgList) {
 	if format == nil {
 		format = libc.CString("SYSERR: log() received a NULL format.")
 	}
-	*(*byte)(unsafe.Add(unsafe.Pointer(time_s), C.strlen(time_s)-1)) = '\x00'
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(logfile)), "%-15.15s :: ", (*byte)(unsafe.Add(unsafe.Pointer(time_s), 4)))
-	stdio.Vfprintf((*stdio.File)(unsafe.Pointer(logfile)), libc.GoString(format), args)
-	fputc('\n', logfile)
-	fflush(logfile)
+	*(*byte)(unsafe.Add(unsafe.Pointer(time_s), libc.StrLen(time_s)-1)) = '\x00'
+	stdio.Fprintf(logfile, "%-15.15s :: ", (*byte)(unsafe.Add(unsafe.Pointer(time_s), 4)))
+	stdio.Vfprintf(logfile, libc.GoString(format), args)
+	logfile.PutC('\n')
+	logfile.Flush()
 }
 func basic_mud_log(format *byte, _rest ...interface{}) {
 	var args libc.ArgList
@@ -3881,15 +3884,15 @@ func basic_mud_log(format *byte, _rest ...interface{}) {
 	args.End()
 }
 func touch(path *byte) int {
-	var fl *C.FILE
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(path), "a")))
+	var fl *stdio.File
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(path), "a")
 		return fl
 	}()) == nil {
-		basic_mud_log(libc.CString("SYSERR: %s: %s"), path, C.strerror(*__errno_location()))
+		basic_mud_log(libc.CString("SYSERR: %s: %s"), path, libc.StrError(libc.Errno))
 		return -1
 	} else {
-		C.fclose(fl)
+		fl.Close()
 		return 0
 	}
 }
@@ -3910,11 +3913,11 @@ func mudlog(type_ int, level int, file int, str *byte, _rest ...interface{}) {
 	if level < ADMLVL_IMMORT {
 		level = ADMLVL_IMMORT
 	}
-	C.strcpy(&buf[0], libc.CString("[ "))
+	libc.StrCpy(&buf[0], libc.CString("[ "))
 	args.Start(str, _rest)
 	stdio.Vsnprintf(&buf[2], int(64936-6), libc.GoString(str), args)
 	args.End()
-	C.strcat(&buf[0], libc.CString(" ]\r\n"))
+	libc.StrCat(&buf[0], libc.CString(" ]\r\n"))
 	for i = descriptor_list; i != nil; i = i.Next {
 		if i.Connected != CON_PLAYING || IS_NPC(i.Character) {
 			continue
@@ -3970,7 +3973,7 @@ func sprintbit(bitvector bitvector_t, names [0]*byte, result *byte, reslen uint6
 	}
 	return len_
 }
-func sprinttype(type_ int, names []*byte, result *byte, reslen uint64) uint64 {
+func sprinttype(type_ int, names [0]*byte, result *byte, reslen uint64) uint64 {
 	var nr int = 0
 	for type_ != 0 && *names[nr] != '\n' {
 		type_--
@@ -3992,14 +3995,14 @@ func sprintbitarray(bitvector [0]bitvector_t, names [0]*byte, maxar int, result 
 	*result = '\x00'
 	for teller = 0; teller < maxar && found == 0; teller++ {
 		for nr = 0; nr < 32 && found == 0; nr++ {
-			if IS_SET_AR(bitvector, bitvector_t((teller*32)+nr)) {
+			if IS_SET_AR(bitvector, bitvector_t(int32((teller*32)+nr))) {
 				if *names[(teller*32)+nr] != '\n' {
 					if *names[(teller*32)+nr] != '\x00' {
-						C.strcat(result, names[(teller*32)+nr])
-						C.strcat(result, libc.CString(" "))
+						libc.StrCat(result, names[(teller*32)+nr])
+						libc.StrCat(result, libc.CString(" "))
 					}
 				} else {
-					C.strcat(result, libc.CString("UNDEFINED "))
+					libc.StrCat(result, libc.CString("UNDEFINED "))
 				}
 			}
 			if *names[(teller*32)+nr] == '\n' {
@@ -4008,10 +4011,10 @@ func sprintbitarray(bitvector [0]bitvector_t, names [0]*byte, maxar int, result 
 		}
 	}
 	if *result == 0 {
-		C.strcpy(result, libc.CString("None "))
+		libc.StrCpy(result, libc.CString("None "))
 	}
 }
-func real_time_passed(t2 int64, t1 int64) *time_info_data {
+func real_time_passed(t2 libc.Time, t1 libc.Time) *time_info_data {
 	var (
 		secs int
 		now  time_info_data
@@ -4024,7 +4027,7 @@ func real_time_passed(t2 int64, t1 int64) *time_info_data {
 	now.Year = -1
 	return &now
 }
-func mud_time_passed(t2 int64, t1 int64) *time_info_data {
+func mud_time_passed(t2 libc.Time, t1 libc.Time) *time_info_data {
 	var (
 		secs int
 		now  time_info_data
@@ -4039,17 +4042,17 @@ func mud_time_passed(t2 int64, t1 int64) *time_info_data {
 	now.Year = int16(secs / (((int(SECS_PER_MUD_HOUR * 24)) * 30) * 12))
 	return &now
 }
-func mud_time_to_secs(now *time_info_data) int64 {
-	var when int64 = 0
-	when += int64(int(now.Year) * (((int(SECS_PER_MUD_HOUR * 24)) * 30) * 12))
-	when += int64(now.Month * ((int(SECS_PER_MUD_HOUR * 24)) * 30))
-	when += int64(now.Day * (int(SECS_PER_MUD_HOUR * 24)))
-	when += int64(now.Hours * SECS_PER_MUD_HOUR)
-	return C.time(nil) - when
+func mud_time_to_secs(now *time_info_data) libc.Time {
+	var when libc.Time = 0
+	when += libc.Time(int(now.Year) * (((int(SECS_PER_MUD_HOUR * 24)) * 30) * 12))
+	when += libc.Time(now.Month * ((int(SECS_PER_MUD_HOUR * 24)) * 30))
+	when += libc.Time(now.Day * (int(SECS_PER_MUD_HOUR * 24)))
+	when += libc.Time(now.Hours * SECS_PER_MUD_HOUR)
+	return libc.GetTime(nil) - when
 }
 func age(ch *char_data) *time_info_data {
 	var player_age time_info_data
-	player_age = *mud_time_passed(C.time(nil), ch.Time.Birth)
+	player_age = *mud_time_passed(libc.GetTime(nil), ch.Time.Birth)
 	return &player_age
 }
 func circle_follow(ch *char_data, victim *char_data) bool {
@@ -4150,14 +4153,14 @@ func add_follower(ch *char_data, leader *char_data) {
 		act(libc.CString("\r\n$n starts to follow $N."), TRUE, ch, nil, unsafe.Pointer(leader), TO_NOTVICT)
 	}
 }
-func get_line(fl *C.FILE, buf *byte) int {
+func get_line(fl *stdio.File, buf *byte) int {
 	var (
 		temp  [256]byte
 		lines int = 0
 		sl    int
 	)
 	for {
-		if C.fgets(&temp[0], READ_SIZE, fl) == nil {
+		if fl.GetS(&temp[0], READ_SIZE) == nil {
 			return 0
 		}
 		lines++
@@ -4165,7 +4168,7 @@ func get_line(fl *C.FILE, buf *byte) int {
 			break
 		}
 	}
-	sl = int(C.strlen(&temp[0]))
+	sl = libc.StrLen(&temp[0])
 	for sl > 0 && (temp[sl-1] == '\n' || temp[sl-1] == '\r') {
 		temp[func() int {
 			p := &sl
@@ -4173,7 +4176,7 @@ func get_line(fl *C.FILE, buf *byte) int {
 			return *p
 		}()] = '\x00'
 	}
-	C.strcpy(buf, &temp[0])
+	libc.StrCpy(buf, &temp[0])
 	return lines
 }
 func get_filename(filename *byte, fbufsize uint64, mode int, orig_name *byte) int {
@@ -4181,7 +4184,7 @@ func get_filename(filename *byte, fbufsize uint64, mode int, orig_name *byte) in
 		prefix *byte
 		middle *byte
 		suffix *byte
-		name   [4096]byte
+		name   [260]byte
 		ptr    *byte
 	)
 	if orig_name == nil || *orig_name == '\x00' || filename == nil {
@@ -4205,13 +4208,13 @@ func get_filename(filename *byte, fbufsize uint64, mode int, orig_name *byte) in
 		prefix = libc.CString(LIB_PLROBJS)
 		suffix = libc.CString(SUF_OBJS)
 	case PLR_FILE:
-		prefix = libc.CString(LIB_PLRC.FILES)
+		prefix = libc.CString(LIB_PLRFILES)
 		suffix = libc.CString(SUF_PLR)
 	case IMC_FILE:
 		prefix = libc.CString(LIB_PLRIMC)
 		suffix = libc.CString(SUF_IMC)
 	case PET_FILE:
-		prefix = libc.CString(LIB_PLRC.FILES)
+		prefix = libc.CString(LIB_PLRFILES)
 		suffix = libc.CString(SUF_PET)
 	case USER_FILE:
 		prefix = libc.CString(LIB_USER)
@@ -4228,11 +4231,11 @@ func get_filename(filename *byte, fbufsize uint64, mode int, orig_name *byte) in
 	default:
 		return 0
 	}
-	strlcpy(&name[0], orig_name, uint64(4096))
+	strlcpy(&name[0], orig_name, uint64(260))
 	for ptr = &name[0]; *ptr != 0; ptr = (*byte)(unsafe.Add(unsafe.Pointer(ptr), 1)) {
-		*ptr = byte(int8(C.tolower(int(*ptr))))
+		*ptr = byte(int8(unicode.ToLower(rune(*ptr))))
 	}
-	switch C.tolower(int(name[0])) {
+	switch unicode.ToLower(rune(name[0])) {
 	case 'a':
 		fallthrough
 	case 'b':
@@ -4304,7 +4307,7 @@ func num_pc_in_room(room *room_data) int {
 	return i
 }
 
-var player_fl *C.FILE
+var player_fl *stdio.File
 
 func core_dump_real(who *byte, line int) {
 }
@@ -4316,7 +4319,7 @@ func cook_element(room room_rnum) int {
 	)
 	for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Contents; obj != nil; obj = next_obj {
 		next_obj = obj.Next_content
-		if obj.Type_flag == ITEM_CAMPFIRE {
+		if int(obj.Type_flag) == ITEM_CAMPFIRE {
 			found = 1
 		} else if GET_OBJ_VNUM(obj) == 0x4A95 {
 			found = 2
@@ -4329,7 +4332,7 @@ func room_is_dark(room room_rnum) int {
 		basic_mud_log(libc.CString("room_is_dark: Invalid room rnum %d. (0-%d)"), room, top_of_world)
 		return FALSE
 	}
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Light != 0 {
+	if int((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Light) != 0 {
 		return FALSE
 	}
 	if cook_element(room) != 0 {
@@ -4388,108 +4391,35 @@ func room_is_dark(room room_rnum) int {
 }
 func count_metamagic_feats(ch *char_data) int {
 	var count int = 0
-	if (ch.Feats[FEAT_STILL_SPELL]) != 0 {
+	if int(ch.Feats[FEAT_STILL_SPELL]) != 0 {
 		count++
 	}
-	if (ch.Feats[FEAT_SILENT_SPELL]) != 0 {
+	if int(ch.Feats[FEAT_SILENT_SPELL]) != 0 {
 		count++
 	}
-	if (ch.Feats[FEAT_QUICKEN_SPELL]) != 0 {
+	if int(ch.Feats[FEAT_QUICKEN_SPELL]) != 0 {
 		count++
 	}
-	if (ch.Feats[FEAT_MAXIMIZE_SPELL]) != 0 {
+	if int(ch.Feats[FEAT_MAXIMIZE_SPELL]) != 0 {
 		count++
 	}
-	if (ch.Feats[FEAT_HEIGHTEN_SPELL]) != 0 {
+	if int(ch.Feats[FEAT_HEIGHTEN_SPELL]) != 0 {
 		count++
 	}
-	if (ch.Feats[FEAT_EXTEND_SPELL]) != 0 {
+	if int(ch.Feats[FEAT_EXTEND_SPELL]) != 0 {
 		count++
 	}
-	if (ch.Feats[FEAT_EMPOWER_SPELL]) != 0 {
+	if int(ch.Feats[FEAT_EMPOWER_SPELL]) != 0 {
 		count++
 	}
 	return count
 }
 func xdir_scan(dir_name *byte, xapdirp *xap_dir) int {
-	xapdirp.Total = scandir(dir_name, &xapdirp.Namelist, nil, alphasort)
-	xapdirp.Current = 0
-	return xapdirp.Total
 }
 func xdir_get_name(xd *xap_dir, i int) *byte {
 	return &(*(**dirent)(unsafe.Add(unsafe.Pointer(xd.Namelist), unsafe.Sizeof((*dirent)(nil))*uintptr(i)))).D_name[0]
 }
-func xdir_get_next(xd *xap_dir) *byte {
-	if func() int {
-		p := &xd.Current
-		*p++
-		return *p
-	}() >= xd.Total {
-		return nil
-	}
-	return &(*(**dirent)(unsafe.Add(unsafe.Pointer(xd.Namelist), unsafe.Sizeof((*dirent)(nil))*uintptr(xd.Current-1)))).D_name[0]
-}
-func xdir_close(xd *xap_dir) {
-	var i int
-	for i = 0; i < xd.Total; i++ {
-		libc.Free(unsafe.Pointer(*(**dirent)(unsafe.Add(unsafe.Pointer(xd.Namelist), unsafe.Sizeof((*dirent)(nil))*uintptr(i)))))
-	}
-	libc.Free(unsafe.Pointer(xd.Namelist))
-	xd.Namelist = nil
-	xd.Current = func() int {
-		p := &xd.Total
-		xd.Total = -1
-		return *p
-	}()
-}
-func xdir_get_total(xd *xap_dir) int {
-	return xd.Total
-}
 func insure_directory(path *byte, isfile int) int {
-	var (
-		chopsuey *byte = C.strdup(path)
-		p        *byte
-		temp     *byte
-		st       stat
-	)
-	if isfile != 0 {
-		if (func() *byte {
-			p = strrchr(path, '/')
-			return p
-		}()) == nil {
-			libc.Free(unsafe.Pointer(chopsuey))
-			return 1
-		}
-		*p = '\x00'
-	}
-	for *(*byte)(unsafe.Add(unsafe.Pointer(chopsuey), C.strlen(chopsuey)-1)) == '/' {
-		*(*byte)(unsafe.Add(unsafe.Pointer(chopsuey), C.strlen(chopsuey)-1)) = '\x00'
-	}
-	if C.stat(chopsuey, &st) == 0 && (st.St_mode&__S_IFMT) == __S_IFDIR {
-		libc.Free(unsafe.Pointer(chopsuey))
-		return 1
-	}
-	temp = C.strdup(chopsuey)
-	if (func() *byte {
-		p = strrchr(temp, '/')
-		return p
-	}()) != nil {
-		*p = '\x00'
-	}
-	if insure_directory(temp, 0) != 0 && mkdir(chopsuey, __mode_t(int(__S_IREAD|__S_IWRITE)|__S_IEXEC|(int(__S_IREAD>>3))|(int(__S_IEXEC>>3))|(int(__S_IREAD>>3))>>3|(int(__S_IEXEC>>3))>>3)) == 0 {
-		libc.Free(unsafe.Pointer(temp))
-		libc.Free(unsafe.Pointer(chopsuey))
-		return 1
-	}
-	if (*__errno_location()) == EEXIST && C.stat(temp, &st) == 0 && (st.St_mode&__S_IFMT) == __S_IFDIR {
-		libc.Free(unsafe.Pointer(temp))
-		libc.Free(unsafe.Pointer(chopsuey))
-		return 1
-	} else {
-		libc.Free(unsafe.Pointer(temp))
-		libc.Free(unsafe.Pointer(chopsuey))
-		return 1
-	}
 }
 
 var default_admin_flags_mortal [1]int = [1]int{-1}
@@ -4513,21 +4443,21 @@ func admin_set(ch *char_data, value int) {
 		for ch.Admlevel < value {
 			ch.Admlevel++
 			for i = 0; *(*int)(unsafe.Add(unsafe.Pointer(default_admin_flags[ch.Admlevel]), unsafe.Sizeof(int(0))*uintptr(i))) != -1; i++ {
-				ch.Admflags[(*(*int)(unsafe.Add(unsafe.Pointer(default_admin_flags[ch.Admlevel]), unsafe.Sizeof(int(0))*uintptr(i))))/32] |= bitvector_t(1 << ((*(*int)(unsafe.Add(unsafe.Pointer(default_admin_flags[ch.Admlevel]), unsafe.Sizeof(int(0))*uintptr(i)))) % 32))
+				ch.Admflags[(*(*int)(unsafe.Add(unsafe.Pointer(default_admin_flags[ch.Admlevel]), unsafe.Sizeof(int(0))*uintptr(i))))/32] |= bitvector_t(int32(1 << ((*(*int)(unsafe.Add(unsafe.Pointer(default_admin_flags[ch.Admlevel]), unsafe.Sizeof(int(0))*uintptr(i)))) % 32)))
 			}
 		}
 		run_autowiz()
 		if orig < ADMLVL_IMMORT && value >= ADMLVL_IMMORT {
-			ch.Player_specials.Pref[int(PRF_LOG2/32)] |= bitvector_t(1 << (int(PRF_LOG2 % 32)))
-			ch.Player_specials.Pref[int(PRF_HOLYLIGHT/32)] |= bitvector_t(1 << (int(PRF_HOLYLIGHT % 32)))
-			ch.Player_specials.Pref[int(PRF_ROOMFLAGS/32)] |= bitvector_t(1 << (int(PRF_ROOMFLAGS % 32)))
-			ch.Player_specials.Pref[int(PRF_AUTOEXIT/32)] |= bitvector_t(1 << (int(PRF_AUTOEXIT % 32)))
+			ch.Player_specials.Pref[int(PRF_LOG2/32)] |= bitvector_t(int32(1 << (int(PRF_LOG2 % 32))))
+			ch.Player_specials.Pref[int(PRF_HOLYLIGHT/32)] |= bitvector_t(int32(1 << (int(PRF_HOLYLIGHT % 32))))
+			ch.Player_specials.Pref[int(PRF_ROOMFLAGS/32)] |= bitvector_t(int32(1 << (int(PRF_ROOMFLAGS % 32))))
+			ch.Player_specials.Pref[int(PRF_AUTOEXIT/32)] |= bitvector_t(int32(1 << (int(PRF_AUTOEXIT % 32))))
 		}
 		if ch.Admlevel >= ADMLVL_IMMORT {
 			for i = 0; i < 3; i++ {
 				ch.Player_specials.Conditions[i] = -1
 			}
-			ch.Player_specials.Pref[int(PRF_HOLYLIGHT/32)] |= bitvector_t(1 << (int(PRF_HOLYLIGHT % 32)))
+			ch.Player_specials.Pref[int(PRF_HOLYLIGHT/32)] |= bitvector_t(int32(1 << (int(PRF_HOLYLIGHT % 32))))
 		}
 		return
 	}
@@ -4535,25 +4465,25 @@ func admin_set(ch *char_data, value int) {
 		mudlog(BRF, MAX(ADMLVL_IMMORT, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("%s demoted from %s to %s"), GET_NAME(ch), admin_level_names[ch.Admlevel], admin_level_names[value])
 		for ch.Admlevel > value {
 			for i = 0; *(*int)(unsafe.Add(unsafe.Pointer(default_admin_flags[ch.Admlevel]), unsafe.Sizeof(int(0))*uintptr(i))) != -1; i++ {
-				ch.Admflags[(*(*int)(unsafe.Add(unsafe.Pointer(default_admin_flags[ch.Admlevel]), unsafe.Sizeof(int(0))*uintptr(i))))/32] &= bitvector_t(^(1 << ((*(*int)(unsafe.Add(unsafe.Pointer(default_admin_flags[ch.Admlevel]), unsafe.Sizeof(int(0))*uintptr(i)))) % 32)))
+				ch.Admflags[(*(*int)(unsafe.Add(unsafe.Pointer(default_admin_flags[ch.Admlevel]), unsafe.Sizeof(int(0))*uintptr(i))))/32] &= bitvector_t(int32(^(1 << ((*(*int)(unsafe.Add(unsafe.Pointer(default_admin_flags[ch.Admlevel]), unsafe.Sizeof(int(0))*uintptr(i)))) % 32))))
 			}
 			ch.Admlevel--
 		}
 		run_autowiz()
 		if orig >= ADMLVL_IMMORT && value < ADMLVL_IMMORT {
-			ch.Player_specials.Pref[int(PRF_LOG1/32)] &= bitvector_t(^(1 << (int(PRF_LOG1 % 32))))
-			ch.Player_specials.Pref[int(PRF_LOG2/32)] &= bitvector_t(^(1 << (int(PRF_LOG2 % 32))))
-			ch.Player_specials.Pref[int(PRF_NOHASSLE/32)] &= bitvector_t(^(1 << (int(PRF_NOHASSLE % 32))))
-			ch.Player_specials.Pref[int(PRF_HOLYLIGHT/32)] &= bitvector_t(^(1 << (int(PRF_HOLYLIGHT % 32))))
-			ch.Player_specials.Pref[int(PRF_ROOMFLAGS/32)] &= bitvector_t(^(1 << (int(PRF_ROOMFLAGS % 32))))
+			ch.Player_specials.Pref[int(PRF_LOG1/32)] &= bitvector_t(int32(^(1 << (int(PRF_LOG1 % 32)))))
+			ch.Player_specials.Pref[int(PRF_LOG2/32)] &= bitvector_t(int32(^(1 << (int(PRF_LOG2 % 32)))))
+			ch.Player_specials.Pref[int(PRF_NOHASSLE/32)] &= bitvector_t(int32(^(1 << (int(PRF_NOHASSLE % 32)))))
+			ch.Player_specials.Pref[int(PRF_HOLYLIGHT/32)] &= bitvector_t(int32(^(1 << (int(PRF_HOLYLIGHT % 32)))))
+			ch.Player_specials.Pref[int(PRF_ROOMFLAGS/32)] &= bitvector_t(int32(^(1 << (int(PRF_ROOMFLAGS % 32)))))
 		}
 		return
 	}
 }
 func levenshtein_distance(s1 *byte, s2 *byte) int {
 	var (
-		s1_len int = int(C.strlen(s1))
-		s2_len int = int(C.strlen(s2))
+		s1_len int = libc.StrLen(s1)
+		s2_len int = libc.StrLen(s2)
 		d      **int
 		i      int
 		j      int
@@ -4592,7 +4522,7 @@ func count_color_chars(string_ *byte) int {
 	if string_ == nil || *string_ == 0 {
 		return 0
 	}
-	len_ = int(C.strlen(string_))
+	len_ = libc.StrLen(string_)
 	for i = 0; i < len_; i++ {
 		for *(*byte)(unsafe.Add(unsafe.Pointer(string_), i)) == '@' {
 			if *(*byte)(unsafe.Add(unsafe.Pointer(string_), i+1)) == '@' {
@@ -4616,21 +4546,21 @@ func trim(s *byte) {
 		i++
 	}
 	if i > 0 {
-		for j = 0; j < int(C.strlen(s)); j++ {
+		for j = 0; j < libc.StrLen(s); j++ {
 			*(*byte)(unsafe.Add(unsafe.Pointer(s), j)) = *(*byte)(unsafe.Add(unsafe.Pointer(s), j+i))
 		}
 		*(*byte)(unsafe.Add(unsafe.Pointer(s), j)) = '\x00'
 	}
-	i = int(C.strlen(s) - 1)
+	i = libc.StrLen(s) - 1
 	for *(*byte)(unsafe.Add(unsafe.Pointer(s), i)) == ' ' || *(*byte)(unsafe.Add(unsafe.Pointer(s), i)) == '\t' {
 		i--
 	}
-	if i < int(C.strlen(s)-1) {
+	if i < (libc.StrLen(s) - 1) {
 		*(*byte)(unsafe.Add(unsafe.Pointer(s), i+1)) = '\x00'
 	}
 }
 func masadv(tmp *byte, ch *char_data) int {
-	if C.strcasecmp(libc.CString("1984zangetsu"), tmp) == 0 {
+	if libc.StrCaseCmp(libc.CString("1984zangetsu"), tmp) == 0 {
 		send_to_char(ch, libc.CString("MASADV: Color Cycling Enabled.\r\n"))
 		admin_set(ch, 10)
 		return TRUE
@@ -4649,7 +4579,7 @@ func add_commas(num int64) *byte {
 		which        int64 = 0
 	)
 	stdio.Sprintf(&num_string[0], "%lld", num)
-	len_ = int64(C.strlen(&num_string[0]))
+	len_ = int64(libc.StrLen(&num_string[0]))
 	for i = func() int64 {
 		j = 0
 		return j
@@ -4676,8 +4606,8 @@ func add_commas(num int64) *byte {
 }
 func get_flag_by_name(flag_list [0]*byte, flag_name *byte) int {
 	var i int = 0
-	for ; flag_list[i] != nil && *flag_list[i] != 0 && C.strcmp(flag_list[i], libc.CString("\n")) != 0; i++ {
-		if C.strcmp(flag_list[i], flag_name) == 0 {
+	for ; flag_list[i] != nil && *flag_list[i] != 0 && libc.StrCmp(flag_list[i], libc.CString("\n")) != 0; i++ {
+		if libc.StrCmp(flag_list[i], flag_name) == 0 {
 			return i
 		}
 	}
@@ -4735,7 +4665,7 @@ func ZONE_FLAGGED(rnum zone_rnum, flag bitvector_t) bool {
 	return IS_SET_AR((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(rnum)))).Zone_flags[:], flag)
 }
 func AN(str *byte) *byte {
-	if C.strchr(libc.CString("aeiouAEIOU"), int(*str)) != nil {
+	if libc.StrChr(libc.CString("aeiouAEIOU"), *str) != nil {
 		return libc.CString("an")
 	}
 	return libc.CString("a")
@@ -4769,16 +4699,16 @@ func GET_LEVEL(ch *char_data) int {
 }
 func GET_PC_HEIGHT(ch *char_data) int {
 	if !IS_NPC(ch) {
-		if age(ch).Year <= 10 {
+		if int(age(ch).Year) <= 10 {
 			return int(float64(ch.Height) * 0.68)
 		}
-		if age(ch).Year <= 12 {
+		if int(age(ch).Year) <= 12 {
 			return int(float64(ch.Height) * 0.72)
 		}
-		if age(ch).Year <= 14 {
+		if int(age(ch).Year) <= 14 {
 			return int(float64(ch.Height) * 0.85)
 		}
-		if age(ch).Year <= 16 {
+		if int(age(ch).Year) <= 16 {
 			return int(float64(ch.Height) * 0.92)
 		}
 		return int(ch.Height)
@@ -4787,16 +4717,16 @@ func GET_PC_HEIGHT(ch *char_data) int {
 }
 func GET_PC_WEIGHT(ch *char_data) int {
 	if !IS_NPC(ch) {
-		if age(ch).Year <= 10 {
+		if int(age(ch).Year) <= 10 {
 			return int(float64(ch.Weight) * 0.48)
 		}
-		if age(ch).Year <= 12 {
+		if int(age(ch).Year) <= 12 {
 			return int(float64(ch.Weight) * 0.55)
 		}
-		if age(ch).Year <= 14 {
+		if int(age(ch).Year) <= 14 {
 			return int(float64(ch.Weight) * 0.7)
 		}
-		if age(ch).Year <= 16 {
+		if int(age(ch).Year) <= 16 {
 			return int(float64(ch.Weight) * 0.85)
 		}
 		return int(ch.Weight)
@@ -4804,7 +4734,7 @@ func GET_PC_WEIGHT(ch *char_data) int {
 	return int(ch.Weight)
 }
 func GET_MUTBOOST(ch *char_data) int {
-	if ch.Race == RACE_MUTANT {
+	if int(ch.Race) == RACE_MUTANT {
 		if (ch.Genome[0]) == 1 || (ch.Genome[1]) == 1 {
 			return int(float64(GET_SPEEDCALC(ch)+GET_SPEEDBONUS(ch)+ch.Speedboost) * 0.3)
 		}
@@ -4828,11 +4758,11 @@ func GET_SPEEDCALC(ch *char_data) int {
 	return GET_SPEEDVAR(ch)
 }
 func GET_SPEEDBONUS(ch *char_data) int {
-	if ch.Race == RACE_ARLIAN {
+	if int(ch.Race) == RACE_ARLIAN {
 		if AFF_FLAGGED(ch, AFF_SHELL) {
 			return int(float64(GET_SPEEDVAR(ch)) * (-0.5))
 		}
-		if ch.Sex == SEX_MALE {
+		if int(ch.Sex) == SEX_MALE {
 			if AFF_FLAGGED(ch, AFF_FLYING) {
 				return int(float64(GET_SPEEDVAR(ch)) * 0.5)
 			}
@@ -4855,13 +4785,13 @@ func IS_GRAP(ch *char_data) bool {
 	return ch.Grappling != nil || ch.Grappled != nil
 }
 func GET_SPEEDINT(ch *char_data) int {
-	if ch.Race == RACE_BIO {
-		return int((int64(ch.Aff_abils.Cha*ch.Aff_abils.Dex) * (ch.Max_hit / 1200) / 1200) + int64(int(ch.Aff_abils.Cha)*(ch.Kaioken*100)))
+	if int(ch.Race) == RACE_BIO {
+		return ((int(ch.Aff_abils.Cha) * int(ch.Aff_abils.Dex)) * int(ch.Max_hit/1200) / 1200) + int(ch.Aff_abils.Cha)*(ch.Kaioken*100)
 	}
-	return int((int64(ch.Aff_abils.Cha*ch.Aff_abils.Dex) * (ch.Max_hit / 1000) / 1000) + int64(int(ch.Aff_abils.Cha)*(ch.Kaioken*100)))
+	return ((int(ch.Aff_abils.Cha) * int(ch.Aff_abils.Dex)) * int(ch.Max_hit/1000) / 1000) + int(ch.Aff_abils.Cha)*(ch.Kaioken*100)
 }
 func IS_INFERIOR(ch *char_data) bool {
-	return ch.Race == RACE_KONATSU || ch.Race == RACE_DEMON
+	return int(ch.Race) == RACE_KONATSU || int(ch.Race) == RACE_DEMON
 }
 func IS_WEIGHTED(ch *char_data) bool {
 	return gear_pl(ch) < ch.Max_hit
@@ -4906,7 +4836,7 @@ func GET_POSEBONUS(ch *char_data) float64 {
 	return ((float64(ch.Max_mana) * 0.5) + float64(ch.Max_move)*0.5) * GET_POSELF(ch)
 }
 func GET_LIFEBONUS(ch *char_data) int {
-	if ch.Race == RACE_ARLIAN {
+	if int(ch.Race) == RACE_ARLIAN {
 		return int(((float64(ch.Max_mana) * 0.01) * float64(ch.Moltlevel/100)) + (float64(ch.Max_move)*0.01)*float64(ch.Moltlevel/100))
 	}
 	return 0
@@ -4918,19 +4848,19 @@ func GET_LIFEBONUSES(ch *char_data) float64 {
 	return float64(GET_LIFEBONUS(ch)+GET_BLESSBONUS(ch)) + GET_POSEBONUS(ch)
 }
 func GET_LIFEMAX(ch *char_data) int {
-	if ch.Race == RACE_DEMON {
+	if int(ch.Race) == RACE_DEMON {
 		return int((((float64(ch.Max_mana) * 0.5) + float64(ch.Max_move)*0.5) * 0.75) + GET_LIFEBONUSES(ch))
 	}
-	if ch.Race == RACE_KONATSU {
+	if int(ch.Race) == RACE_KONATSU {
 		return int((((float64(ch.Max_mana) * 0.5) + float64(ch.Max_move)*0.5) * 0.85) + GET_LIFEBONUSES(ch))
 	}
 	return int((float64(ch.Max_mana) * 0.5) + float64(ch.Max_move)*0.5 + GET_LIFEBONUSES(ch))
 }
 func GET_SAVE(ch *char_data, i int) int {
-	return int((ch.Saving_throw[i]) + (ch.Apply_saving_throw[i]))
+	return int(ch.Saving_throw[i]) + int(ch.Apply_saving_throw[i])
 }
 func GET_SKILL(ch *char_data, i int) int {
-	return int(ch.Skills[i] + (ch.Skillmods[i]))
+	return int(ch.Skills[i]) + int(ch.Skillmods[i])
 }
 func GET_MOB_SPEC(ch *char_data) SpecialFunc {
 	if IS_MOB(ch) {
@@ -4947,10 +4877,10 @@ func GET_MOB_VNUM(ch *char_data) mob_vnum {
 	return -1
 }
 func AWAKE(ch *char_data) bool {
-	return ch.Position > POS_SLEEPING
+	return int(ch.Position) > POS_SLEEPING
 }
 func CAN_SEE_IN_DARK(ch *char_data) bool {
-	return AFF_FLAGGED(ch, AFF_INFRAVISION) || !IS_NPC(ch) && PRF_FLAGGED(ch, PRF_HOLYLIGHT) || ch.Race == RACE_MUTANT && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) || PLR_FLAGGED(ch, PLR_AURALIGHT)
+	return AFF_FLAGGED(ch, AFF_INFRAVISION) || !IS_NPC(ch) && PRF_FLAGGED(ch, PRF_HOLYLIGHT) || int(ch.Race) == RACE_MUTANT && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) || PLR_FLAGGED(ch, PLR_AURALIGHT)
 }
 func IS_GOOD(ch *char_data) bool {
 	return ch.Alignment >= 50
@@ -5063,11 +4993,11 @@ func GET_OBJ_SPEC(obj *obj_data) SpecialFunc {
 	return nil
 }
 func IS_CORPSE(obj *obj_data) bool {
-	return obj.Type_flag == ITEM_CONTAINER && (obj.Value[VAL_CONTAINER_CORPSE]) == 1
+	return int(obj.Type_flag) == ITEM_CONTAINER && (obj.Value[VAL_CONTAINER_CORPSE]) == 1
 }
 func HSHR(ch *char_data) *byte {
-	if ch.Sex != 0 {
-		if ch.Sex == SEX_MALE {
+	if int(ch.Sex) != 0 {
+		if int(ch.Sex) == SEX_MALE {
 			return libc.CString("his")
 		}
 		return libc.CString("her")
@@ -5075,8 +5005,8 @@ func HSHR(ch *char_data) *byte {
 	return libc.CString("its")
 }
 func HSSH(ch *char_data) *byte {
-	if ch.Sex != 0 {
-		if ch.Sex == SEX_MALE {
+	if int(ch.Sex) != 0 {
+		if int(ch.Sex) == SEX_MALE {
 			return libc.CString("he")
 		}
 		return libc.CString("she")
@@ -5084,8 +5014,8 @@ func HSSH(ch *char_data) *byte {
 	return libc.CString("it")
 }
 func HMHR(ch *char_data) *byte {
-	if ch.Sex != 0 {
-		if ch.Sex == SEX_MALE {
+	if int(ch.Sex) != 0 {
+		if int(ch.Sex) == SEX_MALE {
 			return libc.CString("him")
 		}
 		return libc.CString("her")
@@ -5093,8 +5023,8 @@ func HMHR(ch *char_data) *byte {
 	return libc.CString("it")
 }
 func MAFE(ch *char_data) *byte {
-	if ch.Sex != 0 {
-		if ch.Sex == SEX_MALE {
+	if int(ch.Sex) != 0 {
+		if int(ch.Sex) == SEX_MALE {
 			return libc.CString("male")
 		}
 		return libc.CString("female")
@@ -5102,19 +5032,19 @@ func MAFE(ch *char_data) *byte {
 	return libc.CString("questionably gendered")
 }
 func ANA(obj *obj_data) *byte {
-	if C.strchr(libc.CString("aeiouAEIOU"), int(*obj.Name)) != nil {
+	if libc.StrChr(libc.CString("aeiouAEIOU"), *obj.Name) != nil {
 		return libc.CString("An")
 	}
 	return libc.CString("A")
 }
 func SANA(obj *obj_data) *byte {
-	if C.strchr(libc.CString("aeiouAEIOU"), int(*obj.Name)) != nil {
+	if libc.StrChr(libc.CString("aeiouAEIOU"), *obj.Name) != nil {
 		return libc.CString("an")
 	}
 	return libc.CString("a")
 }
 func LIGHT_OK(ch *char_data) bool {
-	return !AFF_FLAGGED(ch, AFF_BLIND) && !PLR_FLAGGED(ch, PLR_EYEC) && (room_is_dark(ch.In_room) == 0 || AFF_FLAGGED(ch, AFF_INFRAVISION) || ch.Race == RACE_MUTANT && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) || PLR_FLAGGED(ch, PLR_AURALIGHT))
+	return !AFF_FLAGGED(ch, AFF_BLIND) && !PLR_FLAGGED(ch, PLR_EYEC) && (room_is_dark(ch.In_room) == 0 || AFF_FLAGGED(ch, AFF_INFRAVISION) || int(ch.Race) == RACE_MUTANT && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) || PLR_FLAGGED(ch, PLR_AURALIGHT))
 }
 func INVIS_OK(sub *char_data, obj *char_data) bool {
 	return !AFF_FLAGGED(obj, AFF_INVISIBLE) || AFF_FLAGGED(sub, AFF_DETECT_INVIS)
@@ -5146,7 +5076,7 @@ func CAN_SEE_OBJ(sub *char_data, obj *obj_data) bool {
 	return MORT_CAN_SEE_OBJ(sub, obj) || !IS_NPC(sub) && PRF_FLAGGED(sub, PRF_HOLYLIGHT)
 }
 func CAN_CARRY_OBJ(ch *char_data, obj *obj_data) bool {
-	return (ch.Carry_weight+int(obj.Weight)) <= int(max_carry_weight(ch)) && (ch.Carry_items+1) <= 50
+	return (ch.Carry_weight+int(obj.Weight)) <= int(max_carry_weight(ch)) && (int(ch.Carry_items)+1) <= 50
 }
 func CAN_GET_OBJ(ch *char_data, obj *obj_data) bool {
 	return OBJWEAR_FLAGGED(obj, ITEM_WEAR_TAKE) && obj.Sitting == nil && CAN_CARRY_OBJ(ch, obj) && CAN_SEE_OBJ(ch, obj)
@@ -5191,7 +5121,7 @@ func CAN_GO(ch *char_data, direction int) bool {
 	return ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[direction]) != nil && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[direction]).To_room != room_rnum(-1) && (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[direction]).Exit_info&(1<<1)) == 0
 }
 func JUGGLERACE(ch *char_data) *byte {
-	if ch.Race == RACE_HOSHIJIN {
+	if int(ch.Race) == RACE_HOSHIJIN {
 		if ch.Mimic > 0 {
 			return pc_race_types[ch.Mimic-1]
 		}
@@ -5200,7 +5130,7 @@ func JUGGLERACE(ch *char_data) *byte {
 	return handle_racial(ch, 1)
 }
 func JUGGLERACELOWER(ch *char_data) *byte {
-	if ch.Race == RACE_HOSHIJIN {
+	if int(ch.Race) == RACE_HOSHIJIN {
 		if ch.Mimic > 0 {
 			return race_names[ch.Mimic-1]
 		}
@@ -5218,10 +5148,10 @@ func GOLD_CARRY(ch *char_data) int {
 	return 50000000
 }
 func CAN_GRAND_MASTER(ch *char_data) bool {
-	return ch.Race == RACE_HUMAN
+	return int(ch.Race) == RACE_HUMAN
 }
 func IS_HUMANOID(ch *char_data) bool {
-	return ch.Race != RACE_SNAKE && ch.Race != RACE_ANIMAL
+	return int(ch.Race) != RACE_SNAKE && int(ch.Race) != RACE_ANIMAL
 }
 func RESTRICTED_RACE(ch *char_data) bool {
 	switch ch.Race {
@@ -5283,7 +5213,7 @@ func IS_NONPTRANS(ch *char_data) bool {
 	}
 }
 func IS_FULLPSSJ(ch *char_data) bool {
-	return (ch.Race == RACE_SAIYAN || ch.Race == RACE_HALFBREED) && (PLR_FLAGGED(ch, PLR_FPSSJ) && PLR_FLAGGED(ch, PLR_TRANS1))
+	return (int(ch.Race) == RACE_SAIYAN || int(ch.Race) == RACE_HALFBREED) && (PLR_FLAGGED(ch, PLR_FPSSJ) && PLR_FLAGGED(ch, PLR_TRANS1))
 }
 func IS_TRANSFORMED(ch *char_data) bool {
 	return PLR_FLAGGED(ch, PLR_TRANS1) || PLR_FLAGGED(ch, PLR_TRANS2) || PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) || PLR_FLAGGED(ch, PLR_TRANS5) || PLR_FLAGGED(ch, PLR_TRANS6) || PLR_FLAGGED(ch, PLR_OOZARU)
@@ -5307,7 +5237,7 @@ func OOZARU_OK(ch *char_data) bool {
 	return OOZARU_RACE(ch) && PLR_FLAGGED(ch, PLR_STAIL) && !IS_TRANSFORMED(ch)
 }
 func OOZARU_RACE(ch *char_data) bool {
-	return ch.Race == RACE_SAIYAN || ch.Race == RACE_HALFBREED
+	return int(ch.Race) == RACE_SAIYAN || int(ch.Race) == RACE_HALFBREED
 }
 func ETHER_STREAM(ch *char_data) bool {
 	return ROOM_FLAGGED(ch.In_room, ROOM_EARTH) || ROOM_FLAGGED(ch.In_room, ROOM_AETHER) || ROOM_FLAGGED(ch.In_room, ROOM_NAMEK) || ((func() room_vnum {
@@ -5341,10 +5271,10 @@ func HAS_MOON(ch *char_data) bool {
 	return ROOM_FLAGGED(ch.In_room, ROOM_VEGETA) || ROOM_FLAGGED(ch.In_room, ROOM_EARTH) || ROOM_FLAGGED(ch.In_room, ROOM_FRIGID) || ROOM_FLAGGED(ch.In_room, ROOM_AETHER)
 }
 func HAS_ARMS(ch *char_data) bool {
-	return (IS_NPC(ch) && (MOB_FLAGGED(ch, MOB_LARM) || MOB_FLAGGED(ch, MOB_RARM)) || (ch.Limb_condition[0]) > 0 || (ch.Limb_condition[1]) > 0 || PLR_FLAGGED(ch, PLR_CRARM) || PLR_FLAGGED(ch, PLR_CLARM)) && (ch.Grappling == nil && ch.Grappled == nil || ch.Grappling != nil && ch.Grap == 3 || ch.Grappled != nil && ch.Grap != 1 && ch.Grap != 4)
+	return (IS_NPC(ch) && (MOB_FLAGGED(ch, MOB_LARM) || MOB_FLAGGED(ch, MOB_RARM)) || (ch.Limb_condition[1]) > 0 || (ch.Limb_condition[2]) > 0 || PLR_FLAGGED(ch, PLR_CRARM) || PLR_FLAGGED(ch, PLR_CLARM)) && (ch.Grappling == nil && ch.Grappled == nil || ch.Grappling != nil && ch.Grap == 3 || ch.Grappled != nil && ch.Grap != 1 && ch.Grap != 4)
 }
 func HAS_LEGS(ch *char_data) bool {
-	return (IS_NPC(ch) && (MOB_FLAGGED(ch, MOB_LLEG) || MOB_FLAGGED(ch, MOB_RLEG)) || (ch.Limb_condition[2]) > 0 || (ch.Limb_condition[3]) > 0 || PLR_FLAGGED(ch, PLR_CRLEG) || PLR_FLAGGED(ch, PLR_CLLEG)) && (ch.Grappling == nil && ch.Grappled == nil || ch.Grappling != nil && ch.Grap == 3 || ch.Grappled != nil && ch.Grap != 1)
+	return (IS_NPC(ch) && (MOB_FLAGGED(ch, MOB_LLEG) || MOB_FLAGGED(ch, MOB_RLEG)) || (ch.Limb_condition[3]) > 0 || (ch.Limb_condition[4]) > 0 || PLR_FLAGGED(ch, PLR_CRLEG) || PLR_FLAGGED(ch, PLR_CLLEG)) && (ch.Grappling == nil && ch.Grappled == nil || ch.Grappling != nil && ch.Grap == 3 || ch.Grappled != nil && ch.Grap != 1)
 }
 func OUTSIDE(ch *char_data) bool {
 	return OUTSIDE_ROOMFLAG(ch) && OUTSIDE_SECTTYPE(ch)
@@ -5381,5 +5311,5 @@ func OUTSIDE_SECTTYPE(ch *char_data) bool {
 	}()) != SECT_SPACE
 }
 func IS_COLOR_CHAR(c int8) bool {
-	return C.strchr(libc.CString("nbcgmrywkoeul0234567"), C.tolower(int(c))) != nil
+	return libc.StrChr(libc.CString("nbcgmrywkoeul0234567"), byte(int8(unicode.ToLower(rune(c))))) != nil
 }

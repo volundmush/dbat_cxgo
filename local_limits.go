@@ -63,7 +63,7 @@ func barrier_shed(ch *char_data) {
 	}
 }
 func healthy_check(ch *char_data) {
-	if (ch.Bonuses[BONUS_HEALTHY]) == 0 || ch.Position != POS_SLEEPING {
+	if (ch.Bonuses[BONUS_HEALTHY]) == 0 || int(ch.Position) != POS_SLEEPING {
 		return
 	}
 	var chance int = 70
@@ -165,38 +165,38 @@ func mana_gain(ch *char_data) int64 {
 		gain = ch.Max_mana / 70
 	} else {
 		if ROOM_FLAGGED(ch.In_room, ROOM_REGEN) || (ch.Bonuses[BONUS_DESTROYER]) > 0 && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dmg >= 75 {
-			if ch.Race == RACE_KONATSU {
+			if int(ch.Race) == RACE_KONATSU {
 				gain = ch.Max_mana / 12
 			}
-			if ch.Race == RACE_MUTANT {
+			if int(ch.Race) == RACE_MUTANT {
 				gain = ch.Max_mana / 11
 			}
-			if ch.Race == RACE_ARLIAN {
+			if int(ch.Race) == RACE_ARLIAN {
 				gain = ch.Max_mana / 30
 			}
-			if ch.Race != RACE_KONATSU && ch.Race != RACE_MUTANT {
+			if int(ch.Race) != RACE_KONATSU && int(ch.Race) != RACE_MUTANT {
 				gain = ch.Max_mana / 10
 			}
 		} else if !ROOM_FLAGGED(ch.In_room, ROOM_REGEN) {
-			if ch.Race == RACE_KONATSU {
+			if int(ch.Race) == RACE_KONATSU {
 				gain = ch.Max_mana / 15
 			}
-			if ch.Race == RACE_MUTANT {
+			if int(ch.Race) == RACE_MUTANT {
 				gain = ch.Max_mana / 13
 			}
-			if ch.Race != RACE_KONATSU && ch.Race != RACE_MUTANT {
+			if int(ch.Race) != RACE_KONATSU && int(ch.Race) != RACE_MUTANT {
 				gain = ch.Max_mana / 12
 			}
 			if ROOM_FLAGGED(ch.In_room, ROOM_BEDROOM) {
 				gain += int64(float64(gain) * 0.25)
 			}
-			if ch.Race == RACE_ARLIAN {
+			if int(ch.Race) == RACE_ARLIAN {
 				gain = ch.Max_mana / 40
 			}
 		}
 		switch ch.Position {
 		case POS_STANDING:
-			if ch.Race != RACE_HOSHIJIN || ch.Race == RACE_HOSHIJIN && ch.Starphase <= 0 {
+			if int(ch.Race) != RACE_HOSHIJIN || int(ch.Race) == RACE_HOSHIJIN && ch.Starphase <= 0 {
 				gain = gain / 4
 			} else {
 				gain += gain / 2
@@ -212,19 +212,19 @@ func mana_gain(ch *char_data) int64 {
 			} else if GET_OBJ_VNUM(ch.Sits) == 0x4A94 {
 				gain *= 3
 				gain += int64(float64(gain) * 0.3)
-			} else if ch.Sits != nil || ch.Race == RACE_ARLIAN {
+			} else if ch.Sits != nil || int(ch.Race) == RACE_ARLIAN {
 				gain *= 3
 			}
 		case POS_RESTING:
 			if ch.Sits == nil {
 				gain += gain / 2
-			} else if GET_OBJ_VNUM(ch.Sits) == 19090 && ch.Race != RACE_ARLIAN {
+			} else if GET_OBJ_VNUM(ch.Sits) == 19090 && int(ch.Race) != RACE_ARLIAN {
 				gain *= 2
 				gain += int64(float64(gain) * 0.1)
-			} else if GET_OBJ_VNUM(ch.Sits) == 0x4A94 && ch.Race != RACE_ARLIAN {
+			} else if GET_OBJ_VNUM(ch.Sits) == 0x4A94 && int(ch.Race) != RACE_ARLIAN {
 				gain *= 2
 				gain += int64(float64(gain) * 0.3)
-			} else if ch.Sits != nil || ch.Race == RACE_ARLIAN {
+			} else if ch.Sits != nil || int(ch.Race) == RACE_ARLIAN {
 				gain *= 2
 			}
 		case POS_SITTING:
@@ -234,7 +234,7 @@ func mana_gain(ch *char_data) int64 {
 				gain += int64(float64(gain) * 0.6)
 			} else if GET_OBJ_VNUM(ch.Sits) == 0x4A94 {
 				gain += int64(float64(gain) * 0.8)
-			} else if ch.Sits != nil || ch.Race == RACE_ARLIAN {
+			} else if ch.Sits != nil || int(ch.Race) == RACE_ARLIAN {
 				gain += int64(float64(gain) * 0.5)
 			}
 		}
@@ -244,13 +244,13 @@ func mana_gain(ch *char_data) int64 {
 			gain += int64(float64(gain) * 0.2)
 		}
 	}
-	if ch.Race == RACE_ARLIAN && ch.Sex == SEX_FEMALE && OUTSIDE(ch) {
+	if int(ch.Race) == RACE_ARLIAN && int(ch.Sex) == SEX_FEMALE && OUTSIDE(ch) {
 		gain *= 4
 	}
-	if ch.Race == RACE_KANASSAN && weather_info.Sky == SKY_RAINING && OUTSIDE(ch) {
+	if int(ch.Race) == RACE_KANASSAN && weather_info.Sky == SKY_RAINING && OUTSIDE(ch) {
 		gain += int64(float64(gain) * 0.1)
 	}
-	if ch.Race == RACE_KANASSAN && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Geffect < 0 || (func() int {
+	if int(ch.Race) == RACE_KANASSAN && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Geffect < 0 || (func() int {
 		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
 			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
 		}
@@ -258,14 +258,14 @@ func mana_gain(ch *char_data) int64 {
 	}()) == SECT_UNDERWATER) {
 		gain *= 16
 	}
-	if ch.Race == RACE_HOSHIJIN && ch.Starphase > 0 {
+	if int(ch.Race) == RACE_HOSHIJIN && ch.Starphase > 0 {
 		gain *= 2
 	}
 	if PLR_FLAGGED(ch, PLR_HEALT) && ch.Sits != nil {
 		gain *= 20
 	}
 	if PLR_FLAGGED(ch, PLR_POSE) && axion_dice(0) > GET_SKILL(ch, SKILL_POSE) {
-		ch.Act[int(PLR_POSE/32)] &= bitvector_t(^(1 << (int(PLR_POSE % 32))))
+		ch.Act[int(PLR_POSE/32)] &= bitvector_t(int32(^(1 << (int(PLR_POSE % 32)))))
 		send_to_char(ch, libc.CString("You feel slightly less confident now.\r\n"))
 		ch.Real_abils.Str -= 8
 		ch.Real_abils.Dex -= 8
@@ -314,35 +314,35 @@ func hit_gain(ch *char_data) int64 {
 		gain = ch.Max_hit / 70
 	} else {
 		if ROOM_FLAGGED(ch.In_room, ROOM_REGEN) || (ch.Bonuses[BONUS_DESTROYER]) > 0 && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dmg >= 75 {
-			if ch.Race == RACE_HUMAN {
+			if int(ch.Race) == RACE_HUMAN {
 				gain = ch.Max_hit / 20
 			}
-			if ch.Race == RACE_ARLIAN {
+			if int(ch.Race) == RACE_ARLIAN {
 				gain = ch.Max_hit / 30
 			}
-			if ch.Race == RACE_NAMEK {
+			if int(ch.Race) == RACE_NAMEK {
 				gain = ch.Max_hit / 2
 			}
-			if ch.Race == RACE_MUTANT {
+			if int(ch.Race) == RACE_MUTANT {
 				gain = ch.Max_hit / 11
 			}
-			if ch.Race != RACE_HUMAN && ch.Race != RACE_NAMEK && ch.Race != RACE_MUTANT {
+			if int(ch.Race) != RACE_HUMAN && int(ch.Race) != RACE_NAMEK && int(ch.Race) != RACE_MUTANT {
 				gain = ch.Max_hit / 10
 			}
 		} else if !ROOM_FLAGGED(ch.In_room, ROOM_REGEN) {
-			if ch.Race == RACE_HUMAN {
+			if int(ch.Race) == RACE_HUMAN {
 				gain = ch.Max_hit / 30
 			}
-			if ch.Race == RACE_NAMEK {
+			if int(ch.Race) == RACE_NAMEK {
 				gain = ch.Max_hit / 4
 			}
-			if ch.Race == RACE_MUTANT {
+			if int(ch.Race) == RACE_MUTANT {
 				gain = ch.Max_hit / 16
 			}
-			if ch.Race == RACE_ARLIAN {
+			if int(ch.Race) == RACE_ARLIAN {
 				gain = ch.Max_hit / 40
 			}
-			if ch.Race != RACE_HUMAN && ch.Race != RACE_NAMEK && ch.Race != RACE_MUTANT {
+			if int(ch.Race) != RACE_HUMAN && int(ch.Race) != RACE_NAMEK && int(ch.Race) != RACE_MUTANT {
 				gain = ch.Max_hit / 15
 			}
 			if ROOM_FLAGGED(ch.In_room, ROOM_BEDROOM) {
@@ -351,9 +351,9 @@ func hit_gain(ch *char_data) int64 {
 		}
 		switch ch.Position {
 		case POS_STANDING:
-			if ch.Race != RACE_HOSHIJIN || ch.Race == RACE_HOSHIJIN && ch.Starphase <= 0 {
+			if int(ch.Race) != RACE_HOSHIJIN || int(ch.Race) == RACE_HOSHIJIN && ch.Starphase <= 0 {
 				gain = gain / 4
-			} else if ch.Race == RACE_ANDROID && PLR_FLAGGED(ch, PLR_ABSORB) {
+			} else if int(ch.Race) == RACE_ANDROID && PLR_FLAGGED(ch, PLR_ABSORB) {
 				gain = gain / 3
 			} else {
 				gain += gain / 2
@@ -361,7 +361,7 @@ func hit_gain(ch *char_data) int64 {
 		case POS_FIGHTING:
 			gain = gain / 4
 		case POS_SLEEPING:
-			if ch.Race == RACE_ARLIAN {
+			if int(ch.Race) == RACE_ARLIAN {
 				gain *= 3
 			} else if ch.Sits == nil {
 				gain *= 2
@@ -374,33 +374,33 @@ func hit_gain(ch *char_data) int64 {
 		case POS_RESTING:
 			if ch.Sits == nil {
 				gain += gain / 2
-			} else if ch.Race == RACE_ANDROID && PLR_FLAGGED(ch, PLR_ABSORB) {
+			} else if int(ch.Race) == RACE_ANDROID && PLR_FLAGGED(ch, PLR_ABSORB) {
 				gain = int64(float64(gain) * 1.5)
-			} else if GET_OBJ_VNUM(ch.Sits) == 19090 && ch.Race != RACE_ARLIAN {
+			} else if GET_OBJ_VNUM(ch.Sits) == 19090 && int(ch.Race) != RACE_ARLIAN {
 				gain += int64(float64(gain) * 1.1)
-			} else if ch.Sits != nil || ch.Race == RACE_ARLIAN {
+			} else if ch.Sits != nil || int(ch.Race) == RACE_ARLIAN {
 				gain *= 2
 			}
 		case POS_SITTING:
 			if ch.Sits == nil {
 				gain += gain / 4
-			} else if ch.Race == RACE_ANDROID && PLR_FLAGGED(ch, PLR_ABSORB) {
+			} else if int(ch.Race) == RACE_ANDROID && PLR_FLAGGED(ch, PLR_ABSORB) {
 				gain = int64(float64(gain) * 0.5)
-			} else if GET_OBJ_VNUM(ch.Sits) == 19090 && ch.Race != RACE_ARLIAN {
+			} else if GET_OBJ_VNUM(ch.Sits) == 19090 && int(ch.Race) != RACE_ARLIAN {
 				gain += int64(float64(gain) * 0.6)
-			} else if ch.Sits != nil || ch.Race == RACE_ARLIAN {
+			} else if ch.Sits != nil || int(ch.Race) == RACE_ARLIAN {
 				gain += int64(float64(gain) * 0.5)
 			}
 		}
 	}
 	healthy_check(ch)
-	if ch.Race == RACE_ARLIAN && ch.Sex == SEX_FEMALE && OUTSIDE(ch) {
+	if int(ch.Race) == RACE_ARLIAN && int(ch.Sex) == SEX_FEMALE && OUTSIDE(ch) {
 		gain *= 4
 	}
-	if ch.Race == RACE_KANASSAN && weather_info.Sky == SKY_RAINING && OUTSIDE(ch) {
+	if int(ch.Race) == RACE_KANASSAN && weather_info.Sky == SKY_RAINING && OUTSIDE(ch) {
 		gain += int64(float64(gain) * 0.1)
 	}
-	if ch.Race == RACE_KANASSAN && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Geffect < 0 || (func() int {
+	if int(ch.Race) == RACE_KANASSAN && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Geffect < 0 || (func() int {
 		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
 			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
 		}
@@ -408,7 +408,7 @@ func hit_gain(ch *char_data) int64 {
 	}()) == SECT_UNDERWATER) {
 		gain *= 16
 	}
-	if ch.Race == RACE_HOSHIJIN && ch.Starphase > 0 {
+	if int(ch.Race) == RACE_HOSHIJIN && ch.Starphase > 0 {
 		gain *= 2
 	}
 	if PLR_FLAGGED(ch, PLR_HEALT) && ch.Sits != nil {
@@ -422,7 +422,7 @@ func hit_gain(ch *char_data) int64 {
 	}
 	if PLR_FLAGGED(ch, PLR_FURY) {
 		send_to_char(ch, libc.CString("Your fury subsides for now. Next time try to take advantage of it before you calm down.\r\n"))
-		ch.Act[int(PLR_FURY/32)] &= bitvector_t(^(1 << (int(PLR_FURY % 32))))
+		ch.Act[int(PLR_FURY/32)] &= bitvector_t(int32(^(1 << (int(PLR_FURY % 32)))))
 	}
 	if AFF_FLAGGED(ch, AFF_POISON) {
 		gain /= 4
@@ -446,20 +446,20 @@ func move_gain(ch *char_data) int64 {
 		gain = ch.Max_move / 70
 	} else {
 		if ROOM_FLAGGED(ch.In_room, ROOM_REGEN) || (ch.Bonuses[BONUS_DESTROYER]) > 0 && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dmg >= 75 {
-			if ch.Race == RACE_MUTANT {
+			if int(ch.Race) == RACE_MUTANT {
 				gain = ch.Max_move / 7
 			}
-			if ch.Race == RACE_ARLIAN {
+			if int(ch.Race) == RACE_ARLIAN {
 				gain = ch.Max_move / 4
 			}
-			if ch.Race != RACE_MUTANT {
+			if int(ch.Race) != RACE_MUTANT {
 				gain = ch.Max_move / 6
 			}
 		} else if !ROOM_FLAGGED(ch.In_room, ROOM_REGEN) {
-			if ch.Race == RACE_MUTANT {
+			if int(ch.Race) == RACE_MUTANT {
 				gain = ch.Max_move / 9
 			}
-			if ch.Race != RACE_MUTANT {
+			if int(ch.Race) != RACE_MUTANT {
 				gain = ch.Max_move / 8
 			}
 			if ROOM_FLAGGED(ch.In_room, ROOM_BEDROOM) {
@@ -468,7 +468,7 @@ func move_gain(ch *char_data) int64 {
 		}
 		switch ch.Position {
 		case POS_STANDING:
-			if ch.Race != RACE_HOSHIJIN || ch.Race == RACE_HOSHIJIN && ch.Starphase <= 0 {
+			if int(ch.Race) != RACE_HOSHIJIN || int(ch.Race) == RACE_HOSHIJIN && ch.Starphase <= 0 {
 				gain = gain / 4
 			} else {
 				gain += gain / 2
@@ -478,47 +478,47 @@ func move_gain(ch *char_data) int64 {
 		case POS_SLEEPING:
 			if ch.Sits == nil {
 				gain *= 2
-			} else if GET_OBJ_VNUM(ch.Sits) == 19090 && ch.Race != RACE_ARLIAN {
+			} else if GET_OBJ_VNUM(ch.Sits) == 19090 && int(ch.Race) != RACE_ARLIAN {
 				gain *= 3
 				gain += int64(float64(gain) * 0.1)
-			} else if GET_OBJ_VNUM(ch.Sits) == 0x4A93 && ch.Race != RACE_ARLIAN {
+			} else if GET_OBJ_VNUM(ch.Sits) == 0x4A93 && int(ch.Race) != RACE_ARLIAN {
 				gain *= 3
 				gain += int64(float64(gain) * 0.3)
-			} else if ch.Sits != nil || ch.Race == RACE_ARLIAN {
+			} else if ch.Sits != nil || int(ch.Race) == RACE_ARLIAN {
 				gain *= 3
 			}
 		case POS_RESTING:
 			if ch.Sits == nil {
 				gain += gain / 2
-			} else if GET_OBJ_VNUM(ch.Sits) == 19090 && ch.Race != RACE_ARLIAN {
+			} else if GET_OBJ_VNUM(ch.Sits) == 19090 && int(ch.Race) != RACE_ARLIAN {
 				gain += int64(float64(gain) * 1.1)
-			} else if GET_OBJ_VNUM(ch.Sits) == 0x4A93 && ch.Race != RACE_ARLIAN {
+			} else if GET_OBJ_VNUM(ch.Sits) == 0x4A93 && int(ch.Race) != RACE_ARLIAN {
 				gain += int64(float64(gain) * 1.3)
-			} else if ch.Sits != nil || ch.Race == RACE_ARLIAN {
+			} else if ch.Sits != nil || int(ch.Race) == RACE_ARLIAN {
 				gain += gain
 			}
 		case POS_SITTING:
 			if ch.Sits == nil {
 				gain += gain / 4
-			} else if GET_OBJ_VNUM(ch.Sits) == 19090 && ch.Race != RACE_ARLIAN {
+			} else if GET_OBJ_VNUM(ch.Sits) == 19090 && int(ch.Race) != RACE_ARLIAN {
 				gain += int64(float64(gain) * 0.6)
-			} else if GET_OBJ_VNUM(ch.Sits) == 0x4A93 && ch.Race != RACE_ARLIAN {
+			} else if GET_OBJ_VNUM(ch.Sits) == 0x4A93 && int(ch.Race) != RACE_ARLIAN {
 				gain += int64(float64(gain) * 0.8)
-			} else if ch.Sits != nil || ch.Race == RACE_ARLIAN {
+			} else if ch.Sits != nil || int(ch.Race) == RACE_ARLIAN {
 				gain += gain / 2
 			}
 		}
 	}
-	if ch.Race == RACE_ARLIAN && ch.Sex == SEX_FEMALE && OUTSIDE(ch) {
+	if int(ch.Race) == RACE_ARLIAN && int(ch.Sex) == SEX_FEMALE && OUTSIDE(ch) {
 		gain *= 2
 	}
-	if ch.Race == RACE_NAMEK {
+	if int(ch.Race) == RACE_NAMEK {
 		gain = int64(float64(gain) * 0.5)
 	}
-	if ch.Race == RACE_KANASSAN && weather_info.Sky == SKY_RAINING && OUTSIDE(ch) {
+	if int(ch.Race) == RACE_KANASSAN && weather_info.Sky == SKY_RAINING && OUTSIDE(ch) {
 		gain += int64(float64(gain) * 0.1)
 	}
-	if ch.Race == RACE_KANASSAN && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Geffect < 0 || (func() int {
+	if int(ch.Race) == RACE_KANASSAN && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Geffect < 0 || (func() int {
 		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
 			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
 		}
@@ -526,7 +526,7 @@ func move_gain(ch *char_data) int64 {
 	}()) == SECT_UNDERWATER) {
 		gain *= 16
 	}
-	if ch.Race == RACE_HOSHIJIN && ch.Starphase > 0 {
+	if int(ch.Race) == RACE_HOSHIJIN && ch.Starphase > 0 {
 		gain *= 2
 	}
 	if PLR_FLAGGED(ch, PLR_HEALT) && ch.Sits != nil {
@@ -542,11 +542,11 @@ func move_gain(ch *char_data) int64 {
 		gain /= 4
 	}
 	if grav_cost(ch, 0) == 0 {
-		if !IS_NPC(ch) && ch.Chclass != CLASS_BARDOCK && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity >= 10 {
+		if !IS_NPC(ch) && int(ch.Chclass) != CLASS_BARDOCK && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity >= 10 {
 			send_to_char(ch, libc.CString("This gravity is wearing you out!\r\n"))
 			gain /= 4
 		}
-		if !IS_NPC(ch) && ch.Chclass == CLASS_BARDOCK && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity > 10 {
+		if !IS_NPC(ch) && int(ch.Chclass) == CLASS_BARDOCK && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity > 10 {
 			send_to_char(ch, libc.CString("This gravity is wearing you out!\r\n"))
 			gain /= 4
 		}
@@ -567,7 +567,7 @@ func update_flags(ch *char_data) {
 		send_to_imm(libc.CString("ERROR: Empty ch variable sent to update_flags."))
 		return
 	}
-	if (ch.Bonuses[BONUS_LATE]) != 0 && ch.Position == POS_SLEEPING && rand_number(1, 3) == 3 {
+	if (ch.Bonuses[BONUS_LATE]) != 0 && int(ch.Position) == POS_SLEEPING && rand_number(1, 3) == 3 {
 		if ch.Hit >= gear_pl(ch) && ch.Move >= ch.Max_move && ch.Mana >= ch.Max_mana {
 			send_to_char(ch, libc.CString("You FINALLY wake up.\r\n"))
 			act(libc.CString("$n wakes up."), TRUE, ch, nil, nil, TO_ROOM)
@@ -593,25 +593,25 @@ func update_flags(ch *char_data) {
 		send_to_char(ch, libc.CString("The silk ensnaring your arms disolves enough for you to break it!\r\n"))
 		ch.Affected_by[int(AFF_ENSNARED/32)] &= ^(1 << (int(AFF_ENSNARED % 32)))
 	}
-	if !IS_NPC(ch) && !PLR_FLAGGED(ch, PLR_STAIL) && !PLR_FLAGGED(ch, PLR_NOGROW) && (ch.Race == RACE_SAIYAN || ch.Race == RACE_HALFBREED) {
+	if !IS_NPC(ch) && !PLR_FLAGGED(ch, PLR_STAIL) && !PLR_FLAGGED(ch, PLR_NOGROW) && (int(ch.Race) == RACE_SAIYAN || int(ch.Race) == RACE_HALFBREED) {
 		if ch.Player_specials.Racial_pref == 1 && rand_number(1, 50) >= 40 {
 			ch.Tail_growth += 1
-		} else if ch.Player_specials.Racial_pref != 1 || ch.Race == RACE_SAIYAN {
+		} else if ch.Player_specials.Racial_pref != 1 || int(ch.Race) == RACE_SAIYAN {
 			ch.Tail_growth += 1
 		}
 		if ch.Tail_growth == 10 {
 			send_to_char(ch, libc.CString("@wYour tail grows back.@n\r\n"))
 			act(libc.CString("$n@w's tail grows back.@n"), TRUE, ch, nil, nil, TO_ROOM)
-			ch.Act[int(PLR_STAIL/32)] |= bitvector_t(1 << (int(PLR_STAIL % 32)))
+			ch.Act[int(PLR_STAIL/32)] |= bitvector_t(int32(1 << (int(PLR_STAIL % 32))))
 			ch.Tail_growth = 0
 		}
 	}
-	if !IS_NPC(ch) && !PLR_FLAGGED(ch, PLR_TAIL) && (ch.Race == RACE_ICER || ch.Race == RACE_BIO) {
+	if !IS_NPC(ch) && !PLR_FLAGGED(ch, PLR_TAIL) && (int(ch.Race) == RACE_ICER || int(ch.Race) == RACE_BIO) {
 		ch.Tail_growth += 1
 		if ch.Tail_growth == 10 {
 			send_to_char(ch, libc.CString("@wYour tail grows back.@n\r\n"))
 			act(libc.CString("$n@w's tail grows back.@n"), TRUE, ch, nil, nil, TO_ROOM)
-			ch.Act[int(PLR_TAIL/32)] |= bitvector_t(1 << (int(PLR_TAIL % 32)))
+			ch.Act[int(PLR_TAIL/32)] |= bitvector_t(int32(1 << (int(PLR_TAIL % 32))))
 			ch.Tail_growth = 0
 		}
 	}
@@ -622,20 +622,20 @@ func update_flags(ch *char_data) {
 			ch.Real_abils.Intel -= 1
 			ch.Real_abils.Wis -= 1
 			send_to_char(ch, libc.CString("@RDue to the stress you've lost 1 Intelligence and Wisdom!@n\r\n"))
-			if ch.Real_abils.Wis < 4 {
+			if int(ch.Real_abils.Wis) < 4 {
 				ch.Real_abils.Wis = 4
 			}
-			if ch.Real_abils.Intel < 4 {
+			if int(ch.Real_abils.Intel) < 4 {
 				ch.Real_abils.Intel = 4
 			}
 		} else if GET_SKILL(ch, SKILL_TELEPATHY) <= 0 && rand_number(1, 20) == 1 {
 			ch.Real_abils.Intel -= 1
 			ch.Real_abils.Wis -= 1
 			send_to_char(ch, libc.CString("@RDue to the stress you've lost 1 Intelligence and Wisdom!@n\r\n"))
-			if ch.Real_abils.Wis < 4 {
+			if int(ch.Real_abils.Wis) < 4 {
 				ch.Real_abils.Wis = 4
 			}
-			if ch.Real_abils.Intel < 4 {
+			if int(ch.Real_abils.Intel) < 4 {
 				ch.Real_abils.Intel = 4
 			}
 		}
@@ -786,10 +786,10 @@ func gain_exp(ch *char_data, gain int64) {
 			send_to_char(ch, libc.CString("@rYou have earned enough experience to gain a @ylevel@r.@n\r\n"))
 		}
 		if GET_LEVEL(ch) == 100 && ch.Admlevel < 1 {
-			if ch.Race == RACE_KANASSAN || ch.Race == RACE_DEMON {
+			if int(ch.Race) == RACE_KANASSAN || int(ch.Race) == RACE_DEMON {
 				diff = int64(float64(diff) * 1.3)
 			}
-			if ch.Race == RACE_ANDROID {
+			if int(ch.Race) == RACE_ANDROID {
 				diff = int64(float64(diff) * 1.2)
 			}
 			if ch.Mindlink != nil && gain > 0 && ch.Linker == 0 {
@@ -808,7 +808,7 @@ func gain_exp(ch *char_data, gain int64) {
 				}
 			}
 			if rand_number(1, 5) >= 2 {
-				if ch.Race == RACE_HUMAN {
+				if int(ch.Race) == RACE_HUMAN {
 					ch.Basepl += int64(float64(diff) * 0.8)
 					ch.Max_hit += int64(float64(diff) * 0.8)
 				} else {
@@ -818,7 +818,7 @@ func gain_exp(ch *char_data, gain int64) {
 				send_to_char(ch, libc.CString("@D[@G+@Y%s @RPL@D]@n "), add_commas(diff))
 			}
 			if rand_number(1, 5) >= 2 {
-				if ch.Race == RACE_HALFBREED {
+				if int(ch.Race) == RACE_HALFBREED {
 					ch.Basest += int64(float64(diff) * 0.85)
 					ch.Max_move += int64(float64(diff) * 0.85)
 				} else {
@@ -877,9 +877,9 @@ func gain_condition(ch *char_data, condition int, value int) {
 	var intoxicated bool
 	if IS_NPC(ch) {
 		return
-	} else if ch.Race == RACE_ANDROID {
+	} else if int(ch.Race) == RACE_ANDROID {
 		return
-	} else if (ch.Player_specials.Conditions[condition]) < 0 {
+	} else if int(ch.Player_specials.Conditions[condition]) < 0 {
 		return
 	} else if ROOM_FLAGGED(ch.In_room, ROOM_RHELL) {
 		return
@@ -898,13 +898,13 @@ func gain_condition(ch *char_data, condition int, value int) {
 	if PLR_FLAGGED(ch, PLR_WRITING) {
 		return
 	} else {
-		intoxicated = (ch.Player_specials.Conditions[DRUNK]) > 0
+		intoxicated = int(ch.Player_specials.Conditions[DRUNK]) > 0
 		if value > 0 {
-			if (ch.Player_specials.Conditions[condition]) >= 0 {
+			if int(ch.Player_specials.Conditions[condition]) >= 0 {
 				if int(ch.Player_specials.Conditions[condition])+value > 48 {
 					var prior int = int(ch.Player_specials.Conditions[condition])
 					ch.Player_specials.Conditions[condition] = 48
-					if condition != DRUNK && prior >= 48 && ch.Race != RACE_MAJIN {
+					if condition != DRUNK && prior >= 48 && int(ch.Race) != RACE_MAJIN {
 						var (
 							pukeroll int = axion_dice(0)
 							ocond    int = condition
@@ -915,41 +915,41 @@ func gain_condition(ch *char_data, condition int, value int) {
 						} else if condition == THIRST {
 							ocond = HUNGER
 						}
-						if pukeroll > int(ch.Aff_abils.Con+19) {
+						if pukeroll > int(ch.Aff_abils.Con)+19 {
 							act(libc.CString("@r@6You retch violently until your stomach is empty! Your constitution couldn't handle being that stuffed!@n"), TRUE, ch, nil, nil, TO_CHAR)
 							act(libc.CString("@m@6$n@r@6 retches violently! It seems $e stuffed $mself too much!@n"), TRUE, ch, nil, nil, TO_ROOM)
 							ch.Affected_by[int(AFF_PUKED/32)] |= 1 << (int(AFF_PUKED % 32))
-							if ch.Race != RACE_NAMEK {
+							if int(ch.Race) != RACE_NAMEK {
 								ch.Player_specials.Conditions[HUNGER] -= 40
-								if (ch.Player_specials.Conditions[HUNGER]) < 0 {
+								if int(ch.Player_specials.Conditions[HUNGER]) < 0 {
 									ch.Player_specials.Conditions[HUNGER] = 0
 								}
-								if ch.Race == RACE_BIO && ((ch.Genome[0]) == 3 || (ch.Genome[1]) == 3) {
+								if int(ch.Race) == RACE_BIO && ((ch.Genome[0]) == 3 || (ch.Genome[1]) == 3) {
 									ch.Player_specials.Conditions[HUNGER] = -1
 								}
 							}
-							if ch.Race != RACE_KANASSAN {
+							if int(ch.Race) != RACE_KANASSAN {
 								ch.Player_specials.Conditions[THIRST] -= 30
-								if (ch.Player_specials.Conditions[THIRST]) < 0 {
+								if int(ch.Player_specials.Conditions[THIRST]) < 0 {
 									ch.Player_specials.Conditions[THIRST] = 0
 								}
 							} else {
 								send_to_char(ch, libc.CString("Through your mastery of your bodily fluids you manage to retain your hydration.\r\n"))
 								return
 							}
-						} else if pukeroll > int(ch.Aff_abils.Con+9) {
+						} else if pukeroll > int(ch.Aff_abils.Con)+9 {
 							act(libc.CString("@r@6You puke violently! Your constitution couldn't handle being that stuffed!@n"), TRUE, ch, nil, nil, TO_CHAR)
 							act(libc.CString("@m@6$n@r@6 pukes violently! It seems $e stuffed $mself too much!@n"), TRUE, ch, nil, nil, TO_ROOM)
 							ch.Affected_by[int(AFF_PUKED/32)] |= 1 << (int(AFF_PUKED % 32))
-							if ch.Race != RACE_NAMEK {
+							if int(ch.Race) != RACE_NAMEK {
 								ch.Player_specials.Conditions[HUNGER] -= 20
-								if (ch.Player_specials.Conditions[HUNGER]) < 0 {
+								if int(ch.Player_specials.Conditions[HUNGER]) < 0 {
 									ch.Player_specials.Conditions[HUNGER] = 0
 								}
 							}
-							if ch.Race != RACE_KANASSAN {
+							if int(ch.Race) != RACE_KANASSAN {
 								ch.Player_specials.Conditions[THIRST] -= 15
-								if (ch.Player_specials.Conditions[THIRST]) < 0 {
+								if int(ch.Player_specials.Conditions[THIRST]) < 0 {
 									ch.Player_specials.Conditions[THIRST] = 0
 								}
 							} else {
@@ -960,15 +960,15 @@ func gain_condition(ch *char_data, condition int, value int) {
 							act(libc.CString("@r@6You puke a little! Your constitution couldn't handle being that stuffed!@n"), TRUE, ch, nil, nil, TO_CHAR)
 							act(libc.CString("@m@6$n@r@6 pukes a little! It seems $e stuffed $mself too much!@n"), TRUE, ch, nil, nil, TO_ROOM)
 							ch.Affected_by[int(AFF_PUKED/32)] |= 1 << (int(AFF_PUKED % 32))
-							if ch.Race != RACE_NAMEK {
+							if int(ch.Race) != RACE_NAMEK {
 								ch.Player_specials.Conditions[HUNGER] -= 8
-								if (ch.Player_specials.Conditions[HUNGER]) < 0 {
+								if int(ch.Player_specials.Conditions[HUNGER]) < 0 {
 									ch.Player_specials.Conditions[HUNGER] = 0
 								}
 							}
-							if ch.Race != RACE_KANASSAN {
+							if int(ch.Race) != RACE_KANASSAN {
 								ch.Player_specials.Conditions[THIRST] -= 8
-								if (ch.Player_specials.Conditions[THIRST]) < 0 {
+								if int(ch.Player_specials.Conditions[THIRST]) < 0 {
 									ch.Player_specials.Conditions[THIRST] = 0
 								}
 							} else {
@@ -984,7 +984,7 @@ func gain_condition(ch *char_data, condition int, value int) {
 		}
 		if !AFF_FLAGGED(ch, AFF_SPIRIT) && (GET_SKILL(ch, SKILL_SURVIVAL) == 0 || GET_SKILL(ch, SKILL_SURVIVAL) < rand_number(1, 140)) {
 			if value <= 0 {
-				if (ch.Player_specials.Conditions[condition]) >= 0 {
+				if int(ch.Player_specials.Conditions[condition]) >= 0 {
 					if AFF_FLAGGED(ch, AFF_PUKED) {
 						ch.Affected_by[int(AFF_PUKED/32)] &= ^(1 << (int(AFF_PUKED % 32)))
 					}
@@ -1116,30 +1116,30 @@ func gain_condition(ch *char_data, condition int, value int) {
 				}
 			case DRUNK:
 				if intoxicated {
-					if (ch.Player_specials.Conditions[DRUNK]) <= 0 {
+					if int(ch.Player_specials.Conditions[DRUNK]) <= 0 {
 						send_to_char(ch, libc.CString("You are now sober.\r\n"))
 					}
 				}
 			default:
 			}
-			if ch.Hit <= 0 && (ch.Player_specials.Conditions[HUNGER]) == 0 {
+			if ch.Hit <= 0 && int(ch.Player_specials.Conditions[HUNGER]) == 0 {
 				send_to_char(ch, libc.CString("You have starved to death!\r\n"))
 				ch.Move = 0
 				act(libc.CString("@W$n@W falls down dead before you...@n"), FALSE, ch, nil, nil, TO_ROOM)
 				die(ch, nil)
-				if (ch.Player_specials.Conditions[HUNGER]) != -1 {
+				if int(ch.Player_specials.Conditions[HUNGER]) != -1 {
 					ch.Player_specials.Conditions[HUNGER] = 48
 				}
-				if (ch.Player_specials.Conditions[THIRST]) != -1 {
+				if int(ch.Player_specials.Conditions[THIRST]) != -1 {
 					ch.Player_specials.Conditions[THIRST] = 48
 				}
 			}
-			if ch.Hit <= 0 && (ch.Player_specials.Conditions[THIRST]) == 0 {
+			if ch.Hit <= 0 && int(ch.Player_specials.Conditions[THIRST]) == 0 {
 				send_to_char(ch, libc.CString("You have died of dehydration!\r\n"))
 				ch.Move = 0
 				act(libc.CString("@W$n@W falls down dead before you...@n"), FALSE, ch, nil, nil, TO_ROOM)
 				die(ch, nil)
-				if (ch.Player_specials.Conditions[HUNGER]) != -1 {
+				if int(ch.Player_specials.Conditions[HUNGER]) != -1 {
 					ch.Player_specials.Conditions[HUNGER] = 48
 				}
 				ch.Player_specials.Conditions[THIRST] = 48
@@ -1249,77 +1249,77 @@ func check_idling(ch *char_data) {
 					}
 					ch.Exp = 0
 				} else {
-					if ch.Chclass == CLASS_ROSHI {
+					if int(ch.Chclass) == CLASS_ROSHI {
 						if real_room(1130) != room_rnum(-1) && real_room(1130) <= top_of_world {
 							ch.Player_specials.Load_room = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(1130))))).Number
 						} else {
 							ch.Player_specials.Load_room = -1
 						}
 					}
-					if ch.Chclass == CLASS_KABITO {
+					if int(ch.Chclass) == CLASS_KABITO {
 						if real_room(0x2F42) != room_rnum(-1) && real_room(0x2F42) <= top_of_world {
 							ch.Player_specials.Load_room = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(0x2F42))))).Number
 						} else {
 							ch.Player_specials.Load_room = -1
 						}
 					}
-					if ch.Chclass == CLASS_NAIL {
+					if int(ch.Chclass) == CLASS_NAIL {
 						if real_room(0x2DA3) != room_rnum(-1) && real_room(0x2DA3) <= top_of_world {
 							ch.Player_specials.Load_room = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(0x2DA3))))).Number
 						} else {
 							ch.Player_specials.Load_room = -1
 						}
 					}
-					if ch.Chclass == CLASS_BARDOCK {
+					if int(ch.Chclass) == CLASS_BARDOCK {
 						if real_room(2268) != room_rnum(-1) && real_room(2268) <= top_of_world {
 							ch.Player_specials.Load_room = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(2268))))).Number
 						} else {
 							ch.Player_specials.Load_room = -1
 						}
 					}
-					if ch.Chclass == CLASS_KRANE {
+					if int(ch.Chclass) == CLASS_KRANE {
 						if real_room(0x32D1) != room_rnum(-1) && real_room(0x32D1) <= top_of_world {
 							ch.Player_specials.Load_room = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(0x32D1))))).Number
 						} else {
 							ch.Player_specials.Load_room = -1
 						}
 					}
-					if ch.Chclass == CLASS_TAPION {
+					if int(ch.Chclass) == CLASS_TAPION {
 						if real_room(8231) != room_rnum(-1) && real_room(8231) <= top_of_world {
 							ch.Player_specials.Load_room = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(8231))))).Number
 						} else {
 							ch.Player_specials.Load_room = -1
 						}
 					}
-					if ch.Chclass == CLASS_PICCOLO {
+					if int(ch.Chclass) == CLASS_PICCOLO {
 						if real_room(1659) != room_rnum(-1) && real_room(1659) <= top_of_world {
 							ch.Player_specials.Load_room = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(1659))))).Number
 						} else {
 							ch.Player_specials.Load_room = -1
 						}
 					}
-					if ch.Chclass == CLASS_ANDSIX {
+					if int(ch.Chclass) == CLASS_ANDSIX {
 						if real_room(1713) != room_rnum(-1) && real_room(1713) <= top_of_world {
 							ch.Player_specials.Load_room = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(1713))))).Number
 						} else {
 							ch.Player_specials.Load_room = -1
 						}
 					}
-					if ch.Chclass == CLASS_DABURA {
+					if int(ch.Chclass) == CLASS_DABURA {
 						if real_room(6486) != room_rnum(-1) && real_room(6486) <= top_of_world {
 							ch.Player_specials.Load_room = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(6486))))).Number
 						} else {
 							ch.Player_specials.Load_room = -1
 						}
 					}
-					if ch.Chclass == CLASS_FRIEZA {
+					if int(ch.Chclass) == CLASS_FRIEZA {
 						if real_room(4282) != room_rnum(-1) && real_room(4282) <= top_of_world {
 							ch.Player_specials.Load_room = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(4282))))).Number
 						} else {
 							ch.Player_specials.Load_room = -1
 						}
 					}
-					if ch.Chclass == CLASS_GINYU {
+					if int(ch.Chclass) == CLASS_GINYU {
 						if real_room(4289) != room_rnum(-1) && real_room(4289) <= top_of_world {
 							ch.Player_specials.Load_room = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(4289))))).Number
 						} else {
@@ -1359,80 +1359,80 @@ func heal_limb(ch *char_data) {
 	if PLR_FLAGGED(ch, PLR_BANDAGED) {
 		healrate += 10
 	}
-	if ch.Position == POS_SITTING {
+	if int(ch.Position) == POS_SITTING {
 		healrate += 1
-	} else if ch.Position == POS_RESTING {
+	} else if int(ch.Position) == POS_RESTING {
 		healrate += 3
-	} else if ch.Position == POS_SLEEPING {
+	} else if int(ch.Position) == POS_SLEEPING {
 		healrate += 5
 	}
 	if healrate > 0 {
-		if (ch.Limb_condition[0]) > 0 && (ch.Limb_condition[0]) < 50 {
-			if (ch.Limb_condition[0])+healrate >= 50 {
-				act(libc.CString("You realize your right arm is no longer broken."), TRUE, ch, nil, nil, TO_CHAR)
-				act(libc.CString("$n starts moving $s right arm gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
-				ch.Limb_condition[0] += healrate
-				recovered = TRUE
-			} else {
-				ch.Limb_condition[0] += healrate
-				send_to_char(ch, libc.CString("Your right arm feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[0], "%", "%")
-			}
-		} else if (ch.Limb_condition[0])+healrate < 100 {
-			ch.Limb_condition[0] += healrate
-			send_to_char(ch, libc.CString("Your right arm feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[0], "%", "%")
-		} else if (ch.Limb_condition[0]) < 100 && (ch.Limb_condition[0])+healrate >= 100 {
-			ch.Limb_condition[0] = 100
-			send_to_char(ch, libc.CString("Your right arm has fully recovered.\r\n"))
-		}
 		if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 {
 			if (ch.Limb_condition[1])+healrate >= 50 {
-				act(libc.CString("You realize your left arm is no longer broken."), TRUE, ch, nil, nil, TO_CHAR)
-				act(libc.CString("$n starts moving $s left arm gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
+				act(libc.CString("You realize your right arm is no longer broken."), TRUE, ch, nil, nil, TO_CHAR)
+				act(libc.CString("$n starts moving $s right arm gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
 				ch.Limb_condition[1] += healrate
 				recovered = TRUE
 			} else {
 				ch.Limb_condition[1] += healrate
-				send_to_char(ch, libc.CString("Your left arm feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[0], "%", "%")
+				send_to_char(ch, libc.CString("Your right arm feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[1], "%", "%")
 			}
 		} else if (ch.Limb_condition[1])+healrate < 100 {
 			ch.Limb_condition[1] += healrate
-			send_to_char(ch, libc.CString("Your left arm feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[1], "%", "%")
+			send_to_char(ch, libc.CString("Your right arm feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[1], "%", "%")
 		} else if (ch.Limb_condition[1]) < 100 && (ch.Limb_condition[1])+healrate >= 100 {
 			ch.Limb_condition[1] = 100
-			send_to_char(ch, libc.CString("Your left arm has fully recovered.\r\n"))
+			send_to_char(ch, libc.CString("Your right arm has fully recovered.\r\n"))
 		}
 		if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 {
 			if (ch.Limb_condition[2])+healrate >= 50 {
-				act(libc.CString("You realize your right leg is no longer broken."), TRUE, ch, nil, nil, TO_CHAR)
-				act(libc.CString("$n starts moving $s right leg gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
+				act(libc.CString("You realize your left arm is no longer broken."), TRUE, ch, nil, nil, TO_CHAR)
+				act(libc.CString("$n starts moving $s left arm gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
 				ch.Limb_condition[2] += healrate
 				recovered = TRUE
 			} else {
 				ch.Limb_condition[2] += healrate
-				send_to_char(ch, libc.CString("Your right leg feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[0], "%", "%")
+				send_to_char(ch, libc.CString("Your left arm feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[1], "%", "%")
 			}
 		} else if (ch.Limb_condition[2])+healrate < 100 {
 			ch.Limb_condition[2] += healrate
-			send_to_char(ch, libc.CString("Your right leg feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[2], "%", "%")
+			send_to_char(ch, libc.CString("Your left arm feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[2], "%", "%")
 		} else if (ch.Limb_condition[2]) < 100 && (ch.Limb_condition[2])+healrate >= 100 {
 			ch.Limb_condition[2] = 100
-			send_to_char(ch, libc.CString("Your right leg has fully recovered.\r\n"))
+			send_to_char(ch, libc.CString("Your left arm has fully recovered.\r\n"))
 		}
 		if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 {
 			if (ch.Limb_condition[3])+healrate >= 50 {
-				act(libc.CString("You realize your left leg is no longer broken."), TRUE, ch, nil, nil, TO_CHAR)
-				act(libc.CString("$n starts moving $s left leg gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
+				act(libc.CString("You realize your right leg is no longer broken."), TRUE, ch, nil, nil, TO_CHAR)
+				act(libc.CString("$n starts moving $s right leg gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
 				ch.Limb_condition[3] += healrate
 				recovered = TRUE
 			} else {
 				ch.Limb_condition[3] += healrate
-				send_to_char(ch, libc.CString("Your left leg feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[0], "%", "%")
+				send_to_char(ch, libc.CString("Your right leg feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[1], "%", "%")
 			}
 		} else if (ch.Limb_condition[3])+healrate < 100 {
 			ch.Limb_condition[3] += healrate
-			send_to_char(ch, libc.CString("Your left leg feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[3], "%", "%")
+			send_to_char(ch, libc.CString("Your right leg feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[3], "%", "%")
 		} else if (ch.Limb_condition[3]) < 100 && (ch.Limb_condition[3])+healrate >= 100 {
 			ch.Limb_condition[3] = 100
+			send_to_char(ch, libc.CString("Your right leg has fully recovered.\r\n"))
+		}
+		if (ch.Limb_condition[4]) > 0 && (ch.Limb_condition[4]) < 50 {
+			if (ch.Limb_condition[4])+healrate >= 50 {
+				act(libc.CString("You realize your left leg is no longer broken."), TRUE, ch, nil, nil, TO_CHAR)
+				act(libc.CString("$n starts moving $s left leg gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
+				ch.Limb_condition[4] += healrate
+				recovered = TRUE
+			} else {
+				ch.Limb_condition[4] += healrate
+				send_to_char(ch, libc.CString("Your left leg feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[1], "%", "%")
+			}
+		} else if (ch.Limb_condition[4])+healrate < 100 {
+			ch.Limb_condition[4] += healrate
+			send_to_char(ch, libc.CString("Your left leg feels a little better @D[@G%d%s@D/@g100%s@D]@n.\r\n"), ch.Limb_condition[4], "%", "%")
+		} else if (ch.Limb_condition[4]) < 100 && (ch.Limb_condition[4])+healrate >= 100 {
+			ch.Limb_condition[4] = 100
 			send_to_char(ch, libc.CString("Your left leg as fully recovered.\r\n"))
 		}
 		if !PLR_FLAGGED(ch, PLR_BANDAGED) && recovered == TRUE {
@@ -1441,16 +1441,16 @@ func heal_limb(ch *char_data) {
 				ch.Real_abils.Dex -= 1
 				ch.Real_abils.Cha -= 1
 				send_to_char(ch, libc.CString("@RYou lose 1 Strength, Agility, and Speed!\r\n"))
-				if ch.Real_abils.Str < 4 {
+				if int(ch.Real_abils.Str) < 4 {
 					ch.Real_abils.Str = 4
 				}
-				if ch.Real_abils.Con < 4 {
+				if int(ch.Real_abils.Con) < 4 {
 					ch.Real_abils.Con = 4
 				}
-				if ch.Real_abils.Dex < 4 {
+				if int(ch.Real_abils.Dex) < 4 {
 					ch.Real_abils.Dex = 4
 				}
-				if ch.Real_abils.Cha < 4 {
+				if int(ch.Real_abils.Cha) < 4 {
 					ch.Real_abils.Cha = 4
 				}
 				save_char(ch)
@@ -1458,7 +1458,7 @@ func heal_limb(ch *char_data) {
 		}
 	}
 	if PLR_FLAGGED(ch, PLR_BANDAGED) && recovered == TRUE {
-		ch.Act[int(PLR_BANDAGED/32)] &= bitvector_t(^(1 << (int(PLR_BANDAGED % 32))))
+		ch.Act[int(PLR_BANDAGED/32)] &= bitvector_t(int32(^(1 << (int(PLR_BANDAGED % 32)))))
 		send_to_char(ch, libc.CString("You remove your bandages.\r\n"))
 		return
 	}
@@ -1503,7 +1503,7 @@ func point_update() {
 		if IS_NPC(i) {
 			i.Aggtimer = 0
 		}
-		if i.Position >= POS_STUNNED {
+		if int(i.Position) >= POS_STUNNED {
 			var change int = FALSE
 			update_flags(i)
 			if !IS_NPC(i) {
@@ -1525,18 +1525,18 @@ func point_update() {
 				} else {
 					send_to_char(i, libc.CString("You don't have enough energy to keep the aura active.\r\n"))
 					act(libc.CString("$n's aura slowly stops shining and fades.\r\n"), TRUE, i, nil, nil, TO_ROOM)
-					i.Act[int(PLR_AURALIGHT/32)] &= bitvector_t(^(1 << (int(PLR_AURALIGHT % 32))))
+					i.Act[int(PLR_AURALIGHT/32)] &= bitvector_t(int32(^(1 << (int(PLR_AURALIGHT % 32)))))
 					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i.In_room)))).Light--
 				}
 			}
-			if i.Race == RACE_MUTANT && ((i.Genome[0]) == 6 || (i.Genome[1]) == 6) {
+			if int(i.Race) == RACE_MUTANT && ((i.Genome[0]) == 6 || (i.Genome[1]) == 6) {
 				mutant_limb_regen(i)
 			}
 			var x int = (i.Kaioken * 5) + 5
-			if i.Sleeptime > 0 && i.Position != POS_SLEEPING {
+			if i.Sleeptime > 0 && int(i.Position) != POS_SLEEPING {
 				i.Sleeptime -= 1
 			}
-			if i.Sleeptime < 8 && i.Position == POS_SLEEPING {
+			if i.Sleeptime < 8 && int(i.Position) == POS_SLEEPING {
 				i.Sleeptime += rand_number(2, 4)
 				if i.Sleeptime > 8 {
 					i.Sleeptime = 8
@@ -1595,7 +1595,7 @@ func point_update() {
 					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i.In_room)))).Sector_type
 				}
 				return SECT_INSIDE
-			}()) == SECT_WATER_NOSWIM && i.Player_specials.Carried_by == nil && i.Race != RACE_KANASSAN {
+			}()) == SECT_WATER_NOSWIM && i.Player_specials.Carried_by == nil && int(i.Race) != RACE_KANASSAN {
 				if i.Move >= int64(gear_weight(i)) {
 					act(libc.CString("@bYou swim in place.@n"), TRUE, i, nil, nil, TO_CHAR)
 					act(libc.CString("@C$n@b swims in place.@n"), TRUE, i, nil, nil, TO_ROOM)
@@ -1664,7 +1664,7 @@ func point_update() {
 					}
 				}
 			}
-			if !AFF_FLAGGED(i, AFF_FLYING) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i.In_room)))).Geffect == 6 && !MOB_FLAGGED(i, MOB_NOKILL) && i.Race != RACE_DEMON {
+			if !AFF_FLAGGED(i, AFF_FLYING) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i.In_room)))).Geffect == 6 && !MOB_FLAGGED(i, MOB_NOKILL) && int(i.Race) != RACE_DEMON {
 				act(libc.CString("@rYour legs are burned by the lava!@n"), TRUE, i, nil, nil, TO_CHAR)
 				act(libc.CString("@R$n@r's legs are burned by the lava!@n"), TRUE, i, nil, nil, TO_ROOM)
 				if IS_NPC(i) && IS_HUMANOID(i) && rand_number(1, 2) == 2 {
@@ -1691,28 +1691,28 @@ func point_update() {
 						send_to_char(i, libc.CString("@wThe healing tank is now too low on energy to heal you.\r\n"))
 						act(libc.CString("You step out of the now empty healing tank."), TRUE, i, nil, nil, TO_CHAR)
 						act(libc.CString("@C$n@w steps out of the now empty healing tank.@n"), TRUE, i, nil, nil, TO_ROOM)
-						i.Act[int(PLR_HEALT/32)] &= bitvector_t(^(1 << (int(PLR_HEALT % 32))))
+						i.Act[int(PLR_HEALT/32)] &= bitvector_t(int32(^(1 << (int(PLR_HEALT % 32)))))
 						i.Sits.Sitting = nil
 						i.Sits = nil
 					} else if i.Hit == gear_pl(i) && i.Mana == i.Max_mana && i.Move == i.Max_move {
 						send_to_char(i, libc.CString("@wYou are fully recovered now.\r\n"))
 						act(libc.CString("You step out of the now empty healing tank."), TRUE, i, nil, nil, TO_CHAR)
 						act(libc.CString("@C$n@w steps out of the now empty healing tank.@n"), TRUE, i, nil, nil, TO_ROOM)
-						i.Act[int(PLR_HEALT/32)] &= bitvector_t(^(1 << (int(PLR_HEALT % 32))))
+						i.Act[int(PLR_HEALT/32)] &= bitvector_t(int32(^(1 << (int(PLR_HEALT % 32)))))
 						i.Sits.Sitting = nil
 						i.Sits = nil
 					}
 				} else if PLR_FLAGGED(i, PLR_HEALT) && i.Sits == nil {
-					i.Act[int(PLR_HEALT/32)] &= bitvector_t(^(1 << (int(PLR_HEALT % 32))))
-				} else if i.Position == POS_SLEEPING {
+					i.Act[int(PLR_HEALT/32)] &= bitvector_t(int32(^(1 << (int(PLR_HEALT % 32)))))
+				} else if int(i.Position) == POS_SLEEPING {
 					send_to_char(i, libc.CString("@wYour sleep does you some good.@n\r\n"))
-					if i.Race != RACE_ANDROID && i.Fighting == nil {
+					if int(i.Race) != RACE_ANDROID && i.Fighting == nil {
 						i.Lifeforce = int64(GET_LIFEMAX(i))
 					}
-				} else if i.Position == POS_RESTING {
+				} else if int(i.Position) == POS_RESTING {
 					send_to_char(i, libc.CString("@wYou feel relaxed and better.@n\r\n"))
 					if i.Lifeforce != int64(GET_LIFEMAX(i)) {
-						if i.Race != RACE_ANDROID && i.Fighting == nil && i.Suppression <= 0 && i.Hit != gear_pl(i) {
+						if int(i.Race) != RACE_ANDROID && i.Fighting == nil && i.Suppression <= 0 && i.Hit != gear_pl(i) {
 							i.Lifeforce += int64(float64(GET_LIFEMAX(i)) * 0.15)
 							if i.Lifeforce > int64(GET_LIFEMAX(i)) {
 								i.Lifeforce = int64(GET_LIFEMAX(i))
@@ -1720,7 +1720,7 @@ func point_update() {
 							send_to_char(i, libc.CString("@CYou feel more lively.@n\r\n"))
 						}
 					}
-				} else if i.Position == POS_SITTING {
+				} else if int(i.Position) == POS_SITTING {
 					send_to_char(i, libc.CString("@wYou feel rested and better.@n\r\n"))
 				} else {
 					send_to_char(i, libc.CString("You feel slightly better.\r\n"))
@@ -1731,15 +1731,15 @@ func point_update() {
 			}
 			if AFF_FLAGGED(i, AFF_POISON) {
 				var cost float64 = 0.0
-				if i.Aff_abils.Con >= 100 {
+				if int(i.Aff_abils.Con) >= 100 {
 					cost = 0.01
-				} else if i.Aff_abils.Con >= 80 {
+				} else if int(i.Aff_abils.Con) >= 80 {
 					cost = 0.02
-				} else if i.Aff_abils.Con >= 50 {
+				} else if int(i.Aff_abils.Con) >= 50 {
 					cost = 0.03
-				} else if i.Aff_abils.Con >= 30 {
+				} else if int(i.Aff_abils.Con) >= 30 {
 					cost = 0.04
-				} else if i.Aff_abils.Con >= 20 {
+				} else if int(i.Aff_abils.Con) >= 20 {
 					cost = 0.05
 				} else {
 					cost = 0.06
@@ -1763,12 +1763,12 @@ func point_update() {
 					}
 				}
 			}
-			if i.Position <= POS_STUNNED {
+			if int(i.Position) <= POS_STUNNED {
 				update_pos(i)
 			}
-		} else if i.Position == POS_INCAP {
+		} else if int(i.Position) == POS_INCAP {
 			continue
-		} else if i.Position == POS_MORTALLYW {
+		} else if int(i.Position) == POS_MORTALLYW {
 			continue
 		}
 		if float64(i.Mana) >= float64(i.Max_mana)*0.5 && float64(i.Charge) < float64(i.Max_mana)*0.1 && i.Preference == PREFERENCE_KI && !PLR_FLAGGED(i, PLR_AURALIGHT) {
@@ -1787,8 +1787,8 @@ func point_update() {
 	for j = object_list; j != nil; j = next_thing {
 		next_thing = j.Next
 		if OBJ_FLAGGED(j, ITEM_NORENT) && j.Worn_by == nil && j.Carried_by == nil && obj_selling != j && GET_OBJ_VNUM(j) != 7200 {
-			var diff int64 = 0
-			diff = C.time(nil) - j.Lload
+			var diff libc.Time = 0
+			diff = libc.GetTime(nil) - j.Lload
 			if diff > 240 && j.Lload > 0 {
 				basic_mud_log(libc.CString("No rent object (%s) extracted from room (%d)"), j.Short_description, func() room_vnum {
 					if j.In_room != room_rnum(-1) && j.In_room <= top_of_world {
@@ -1799,7 +1799,7 @@ func point_update() {
 				extract_obj(j)
 			}
 		}
-		if j.Type_flag == ITEM_HATCH {
+		if int(j.Type_flag) == ITEM_HATCH {
 			if (func() *obj_data {
 				vehicle = find_vehicle_by_vnum(j.Value[VAL_HATCH_DEST])
 				return vehicle
@@ -1815,7 +1815,7 @@ func point_update() {
 			if j.Timer > 0 {
 				j.Timer--
 			}
-			if C.strstr(j.Name, libc.CString("android")) == nil && C.strstr(j.Name, libc.CString("Android")) == nil && !OBJ_FLAGGED(j, ITEM_BURIED) {
+			if libc.StrStr(j.Name, libc.CString("android")) == nil && libc.StrStr(j.Name, libc.CString("Android")) == nil && !OBJ_FLAGGED(j, ITEM_BURIED) {
 				if j.Timer == 5 {
 					if j.In_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(j.In_room)))).People != nil {
 						act(libc.CString("@DFlies start to gather around $p@D.@n"), TRUE, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(j.In_room)))).People, j, nil, TO_CHAR)
@@ -1843,7 +1843,7 @@ func point_update() {
 			}
 			if j.Timer == 0 {
 				if j.Carried_by != nil {
-					if C.strstr(j.Name, libc.CString("android")) == nil {
+					if libc.StrStr(j.Name, libc.CString("android")) == nil {
 						act(libc.CString("$p decays in your hands."), FALSE, j.Carried_by, j, nil, TO_CHAR)
 						if j.In_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(j.In_room)))).People != nil {
 							act(libc.CString("A quivering horde of maggots consumes $p."), TRUE, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(j.In_room)))).People, j, nil, TO_ROOM)
@@ -1878,7 +1878,7 @@ func point_update() {
 				j.Healcharge += rand_number(0, 1)
 			}
 		}
-		if j.Type_flag == ITEM_PORTAL {
+		if int(j.Type_flag) == ITEM_PORTAL {
 			if j.Timer > 0 {
 				j.Timer--
 			}

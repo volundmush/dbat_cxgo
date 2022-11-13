@@ -3,11 +3,10 @@ package main
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"unicode"
 	"unsafe"
 )
 
-const Y = 1
-const N = 0
 const CONFIG_LEVEL_VERSION = 0
 const CONFIG_LEVEL_EXPERIENCE = 1
 const CONFIG_LEVEL_VERNUM = 2
@@ -27,10 +26,10 @@ var class_abbrevs [32]*byte = [32]*byte{libc.CString("Ro"), libc.CString("Pi"), 
 var pc_class_types [32]*byte = [32]*byte{libc.CString("Roshi"), libc.CString("Piccolo"), libc.CString("Krane"), libc.CString("Nail"), libc.CString("Bardock"), libc.CString("Ginyu"), libc.CString("Frieza"), libc.CString("Tapion"), libc.CString("Android 16"), libc.CString("Dabura"), libc.CString("Kibito"), libc.CString("Jinto"), libc.CString("Tsuna"), libc.CString("Kurzak"), libc.CString("Assassin"), libc.CString("Blackguard"), libc.CString("Dragon Disciple"), libc.CString("Duelist"), libc.CString("Dwarven Defender"), libc.CString("Eldritch Knight"), libc.CString("Hierophant"), libc.CString("Horizon Walker"), libc.CString("Loremaster"), libc.CString("Mystic Theurge"), libc.CString("Shinobi"), libc.CString("Thaumaturgist"), libc.CString("Expert"), libc.CString("Adept"), libc.CString("Commoner"), libc.CString("Aristrocrat"), libc.CString("Warrior"), libc.CString("\n")}
 var class_names [32]*byte = [32]*byte{libc.CString("roshi"), libc.CString("piccolo"), libc.CString("krane"), libc.CString("nail"), libc.CString("bardock"), libc.CString("ginyu"), libc.CString("frieza"), libc.CString("tapion"), libc.CString("android 16"), libc.CString("dabura"), libc.CString("kibito"), libc.CString("jinto"), libc.CString("tsuna"), libc.CString("kurzak"), libc.CString("assassin"), libc.CString("blackguard"), libc.CString("dragon disciple"), libc.CString("duelist"), libc.CString("dwarven defender"), libc.CString("eldritch knight"), libc.CString("hierophant"), libc.CString("horizon walker"), libc.CString("loremaster"), libc.CString("mystic theurge"), libc.CString("shadowdancer"), libc.CString("thaumaturgist"), libc.CString("artisan"), libc.CString("magi"), libc.CString("normal"), libc.CString("noble"), libc.CString("soldier"), libc.CString("\n")}
 var class_display [31]*byte = [31]*byte{libc.CString("@B1@W) @MRoshi\r\n"), libc.CString("@B2@W) @WPiccolo\r\n"), libc.CString("@B3@W) @YKrane\r\n"), libc.CString("@B4@W) @BNail\r\n"), libc.CString("@B5@W) @BBardock\r\n"), libc.CString("@B6@W) @BGinyu\r\n"), libc.CString("@B7@W) @WFrieza\r\n"), libc.CString("@B8@W) @YTapion\r\n"), libc.CString("@B9@W) @BAndroid 16\r\n"), libc.CString("@B10@W) @BDabura\r\n"), libc.CString("@B11@W) @BKibito\r\n"), libc.CString("@B12@W) @BJinto\r\n"), libc.CString("@B13@W) @BTsuna\r\n"), libc.CString("@B14@W) @BKurzak\r\n"), libc.CString("assassin (P)\r\n"), libc.CString("blackguard (P)\r\n"), libc.CString("dragon disciple (P)\r\n"), libc.CString("duelist (P)\r\n"), libc.CString("dwarven defender (P)\r\n"), libc.CString("eldritch knight (P)\r\n"), libc.CString("hierophant (P)\r\n"), libc.CString("horizon walker (P)\r\n"), libc.CString("loremaster (P)\r\n"), libc.CString("mystic theurge (P)\r\n"), libc.CString("shadowdancer (P)\r\n"), libc.CString("thaumaturgist (P)\r\n"), libc.CString("Artisan NPC\r\n"), libc.CString("Magi NPC\r\n"), libc.CString("Normal NPC\r\n"), libc.CString("Noble NPC\r\n"), libc.CString("Soldier NPC\r\n")}
-var class_ok_race [24][31]int = [24][31]int{{0: TRUE, 1: TRUE, 2: TRUE, 3: TRUE, 4: TRUE, 5: TRUE, 6: TRUE, 7: TRUE, 8: FALSE, 9: FALSE, 10: TRUE, 11: FALSE, 12: FALSE, 13: FALSE, 14: FALSE, 15: FALSE, 16: FALSE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: TRUE, 1: TRUE, 2: TRUE, 3: TRUE, 4: TRUE, 5: TRUE, 6: TRUE, 7: TRUE, 8: FALSE, 9: FALSE, 10: TRUE, 11: FALSE, 12: FALSE, 13: FALSE, 14: FALSE, 15: FALSE, 16: FALSE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: TRUE, 1: TRUE, 2: TRUE, 3: TRUE, 4: TRUE, 5: TRUE, 6: TRUE, 7: TRUE, 8: FALSE, 9: FALSE, 10: TRUE, 11: FALSE, 12: FALSE, 13: FALSE, 14: FALSE, 15: FALSE, 16: FALSE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: TRUE, 1: TRUE, 2: TRUE, 3: TRUE, 4: TRUE, 5: TRUE, 6: TRUE, 7: TRUE, 8: FALSE, 9: FALSE, 10: TRUE, 11: FALSE, 12: FALSE, 13: FALSE, 14: FALSE, 15: FALSE, 16: FALSE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: TRUE, 1: TRUE, 2: TRUE, 3: TRUE, 4: TRUE, 5: TRUE, 6: TRUE, 7: TRUE, 8: FALSE, 9: FALSE, 10: TRUE, 11: FALSE, 12: FALSE, 13: FALSE, 14: FALSE, 15: FALSE, 16: FALSE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: TRUE, 1: TRUE, 2: TRUE, 3: TRUE, 4: TRUE, 5: TRUE, 6: TRUE, 7: TRUE, 8: FALSE, 9: FALSE, 10: TRUE, 11: FALSE, 12: FALSE, 13: FALSE, 14: FALSE, 15: FALSE, 16: FALSE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: TRUE, 1: TRUE, 2: TRUE, 3: TRUE, 4: TRUE, 5: TRUE, 6: TRUE, 7: TRUE, 8: FALSE, 9: FALSE, 10: TRUE, 11: FALSE, 12: TRUE, 13: FALSE, 14: FALSE, 15: FALSE, 16: FALSE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: TRUE, 1: TRUE, 2: TRUE, 3: TRUE, 4: TRUE, 5: TRUE, 6: TRUE, 7: TRUE, 8: FALSE, 9: FALSE, 10: TRUE, 11: FALSE, 12: FALSE, 13: FALSE, 14: FALSE, 15: FALSE, 16: FALSE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: TRUE, 1: TRUE, 2: TRUE, 3: TRUE, 4: TRUE, 5: TRUE, 6: TRUE, 7: TRUE, 8: FALSE, 9: FALSE, 10: TRUE, 11: FALSE, 12: FALSE, 13: FALSE, 14: FALSE, 15: FALSE, 16: FALSE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: FALSE, 1: FALSE, 2: FALSE, 3: FALSE, 4: FALSE, 5: FALSE, 6: FALSE, 7: FALSE, 8: TRUE, 9: FALSE, 10: FALSE, 11: FALSE, 12: FALSE, 13: FALSE, 14: FALSE, 15: FALSE, 16: FALSE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: TRUE, 1: TRUE, 2: TRUE, 3: TRUE, 4: TRUE, 5: TRUE, 6: TRUE, 7: TRUE, 8: FALSE, 9: TRUE, 10: TRUE, 11: FALSE, 12: FALSE, 13: FALSE, 14: FALSE, 15: FALSE, 16: FALSE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: TRUE, 1: TRUE, 2: TRUE, 3: TRUE, 4: TRUE, 5: TRUE, 6: TRUE, 7: TRUE, 8: FALSE, 9: FALSE, 10: TRUE, 11: FALSE, 12: FALSE, 13: FALSE, 14: FALSE, 15: FALSE, 16: FALSE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: TRUE, 1: TRUE, 2: TRUE, 3: TRUE, 4: TRUE, 5: TRUE, 6: TRUE, 7: TRUE, 8: FALSE, 9: FALSE, 10: TRUE, 11: FALSE, 12: FALSE, 13: FALSE, 14: FALSE, 15: FALSE, 16: FALSE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: TRUE, 1: TRUE, 2: TRUE, 3: TRUE, 4: TRUE, 5: TRUE, 6: TRUE, 7: TRUE, 8: FALSE, 9: FALSE, 10: TRUE, 11: FALSE, 12: FALSE, 13: FALSE, 14: FALSE, 15: FALSE, 16: FALSE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: TRUE, 1: TRUE, 2: TRUE, 3: TRUE, 4: TRUE, 5: TRUE, 6: TRUE, 7: TRUE, 8: FALSE, 9: FALSE, 10: TRUE, 11: TRUE, 12: FALSE, 13: FALSE, 14: FALSE, 15: FALSE, 16: FALSE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: FALSE, 1: FALSE, 2: FALSE, 3: FALSE, 4: FALSE, 5: FALSE, 6: TRUE, 7: TRUE, 8: TRUE, 9: TRUE, 10: TRUE, 11: FALSE, 12: TRUE, 13: FALSE, 14: FALSE, 15: FALSE, 16: TRUE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: FALSE, 1: FALSE, 2: FALSE, 3: FALSE, 4: FALSE, 5: FALSE, 6: TRUE, 7: TRUE, 8: TRUE, 9: TRUE, 10: TRUE, 11: FALSE, 12: TRUE, 13: FALSE, 14: FALSE, 15: FALSE, 16: TRUE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: FALSE, 1: FALSE, 2: FALSE, 3: FALSE, 4: FALSE, 5: FALSE, 6: TRUE, 7: TRUE, 8: TRUE, 9: TRUE, 10: TRUE, 11: FALSE, 12: TRUE, 13: FALSE, 14: FALSE, 15: FALSE, 16: TRUE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: FALSE, 1: FALSE, 2: FALSE, 3: FALSE, 4: FALSE, 5: FALSE, 6: TRUE, 7: TRUE, 8: TRUE, 9: TRUE, 10: TRUE, 11: FALSE, 12: TRUE, 13: FALSE, 14: FALSE, 15: FALSE, 16: TRUE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: FALSE, 1: FALSE, 2: FALSE, 3: FALSE, 4: FALSE, 5: FALSE, 6: TRUE, 7: TRUE, 8: TRUE, 9: TRUE, 10: TRUE, 11: FALSE, 12: TRUE, 13: FALSE, 14: FALSE, 15: FALSE, 16: TRUE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: TRUE, 1: TRUE, 2: TRUE, 3: TRUE, 4: TRUE, 5: TRUE, 6: TRUE, 7: TRUE, 8: FALSE, 9: FALSE, 10: TRUE, 11: FALSE, 12: FALSE, 13: TRUE, 14: FALSE, 15: FALSE, 16: FALSE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: FALSE, 1: FALSE, 2: FALSE, 3: FALSE, 4: FALSE, 5: FALSE, 6: TRUE, 7: TRUE, 8: TRUE, 9: TRUE, 10: TRUE, 11: FALSE, 12: TRUE, 13: FALSE, 14: FALSE, 15: FALSE, 16: TRUE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: FALSE, 1: FALSE, 2: FALSE, 3: FALSE, 4: FALSE, 5: FALSE, 6: TRUE, 7: TRUE, 8: TRUE, 9: TRUE, 10: TRUE, 11: FALSE, 12: TRUE, 13: FALSE, 14: FALSE, 15: FALSE, 16: TRUE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}, {0: FALSE, 1: FALSE, 2: FALSE, 3: FALSE, 4: FALSE, 5: FALSE, 6: TRUE, 7: TRUE, 8: TRUE, 9: TRUE, 10: TRUE, 11: FALSE, 12: TRUE, 13: FALSE, 14: FALSE, 15: FALSE, 16: TRUE, 17: FALSE, 18: FALSE, 19: FALSE, 20: FALSE, 21: FALSE, 22: FALSE, 23: FALSE, 24: FALSE, 25: FALSE, 26: FALSE, 27: FALSE, 28: FALSE}}
-var class_ok_align [9][31]int = [9][31]int{{TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, FALSE, TRUE, FALSE, TRUE, FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE}, {TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, TRUE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE}, {TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, TRUE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE}, {TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, TRUE, TRUE, FALSE, TRUE, FALSE, TRUE, FALSE, TRUE, FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE}, {TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, TRUE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE}, {TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, TRUE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE}, {TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, TRUE, FALSE, FALSE, TRUE, FALSE, TRUE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE}, {TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE}, {TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE}}
+var class_ok_race [24][31]bool = [24][31]bool{{0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: false, 9: false, 10: true, 11: false, 12: false, 13: false, 14: false, 15: false, 16: false, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: false, 9: false, 10: true, 11: false, 12: false, 13: false, 14: false, 15: false, 16: false, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: false, 9: false, 10: true, 11: false, 12: false, 13: false, 14: false, 15: false, 16: false, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: false, 9: false, 10: true, 11: false, 12: false, 13: false, 14: false, 15: false, 16: false, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: false, 9: false, 10: true, 11: false, 12: false, 13: false, 14: false, 15: false, 16: false, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: false, 9: false, 10: true, 11: false, 12: false, 13: false, 14: false, 15: false, 16: false, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: false, 9: false, 10: true, 11: false, 12: true, 13: false, 14: false, 15: false, 16: false, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: false, 9: false, 10: true, 11: false, 12: false, 13: false, 14: false, 15: false, 16: false, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: false, 9: false, 10: true, 11: false, 12: false, 13: false, 14: false, 15: false, 16: false, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false, 8: true, 9: false, 10: false, 11: false, 12: false, 13: false, 14: false, 15: false, 16: false, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: false, 9: true, 10: true, 11: false, 12: false, 13: false, 14: false, 15: false, 16: false, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: false, 9: false, 10: true, 11: false, 12: false, 13: false, 14: false, 15: false, 16: false, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: false, 9: false, 10: true, 11: false, 12: false, 13: false, 14: false, 15: false, 16: false, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: false, 9: false, 10: true, 11: false, 12: false, 13: false, 14: false, 15: false, 16: false, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: false, 9: false, 10: true, 11: true, 12: false, 13: false, 14: false, 15: false, 16: false, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: true, 7: true, 8: true, 9: true, 10: true, 11: false, 12: true, 13: false, 14: false, 15: false, 16: true, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: true, 7: true, 8: true, 9: true, 10: true, 11: false, 12: true, 13: false, 14: false, 15: false, 16: true, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: true, 7: true, 8: true, 9: true, 10: true, 11: false, 12: true, 13: false, 14: false, 15: false, 16: true, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: true, 7: true, 8: true, 9: true, 10: true, 11: false, 12: true, 13: false, 14: false, 15: false, 16: true, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: true, 7: true, 8: true, 9: true, 10: true, 11: false, 12: true, 13: false, 14: false, 15: false, 16: true, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: false, 9: false, 10: true, 11: false, 12: false, 13: true, 14: false, 15: false, 16: false, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: true, 7: true, 8: true, 9: true, 10: true, 11: false, 12: true, 13: false, 14: false, 15: false, 16: true, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: true, 7: true, 8: true, 9: true, 10: true, 11: false, 12: true, 13: false, 14: false, 15: false, 16: true, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}, {0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: true, 7: true, 8: true, 9: true, 10: true, 11: false, 12: true, 13: false, 14: false, 15: false, 16: true, 17: false, 18: false, 19: false, 20: false, 21: false, 22: false, 23: false, 24: false, 25: false, 26: false, 27: false, 28: false}}
+var class_ok_align [9][31]bool = [9][31]bool{{true, true, true, true, true, true, true, false, false, true, false, true, false, true, false, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true}, {true, true, true, true, false, false, true, true, true, true, true, true, true, true, false, false, true, true, false, true, true, true, true, true, true, true, true, true, true, true, true}, {true, true, true, true, false, false, true, false, true, true, true, true, true, true, false, false, true, true, false, true, true, true, true, true, true, true, true, true, true, true, true}, {true, true, true, true, true, false, true, true, false, true, false, true, false, true, false, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true}, {true, true, true, true, false, false, true, true, true, true, true, true, true, true, false, false, true, true, false, true, true, true, true, true, true, true, true, true, true, true, true}, {true, true, true, true, false, false, true, true, true, true, true, true, true, true, false, false, true, true, false, true, true, true, true, true, true, true, true, true, true, true, true}, {true, true, true, true, true, false, true, false, false, true, false, true, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true}, {true, true, true, true, false, false, true, true, true, true, true, true, true, true, true, true, true, true, false, true, true, true, true, true, true, true, true, true, true, true, true}, {true, true, true, true, false, false, true, false, true, true, true, true, true, true, true, true, true, true, false, true, true, true, true, true, true, true, true, true, true, true, true}}
 var favored_class [24]int = [24]int{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
-var prestige_classes [31]int = [31]int{FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE}
+var prestige_classes [31]bool = [31]bool{false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false}
 var class_max_ranks [31]int = [31]int{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 10, 10, 10, 10, 10, 10, 5, 10, 10, 10, 10, 5, -1, -1, -1, -1, -1}
 
 func parse_class(ch *char_data, arg int) int {
@@ -68,7 +67,7 @@ func parse_class(ch *char_data, arg int) int {
 		chclass = -1
 	}
 	if chclass >= 0 && chclass < 14 {
-		if class_ok_race[int(ch.Race)][chclass] == 0 {
+		if !class_ok_race[int(ch.Race)][chclass] {
 			chclass = -1
 		}
 	}
@@ -114,15 +113,15 @@ func do_start(ch *char_data) {
 	ch.Level_adj = 0
 	ch.Chclasses[ch.Chclass] = 1
 	ch.Exp = 1
-	if ch.Race == RACE_ANDROID {
+	if int(ch.Race) == RACE_ANDROID {
 		ch.Player_specials.Conditions[HUNGER] = -1
 		ch.Player_specials.Conditions[THIRST] = -1
 		ch.Player_specials.Conditions[DRUNK] = -1
-	} else if ch.Race == RACE_BIO && ((ch.Genome[0]) == 3 || (ch.Genome[1]) == 3) {
+	} else if int(ch.Race) == RACE_BIO && ((ch.Genome[0]) == 3 || (ch.Genome[1]) == 3) {
 		ch.Player_specials.Conditions[HUNGER] = -1
 		ch.Player_specials.Conditions[DRUNK] = 0
 		ch.Player_specials.Conditions[THIRST] = 48
-	} else if ch.Race == RACE_NAMEK {
+	} else if int(ch.Race) == RACE_NAMEK {
 		ch.Player_specials.Conditions[HUNGER] = -1
 		ch.Player_specials.Conditions[DRUNK] = 0
 		ch.Player_specials.Conditions[THIRST] = 48
@@ -131,30 +130,30 @@ func do_start(ch *char_data) {
 		ch.Player_specials.Conditions[HUNGER] = 48
 		ch.Player_specials.Conditions[DRUNK] = 0
 	}
-	ch.Player_specials.Pref[int(PRF_AUTOEXIT/32)] |= bitvector_t(1 << (int(PRF_AUTOEXIT % 32)))
-	ch.Player_specials.Pref[int(PRF_HINTS/32)] |= bitvector_t(1 << (int(PRF_HINTS % 32)))
-	ch.Player_specials.Pref[int(PRF_NOMUSIC/32)] |= bitvector_t(1 << (int(PRF_NOMUSIC % 32)))
-	ch.Player_specials.Pref[int(PRF_DISPHP/32)] |= bitvector_t(1 << (int(PRF_DISPHP % 32)))
-	ch.Limb_condition[0] = 100
+	ch.Player_specials.Pref[int(PRF_AUTOEXIT/32)] |= bitvector_t(int32(1 << (int(PRF_AUTOEXIT % 32))))
+	ch.Player_specials.Pref[int(PRF_HINTS/32)] |= bitvector_t(int32(1 << (int(PRF_HINTS % 32))))
+	ch.Player_specials.Pref[int(PRF_NOMUSIC/32)] |= bitvector_t(int32(1 << (int(PRF_NOMUSIC % 32))))
+	ch.Player_specials.Pref[int(PRF_DISPHP/32)] |= bitvector_t(int32(1 << (int(PRF_DISPHP % 32))))
 	ch.Limb_condition[1] = 100
 	ch.Limb_condition[2] = 100
 	ch.Limb_condition[3] = 100
-	ch.Act[int(PLR_HEAD/32)] |= bitvector_t(1 << (int(PLR_HEAD % 32)))
+	ch.Limb_condition[4] = 100
+	ch.Act[int(PLR_HEAD/32)] |= bitvector_t(int32(1 << (int(PLR_HEAD % 32))))
 	ch.Skill_slots = 30
-	if ch.Race == RACE_HUMAN {
+	if int(ch.Race) == RACE_HUMAN {
 		ch.Skill_slots += 1
-	} else if ch.Race == RACE_SAIYAN {
+	} else if int(ch.Race) == RACE_SAIYAN {
 		ch.Skill_slots -= 1
-	} else if ch.Race == RACE_TRUFFLE {
+	} else if int(ch.Race) == RACE_TRUFFLE {
 		ch.Skill_slots += 2
-	} else if ch.Race == RACE_HALFBREED {
+	} else if int(ch.Race) == RACE_HALFBREED {
 		ch.Skill_slots += 1
-	} else if ch.Race == RACE_MAJIN {
+	} else if int(ch.Race) == RACE_MAJIN {
 		ch.Skill_slots -= 1
-	} else if ch.Race == RACE_KAI {
+	} else if int(ch.Race) == RACE_KAI {
 		ch.Skill_slots += 4
 	}
-	if ch.Chclass == CLASS_TSUNA || ch.Chclass == CLASS_KABITO || ch.Chclass == CLASS_NAIL {
+	if int(ch.Chclass) == CLASS_TSUNA || int(ch.Chclass) == CLASS_KABITO || int(ch.Chclass) == CLASS_NAIL {
 		ch.Skill_slots += 5
 	}
 	if (ch.Bonuses[BONUS_GMEMORY]) != 0 {
@@ -163,26 +162,26 @@ func do_start(ch *char_data) {
 	if (ch.Bonuses[BONUS_BMEMORY]) != 0 {
 		ch.Skill_slots -= 5
 	}
-	if ch.Race == RACE_SAIYAN || ch.Race == RACE_HALFBREED {
-		if ch.Race != RACE_HALFBREED || ch.Race == RACE_HALFBREED && ch.Player_specials.Racial_pref != 1 {
-			ch.Act[int(PLR_STAIL/32)] |= bitvector_t(1 << (int(PLR_STAIL % 32)))
+	if int(ch.Race) == RACE_SAIYAN || int(ch.Race) == RACE_HALFBREED {
+		if int(ch.Race) != RACE_HALFBREED || int(ch.Race) == RACE_HALFBREED && ch.Player_specials.Racial_pref != 1 {
+			ch.Act[int(PLR_STAIL/32)] |= bitvector_t(int32(1 << (int(PLR_STAIL % 32))))
 		}
 	}
-	if ch.Race == RACE_ICER || ch.Race == RACE_BIO {
-		ch.Act[int(PLR_TAIL/32)] |= bitvector_t(1 << (int(PLR_TAIL % 32)))
+	if int(ch.Race) == RACE_ICER || int(ch.Race) == RACE_BIO {
+		ch.Act[int(PLR_TAIL/32)] |= bitvector_t(int32(1 << (int(PLR_TAIL % 32))))
 	}
-	if ch.Race == RACE_MAJIN {
+	if int(ch.Race) == RACE_MAJIN {
 		ch.Absorbs = 0
 		ch.IngestLearned = 0
 	}
-	if ch.Race == RACE_BIO {
+	if int(ch.Race) == RACE_BIO {
 		ch.Absorbs = 3
 	}
-	ch.Player_specials.Pref[int(PRF_VIEWORDER/32)] |= bitvector_t(1 << (int(PRF_VIEWORDER % 32)))
-	ch.Player_specials.Pref[int(PRF_DISPMOVE/32)] |= bitvector_t(1 << (int(PRF_DISPMOVE % 32)))
-	ch.Player_specials.Pref[int(PRF_DISPKI/32)] |= bitvector_t(1 << (int(PRF_DISPKI % 32)))
-	ch.Player_specials.Pref[int(PRF_DISPEXP/32)] |= bitvector_t(1 << (int(PRF_DISPEXP % 32)))
-	ch.Player_specials.Pref[int(PRF_DISPTNL/32)] |= bitvector_t(1 << (int(PRF_DISPTNL % 32)))
+	ch.Player_specials.Pref[int(PRF_VIEWORDER/32)] |= bitvector_t(int32(1 << (int(PRF_VIEWORDER % 32))))
+	ch.Player_specials.Pref[int(PRF_DISPMOVE/32)] |= bitvector_t(int32(1 << (int(PRF_DISPMOVE % 32))))
+	ch.Player_specials.Pref[int(PRF_DISPKI/32)] |= bitvector_t(int32(1 << (int(PRF_DISPKI % 32))))
+	ch.Player_specials.Pref[int(PRF_DISPEXP/32)] |= bitvector_t(int32(1 << (int(PRF_DISPEXP % 32))))
+	ch.Player_specials.Pref[int(PRF_DISPTNL/32)] |= bitvector_t(int32(1 << (int(PRF_DISPTNL % 32))))
 	if !PLR_FLAGGED(ch, PLR_FORGET) {
 		if ch.Choice == 1 {
 			punch = rand_number(30, 40)
@@ -229,7 +228,7 @@ func do_start(ch *char_data) {
 				}
 			}
 		}
-		if ch.Race == RACE_HUMAN {
+		if int(ch.Race) == RACE_HUMAN {
 			punch = rand_number(5, 15)
 			for {
 				ch.Skills[SKILL_BUILD] = int8(punch)
@@ -238,7 +237,7 @@ func do_start(ch *char_data) {
 				}
 			}
 		}
-		if ch.Race == RACE_TRUFFLE {
+		if int(ch.Race) == RACE_TRUFFLE {
 			punch = rand_number(15, 25)
 			for {
 				ch.Skills[SKILL_BUILD] = int8(punch)
@@ -247,7 +246,7 @@ func do_start(ch *char_data) {
 				}
 			}
 		}
-		if ch.Race == RACE_KONATSU {
+		if int(ch.Race) == RACE_KONATSU {
 			punch = rand_number(50, 60)
 			for {
 				ch.Skills[SKILL_SWORD] = int8(punch)
@@ -270,9 +269,9 @@ func do_start(ch *char_data) {
 				}
 			}
 		}
-		if ch.Chclass == CLASS_TAPION || ch.Chclass == CLASS_GINYU || ch.Chclass == CLASS_DABURA || ch.Chclass == CLASS_KURZAK {
+		if int(ch.Chclass) == CLASS_TAPION || int(ch.Chclass) == CLASS_GINYU || int(ch.Chclass) == CLASS_DABURA || int(ch.Chclass) == CLASS_KURZAK {
 			punch = rand_number(30, 40)
-			if ch.Chclass == CLASS_KURZAK || ch.Chclass == CLASS_TAPION {
+			if int(ch.Chclass) == CLASS_KURZAK || int(ch.Chclass) == CLASS_TAPION {
 				punch += rand_number(5, 10)
 			}
 			for {
@@ -282,7 +281,7 @@ func do_start(ch *char_data) {
 				}
 			}
 		}
-		if ch.Race == RACE_KAI || ch.Race == RACE_KANASSAN {
+		if int(ch.Race) == RACE_KAI || int(ch.Race) == RACE_KANASSAN {
 			punch = rand_number(40, 60)
 			for {
 				ch.Skills[SKILL_FOCUS] = int8(punch)
@@ -291,7 +290,7 @@ func do_start(ch *char_data) {
 				}
 			}
 		}
-		if ch.Race == RACE_KANASSAN {
+		if int(ch.Race) == RACE_KANASSAN {
 			punch = rand_number(40, 60)
 			for {
 				ch.Skills[SKILL_CONCENTRATION] = int8(punch)
@@ -300,7 +299,7 @@ func do_start(ch *char_data) {
 				}
 			}
 		}
-		if ch.Race == RACE_KAI {
+		if int(ch.Race) == RACE_KAI {
 			punch = rand_number(30, 50)
 			for {
 				ch.Skills[SKILL_HEAL] = int8(punch)
@@ -309,7 +308,7 @@ func do_start(ch *char_data) {
 				}
 			}
 		}
-		if ch.Race == RACE_DEMON {
+		if int(ch.Race) == RACE_DEMON {
 			punch = rand_number(50, 60)
 			for {
 				ch.Skills[SKILL_SPEAR] = int8(punch)
@@ -327,9 +326,9 @@ func do_start(ch *char_data) {
 			}
 		}
 	} else {
-		ch.Act[int(PLR_FORGET/32)] &= bitvector_t(^(1 << (int(PLR_FORGET % 32))))
+		ch.Act[int(PLR_FORGET/32)] &= bitvector_t(int32(^(1 << (int(PLR_FORGET % 32)))))
 	}
-	if ch.Race == RACE_KAI || ch.Race == RACE_KANASSAN {
+	if int(ch.Race) == RACE_KAI || int(ch.Race) == RACE_KANASSAN {
 		punch = rand_number(15, 30)
 		for {
 			ch.Skills[SKILL_TELEPATHY] = int8(punch)
@@ -338,7 +337,7 @@ func do_start(ch *char_data) {
 			}
 		}
 	}
-	if ch.Race == RACE_MAJIN || ch.Race == RACE_NAMEK || ch.Race == RACE_BIO {
+	if int(ch.Race) == RACE_MAJIN || int(ch.Race) == RACE_NAMEK || int(ch.Race) == RACE_BIO {
 		punch = rand_number(10, 16)
 		for {
 			ch.Skills[SKILL_REGENERATE] = int8(punch)
@@ -347,7 +346,7 @@ func do_start(ch *char_data) {
 			}
 		}
 	}
-	if ch.Race == RACE_ANDROID && PLR_FLAGGED(ch, PLR_ABSORB) {
+	if int(ch.Race) == RACE_ANDROID && PLR_FLAGGED(ch, PLR_ABSORB) {
 		punch = rand_number(25, 35)
 		for {
 			ch.Skills[SKILL_ABSORB] = int8(punch)
@@ -356,7 +355,7 @@ func do_start(ch *char_data) {
 			}
 		}
 	}
-	if ch.Race == RACE_BIO {
+	if int(ch.Race) == RACE_BIO {
 		punch = rand_number(15, 25)
 		for {
 			ch.Skills[SKILL_ABSORB] = int8(punch)
@@ -365,7 +364,7 @@ func do_start(ch *char_data) {
 			}
 		}
 	}
-	if ch.Race == RACE_ARLIAN {
+	if int(ch.Race) == RACE_ARLIAN {
 		punch = rand_number(30, 50)
 		for {
 			ch.Skills[SKILL_SEISHOU] = int8(punch)
@@ -374,7 +373,7 @@ func do_start(ch *char_data) {
 			}
 		}
 	}
-	if ch.Race == RACE_ICER {
+	if int(ch.Race) == RACE_ICER {
 		punch = rand_number(20, 30)
 		for {
 			ch.Skills[SKILL_TAILWHIP] = int8(punch)
@@ -383,7 +382,7 @@ func do_start(ch *char_data) {
 			}
 		}
 	}
-	if ch.Chclass < 0 || ch.Chclass > NUM_CLASSES {
+	if int(ch.Chclass) < 0 || int(ch.Chclass) > NUM_CLASSES {
 		basic_mud_log(libc.CString("Unknown character class %d in do_start, resetting."), ch.Chclass)
 		ch.Chclass = 0
 	}
@@ -469,14 +468,14 @@ func do_start(ch *char_data) {
 	ch.Lifeperc = 75
 	obj = read_object(17, VIRTUAL)
 	obj_to_char(obj, ch)
-	if ch.Race == RACE_HOSHIJIN {
+	if int(ch.Race) == RACE_HOSHIJIN {
 		obj = read_object(3428, VIRTUAL)
 		obj_to_char(obj, ch)
 	}
 	var obj2 *obj_data
 	obj2 = read_object(0x464E, VIRTUAL)
 	obj_to_char(obj2, ch)
-	if ch.Chclass == CLASS_TAPION || ch.Chclass == CLASS_GINYU {
+	if int(ch.Chclass) == CLASS_TAPION || int(ch.Chclass) == CLASS_GINYU {
 		var throw *obj_data
 		throw = read_object(19050, VIRTUAL)
 		obj_to_char(throw, ch)
@@ -490,7 +489,7 @@ func do_start(ch *char_data) {
 			throw = read_object(19050, VIRTUAL)
 			obj_to_char(throw, ch)
 		}
-	} else if ch.Chclass == CLASS_DABURA {
+	} else if int(ch.Chclass) == CLASS_DABURA {
 		var throw *obj_data
 		throw = read_object(0x4A6F, VIRTUAL)
 		obj_to_char(throw, ch)
@@ -509,7 +508,7 @@ func do_start(ch *char_data) {
 	if ch.Max_move < 100 {
 		ch.Max_move = 100
 	}
-	if ch.Race == RACE_ANDROID && PLR_FLAGGED(ch, PLR_SENSEM) {
+	if int(ch.Race) == RACE_ANDROID && PLR_FLAGGED(ch, PLR_SENSEM) {
 		for {
 			ch.Skills[SKILL_SENSE] = 100
 			if true {
@@ -526,48 +525,48 @@ func do_start(ch *char_data) {
 	ch.Basepl = ch.Max_hit
 	ch.Baseki = ch.Max_mana
 	ch.Basest = ch.Max_move
-	if ch.Real_abils.Str > 20 {
+	if int(ch.Real_abils.Str) > 20 {
 		ch.Real_abils.Str = 20
 	}
-	if ch.Real_abils.Str < 8 {
+	if int(ch.Real_abils.Str) < 8 {
 		ch.Real_abils.Str = 8
 	}
-	if ch.Real_abils.Con > 20 {
+	if int(ch.Real_abils.Con) > 20 {
 		ch.Real_abils.Con = 20
 	}
-	if ch.Real_abils.Con < 8 {
+	if int(ch.Real_abils.Con) < 8 {
 		ch.Real_abils.Con = 8
 	}
-	if ch.Real_abils.Intel > 20 {
+	if int(ch.Real_abils.Intel) > 20 {
 		ch.Real_abils.Intel = 20
 	}
-	if ch.Real_abils.Intel < 8 {
+	if int(ch.Real_abils.Intel) < 8 {
 		ch.Real_abils.Intel = 8
 	}
-	if ch.Real_abils.Cha > 20 {
+	if int(ch.Real_abils.Cha) > 20 {
 		ch.Real_abils.Cha = 20
 	}
-	if ch.Real_abils.Cha < 8 {
+	if int(ch.Real_abils.Cha) < 8 {
 		ch.Real_abils.Cha = 8
 	}
-	if ch.Real_abils.Dex > 20 {
+	if int(ch.Real_abils.Dex) > 20 {
 		ch.Real_abils.Dex = 20
 	}
-	if ch.Real_abils.Dex < 8 {
+	if int(ch.Real_abils.Dex) < 8 {
 		ch.Real_abils.Dex = 8
 	}
-	if ch.Real_abils.Wis > 20 {
+	if int(ch.Real_abils.Wis) > 20 {
 		ch.Real_abils.Wis = 20
 	}
-	if ch.Real_abils.Wis < 8 {
+	if int(ch.Real_abils.Wis) < 8 {
 		ch.Real_abils.Wis = 8
 	}
 	ch.Transclass = rand_number(1, 3)
 	if config_info.Operation.Siteok_everyone != 0 {
-		ch.Act[int(PLR_SITEOK/32)] |= bitvector_t(1 << (int(PLR_SITEOK % 32)))
+		ch.Act[int(PLR_SITEOK/32)] |= bitvector_t(int32(1 << (int(PLR_SITEOK % 32))))
 	}
-	if ch.Race == RACE_SAIYAN && rand_number(1, 100) >= 95 {
-		ch.Act[int(PLR_LSSJ/32)] |= bitvector_t(1 << (int(PLR_LSSJ % 32)))
+	if int(ch.Race) == RACE_SAIYAN && rand_number(1, 100) >= 95 {
+		ch.Act[int(PLR_LSSJ/32)] |= bitvector_t(int32(1 << (int(PLR_LSSJ % 32))))
 		write_to_output(ch.Desc, libc.CString("@GYou were one of the few born a Legendary Super Saiyan!@n\r\n"))
 	}
 	ch.Player_specials.Olc_zone = -1
@@ -779,9 +778,9 @@ func advance_level(ch *char_data, whichclass int) {
 		case RACE_TRUFFLE:
 			prac_reward += prac_reward * 0.5
 		}
-		if ch.Race != RACE_HUMAN {
+		if int(ch.Race) != RACE_HUMAN {
 			add_hp = int64((float64(ch.Basepl) * 0.01) * pl_percent)
-		} else if ch.Race == RACE_HUMAN {
+		} else if int(ch.Race) == RACE_HUMAN {
 			add_hp = int64(((float64(ch.Basepl) * 0.01) * pl_percent) * 0.8)
 		}
 		add_mana = int64((float64(ch.Baseki) * 0.01) * ki_percent)
@@ -913,7 +912,7 @@ func advance_level(ch *char_data, whichclass int) {
 	if GET_LEVEL(ch) == 1 || (GET_LEVEL(ch)%3) == 0 {
 		add_gen_feats += 1
 	}
-	if ch.Race == RACE_HUMAN {
+	if int(ch.Race) == RACE_HUMAN {
 		add_prac += 2
 	}
 	i = int(ability_mod_value(int(ch.Aff_abils.Con)))
@@ -934,7 +933,7 @@ func advance_level(ch *char_data, whichclass int) {
 		ch.Basest = ch.Max_hit
 		add_prac = 5
 		if PLR_FLAGGED(ch, PLR_SKILLP) {
-			ch.Act[int(PLR_SKILLP/32)] &= bitvector_t(^(1 << (int(PLR_SKILLP % 32))))
+			ch.Act[int(PLR_SKILLP/32)] &= bitvector_t(int32(^(1 << (int(PLR_SKILLP % 32)))))
 			add_prac *= 5
 		} else {
 			add_prac *= 2
@@ -951,19 +950,19 @@ func advance_level(ch *char_data, whichclass int) {
 		send_to_char(ch, libc.CString("@D[@mPractice Session Bonus!@D]@n\r\n"))
 		add_prac += rand_number(4, 12)
 	}
-	if (ch.Race == RACE_DEMON || ch.Race == RACE_KANASSAN) && GET_LEVEL(ch) > 80 {
+	if (int(ch.Race) == RACE_DEMON || int(ch.Race) == RACE_KANASSAN) && GET_LEVEL(ch) > 80 {
 		add_hp *= 2
 		add_mana *= 2
 		add_move *= 2
-	} else if (ch.Race == RACE_DEMON || ch.Race == RACE_KANASSAN) && GET_LEVEL(ch) > 60 {
+	} else if (int(ch.Race) == RACE_DEMON || int(ch.Race) == RACE_KANASSAN) && GET_LEVEL(ch) > 60 {
 		add_hp *= int64(1.75)
 		add_mana *= int64(1.75)
 		add_move *= int64(1.75)
-	} else if (ch.Race == RACE_DEMON || ch.Race == RACE_KANASSAN) && GET_LEVEL(ch) > 50 {
+	} else if (int(ch.Race) == RACE_DEMON || int(ch.Race) == RACE_KANASSAN) && GET_LEVEL(ch) > 50 {
 		add_hp *= int64(1.5)
 		add_mana *= int64(1.5)
 		add_move *= int64(1.5)
-	} else if (ch.Race == RACE_DEMON || ch.Race == RACE_KANASSAN) && GET_LEVEL(ch) > 40 {
+	} else if (int(ch.Race) == RACE_DEMON || int(ch.Race) == RACE_KANASSAN) && GET_LEVEL(ch) > 40 {
 		add_hp *= int64(1.25)
 		add_mana *= int64(1.25)
 		add_move *= int64(1.25)
@@ -979,51 +978,51 @@ func advance_level(ch *char_data, whichclass int) {
 	var nhp int = int(add_hp)
 	var nma int = int(add_mana)
 	var nmo int = int(add_move)
-	if ch.Race == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS1) {
+	if int(ch.Race) == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS1) {
 		add_hp *= 3
 		add_move *= 3
 		add_mana *= 3
-	} else if ch.Race == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS2) {
+	} else if int(ch.Race) == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS2) {
 		add_hp *= 4
 		add_move *= 4
 		add_mana *= 4
-	} else if ch.Race == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS3) {
+	} else if int(ch.Race) == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS3) {
 		add_hp *= 5
 		add_move *= 5
 		add_mana *= 5
-	} else if ch.Race == RACE_HOSHIJIN && ch.Starphase == 1 {
+	} else if int(ch.Race) == RACE_HOSHIJIN && ch.Starphase == 1 {
 		add_hp *= 2
 		add_move *= 2
 		add_mana *= 2
-	} else if ch.Race == RACE_HOSHIJIN && ch.Starphase == 2 {
+	} else if int(ch.Race) == RACE_HOSHIJIN && ch.Starphase == 2 {
 		add_hp *= 3
 		add_move *= 3
 		add_mana *= 3
-	} else if ch.Race == RACE_BIO && PLR_FLAGGED(ch, PLR_TRANS1) {
+	} else if int(ch.Race) == RACE_BIO && PLR_FLAGGED(ch, PLR_TRANS1) {
 		add_hp *= 2
 		add_move *= 2
 		add_mana *= 2
-	} else if ch.Race == RACE_BIO && PLR_FLAGGED(ch, PLR_TRANS2) {
+	} else if int(ch.Race) == RACE_BIO && PLR_FLAGGED(ch, PLR_TRANS2) {
 		add_hp *= 3
 		add_move *= 3
 		add_mana *= 3
-	} else if ch.Race == RACE_BIO && PLR_FLAGGED(ch, PLR_TRANS3) {
+	} else if int(ch.Race) == RACE_BIO && PLR_FLAGGED(ch, PLR_TRANS3) {
 		add_hp *= int64(3.5)
 		add_move *= int64(3.5)
 		add_mana *= int64(3.5)
-	} else if ch.Race == RACE_BIO && PLR_FLAGGED(ch, PLR_TRANS4) {
+	} else if int(ch.Race) == RACE_BIO && PLR_FLAGGED(ch, PLR_TRANS4) {
 		add_hp *= 4
 		add_move *= 4
 		add_mana *= 4
-	} else if ch.Race == RACE_MAJIN && PLR_FLAGGED(ch, PLR_TRANS1) {
+	} else if int(ch.Race) == RACE_MAJIN && PLR_FLAGGED(ch, PLR_TRANS1) {
 		add_hp *= 2
 		add_move *= 2
 		add_mana *= 2
-	} else if ch.Race == RACE_MAJIN && PLR_FLAGGED(ch, PLR_TRANS2) {
+	} else if int(ch.Race) == RACE_MAJIN && PLR_FLAGGED(ch, PLR_TRANS2) {
 		add_hp *= 3
 		add_move *= 3
 		add_mana *= 3
-	} else if ch.Race == RACE_MAJIN && PLR_FLAGGED(ch, PLR_TRANS3) {
+	} else if int(ch.Race) == RACE_MAJIN && PLR_FLAGGED(ch, PLR_TRANS3) {
 		add_hp *= int64(4.5)
 		add_move *= int64(4.5)
 		add_mana *= int64(4.5)
@@ -1049,18 +1048,18 @@ func advance_level(ch *char_data, whichclass int) {
 		for i = 0; i < 3; i++ {
 			ch.Player_specials.Conditions[i] = -1
 		}
-		ch.Player_specials.Pref[int(PRF_HOLYLIGHT/32)] |= bitvector_t(1 << (int(PRF_HOLYLIGHT % 32)))
+		ch.Player_specials.Pref[int(PRF_HOLYLIGHT/32)] |= bitvector_t(int32(1 << (int(PRF_HOLYLIGHT % 32))))
 	}
 	stdio.Sprintf(&buf[0], "@D[@YGain@D: @RPl@D(@G%s@D) @gSt@D(@G%s@D) @CKi@D(@G%s@D) @bPS@D(@G%s@D)]", add_commas(add_hp), add_commas(add_move), add_commas(add_mana), add_commas(int64(add_prac)))
 	if (ch.Bonuses[BONUS_GMEMORY]) != 0 && (GET_LEVEL(ch) == 20 || GET_LEVEL(ch) == 40 || GET_LEVEL(ch) == 60 || GET_LEVEL(ch) == 80 || GET_LEVEL(ch) == 100) {
 		ch.Skill_slots += 1
 		send_to_char(ch, libc.CString("@CYou feel like you could remember a new skill!@n\r\n"))
 	}
-	if ch.Race == RACE_NAMEK && rand_number(1, 100) <= 5 {
+	if int(ch.Race) == RACE_NAMEK && rand_number(1, 100) <= 5 {
 		ch.Skill_slots += 1
 		send_to_char(ch, libc.CString("@CYou feel as though you could learn another skill.@n\r\n"))
 	}
-	if ch.Race == RACE_ICER && rand_number(1, 100) <= 25 {
+	if int(ch.Race) == RACE_ICER && rand_number(1, 100) <= 25 {
 		bring_to_cap(ch)
 		send_to_char(ch, libc.CString("@GYou feel your body obtain its current optimal strength!@n\r\n"))
 	}
@@ -1092,18 +1091,18 @@ func advance_level(ch *char_data, whichclass int) {
 			raise     int = FALSE
 			stat_fail int = 0
 		)
-		if ch.Race == RACE_KONATSU {
+		if int(ch.Race) == RACE_KONATSU {
 			for raise == FALSE {
-				if ch.Real_abils.Dex < 100 && rand_number(1, 2) == 2 && stat_fail != 1 {
-					if ch.Real_abils.Dex < 45 || (ch.Bonuses[BONUS_CLUMSY]) <= 0 {
+				if int(ch.Real_abils.Dex) < 100 && rand_number(1, 2) == 2 && stat_fail != 1 {
+					if int(ch.Real_abils.Dex) < 45 || (ch.Bonuses[BONUS_CLUMSY]) <= 0 {
 						ch.Real_abils.Dex += 1
 						send_to_char(ch, libc.CString("@GYou feel your agility increase!@n\r\n"))
 						raise = TRUE
 					} else {
 						stat_fail += 1
 					}
-				} else if ch.Real_abils.Cha < 100 && raise == FALSE && stat_fail < 2 {
-					if ch.Real_abils.Cha < 45 || (ch.Bonuses[BONUS_SLOW]) > 0 {
+				} else if int(ch.Real_abils.Cha) < 100 && raise == FALSE && stat_fail < 2 {
+					if int(ch.Real_abils.Cha) < 45 || (ch.Bonuses[BONUS_SLOW]) > 0 {
 						ch.Real_abils.Cha += 1
 						send_to_char(ch, libc.CString("@GYou feel your speed increase!@n\r\n"))
 						raise = TRUE
@@ -1115,18 +1114,18 @@ func advance_level(ch *char_data, whichclass int) {
 					raise = TRUE
 				}
 			}
-		} else if ch.Race == RACE_MUTANT {
+		} else if int(ch.Race) == RACE_MUTANT {
 			for raise == FALSE {
-				if ch.Real_abils.Con < 100 && rand_number(1, 2) == 2 && stat_fail != 1 {
-					if ch.Real_abils.Con < 45 || (ch.Bonuses[BONUS_FRAIL]) <= 0 {
+				if int(ch.Real_abils.Con) < 100 && rand_number(1, 2) == 2 && stat_fail != 1 {
+					if int(ch.Real_abils.Con) < 45 || (ch.Bonuses[BONUS_FRAIL]) <= 0 {
 						ch.Real_abils.Con += 1
 						send_to_char(ch, libc.CString("@GYou feel your constitution increase!@n\r\n"))
 						raise = TRUE
 					} else {
 						stat_fail += 1
 					}
-				} else if ch.Real_abils.Cha < 100 && raise == FALSE && stat_fail < 2 {
-					if ch.Real_abils.Cha < 45 || (ch.Bonuses[BONUS_SLOW]) > 0 {
+				} else if int(ch.Real_abils.Cha) < 100 && raise == FALSE && stat_fail < 2 {
+					if int(ch.Real_abils.Cha) < 45 || (ch.Bonuses[BONUS_SLOW]) > 0 {
 						ch.Real_abils.Cha += 1
 						send_to_char(ch, libc.CString("@GYou feel your speed increase!@n\r\n"))
 						raise = TRUE
@@ -1138,18 +1137,18 @@ func advance_level(ch *char_data, whichclass int) {
 					raise = TRUE
 				}
 			}
-		} else if ch.Race == RACE_HOSHIJIN {
+		} else if int(ch.Race) == RACE_HOSHIJIN {
 			for raise == FALSE {
-				if ch.Real_abils.Str < 100 && rand_number(1, 2) == 2 && stat_fail != 1 {
-					if ch.Real_abils.Str < 45 || (ch.Bonuses[BONUS_WIMP]) <= 0 {
+				if int(ch.Real_abils.Str) < 100 && rand_number(1, 2) == 2 && stat_fail != 1 {
+					if int(ch.Real_abils.Str) < 45 || (ch.Bonuses[BONUS_WIMP]) <= 0 {
 						ch.Real_abils.Str += 1
 						send_to_char(ch, libc.CString("@GYou feel your strength increase!@n\r\n"))
 						raise = TRUE
 					} else {
 						stat_fail += 1
 					}
-				} else if ch.Real_abils.Dex < 100 && raise == FALSE && stat_fail < 2 {
-					if ch.Real_abils.Dex < 45 || (ch.Bonuses[BONUS_SLOW]) > 0 {
+				} else if int(ch.Real_abils.Dex) < 100 && raise == FALSE && stat_fail < 2 {
+					if int(ch.Real_abils.Dex) < 45 || (ch.Bonuses[BONUS_SLOW]) > 0 {
 						ch.Real_abils.Dex += 1
 						send_to_char(ch, libc.CString("@GYou feel your agility increase!@n\r\n"))
 						raise = TRUE
@@ -1163,25 +1162,25 @@ func advance_level(ch *char_data, whichclass int) {
 			}
 		}
 	}
-	C.strcat(&buf[0], libc.CString(".\r\n"))
+	libc.StrCat(&buf[0], libc.CString(".\r\n"))
 	send_to_char(ch, libc.CString("%s"), &buf[0])
 	if GET_SKILL(ch, SKILL_POTENTIAL) != 0 && rand_number(1, 4) == 4 {
 		send_to_char(ch, libc.CString("You can now perform another Potential Release.\r\n"))
 		ch.Boosts += 1
 	}
-	if ch.Race == RACE_MAJIN && GET_LEVEL(ch) == 25 {
+	if int(ch.Race) == RACE_MAJIN && GET_LEVEL(ch) == 25 {
 		send_to_char(ch, libc.CString("You can now perform another Majinization.\r\n"))
 		ch.Boosts += 1
 	}
-	if ch.Race == RACE_MAJIN && GET_LEVEL(ch) == 50 {
+	if int(ch.Race) == RACE_MAJIN && GET_LEVEL(ch) == 50 {
 		send_to_char(ch, libc.CString("You can now perform another Majinization.\r\n"))
 		ch.Boosts += 1
 	}
-	if ch.Race == RACE_MAJIN && GET_LEVEL(ch) == 75 {
+	if int(ch.Race) == RACE_MAJIN && GET_LEVEL(ch) == 75 {
 		send_to_char(ch, libc.CString("You can now perform another Majinization.\r\n"))
 		ch.Boosts += 1
 	}
-	if ch.Race == RACE_MAJIN && GET_LEVEL(ch) == 100 {
+	if int(ch.Race) == RACE_MAJIN && GET_LEVEL(ch) == 100 {
 		send_to_char(ch, libc.CString("You can now perform another Majinization.\r\n"))
 		ch.Boosts += 1
 	}
@@ -1240,73 +1239,73 @@ func advance_level(ch *char_data, whichclass int) {
 	save_char(ch)
 }
 func invalid_class(ch *char_data, obj *obj_data) int {
-	if OBJ_FLAGGED(obj, ITEM_ANTI_WIZARD) && ch.Chclass == CLASS_ROSHI {
+	if OBJ_FLAGGED(obj, ITEM_ANTI_WIZARD) && int(ch.Chclass) == CLASS_ROSHI {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ANTI_CLERIC) && ch.Chclass == CLASS_PICCOLO {
+	if OBJ_FLAGGED(obj, ITEM_ANTI_CLERIC) && int(ch.Chclass) == CLASS_PICCOLO {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ANTI_FIGHTER) && ch.Chclass == CLASS_NAIL {
+	if OBJ_FLAGGED(obj, ITEM_ANTI_FIGHTER) && int(ch.Chclass) == CLASS_NAIL {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ANTI_ROGUE) && ch.Chclass == CLASS_KRANE {
+	if OBJ_FLAGGED(obj, ITEM_ANTI_ROGUE) && int(ch.Chclass) == CLASS_KRANE {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ANTI_MONK) && ch.Chclass == CLASS_BARDOCK {
+	if OBJ_FLAGGED(obj, ITEM_ANTI_MONK) && int(ch.Chclass) == CLASS_BARDOCK {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ONLY_MONK) && ch.Chclass != CLASS_BARDOCK {
+	if OBJ_FLAGGED(obj, ITEM_ONLY_MONK) && int(ch.Chclass) != CLASS_BARDOCK {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ONLY_WIZARD) && ch.Chclass != CLASS_ROSHI {
+	if OBJ_FLAGGED(obj, ITEM_ONLY_WIZARD) && int(ch.Chclass) != CLASS_ROSHI {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ONLY_JINTO) && ch.Chclass != CLASS_JINTO {
+	if OBJ_FLAGGED(obj, ITEM_ONLY_JINTO) && int(ch.Chclass) != CLASS_JINTO {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ONLY_CLERIC) && ch.Chclass != CLASS_PICCOLO {
+	if OBJ_FLAGGED(obj, ITEM_ONLY_CLERIC) && int(ch.Chclass) != CLASS_PICCOLO {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ONLY_ROGUE) && ch.Chclass != CLASS_KRANE {
+	if OBJ_FLAGGED(obj, ITEM_ONLY_ROGUE) && int(ch.Chclass) != CLASS_KRANE {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ANTI_ASSASSIN) && ch.Chclass != CLASS_KURZAK {
+	if OBJ_FLAGGED(obj, ITEM_ANTI_ASSASSIN) && int(ch.Chclass) != CLASS_KURZAK {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ONLY_FIGHTER) && ch.Chclass != CLASS_NAIL {
+	if OBJ_FLAGGED(obj, ITEM_ONLY_FIGHTER) && int(ch.Chclass) != CLASS_NAIL {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ONLY_PALADIN) && ch.Chclass != CLASS_GINYU {
+	if OBJ_FLAGGED(obj, ITEM_ONLY_PALADIN) && int(ch.Chclass) != CLASS_GINYU {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ANTI_WIZARD) && ch.Chclass == CLASS_ROSHI {
+	if OBJ_FLAGGED(obj, ITEM_ANTI_WIZARD) && int(ch.Chclass) == CLASS_ROSHI {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ANTI_PALADIN) && ch.Chclass == CLASS_GINYU {
+	if OBJ_FLAGGED(obj, ITEM_ANTI_PALADIN) && int(ch.Chclass) == CLASS_GINYU {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ANTI_BARBARIAN) && ch.Chclass == CLASS_KABITO {
+	if OBJ_FLAGGED(obj, ITEM_ANTI_BARBARIAN) && int(ch.Chclass) == CLASS_KABITO {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ANTI_BARD) && ch.Chclass == CLASS_ANDSIX {
+	if OBJ_FLAGGED(obj, ITEM_ANTI_BARD) && int(ch.Chclass) == CLASS_ANDSIX {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ONLY_BARD) && ch.Chclass != CLASS_ANDSIX {
+	if OBJ_FLAGGED(obj, ITEM_ONLY_BARD) && int(ch.Chclass) != CLASS_ANDSIX {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ANTI_RANGER) && ch.Chclass == CLASS_DABURA {
+	if OBJ_FLAGGED(obj, ITEM_ANTI_RANGER) && int(ch.Chclass) == CLASS_DABURA {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ANTI_DRUID) && ch.Chclass == CLASS_TAPION {
+	if OBJ_FLAGGED(obj, ITEM_ANTI_DRUID) && int(ch.Chclass) == CLASS_TAPION {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ANTI_ARCANE_ARCHER) && ch.Chclass == CLASS_JINTO {
+	if OBJ_FLAGGED(obj, ITEM_ANTI_ARCANE_ARCHER) && int(ch.Chclass) == CLASS_JINTO {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ANTI_ARCANE_TRICKSTER) && ch.Chclass == CLASS_TSUNA {
+	if OBJ_FLAGGED(obj, ITEM_ANTI_ARCANE_TRICKSTER) && int(ch.Chclass) == CLASS_TSUNA {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ANTI_ARCHMAGE) && ch.Chclass == CLASS_KURZAK {
+	if OBJ_FLAGGED(obj, ITEM_ANTI_ARCHMAGE) && int(ch.Chclass) == CLASS_KURZAK {
 		return TRUE
 	}
 	if OBJ_FLAGGED(obj, ITEM_ANTI_BLACKGUARD) && ((ch.Chclasses[CLASS_BLACKGUARD])+(ch.Epicclasses[CLASS_BLACKGUARD])) > 0 {
@@ -1550,7 +1549,7 @@ func level_exp(ch *char_data, level int) int {
 	case 100:
 		req = 800000000
 	}
-	if ch.Race == RACE_KAI {
+	if int(ch.Race) == RACE_KAI {
 		req += int(float64(req) * 0.15)
 	}
 	return req
@@ -1565,7 +1564,7 @@ func dex_mod_capped(ch *char_data) int8 {
 	)
 	mod = ability_mod_value(int(ch.Aff_abils.Dex))
 	armor = ch.Equipment[WEAR_BODY]
-	if armor != nil && armor.Type_flag == ITEM_ARMOR {
+	if armor != nil && int(armor.Type_flag) == ITEM_ARMOR {
 		mod = int8(MIN(int(mod), armor.Value[VAL_ARMOR_MAXDEXMOD]))
 	}
 	return mod
@@ -1676,7 +1675,7 @@ func total_skill_levels(ch *char_data, skill int) int {
 }
 func load_levels() int {
 	var (
-		fp        *C.FILE
+		fp        *stdio.File
 		line      [256]byte
 		sect_name [256]byte = [256]byte{0: '\x00'}
 		ptr       *byte
@@ -1685,11 +1684,11 @@ func load_levels() int {
 		cls       int
 		sect_type int = -1
 	)
-	if (func() *C.FILE {
-		fp = (*C.FILE)(unsafe.Pointer(stdio.FOpen(LIB_ETC, "r")))
+	if (func() *stdio.File {
+		fp = stdio.FOpen(LIB_ETC, "r")
 		return fp
 	}()) == nil {
-		basic_mud_log(libc.CString("SYSERR: Could not open level configuration file, error: %s!"), C.strerror(*__errno_location()))
+		basic_mud_log(libc.CString("SYSERR: Could not open level configuration file, error: %s!"), libc.StrError(libc.Errno))
 		return -1
 	}
 	for cls = 0; cls < NUM_CLASSES; cls++ {
@@ -1700,7 +1699,7 @@ func load_levels() int {
 	}
 	for {
 		linenum++
-		if C.fgets(&line[0], READ_SIZE, fp) == nil {
+		if fp.GetS(&line[0], READ_SIZE) == nil {
 			basic_mud_log(libc.CString("SYSERR: Unexpected EOF in file %s."), LIB_ETC)
 			return -1
 		} else if line[0] == '$' {
@@ -1709,7 +1708,7 @@ func load_levels() int {
 			continue
 		} else if line[0] == '#' {
 			if (func() int {
-				tp = __isoc99_sscanf(&line[0], libc.CString("#%s"), &sect_name[0])
+				tp = stdio.Sscanf(&line[0], "#%s", &sect_name[0])
 				return tp
 			}()) != 1 {
 				basic_mud_log(libc.CString("SYSERR: Format error in file %s, line number %d - text: %s."), LIB_ETC, linenum, &line[0])
@@ -1723,11 +1722,11 @@ func load_levels() int {
 			}
 		} else {
 			if sect_type == CONFIG_LEVEL_VERSION {
-				if C.strncmp(&line[0], libc.CString("Suntzu"), 6) == 0 {
+				if libc.StrNCmp(&line[0], libc.CString("Suntzu"), 6) == 0 {
 					basic_mud_log(libc.CString("SYSERR: Suntzu %s config files are not compatible with rasputin"), LIB_ETC)
 					return -1
 				} else {
-					C.strcpy(&level_version[0], &line[0])
+					libc.StrCpy(&level_version[0], &line[0])
 				}
 			} else if sect_type == CONFIG_LEVEL_VERNUM {
 				level_vernum = libc.Atoi(libc.GoString(&line[0]))
@@ -1735,18 +1734,18 @@ func load_levels() int {
 				tp = libc.Atoi(libc.GoString(&line[0]))
 				exp_multiplier = float32(tp)
 			} else if sect_type >= CONFIG_LEVEL_FORTITUDE && sect_type <= CONFIG_LEVEL_WILL || sect_type == CONFIG_LEVEL_BASEHIT {
-				for ptr = &line[0]; ptr != nil && *ptr != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*ptr)))))&int(uint16(int16(_ISdigit)))) == 0; ptr = (*byte)(unsafe.Add(unsafe.Pointer(ptr), 1)) {
+				for ptr = &line[0]; ptr != nil && *ptr != 0 && !unicode.IsDigit(rune(*ptr)); ptr = (*byte)(unsafe.Add(unsafe.Pointer(ptr), 1)) {
 				}
-				if ptr == nil || *ptr == 0 || (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*ptr)))))&int(uint16(int16(_ISdigit)))) == 0 {
+				if ptr == nil || *ptr == 0 || !unicode.IsDigit(rune(*ptr)) {
 					basic_mud_log(libc.CString("SYSERR: Cannot find class number in file %s, line number %d, section %s."), LIB_ETC, linenum, &sect_name[0])
 					return -1
 				}
 				cls = libc.Atoi(libc.GoString(ptr))
-				for ; ptr != nil && *ptr != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*ptr)))))&int(uint16(int16(_ISdigit)))) != 0; ptr = (*byte)(unsafe.Add(unsafe.Pointer(ptr), 1)) {
+				for ; ptr != nil && *ptr != 0 && unicode.IsDigit(rune(*ptr)); ptr = (*byte)(unsafe.Add(unsafe.Pointer(ptr), 1)) {
 				}
-				for ; ptr != nil && *ptr != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*ptr)))))&int(uint16(int16(_ISdigit)))) == 0; ptr = (*byte)(unsafe.Add(unsafe.Pointer(ptr), 1)) {
+				for ; ptr != nil && *ptr != 0 && !unicode.IsDigit(rune(*ptr)); ptr = (*byte)(unsafe.Add(unsafe.Pointer(ptr), 1)) {
 				}
-				if ptr != nil && *ptr != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*ptr)))))&int(uint16(int16(_ISdigit)))) == 0 {
+				if ptr != nil && *ptr != 0 && !unicode.IsDigit(rune(*ptr)) {
 					basic_mud_log(libc.CString("SYSERR: Non-numeric entry in file %s, line number %d, section %s."), LIB_ETC, linenum, &sect_name[0])
 					return -1
 				}
@@ -1771,7 +1770,7 @@ func load_levels() int {
 			}
 		}
 	}
-	C.fclose(fp)
+	fp.Close()
 	for cls = 0; cls < NUM_CLASSES; cls++ {
 		basic_mud_log(libc.CString("Base hit for class %s: %s"), class_names[cls], basehit_type_names[basehit_classes[cls]])
 	}
@@ -1799,12 +1798,12 @@ func calc_penalty_exp(ch *char_data, gain int) int {
 
 var size_scaling_table [9][4]int = [9][4]int{{-10, -2, -2, 0}, {-10, -2, -2, 0}, {-8, -2, -2, 0}, {-4, -2, -2, 0}, {}, {8, -2, 4, 2}, {16, -4, 8, 5}, {24, -4, 12, 9}, {32, -4, 16, 14}}
 
-func birth_age(ch *char_data) int64 {
+func birth_age(ch *char_data) libc.Time {
 	var tmp int
 	tmp = rand_number(16, 18)
-	return int64(tmp)
+	return libc.Time(tmp)
 }
-func max_age(ch *char_data) int64 {
+func max_age(ch *char_data) libc.Time {
 	var aging *aging_data
 	_ = aging
 	var tmp uint64
@@ -1813,7 +1812,7 @@ func max_age(ch *char_data) int64 {
 	}
 	aging = &racial_aging_data[ch.Race]
 	tmp = 120
-	return int64(tmp)
+	return libc.Time(uint32(tmp))
 }
 
 var class_feats_wizard [1]int = [1]int{FEAT_UNDEFINED}

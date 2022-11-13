@@ -238,7 +238,7 @@ func save_rooms(zone_num zone_rnum) int {
 	var (
 		i        int
 		room     *room_data
-		sf       *C.FILE
+		sf       *stdio.File
 		filename [128]byte
 		buf      [64936]byte
 		buf1     [64936]byte
@@ -253,11 +253,11 @@ func save_rooms(zone_num zone_rnum) int {
 	}
 	basic_mud_log(libc.CString("GenOLC: save_rooms: Saving rooms in zone #%d (%d-%d)."), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number, genolc_zone_bottom(zone_num), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Top)
 	stdio.Snprintf(&filename[0], int(128), "%s%d.new", LIB_WORLD, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number)
-	if (func() *C.FILE {
-		sf = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&filename[0]), "w")))
+	if (func() *stdio.File {
+		sf = stdio.FOpen(libc.GoString(&filename[0]), "w")
 		return sf
 	}()) == nil {
-		C.perror(libc.CString("SYSERR: save_rooms"))
+		perror(libc.CString("SYSERR: save_rooms"))
 		return FALSE
 	}
 	for i = int(genolc_zone_bottom(zone_num)); i <= int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Top); i++ {
@@ -268,18 +268,18 @@ func save_rooms(zone_num zone_rnum) int {
 		}()) != room_rnum(-1) {
 			var j int
 			room = (*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))
-			C.strncpy(&buf[0], func() *byte {
+			libc.StrNCpy(&buf[0], func() *byte {
 				if room.Description != nil {
 					return room.Description
 				}
 				return libc.CString("Empty room.")
-			}(), uint64(64936-1))
+			}(), int(64936-1))
 			strip_cr(&buf[0])
 			sprintascii(&rbuf1[0], room.Room_flags[0])
 			sprintascii(&rbuf2[0], room.Room_flags[1])
 			sprintascii(&rbuf3[0], room.Room_flags[2])
 			sprintascii(&rbuf4[0], room.Room_flags[3])
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(sf)), "#%d\n%s%c\n%s%c\n%d %s %s %s %s %d\n", room.Number, func() *byte {
+			stdio.Fprintf(sf, "#%d\n%s%c\n%s%c\n%d %s %s %s %s %d\n", room.Number, func() *byte {
 				if room.Name != nil {
 					return room.Name
 				}
@@ -289,7 +289,7 @@ func save_rooms(zone_num zone_rnum) int {
 				if (room.Dir_option[j]) != nil {
 					var dflag int
 					if (room.Dir_option[j]).General_description != nil {
-						C.strncpy(&buf[0], (room.Dir_option[j]).General_description, uint64(64936-1))
+						libc.StrNCpy(&buf[0], (room.Dir_option[j]).General_description, int(64936-1))
 						strip_cr(&buf[0])
 					} else {
 						buf[0] = '\x00'
@@ -308,11 +308,11 @@ func save_rooms(zone_num zone_rnum) int {
 						dflag = 0
 					}
 					if (room.Dir_option[j]).Keyword != nil {
-						C.strncpy(&buf1[0], (room.Dir_option[j]).Keyword, uint64(64936-1))
+						libc.StrNCpy(&buf1[0], (room.Dir_option[j]).Keyword, int(64936-1))
 					} else {
 						buf1[0] = '\x00'
 					}
-					stdio.Fprintf((*stdio.File)(unsafe.Pointer(sf)), "D%d\n%s~\n%s~\n%d %d %d %d %d %d %d %d %d %d %d\n", j, &buf[0], &buf1[0], dflag, func() obj_vnum {
+					stdio.Fprintf(sf, "D%d\n%s~\n%s~\n%d %d %d %d %d %d %d %d %d %d %d\n", j, &buf[0], &buf1[0], dflag, func() obj_vnum {
 						if (room.Dir_option[j]).Key != obj_vnum(-1) {
 							return (room.Dir_option[j]).Key
 						}
@@ -328,17 +328,17 @@ func save_rooms(zone_num zone_rnum) int {
 			if room.Ex_description != nil {
 				var xdesc *extra_descr_data
 				for xdesc = room.Ex_description; xdesc != nil; xdesc = xdesc.Next {
-					C.strncpy(&buf[0], xdesc.Description, uint64(64936))
+					libc.StrNCpy(&buf[0], xdesc.Description, int(64936))
 					strip_cr(&buf[0])
-					stdio.Fprintf((*stdio.File)(unsafe.Pointer(sf)), "E\n%s~\n%s~\n", xdesc.Keyword, &buf[0])
+					stdio.Fprintf(sf, "E\n%s~\n%s~\n", xdesc.Keyword, &buf[0])
 				}
 			}
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(sf)), "S\n")
+			stdio.Fprintf(sf, "S\n")
 			script_save_to_disk(sf, unsafe.Pointer(room), WLD_TRIGGER)
 		}
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(sf)), "$~\n")
-	C.fclose(sf)
+	stdio.Fprintf(sf, "$~\n")
+	sf.Close()
 	stdio.Snprintf(&buf[0], int(64936), "%s%d.wld", LIB_WORLD, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number)
 	stdio.Remove(libc.GoString(&buf[0]))
 	stdio.Rename(libc.GoString(&filename[0]), libc.GoString(&buf[0]))
@@ -372,10 +372,10 @@ func copy_room_strings(dest *room_data, source *room_data) int {
 		dest.Dir_option[i] = new(room_direction_data)
 		*(dest.Dir_option[i]) = *(source.Dir_option[i])
 		if (source.Dir_option[i]).General_description != nil {
-			(dest.Dir_option[i]).General_description = C.strdup((source.Dir_option[i]).General_description)
+			(dest.Dir_option[i]).General_description = libc.StrDup((source.Dir_option[i]).General_description)
 		}
 		if (source.Dir_option[i]).Keyword != nil {
-			(dest.Dir_option[i]).Keyword = C.strdup((source.Dir_option[i]).Keyword)
+			(dest.Dir_option[i]).Keyword = libc.StrDup((source.Dir_option[i]).Keyword)
 		}
 	}
 	if source.Ex_description != nil {

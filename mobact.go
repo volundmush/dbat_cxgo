@@ -31,7 +31,7 @@ func mob_absorb(ch *char_data, vict *char_data) {
 	if vict == nil {
 		return
 	}
-	if vict.Race == RACE_ANDROID {
+	if int(vict.Race) == RACE_ANDROID {
 		return
 	}
 	if AFF_FLAGGED(vict, AFF_ZANZOKEN) {
@@ -105,7 +105,7 @@ func mobile_activity() {
 		if MOB_FLAGGED(ch, MOB_SPEC) && no_specials == 0 {
 			if (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(ch.Nr)))).Func == nil {
 				basic_mud_log(libc.CString("SYSERR: %s (#%d): Attempting to call non-existing mob function."), GET_NAME(ch), GET_MOB_VNUM(ch))
-				ch.Act[int(MOB_SPEC/32)] &= bitvector_t(^(1 << (int(MOB_SPEC % 32))))
+				ch.Act[int(MOB_SPEC/32)] &= bitvector_t(int32(^(1 << (int(MOB_SPEC % 32)))))
 			} else {
 				var actbuf [2048]byte = func() [2048]byte {
 					var t [2048]byte
@@ -130,7 +130,7 @@ func mobile_activity() {
 						max = obj.Cost
 					}
 				}
-				if best_obj != nil && CAN_GET_OBJ(ch, best_obj) && best_obj.Type_flag != ITEM_BED && best_obj.Posted_to == nil && !OBJ_FLAGGED(best_obj, ITEM_NOPICKUP) {
+				if best_obj != nil && CAN_GET_OBJ(ch, best_obj) && int(best_obj.Type_flag) != ITEM_BED && best_obj.Posted_to == nil && !OBJ_FLAGGED(best_obj, ITEM_NOPICKUP) {
 					switch rand_number(1, 5) {
 					case 1:
 						act(libc.CString("$n@W says, '@CFinders keepers, losers weepers.@W'@n"), TRUE, ch, nil, nil, TO_ROOM)
@@ -147,11 +147,11 @@ func mobile_activity() {
 				}
 			}
 		}
-		if !MOB_FLAGGED(ch, MOB_SENTINEL) && ch.Position == POS_STANDING && ch.Fighting == nil && !AFF_FLAGGED(ch, AFF_TAMED) && ch.Absorbby == nil && (func() int {
+		if !MOB_FLAGGED(ch, MOB_SENTINEL) && int(ch.Position) == POS_STANDING && ch.Fighting == nil && !AFF_FLAGGED(ch, AFF_TAMED) && ch.Absorbby == nil && (func() int {
 			door = rand_number(0, 18)
 			return door
 		}()) < NUM_OF_DIRS && CAN_GO(ch, door) && !ROOM_FLAGGED(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door]).To_room, ROOM_NOMOB) && !ROOM_FLAGGED(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door]).To_room, ROOM_DEATH) && (!MOB_FLAGGED(ch, MOB_STAY_ZONE) || (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door]).To_room)))).Zone == (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone) {
-			if rand_number(1, 2) == 2 && !AFF_FLAGGED(ch, AFF_PARALYZE) && block_calc(ch) != 0 {
+			if rand_number(1, 2) == 2 && !AFF_FLAGGED(ch, 18) && block_calc(ch) != 0 {
 				perform_move(ch, door, 1)
 			}
 		}
@@ -181,7 +181,7 @@ func mobile_activity() {
 				}
 			}
 		}
-		if MOB_FLAGGED(ch, MOB_AGGRESSIVE) && !AFF_FLAGGED(ch, AFF_PARALYZE) {
+		if MOB_FLAGGED(ch, MOB_AGGRESSIVE) && !AFF_FLAGGED(ch, 18) {
 			var spot_roll int = rand_number(1, GET_LEVEL(ch)+10)
 			found = FALSE
 			for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; vict != nil && found == 0; vict = vict.Next_in_room {
@@ -284,7 +284,7 @@ func mobile_activity() {
 						act(libc.CString("@c$n@C rushes to @c$N's@C aid!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_ROOM)
 						var buf [2048]byte
 						stdio.Sprintf(&buf[0], "%s", GET_NAME(vict))
-						if ch.Chclass == CLASS_KABITO || ch.Chclass == CLASS_NAIL {
+						if int(ch.Chclass) == CLASS_KABITO || int(ch.Chclass) == CLASS_NAIL {
 							do_heal(ch, &buf[0], 0, 0)
 						} else {
 							do_rescue(ch, &buf[0], 0, 0)
@@ -322,7 +322,7 @@ func mobile_activity() {
 						act(libc.CString("@c$n@C rushes to @c$N's@C aid!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_ROOM)
 						var buf [2048]byte
 						stdio.Sprintf(&buf[0], "%s", GET_NAME(vict))
-						if ch.Chclass == CLASS_KABITO || ch.Chclass == CLASS_NAIL {
+						if int(ch.Chclass) == CLASS_KABITO || int(ch.Chclass) == CLASS_NAIL {
 							do_heal(ch, &buf[0], 0, 0)
 							done = TRUE
 						} else {
@@ -336,12 +336,12 @@ func mobile_activity() {
 		if ch.Absorbby != nil && rand_number(1, 3) == 3 {
 			do_escape(ch, nil, 0, 0)
 		}
-		if ch.Position == POS_SLEEPING && rand_number(1, 3) == 3 {
+		if int(ch.Position) == POS_SLEEPING && rand_number(1, 3) == 3 {
 			do_wake(ch, nil, 0, 0)
 		}
 		if libc.FuncAddr(GET_MOB_SPEC(ch)) == libc.FuncAddr(shop_keeper) {
-			var diff int64 = 0
-			diff = C.time(nil) - ch.Lastpl
+			var diff libc.Time = 0
+			diff = libc.GetTime(nil) - ch.Lastpl
 			if diff > 86400 {
 				var (
 					sobj     *obj_data
@@ -349,7 +349,7 @@ func mobile_activity() {
 					shop_nr  int
 					shopnr   int = -1
 				)
-				ch.Lastpl = C.time(nil)
+				ch.Lastpl = libc.GetTime(nil)
 				for shop_nr = 0; shop_nr <= top_shop; shop_nr++ {
 					if (*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).Keeper == ch.Nr {
 						shopnr = shop_nr
@@ -364,7 +364,7 @@ func mobile_activity() {
 				}
 			}
 		}
-		if IS_HUMANOID(ch) && ch.Mob_specials.Memory != nil && !MOB_FLAGGED(ch, MOB_DUMMY) && !AFF_FLAGGED(ch, AFF_PARALYZE) {
+		if IS_HUMANOID(ch) && ch.Mob_specials.Memory != nil && !MOB_FLAGGED(ch, MOB_DUMMY) && !AFF_FLAGGED(ch, 18) {
 			found = FALSE
 			for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; vict != nil && found == 0; vict = vict.Next_in_room {
 				if IS_NPC(vict) || !CAN_SEE(ch, vict) || PRF_FLAGGED(vict, PRF_NOHASSLE) {
@@ -377,7 +377,7 @@ func mobile_activity() {
 					continue
 				}
 				for names = ch.Mob_specials.Memory; names != nil && found == 0; names = (*memory_rec)(unsafe.Pointer(names.Next)) {
-					if names.Id != vict.Idnum {
+					if int(names.Id) != int(vict.Idnum) {
 						continue
 					}
 					found = TRUE
@@ -409,7 +409,7 @@ func mobile_activity() {
 				}
 			}
 		}
-		if ch.Chclass == CLASS_KABITO {
+		if int(ch.Chclass) == CLASS_KABITO {
 			var shop_nr int
 			found = FALSE
 			for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; vict != nil && found == 0; vict = vict.Next_in_room {
@@ -588,7 +588,7 @@ func mob_taunt(ch *char_data) {
 					act(libc.CString("@C$n@W scowls @c$N@W!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 					act(libc.CString("@C$n@W scowls at you!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				case 3:
-					if ch.Race == RACE_ANDROID {
+					if int(ch.Race) == RACE_ANDROID {
 						act(libc.CString("@C$n@W has sparks come off them that land on @c$N@W!@n@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 						act(libc.CString("@C$n@W has sparks come off them that land on you!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					} else {
@@ -639,7 +639,7 @@ func remember(ch *char_data, victim *char_data) {
 		return
 	}
 	for tmp = ch.Mob_specials.Memory; tmp != nil && !present; tmp = (*memory_rec)(unsafe.Pointer(tmp.Next)) {
-		if tmp.Id == victim.Idnum {
+		if int(tmp.Id) == int(victim.Idnum) {
 			present = TRUE != 0
 		}
 	}
@@ -661,7 +661,7 @@ func forget(ch *char_data, victim *char_data) {
 	}()) == nil {
 		return
 	}
-	for curr != nil && curr.Id != victim.Idnum {
+	for curr != nil && int(curr.Id) != int(victim.Idnum) {
 		prev = curr
 		curr = (*memory_rec)(unsafe.Pointer(curr.Next))
 	}
@@ -700,10 +700,10 @@ func aggressive_mob_on_a_leash(slave *char_data, master *char_data, attack *char
 		snarl_cmd = find_command(libc.CString("snarl"))
 	}
 	dieroll = rand_number(1, 20)
-	if dieroll != 1 && (dieroll == 20 || dieroll > int(10-master.Aff_abils.Cha+slave.Aff_abils.Intel)) {
+	if dieroll != 1 && (dieroll == 20 || dieroll > 10-int(master.Aff_abils.Cha)+int(slave.Aff_abils.Intel)) {
 		if snarl_cmd > 0 && attack != nil && rand_number(0, 3) == 0 {
 			var victbuf [21]byte
-			C.strncpy(&victbuf[0], GET_NAME(attack), uint64(21))
+			libc.StrNCpy(&victbuf[0], GET_NAME(attack), int(21))
 			victbuf[21-1] = '\x00'
 			do_action(slave, &victbuf[0], snarl_cmd, 0)
 		}

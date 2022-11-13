@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"unicode"
 	"unsafe"
 )
 
@@ -415,7 +416,7 @@ func spell_create_water(level int, ch *char_data, victim *char_data, obj *obj_da
 	if ch == nil || obj == nil {
 		return
 	}
-	if obj.Type_flag == ITEM_DRINKCON {
+	if int(obj.Type_flag) == ITEM_DRINKCON {
 		if (obj.Value[VAL_DRINKCON_LIQUID]) != LIQ_WATER && (obj.Value[VAL_DRINKCON_HOWFULL]) != 0 {
 			name_from_drinkcon(obj)
 			obj.Value[VAL_DRINKCON_LIQUID] = LIQ_SLIME
@@ -455,7 +456,7 @@ func spell_teleport(level int, ch *char_data, victim *char_data, obj *obj_data, 
 	}
 	for {
 		to_room = room_rnum(rand_number(0, int(top_of_world)))
-		if !ROOM_FLAGGED(to_room, bitvector_t(int(ROOM_PRIVATE|ROOM_DEATH)|ROOM_GODROOM)) {
+		if !ROOM_FLAGGED(to_room, bitvector_t(int32(int(ROOM_PRIVATE|ROOM_DEATH)|ROOM_GODROOM))) {
 			break
 		}
 	}
@@ -483,7 +484,7 @@ func spell_summon(level int, ch *char_data, victim *char_data, obj *obj_data, ar
 		}
 		if !IS_NPC(victim) && !PRF_FLAGGED(victim, PRF_SUMMONABLE) && !PLR_FLAGGED(victim, PLR_KILLER) {
 			send_to_char(victim, libc.CString("%s just tried to summon you to: %s.\r\n%s failed because you have summon protection on.\r\nType NOSUMMON to allow other players to summon you.\r\n"), GET_NAME(ch), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Name, func() string {
-				if ch.Sex == SEX_MALE {
+				if int(ch.Sex) == SEX_MALE {
 					return "He"
 				}
 				return "She"
@@ -523,7 +524,7 @@ func spell_locate_object(level int, ch *char_data, victim *char_data, obj *obj_d
 		if isname(&name[0], i.Name) == 0 {
 			continue
 		}
-		send_to_char(ch, libc.CString("%c%s"), C.toupper(int(*i.Short_description)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_description), 1)))
+		send_to_char(ch, libc.CString("%c%s"), unicode.ToUpper(rune(*i.Short_description)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_description), 1)))
 		if i.Carried_by != nil {
 			send_to_char(ch, libc.CString(" is being carried by %s.\r\n"), PERS(i.Carried_by, ch))
 		} else if i.In_room != room_rnum(-1) {
@@ -560,7 +561,7 @@ func spell_charm(level int, ch *char_data, victim *char_data, obj *obj_data, arg
 		send_to_char(ch, libc.CString("You fail.\r\n"))
 	} else if config_info.Play.Pk_allowed == 0 && !IS_NPC(victim) {
 		send_to_char(ch, libc.CString("You fail - shouldn't be doing it anyway.\r\n"))
-	} else if victim.Race == RACE_SAIYAN && rand_number(1, 100) <= 90 {
+	} else if int(victim.Race) == RACE_SAIYAN && rand_number(1, 100) <= 90 {
 		send_to_char(ch, libc.CString("Your victim resists!\r\n"))
 	} else if circle_follow(victim, ch) {
 		send_to_char(ch, libc.CString("Sorry, following in circles cannot be allowed.\r\n"))
@@ -574,10 +575,10 @@ func spell_charm(level int, ch *char_data, victim *char_data, obj *obj_data, arg
 		victim.Master_id = ch.Idnum
 		af.Type = SPELL_CHARM
 		af.Duration = 24 * 2
-		if ch.Aff_abils.Cha != 0 {
+		if int(ch.Aff_abils.Cha) != 0 {
 			af.Duration *= int16(ch.Aff_abils.Cha)
 		}
-		if victim.Aff_abils.Intel != 0 {
+		if int(victim.Aff_abils.Intel) != 0 {
 			af.Duration /= int16(victim.Aff_abils.Intel)
 		}
 		af.Modifier = 0
@@ -586,7 +587,7 @@ func spell_charm(level int, ch *char_data, victim *char_data, obj *obj_data, arg
 		affect_to_char(victim, &af)
 		act(libc.CString("Isn't $n just such a nice fellow?"), FALSE, ch, nil, unsafe.Pointer(victim), TO_VICT)
 		if IS_NPC(victim) {
-			victim.Act[int(MOB_SPEC/32)] &= bitvector_t(^(1 << (int(MOB_SPEC % 32))))
+			victim.Act[int(MOB_SPEC/32)] &= bitvector_t(int32(^(1 << (int(MOB_SPEC % 32)))))
 		}
 	}
 }
@@ -677,7 +678,7 @@ func spell_enchant_weapon(level int, ch *char_data, victim *char_data, obj *obj_
 	if ch == nil || obj == nil {
 		return
 	}
-	if obj.Type_flag != ITEM_WEAPON || OBJ_FLAGGED(obj, ITEM_MAGIC) {
+	if int(obj.Type_flag) != ITEM_WEAPON || OBJ_FLAGGED(obj, ITEM_MAGIC) {
 		return
 	}
 	for i = 0; i < MAX_OBJ_AFFECT; i++ {
@@ -685,7 +686,7 @@ func spell_enchant_weapon(level int, ch *char_data, victim *char_data, obj *obj_
 			return
 		}
 	}
-	obj.Extra_flags[int(ITEM_MAGIC/32)] |= bitvector_t(1 << (int(ITEM_MAGIC % 32)))
+	obj.Extra_flags[int(ITEM_MAGIC/32)] |= bitvector_t(int32(1 << (int(ITEM_MAGIC % 32))))
 	for i = 0; i < MAX_OBJ_AFFECT; i++ {
 		if obj.Affected[i].Location == APPLY_NONE {
 			obj.Affected[i].Location = APPLY_ACCURACY
@@ -701,10 +702,10 @@ func spell_enchant_weapon(level int, ch *char_data, victim *char_data, obj *obj_
 		}
 	}
 	if IS_GOOD(ch) {
-		obj.Extra_flags[int(ITEM_ANTI_EVIL/32)] |= bitvector_t(1 << (int(ITEM_ANTI_EVIL % 32)))
+		obj.Extra_flags[int(ITEM_ANTI_EVIL/32)] |= bitvector_t(int32(1 << (int(ITEM_ANTI_EVIL % 32))))
 		act(libc.CString("$p glows blue."), FALSE, ch, obj, nil, TO_CHAR)
 	} else if IS_EVIL(ch) {
-		obj.Extra_flags[int(ITEM_ANTI_GOOD/32)] |= bitvector_t(1 << (int(ITEM_ANTI_GOOD % 32)))
+		obj.Extra_flags[int(ITEM_ANTI_GOOD/32)] |= bitvector_t(int32(1 << (int(ITEM_ANTI_GOOD % 32))))
 		act(libc.CString("$p glows red."), FALSE, ch, obj, nil, TO_CHAR)
 	} else {
 		act(libc.CString("$p glows yellow."), FALSE, ch, obj, nil, TO_CHAR)
@@ -809,7 +810,7 @@ func art_abundant_step(level int, ch *char_data, victim *char_data, obj *obj_dat
 	r = ch.In_room
 	p = arg
 	max = ((ch.Chclasses[CLASS_KABITO])+(ch.Epicclasses[CLASS_KABITO]))/2 + 10
-	for p != nil && *p != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p)))))&int(uint16(int16(_ISdigit)))) == 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p)))))&int(uint16(int16(_ISalpha)))) == 0 {
+	for p != nil && *p != 0 && !unicode.IsDigit(rune(*p)) && !libc.IsAlpha(rune(*p)) {
 		p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1))
 	}
 	if p == nil || *p == 0 {
@@ -817,19 +818,19 @@ func art_abundant_step(level int, ch *char_data, victim *char_data, obj *obj_dat
 		return
 	}
 	for *p != 0 {
-		for *p != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p)))))&int(uint16(int16(_ISdigit)))) == 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p)))))&int(uint16(int16(_ISalpha)))) == 0 {
+		for *p != 0 && !unicode.IsDigit(rune(*p)) && !libc.IsAlpha(rune(*p)) {
 			p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1))
 		}
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p))))) & int(uint16(int16(_ISdigit)))) != 0 {
+		if unicode.IsDigit(rune(*p)) {
 			rep = libc.Atoi(libc.GoString(p))
-			for (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p))))) & int(uint16(int16(_ISdigit)))) != 0 {
+			for unicode.IsDigit(rune(*p)) {
 				p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1))
 			}
 		} else {
 			rep = 1
 		}
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p))))) & int(uint16(int16(_ISalpha)))) != 0 {
-			for i = 0; (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p))))) & int(uint16(int16(_ISalpha)))) != 0; func() *byte {
+		if libc.IsAlpha(rune(*p)) {
+			for i = 0; libc.IsAlpha(rune(*p)); func() *byte {
 				i++
 				return func() *byte {
 					p := &p
@@ -838,12 +839,12 @@ func art_abundant_step(level int, ch *char_data, victim *char_data, obj *obj_dat
 					return x
 				}()
 			}() {
-				buf[i] = byte(int8(C.tolower(int(*p))))
+				buf[i] = byte(int8(unicode.ToLower(rune(*p))))
 			}
 			j = i
 			tc = int8(buf[i])
 			buf[i] = 0
-			for i = 1; libc.FuncAddr((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Command_pointer) == libc.FuncAddr(do_move) && C.strcmp((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Sort_as, &buf[0]) != 0; i++ {
+			for i = 1; libc.FuncAddr((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Command_pointer) == libc.FuncAddr(do_move) && libc.StrCmp((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Sort_as, &buf[0]) != 0; i++ {
 			}
 			if libc.FuncAddr((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Command_pointer) == libc.FuncAddr(do_move) {
 				i = (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Subcmd - 1
@@ -898,13 +899,13 @@ func roll_skill(ch *char_data, snum int) int {
 	if !IS_NPC(ch) {
 		skval = GET_SKILL(ch, snum)
 		if SKILL_SPOT == snum {
-			if ch.Race == RACE_MUTANT && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) {
+			if int(ch.Race) == RACE_MUTANT && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) {
 				skval += 5
 			}
 		} else if SKILL_HIDE == snum {
 			if AFF_FLAGGED(ch, AFF_LIQUEFIED) {
 				skval += 5
-			} else if ch.Race == RACE_MUTANT && ((ch.Genome[0]) == 5 || (ch.Genome[1]) == 5) {
+			} else if int(ch.Race) == RACE_MUTANT && ((ch.Genome[0]) == 5 || (ch.Genome[1]) == 5) {
 				skval += 10
 			}
 		}

@@ -8,7 +8,7 @@ import (
 
 func news_string_cleanup(d *descriptor_data, terminator int) {
 	var (
-		fl      *C.FILE
+		fl      *stdio.File
 		storage *byte = libc.CString(LIB_TEXT)
 	)
 	if storage == nil {
@@ -16,8 +16,8 @@ func news_string_cleanup(d *descriptor_data, terminator int) {
 	}
 	switch terminator {
 	case STRINGADD_SAVE:
-		if (func() *C.FILE {
-			fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(storage), "a")))
+		if (func() *stdio.File {
+			fl = stdio.FOpen(libc.GoString(storage), "a")
 			return fl
 		}()) == nil {
 			mudlog(CMP, ADMLVL_IMPL, TRUE, libc.CString("SYSERR: Can't write file '%s'."), storage)
@@ -27,18 +27,18 @@ func news_string_cleanup(d *descriptor_data, terminator int) {
 		} else {
 			var (
 				tmstr  *byte
-				mytime int64 = C.time(nil)
+				mytime libc.Time = libc.GetTime(nil)
 			)
-			tmstr = C.asctime(C.localtime(&mytime))
-			*((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(tmstr), C.strlen(tmstr)))), -1))) = '\x00'
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "#%d %s\n@cUpdated By@D: @C%-13s @cDate@D: @Y%s@n\n", TOP_OF_NEWS, d.Newsbuf, GET_NAME(d.Character), tmstr)
+			tmstr = libc.AscTime(libc.LocalTime(&mytime))
+			*((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(tmstr), libc.StrLen(tmstr)))), -1))) = '\x00'
+			stdio.Fprintf(fl, "#%d %s\n@cUpdated By@D: @C%-13s @cDate@D: @Y%s@n\n", TOP_OF_NEWS, d.Newsbuf, GET_NAME(d.Character), tmstr)
 			libc.Free(unsafe.Pointer(d.Newsbuf))
 			d.Newsbuf = nil
 			strip_cr(*d.Str)
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", *d.Str)
+			stdio.Fprintf(fl, "%s\n", *d.Str)
 			*d.Str = nil
-			C.fclose(fl)
-			NEWSUPDATE = C.time(nil)
+			fl.Close()
+			NEWSUPDATE = libc.GetTime(nil)
 			save_mud_time(&time_info)
 			var i *descriptor_data
 			for i = descriptor_list; i != nil; i = i.Next {
@@ -64,7 +64,7 @@ func news_string_cleanup(d *descriptor_data, terminator int) {
 }
 func tedit_string_cleanup(d *descriptor_data, terminator int) {
 	var (
-		fl      *C.FILE
+		fl      *stdio.File
 		storage *byte = d.Olc.Storage
 	)
 	if storage == nil {
@@ -72,30 +72,30 @@ func tedit_string_cleanup(d *descriptor_data, terminator int) {
 	}
 	switch terminator {
 	case STRINGADD_SAVE:
-		if (func() *C.FILE {
-			fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(storage), "w")))
+		if (func() *stdio.File {
+			fl = stdio.FOpen(libc.GoString(storage), "w")
 			return fl
 		}()) == nil {
 			mudlog(CMP, ADMLVL_IMPL, TRUE, libc.CString("SYSERR: Can't write file '%s'."), storage)
 		} else {
-			if *d.Str != nil && C.strcmp(storage, libc.CString("text/news")) == 0 {
+			if *d.Str != nil && libc.StrCmp(storage, libc.CString("text/news")) == 0 {
 				var (
 					tmstr  *byte
-					mytime int64 = C.time(nil)
+					mytime libc.Time = libc.GetTime(nil)
 				)
-				tmstr = C.asctime(C.localtime(&mytime))
-				*((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(tmstr), C.strlen(tmstr)))), -1))) = '\x00'
+				tmstr = libc.AscTime(libc.LocalTime(&mytime))
+				*((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(tmstr), libc.StrLen(tmstr)))), -1))) = '\x00'
 				strip_cr(*d.Str)
-				stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "\n-----------------------------------------------\n@Y%s @cUpdated By@D: @C%s@n\r\n-----------------------------------------------\n%s\n", tmstr, GET_NAME(d.Character), *d.Str)
+				stdio.Fprintf(fl, "\n-----------------------------------------------\n@Y%s @cUpdated By@D: @C%s@n\r\n-----------------------------------------------\n%s\n", tmstr, GET_NAME(d.Character), *d.Str)
 			} else if *d.Str != nil {
 				strip_cr(*d.Str)
-				fputs(*d.Str, fl)
+				fl.PutS(*d.Str)
 			}
-			C.fclose(fl)
+			fl.Close()
 			mudlog(CMP, ADMLVL_GOD, TRUE, libc.CString("OLC: %s saves '%s'."), GET_NAME(d.Character), storage)
 			write_to_output(d, libc.CString("Saved.\r\n"))
-			if C.strcmp(storage, libc.CString("text/news")) == 0 {
-				NEWSUPDATE = C.time(nil)
+			if libc.StrCmp(storage, libc.CString("text/news")) == 0 {
+				NEWSUPDATE = libc.GetTime(nil)
 				save_mud_time(&time_info)
 				var i *descriptor_data
 				for i = descriptor_list; i != nil; i = i.Next {
@@ -168,7 +168,7 @@ func do_tedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	for l = 0; *fields[l].Cmd != '\n'; l++ {
-		if C.strncmp(&field[0], fields[l].Cmd, uint64(C.strlen(&field[0]))) == 0 {
+		if libc.StrNCmp(&field[0], fields[l].Cmd, libc.StrLen(&field[0])) == 0 {
 			break
 		}
 	}
@@ -190,11 +190,11 @@ func do_tedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	ch.Desc.Olc = new(oasis_olc_data)
 	if *fields[l].Buffer != nil {
 		send_to_char(ch, libc.CString("%s"), *fields[l].Buffer)
-		backstr = C.strdup(*fields[l].Buffer)
+		backstr = libc.StrDup(*fields[l].Buffer)
 	}
-	ch.Desc.Olc.Storage = C.strdup(fields[l].Filename)
+	ch.Desc.Olc.Storage = libc.StrDup(fields[l].Filename)
 	string_write(ch.Desc, fields[l].Buffer, uint64(fields[l].Size), 0, unsafe.Pointer(backstr))
 	act(libc.CString("$n begins editing a text file."), TRUE, ch, nil, nil, TO_ROOM)
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(1 << (int(PLR_WRITING % 32)))
+	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
 	ch.Desc.Connected = CON_TEDIT
 }

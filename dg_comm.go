@@ -3,15 +3,16 @@ package main
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"unicode"
 	"unsafe"
 )
 
 func any_one_name(argument *byte, first_arg *byte) *byte {
 	var arg *byte
-	for (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*argument))))) & int(uint16(int16(_ISspace)))) != 0 {
+	for unicode.IsSpace(rune(*argument)) {
 		argument = (*byte)(unsafe.Add(unsafe.Pointer(argument), 1))
 	}
-	for arg = first_arg; *argument != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*argument)))))&int(uint16(int16(_ISspace)))) == 0 && ((int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*argument)))))&int(uint16(int16(_ISpunct)))) == 0 || *argument == '#' || *argument == '-'); func() *byte {
+	for arg = first_arg; *argument != 0 && !unicode.IsSpace(rune(*argument)) && (!unicode.IsPunct(rune(*argument)) || *argument == '#' || *argument == '-'); func() *byte {
 		arg = (*byte)(unsafe.Add(unsafe.Pointer(arg), 1))
 		return func() *byte {
 			p := &argument
@@ -20,7 +21,7 @@ func any_one_name(argument *byte, first_arg *byte) *byte {
 			return x
 		}()
 	}() {
-		*arg = byte(int8(C.tolower(int(*argument))))
+		*arg = byte(int8(unicode.ToLower(rune(*argument))))
 	}
 	*arg = '\x00'
 	return argument
@@ -30,62 +31,62 @@ func sub_write_to_char(ch *char_data, tokens [0]*byte, otokens [0]unsafe.Pointer
 		sb [64936]byte
 		i  int
 	)
-	C.strcpy(&sb[0], libc.CString(""))
+	libc.StrCpy(&sb[0], libc.CString(""))
 	for i = 0; tokens[i+1] != nil; i++ {
-		C.strcat(&sb[0], tokens[i])
+		libc.StrCat(&sb[0], tokens[i])
 		switch type_[i] {
 		case '~':
 			if otokens[i] == nil {
-				C.strcat(&sb[0], libc.CString("someone"))
+				libc.StrCat(&sb[0], libc.CString("someone"))
 			} else if (*char_data)(otokens[i]) == ch {
-				C.strcat(&sb[0], libc.CString("you"))
+				libc.StrCat(&sb[0], libc.CString("you"))
 			} else {
-				C.strcat(&sb[0], PERS((*char_data)(otokens[i]), ch))
+				libc.StrCat(&sb[0], PERS((*char_data)(otokens[i]), ch))
 			}
 		case '|':
 			if otokens[i] == nil {
-				C.strcat(&sb[0], libc.CString("someone's"))
+				libc.StrCat(&sb[0], libc.CString("someone's"))
 			} else if (*char_data)(otokens[i]) == ch {
-				C.strcat(&sb[0], libc.CString("your"))
+				libc.StrCat(&sb[0], libc.CString("your"))
 			} else {
-				C.strcat(&sb[0], PERS((*char_data)(otokens[i]), ch))
-				C.strcat(&sb[0], libc.CString("'s"))
+				libc.StrCat(&sb[0], PERS((*char_data)(otokens[i]), ch))
+				libc.StrCat(&sb[0], libc.CString("'s"))
 			}
 		case '^':
 			if otokens[i] == nil || !CAN_SEE(ch, (*char_data)(otokens[i])) {
-				C.strcat(&sb[0], libc.CString("its"))
+				libc.StrCat(&sb[0], libc.CString("its"))
 			} else if otokens[i] == unsafe.Pointer(ch) {
-				C.strcat(&sb[0], libc.CString("your"))
+				libc.StrCat(&sb[0], libc.CString("your"))
 			} else {
-				C.strcat(&sb[0], HSHR((*char_data)(otokens[i])))
+				libc.StrCat(&sb[0], HSHR((*char_data)(otokens[i])))
 			}
 		case '&':
 			if otokens[i] == nil || !CAN_SEE(ch, (*char_data)(otokens[i])) {
-				C.strcat(&sb[0], libc.CString("it"))
+				libc.StrCat(&sb[0], libc.CString("it"))
 			} else if otokens[i] == unsafe.Pointer(ch) {
-				C.strcat(&sb[0], libc.CString("you"))
+				libc.StrCat(&sb[0], libc.CString("you"))
 			} else {
-				C.strcat(&sb[0], HSSH((*char_data)(otokens[i])))
+				libc.StrCat(&sb[0], HSSH((*char_data)(otokens[i])))
 			}
 		case '*':
 			if otokens[i] == nil || !CAN_SEE(ch, (*char_data)(otokens[i])) {
-				C.strcat(&sb[0], libc.CString("it"))
+				libc.StrCat(&sb[0], libc.CString("it"))
 			} else if otokens[i] == unsafe.Pointer(ch) {
-				C.strcat(&sb[0], libc.CString("you"))
+				libc.StrCat(&sb[0], libc.CString("you"))
 			} else {
-				C.strcat(&sb[0], HMHR((*char_data)(otokens[i])))
+				libc.StrCat(&sb[0], HMHR((*char_data)(otokens[i])))
 			}
 		case '\xa8':
 			if otokens[i] == nil {
-				C.strcat(&sb[0], libc.CString("something"))
+				libc.StrCat(&sb[0], libc.CString("something"))
 			} else {
-				C.strcat(&sb[0], OBJS((*obj_data)(otokens[i]), ch))
+				libc.StrCat(&sb[0], OBJS((*obj_data)(otokens[i]), ch))
 			}
 		}
 	}
-	C.strcat(&sb[0], tokens[i])
-	C.strcat(&sb[0], libc.CString("\n\r"))
-	sb[0] = byte(int8(C.toupper(int(sb[0]))))
+	libc.StrCat(&sb[0], tokens[i])
+	libc.StrCat(&sb[0], libc.CString("\n\r"))
+	sb[0] = byte(int8(unicode.ToUpper(rune(sb[0]))))
 	send_to_char(ch, libc.CString("%s"), &sb[0])
 }
 func sub_write(arg *byte, ch *char_data, find_invis int8, targets int) {
@@ -133,7 +134,7 @@ func sub_write(arg *byte, ch *char_data, find_invis int8, targets int) {
 				*p = (*byte)(unsafe.Add(unsafe.Pointer(*p), 1))
 				return *p
 			}(), &name[0])
-			if find_invis != 0 {
+			if int(find_invis) != 0 {
 				otokens[i] = unsafe.Pointer(get_char_in_room((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room))), &name[0]))
 			} else {
 				otokens[i] = unsafe.Pointer(get_char_room_vis(ch, &name[0], nil))
@@ -155,7 +156,7 @@ func sub_write(arg *byte, ch *char_data, find_invis int8, targets int) {
 				*p = (*byte)(unsafe.Add(unsafe.Pointer(*p), 1))
 				return *p
 			}(), &name[0])
-			if find_invis != 0 {
+			if int(find_invis) != 0 {
 				obj = get_obj_in_room((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room))), &name[0])
 			} else if (func() *obj_data {
 				obj = get_obj_in_list_vis(ch, &name[0], nil, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents)
@@ -283,7 +284,7 @@ func send_to_sense(type_ int, messg *byte, ch *char_data) {
 		if obj != nil && type_ == 0 {
 			continue
 		}
-		if ch.Race == RACE_ANDROID {
+		if int(ch.Race) == RACE_ANDROID {
 			continue
 		}
 		if ch.In_room == tch.In_room {
@@ -349,7 +350,7 @@ func send_to_sense(type_ int, messg *byte, ch *char_data) {
 			} else {
 				stdio.Sprintf(&align[0], ", with a @rd@De@Wv@wil@Wi@Ds@rh@Y aura,")
 			}
-			if C.strstr(messg, libc.CString("land")) != nil {
+			if libc.StrStr(messg, libc.CString("land")) != nil {
 				write_to_output(i, libc.CString("@YYou sense %s%s%s %s! They appear to have landed at...@G%s@n\r\n"), func() *byte {
 					if readIntro(tch, ch) == 1 {
 						return get_i_name(tch, ch)
@@ -394,7 +395,7 @@ func send_to_scouter(messg *byte, ch *char_data, num int, type_ int) {
 			if int(ch.Player_specials.Invis_level) > tch.Admlevel {
 				continue
 			}
-			if ch.Race == RACE_ANDROID {
+			if int(ch.Race) == RACE_ANDROID {
 				continue
 			} else if ROOM_FLAGGED(ch.In_room, ROOM_EARTH) && !ROOM_FLAGGED(tch.In_room, ROOM_EARTH) {
 				continue

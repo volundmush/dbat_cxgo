@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"unicode"
 	"unsafe"
 )
 
@@ -66,25 +67,25 @@ func do_weffect(room *room_data, argument *byte, cmd int, subcmd int) {
 	num = libc.Atoi(libc.GoString(&arg2[0]))
 	nr = room_rnum(num)
 	target = real_room(room_vnum(nr))
-	if C.strcasecmp(&arg[0], libc.CString("gravity")) == 0 {
+	if libc.StrCaseCmp(&arg[0], libc.CString("gravity")) == 0 {
 		if num < 0 || num > 10000 {
 			wld_log(room, libc.CString("weffect setting out of bounds, 0 - 10000 only."))
 			return
 		} else {
 			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(room.Number))))).Gravity = num
 		}
-	} else if C.strcasecmp(&arg[0], libc.CString("light")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("light")) == 0 {
 		if target == room_rnum(-1) {
 			wld_log(room, libc.CString("weffect target is NOWHERE."))
 			return
 		} else {
 			if !ROOM_FLAGGED(target, ROOM_INDOORS) {
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target)))).Room_flags[int(ROOM_INDOORS/32)] |= bitvector_t(1 << (int(ROOM_INDOORS % 32)))
+				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target)))).Room_flags[int(ROOM_INDOORS/32)] |= bitvector_t(int32(1 << (int(ROOM_INDOORS % 32))))
 			} else {
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target)))).Room_flags[int(ROOM_INDOORS/32)] &= bitvector_t(^(1 << (int(ROOM_INDOORS % 32))))
+				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target)))).Room_flags[int(ROOM_INDOORS/32)] &= bitvector_t(int32(^(1 << (int(ROOM_INDOORS % 32)))))
 			}
 		}
-	} else if C.strcasecmp(&arg[0], libc.CString("lava")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("lava")) == 0 {
 		if target == room_rnum(-1) {
 			wld_log(room, libc.CString("weffect target is NOWHERE."))
 			return
@@ -249,9 +250,9 @@ func do_wdoor(room *room_data, argument *byte, cmd int, subcmd int) {
 			if newexit.General_description != nil {
 				libc.Free(unsafe.Pointer(newexit.General_description))
 			}
-			newexit.General_description = (*byte)(unsafe.Pointer(&make([]int8, int(C.strlen(value)+3))[0]))
-			C.strcpy(newexit.General_description, value)
-			C.strcat(newexit.General_description, libc.CString("\r\n"))
+			newexit.General_description = (*byte)(unsafe.Pointer(&make([]int8, libc.StrLen(value)+3)[0]))
+			libc.StrCpy(newexit.General_description, value)
+			libc.StrCat(newexit.General_description, libc.CString("\r\n"))
 		case 2:
 			newexit.Exit_info = bitvector_t(int16(uint16(asciiflag_conv(value))))
 		case 3:
@@ -260,8 +261,8 @@ func do_wdoor(room *room_data, argument *byte, cmd int, subcmd int) {
 			if newexit.Keyword != nil {
 				libc.Free(unsafe.Pointer(newexit.Keyword))
 			}
-			newexit.Keyword = (*byte)(unsafe.Pointer(&make([]int8, int(C.strlen(value)+1))[0]))
-			C.strcpy(newexit.Keyword, value)
+			newexit.Keyword = (*byte)(unsafe.Pointer(&make([]int8, libc.StrLen(value)+1)[0]))
+			libc.StrCpy(newexit.Keyword, value)
 		case 5:
 			if (func() int {
 				to_room = int(real_room(room_vnum(libc.Atoi(libc.GoString(value)))))
@@ -292,7 +293,7 @@ func do_wteleport(room *room_data, argument *byte, cmd int, subcmd int) {
 	target = real_room(room_vnum(nr))
 	if target == room_rnum(-1) {
 		wld_log(room, libc.CString("wteleport target is an invalid room"))
-	} else if C.strcasecmp(&arg1[0], libc.CString("all")) == 0 {
+	} else if libc.StrCaseCmp(&arg1[0], libc.CString("all")) == 0 {
 		if nr == room_rnum(room.Number) {
 			wld_log(room, libc.CString("wteleport all target is itself"))
 			return
@@ -333,7 +334,7 @@ func do_wforce(room *room_data, argument *byte, cmd int, subcmd int) {
 		wld_log(room, libc.CString("wforce called with too few args"))
 		return
 	}
-	if C.strcasecmp(&arg1[0], libc.CString("all")) == 0 {
+	if libc.StrCaseCmp(&arg1[0], libc.CString("all")) == 0 {
 		for ch = room.People; ch != nil; ch = next_ch {
 			next_ch = ch.Next_in_room
 			if valid_dg_target(ch, 0) != 0 {
@@ -424,7 +425,7 @@ func do_wload(room *room_data, argument *byte, cmd int, subcmd int) {
 		if target == nil || *target == 0 {
 			rnum = real_room(room.Number)
 		} else {
-			if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*target)))))&int(uint16(int16(_ISdigit)))) == 0 || (func() room_rnum {
+			if !unicode.IsDigit(rune(*target)) || (func() room_rnum {
 				rnum = real_room(room_vnum(libc.Atoi(libc.GoString(target))))
 				return rnum
 			}()) == room_rnum(-1) {
@@ -481,7 +482,7 @@ func do_wload(room *room_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 		cnt = get_obj_in_room(room, &arg1[0])
-		if cnt != nil && cnt.Type_flag == ITEM_CONTAINER {
+		if cnt != nil && int(cnt.Type_flag) == ITEM_CONTAINER {
 			obj_to_obj(object, cnt)
 			load_otrigger(object)
 			return
@@ -531,7 +532,7 @@ func do_wat(room *room_data, argument *byte, cmd int, subcmd int) {
 		wld_log(room, libc.CString("wat called without a command"))
 		return
 	}
-	if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(arg[0]))))) & int(uint16(int16(_ISdigit)))) != 0 {
+	if unicode.IsDigit(rune(arg[0])) {
 		loc = real_room(room_vnum(libc.Atoi(libc.GoString(&arg[0]))))
 	} else if (func() *char_data {
 		ch = get_char_by_room(room, &arg[0])
@@ -561,13 +562,13 @@ func wld_command_interpreter(room *room_data, argument *byte) {
 	}
 	line = any_one_arg(argument, &arg[0])
 	for func() int {
-		length = int(C.strlen(&arg[0]))
+		length = libc.StrLen(&arg[0])
 		return func() int {
 			cmd = 0
 			return cmd
 		}()
 	}(); *wld_cmd_info[cmd].Command != '\n'; cmd++ {
-		if C.strncmp(wld_cmd_info[cmd].Command, &arg[0], uint64(length)) == 0 {
+		if libc.StrNCmp(wld_cmd_info[cmd].Command, &arg[0], length) == 0 {
 			break
 		}
 	}

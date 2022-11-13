@@ -3,134 +3,15 @@ package main
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"unicode"
 	"unsafe"
 )
-
-const DG_SCRIPT_VERSION = "DG Scripts 1.0.14"
-const MOB_TRIGGER = 0
-const OBJ_TRIGGER = 1
-const WLD_TRIGGER = 2
-const DG_CASTER_PROXY = 1
-const DG_SPELL_LEVEL = 25
-const ACTOR_ROOM_IS_UID = 1
-const MTRIG_GLOBAL = 1
-const MTRIG_RANDOM = 2
-const MTRIG_COMMAND = 4
-const MTRIG_SPEECH = 8
-const MTRIG_ACT = 16
-const MTRIG_DEATH = 32
-const MTRIG_GREET = 64
-const MTRIG_GREET_ALL = 128
-const MTRIG_ENTRY = 256
-const MTRIG_RECEIVE = 512
-const MTRIG_FIGHT = 1024
-const MTRIG_HITPRCNT = 2048
-const MTRIG_BRIBE = 4096
-const MTRIG_LOAD = 8192
-const MTRIG_MEMORY = 0x4000
-const MTRIG_CAST = 0x8000
-const MTRIG_LEAVE = 0x10000
-const MTRIG_DOOR = 0x20000
-const MTRIG_TIME = 0x80000
-const OTRIG_GLOBAL = 1
-const OTRIG_RANDOM = 2
-const OTRIG_COMMAND = 4
-const OTRIG_TIMER = 32
-const OTRIG_GET = 64
-const OTRIG_DROP = 128
-const OTRIG_GIVE = 256
-const OTRIG_WEAR = 512
-const OTRIG_REMOVE = 2048
-const OTRIG_LOAD = 8192
-const OTRIG_CAST = 0x8000
-const OTRIG_LEAVE = 0x10000
-const OTRIG_CONSUME = 0x40000
-const OTRIG_TIME = 0x80000
-const WTRIG_GLOBAL = 1
-const WTRIG_RANDOM = 2
-const WTRIG_COMMAND = 4
-const WTRIG_SPEECH = 8
-const WTRIG_RESET = 32
-const WTRIG_ENTER = 64
-const WTRIG_DROP = 128
-const WTRIG_CAST = 0x8000
-const WTRIG_LEAVE = 0x10000
-const WTRIG_DOOR = 0x20000
-const WTRIG_TIME = 0x80000
-const OCMD_EQUIP = 1
-const OCMD_INVEN = 2
-const OCMD_ROOM = 4
-const OCMD_EAT = 1
-const OCMD_DRINK = 2
-const OCMD_QUAFF = 3
-const TRIG_NEW = 0
-const TRIG_RESTART = 1
-const PULSE_DG_SCRIPT = 130
-const MAX_SCRIPT_DEPTH = 10
-const SCRIPT_ERROR_CODE = -9999999
-const DG_ALLOW_GODS = 1
-const UID_CHAR = 125
-const MOB_ID_BASE = 50000
-const ROOM_ID_BASE = 1050000
-const OBJ_ID_BASE = 1300000
-
-type cmdlist_element struct {
-	Cmd      *byte
-	Original *cmdlist_element
-	Next     *cmdlist_element
-}
-type trig_var_data struct {
-	Name    *byte
-	Value   *byte
-	Context int
-	Next    *trig_var_data
-}
-type trig_data struct {
-	Nr            int64
-	Attach_type   int8
-	Data_type     int8
-	Name          *byte
-	Trigger_type  int
-	Cmdlist       *cmdlist_element
-	Curr_state    *cmdlist_element
-	Narg          int
-	Arglist       *byte
-	Depth         int
-	Loops         int
-	Wait_event    *event
-	Purged        bool
-	Var_list      *trig_var_data
-	Next          *trig_data
-	Next_in_world *trig_data
-}
-type script_data struct {
-	Types       int
-	Trig_list   *trig_data
-	Global_vars *trig_var_data
-	Purged      bool
-	Context     int
-	Next        *script_data
-}
-type wait_event_data struct {
-	Trigger *trig_data
-	Gohere  unsafe.Pointer
-	Type    int
-}
-type script_memory struct {
-	Id   int
-	Cmd  *byte
-	Next *script_memory
-}
 
 const PULSES_PER_MUD_HOUR = 9000
 const BUCKET_COUNT = 64
 const UID_OUT_OF_RANGE = 1000000000
 
 var trig_wait_event func(event_obj unsafe.Pointer) int
-var do_attach func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_detach func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_vdelete func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_tstat func(ch *char_data, argument *byte, cmd int, subcmd int)
 
 func str_str(cs *byte, ct *byte) *byte {
 	var (
@@ -142,11 +23,11 @@ func str_str(cs *byte, ct *byte) *byte {
 	}
 	for *cs != 0 {
 		t = ct
-		for *cs != 0 && C.tolower(int(*cs)) != C.tolower(int(*t)) {
+		for *cs != 0 && unicode.ToLower(rune(*cs)) != unicode.ToLower(rune(*t)) {
 			cs = (*byte)(unsafe.Add(unsafe.Pointer(cs), 1))
 		}
 		s = cs
-		for *t != 0 && *cs != 0 && C.tolower(int(*cs)) == C.tolower(int(*t)) {
+		for *t != 0 && *cs != 0 && unicode.ToLower(rune(*cs)) == unicode.ToLower(rune(*t)) {
 			t = (*byte)(unsafe.Add(unsafe.Pointer(t), 1))
 			cs = (*byte)(unsafe.Add(unsafe.Pointer(cs), 1))
 		}
@@ -267,7 +148,7 @@ func find_eq_pos_script(arg *byte) int {
 		return i
 	}
 	for i = 0; eq_pos[i].Where != -1; i++ {
-		if C.strcasecmp(eq_pos[i].Pos, arg) == 0 {
+		if libc.StrCaseCmp(eq_pos[i].Pos, arg) == 0 {
 			return eq_pos[i].Where
 		}
 	}
@@ -406,7 +287,7 @@ func get_obj_near_obj(obj *obj_data, name *byte) *obj_data {
 		rm int
 		id int
 	)
-	if C.strcasecmp(name, libc.CString("self")) == 0 || C.strcasecmp(name, libc.CString("me")) == 0 {
+	if libc.StrCaseCmp(name, libc.CString("self")) == 0 || libc.StrCaseCmp(name, libc.CString("me")) == 0 {
 		return obj
 	}
 	if obj.Contains != nil && (func() *obj_data {
@@ -532,7 +413,7 @@ func get_obj_by_obj(obj *obj_data, name *byte) *obj_data {
 	if *name == UID_CHAR {
 		return find_obj(libc.Atoi(libc.GoString((*byte)(unsafe.Add(unsafe.Pointer(name), 1)))))
 	}
-	if C.strcasecmp(name, libc.CString("self")) == 0 || C.strcasecmp(name, libc.CString("me")) == 0 {
+	if libc.StrCaseCmp(name, libc.CString("self")) == 0 || libc.StrCaseCmp(name, libc.CString("me")) == 0 {
 		return obj
 	}
 	if obj.Contains != nil && (func() *obj_data {
@@ -740,15 +621,15 @@ func do_stat_trigger(ch *char_data, trig *trig_data) {
 		return
 	}
 	len_ += stdio.Snprintf(&sb[0], int(64936), "Name: '@y%s@n',  VNum: [@g%5d@n], RNum: [%5d]\r\n", trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, trig.Nr)
-	if trig.Attach_type == OBJ_TRIGGER {
+	if int(trig.Attach_type) == OBJ_TRIGGER {
 		len_ += stdio.Snprintf(&sb[len_], int(64936-uintptr(len_)), "Trigger Intended Assignment: Objects\r\n")
-		sprintbit(bitvector_t(trig.Trigger_type), otrig_types[:], &buf[0], uint64(64936))
-	} else if trig.Attach_type == WLD_TRIGGER {
+		sprintbit(bitvector_t(int32(trig.Trigger_type)), otrig_types[:], &buf[0], uint64(64936))
+	} else if int(trig.Attach_type) == WLD_TRIGGER {
 		len_ += stdio.Snprintf(&sb[len_], int(64936-uintptr(len_)), "Trigger Intended Assignment: Rooms\r\n")
-		sprintbit(bitvector_t(trig.Trigger_type), wtrig_types[:], &buf[0], uint64(64936))
+		sprintbit(bitvector_t(int32(trig.Trigger_type)), wtrig_types[:], &buf[0], uint64(64936))
 	} else {
 		len_ += stdio.Snprintf(&sb[len_], int(64936-uintptr(len_)), "Trigger Intended Assignment: Mobiles\r\n")
-		sprintbit(bitvector_t(trig.Trigger_type), trig_types[:], &buf[0], uint64(64936))
+		sprintbit(bitvector_t(int32(trig.Trigger_type)), trig_types[:], &buf[0], uint64(64936))
 	}
 	len_ += stdio.Snprintf(&sb[len_], int(64936-uintptr(len_)), "Trigger Type: %s, Numeric Arg: %d, Arg list: %s\r\n", &buf[0], trig.Narg, func() *byte {
 		if trig.Arglist != nil && *trig.Arglist != 0 {
@@ -825,15 +706,15 @@ func script_stat(ch *char_data, sc *script_data) {
 	}
 	for t = sc.Trig_list; t != nil; t = t.Next {
 		send_to_char(ch, libc.CString("\r\n  Trigger: @y%s@n, VNum: [@y%5d@n], RNum: [%5d]\r\n"), t.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(t.Nr)))).Vnum, t.Nr)
-		if t.Attach_type == OBJ_TRIGGER {
+		if int(t.Attach_type) == OBJ_TRIGGER {
 			send_to_char(ch, libc.CString("  Trigger Intended Assignment: Objects\r\n"))
-			sprintbit(bitvector_t(t.Trigger_type), otrig_types[:], &buf1[0], uint64(64936))
-		} else if t.Attach_type == WLD_TRIGGER {
+			sprintbit(bitvector_t(int32(t.Trigger_type)), otrig_types[:], &buf1[0], uint64(64936))
+		} else if int(t.Attach_type) == WLD_TRIGGER {
 			send_to_char(ch, libc.CString("  Trigger Intended Assignment: Rooms\r\n"))
-			sprintbit(bitvector_t(t.Trigger_type), wtrig_types[:], &buf1[0], uint64(64936))
+			sprintbit(bitvector_t(int32(t.Trigger_type)), wtrig_types[:], &buf1[0], uint64(64936))
 		} else {
 			send_to_char(ch, libc.CString("  Trigger Intended Assignment: Mobiles\r\n"))
-			sprintbit(bitvector_t(t.Trigger_type), trig_types[:], &buf1[0], uint64(64936))
+			sprintbit(bitvector_t(int32(t.Trigger_type)), trig_types[:], &buf1[0], uint64(64936))
 		}
 		send_to_char(ch, libc.CString("  Trigger Type: %s, Numeric Arg: %d, Arg list: %s\r\n"), &buf1[0], t.Narg, func() *byte {
 			if t.Arglist != nil && *t.Arglist != 0 {
@@ -1027,9 +908,9 @@ func do_attach(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return object.Name
 		}(), GET_OBJ_VNUM(object))
 	} else if is_abbrev(&arg[0], libc.CString("room")) != 0 || is_abbrev(&arg[0], libc.CString("wtr")) != 0 {
-		if C.strchr(&targ_name[0], '.') != nil {
+		if libc.StrChr(&targ_name[0], '.') != nil {
 			rnum = ch.In_room
-		} else if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(targ_name[0]))))) & int(uint16(int16(_ISdigit)))) != 0 {
+		} else if unicode.IsDigit(rune(targ_name[0])) {
 			rnum = find_target_room(ch, &targ_name[0])
 		} else {
 			rnum = -1
@@ -1073,9 +954,9 @@ func remove_trigger(sc *script_data, name *byte) int {
 		return 0
 	}
 	if (func() *byte {
-		cname = C.strstr(name, libc.CString("."))
+		cname = libc.StrStr(name, libc.CString("."))
 		return cname
-	}()) != nil || (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*name)))))&int(uint16(int16(_ISdigit)))) == 0 {
+	}()) != nil || !unicode.IsDigit(rune(*name)) {
 		string_ = TRUE
 		if cname != nil {
 			*cname = '\x00'
@@ -1158,7 +1039,7 @@ func do_detach(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	num_arg = libc.Atoi(libc.GoString(&arg2[0]))
-	if C.strcasecmp(&arg1[0], libc.CString("room")) == 0 || C.strcasecmp(&arg1[0], libc.CString("wtr")) == 0 {
+	if libc.StrCaseCmp(&arg1[0], libc.CString("room")) == 0 || libc.StrCaseCmp(&arg1[0], libc.CString("wtr")) == 0 {
 		room = (*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))
 		if can_edit_zone(ch, room.Zone) == 0 {
 			send_to_char(ch, libc.CString("You can only detach triggers in your own zone\r\n"))
@@ -1166,7 +1047,7 @@ func do_detach(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		if room.Script == nil {
 			send_to_char(ch, libc.CString("This room does not have any triggers.\r\n"))
-		} else if C.strcasecmp(&arg2[0], libc.CString("all")) == 0 {
+		} else if libc.StrCaseCmp(&arg2[0], libc.CString("all")) == 0 {
 			extract_script(unsafe.Pointer(room), WLD_TRIGGER)
 			send_to_char(ch, libc.CString("All triggers removed from room.\r\n"))
 		} else if remove_trigger(room.Script, &arg2[0]) != 0 {
@@ -1178,7 +1059,7 @@ func do_detach(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("That trigger was not found.\r\n"))
 		}
 	} else {
-		if is_abbrev(&arg1[0], libc.CString("mobile")) != 0 || C.strcasecmp(&arg1[0], libc.CString("mtr")) == 0 {
+		if is_abbrev(&arg1[0], libc.CString("mobile")) != 0 || libc.StrCaseCmp(&arg1[0], libc.CString("mtr")) == 0 {
 			victim = get_char_vis(ch, &arg2[0], nil, 1<<1)
 			if victim == nil {
 				for victim = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; victim != nil; victim = victim.Next_in_room {
@@ -1196,7 +1077,7 @@ func do_detach(ch *char_data, argument *byte, cmd int, subcmd int) {
 			} else {
 				trigger = &arg3[0]
 			}
-		} else if is_abbrev(&arg1[0], libc.CString("object")) != 0 || C.strcasecmp(&arg1[0], libc.CString("otr")) == 0 {
+		} else if is_abbrev(&arg1[0], libc.CString("object")) != 0 || libc.StrCaseCmp(&arg1[0], libc.CString("otr")) == 0 {
 			object = get_obj_vis(ch, &arg2[0], nil)
 			if object == nil {
 				for object = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; object != nil; object = object.Next_content {
@@ -1259,7 +1140,7 @@ func do_detach(ch *char_data, argument *byte, cmd int, subcmd int) {
 			} else if can_edit_zone(ch, real_zone_by_thing(room_vnum(GET_MOB_VNUM(victim)))) == 0 {
 				send_to_char(ch, libc.CString("You can only detach triggers in your own zone\r\n"))
 				return
-			} else if trigger != nil && C.strcasecmp(trigger, libc.CString("all")) == 0 {
+			} else if trigger != nil && libc.StrCaseCmp(trigger, libc.CString("all")) == 0 {
 				extract_script(unsafe.Pointer(victim), MOB_TRIGGER)
 				send_to_char(ch, libc.CString("All triggers removed from %s.\r\n"), victim.Short_descr)
 			} else if trigger != nil && remove_trigger(victim.Script, trigger) != 0 {
@@ -1276,7 +1157,7 @@ func do_detach(ch *char_data, argument *byte, cmd int, subcmd int) {
 			} else if can_edit_zone(ch, real_zone_by_thing(room_vnum(GET_OBJ_VNUM(object)))) == 0 {
 				send_to_char(ch, libc.CString("You can only detach triggers in your own zone\r\n"))
 				return
-			} else if trigger != nil && C.strcasecmp(trigger, libc.CString("all")) == 0 {
+			} else if trigger != nil && libc.StrCaseCmp(trigger, libc.CString("all")) == 0 {
 				extract_script(unsafe.Pointer(object), OBJ_TRIGGER)
 				send_to_char(ch, libc.CString("All triggers removed from %s.\r\n"), func() *byte {
 					if object.Short_description != nil {
@@ -1302,9 +1183,9 @@ func script_vlog(format *byte, args libc.ArgList) {
 	)
 	stdio.Snprintf(&output[0], int(64936), "SCRIPT ERR: %s", format)
 	basic_mud_vlog(&output[0], args)
-	C.strcpy(&output[0], libc.CString("[ "))
+	libc.StrCpy(&output[0], libc.CString("[ "))
 	stdio.Vsnprintf(&output[2], int(64936-6), libc.GoString(format), args)
-	C.strcat(&output[0], libc.CString(" ]\r\n"))
+	libc.StrCat(&output[0], libc.CString(" ]\r\n"))
 	for i = descriptor_list; i != nil; i = i.Next {
 		if i.Connected != CON_PLAYING || IS_NPC(i.Character) {
 			continue
@@ -1345,7 +1226,7 @@ func is_num(arg *byte) int {
 		arg = (*byte)(unsafe.Add(unsafe.Pointer(arg), 1))
 	}
 	for ; *arg != '\x00'; arg = (*byte)(unsafe.Add(unsafe.Pointer(arg), 1)) {
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg))))) & int(uint16(int16(_ISdigit)))) == 0 {
+		if !unicode.IsDigit(rune(*arg)) {
 			return FALSE
 		}
 	}
@@ -1356,15 +1237,15 @@ func eval_op(op *byte, lhs *byte, rhs *byte, result *byte, gohere unsafe.Pointer
 		p *uint8
 		n int
 	)
-	for *lhs != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*lhs)))))&int(uint16(int16(_ISspace)))) != 0 {
+	for *lhs != 0 && unicode.IsSpace(rune(*lhs)) {
 		lhs = (*byte)(unsafe.Add(unsafe.Pointer(lhs), 1))
 	}
-	for *rhs != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*rhs)))))&int(uint16(int16(_ISspace)))) != 0 {
+	for *rhs != 0 && unicode.IsSpace(rune(*rhs)) {
 		rhs = (*byte)(unsafe.Add(unsafe.Pointer(rhs), 1))
 	}
 	for p = (*uint8)(unsafe.Pointer(lhs)); int(*p) != 0; p = (*uint8)(unsafe.Add(unsafe.Pointer(p), 1)) {
 	}
-	for p = (*uint8)(unsafe.Add(unsafe.Pointer(p), -1)); (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p)))))&int(uint16(int16(_ISspace)))) != 0 && uintptr(unsafe.Pointer((*byte)(unsafe.Pointer(p)))) > uintptr(unsafe.Pointer(lhs)); *func() *uint8 {
+	for p = (*uint8)(unsafe.Add(unsafe.Pointer(p), -1)); unicode.IsSpace(rune(*p)) && uintptr(unsafe.Pointer((*byte)(unsafe.Pointer(p)))) > uintptr(unsafe.Pointer(lhs)); *func() *uint8 {
 		p := &p
 		x := *p
 		*p = (*uint8)(unsafe.Add(unsafe.Pointer(*p), -1))
@@ -1373,71 +1254,71 @@ func eval_op(op *byte, lhs *byte, rhs *byte, result *byte, gohere unsafe.Pointer
 	}
 	for p = (*uint8)(unsafe.Pointer(rhs)); int(*p) != 0; p = (*uint8)(unsafe.Add(unsafe.Pointer(p), 1)) {
 	}
-	for p = (*uint8)(unsafe.Add(unsafe.Pointer(p), -1)); (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p)))))&int(uint16(int16(_ISspace)))) != 0 && uintptr(unsafe.Pointer((*byte)(unsafe.Pointer(p)))) > uintptr(unsafe.Pointer(rhs)); *func() *uint8 {
+	for p = (*uint8)(unsafe.Add(unsafe.Pointer(p), -1)); unicode.IsSpace(rune(*p)) && uintptr(unsafe.Pointer((*byte)(unsafe.Pointer(p)))) > uintptr(unsafe.Pointer(rhs)); *func() *uint8 {
 		p := &p
 		x := *p
 		*p = (*uint8)(unsafe.Add(unsafe.Pointer(*p), -1))
 		return x
 	}() = '\x00' {
 	}
-	if C.strcmp(libc.CString("||"), op) == 0 {
+	if libc.StrCmp(libc.CString("||"), op) == 0 {
 		if (*lhs == 0 || *lhs == '0') && (*rhs == 0 || *rhs == '0') {
-			C.strcpy(result, libc.CString("0"))
+			libc.StrCpy(result, libc.CString("0"))
 		} else {
-			C.strcpy(result, libc.CString("1"))
+			libc.StrCpy(result, libc.CString("1"))
 		}
-	} else if C.strcmp(libc.CString("&&"), op) == 0 {
+	} else if libc.StrCmp(libc.CString("&&"), op) == 0 {
 		if *lhs == 0 || *lhs == '0' || *rhs == 0 || *rhs == '0' {
-			C.strcpy(result, libc.CString("0"))
+			libc.StrCpy(result, libc.CString("0"))
 		} else {
-			C.strcpy(result, libc.CString("1"))
+			libc.StrCpy(result, libc.CString("1"))
 		}
-	} else if C.strcmp(libc.CString("=="), op) == 0 {
+	} else if libc.StrCmp(libc.CString("=="), op) == 0 {
 		if is_num(lhs) != 0 && is_num(rhs) != 0 {
 			stdio.Sprintf(result, "%d", libc.Atoi(libc.GoString(lhs)) == libc.Atoi(libc.GoString(rhs)))
 		} else {
-			stdio.Sprintf(result, "%d", C.strcasecmp(lhs, rhs) == 0)
+			stdio.Sprintf(result, "%d", libc.StrCaseCmp(lhs, rhs) == 0)
 		}
-	} else if C.strcmp(libc.CString("!="), op) == 0 {
+	} else if libc.StrCmp(libc.CString("!="), op) == 0 {
 		if is_num(lhs) != 0 && is_num(rhs) != 0 {
 			stdio.Sprintf(result, "%d", libc.Atoi(libc.GoString(lhs)) != libc.Atoi(libc.GoString(rhs)))
 		} else {
-			stdio.Sprintf(result, "%d", C.strcasecmp(lhs, rhs))
+			stdio.Sprintf(result, "%d", libc.StrCaseCmp(lhs, rhs))
 		}
-	} else if C.strcmp(libc.CString("<="), op) == 0 {
+	} else if libc.StrCmp(libc.CString("<="), op) == 0 {
 		if is_num(lhs) != 0 && is_num(rhs) != 0 {
 			stdio.Sprintf(result, "%d", libc.Atoi(libc.GoString(lhs)) <= libc.Atoi(libc.GoString(rhs)))
 		} else {
-			stdio.Sprintf(result, "%d", C.strcasecmp(lhs, rhs) <= 0)
+			stdio.Sprintf(result, "%d", libc.StrCaseCmp(lhs, rhs) <= 0)
 		}
-	} else if C.strcmp(libc.CString(">="), op) == 0 {
+	} else if libc.StrCmp(libc.CString(">="), op) == 0 {
 		if is_num(lhs) != 0 && is_num(rhs) != 0 {
 			stdio.Sprintf(result, "%d", libc.Atoi(libc.GoString(lhs)) >= libc.Atoi(libc.GoString(rhs)))
 		} else {
-			stdio.Sprintf(result, "%d", C.strcasecmp(lhs, rhs) <= 0)
+			stdio.Sprintf(result, "%d", libc.StrCaseCmp(lhs, rhs) <= 0)
 		}
-	} else if C.strcmp(libc.CString("<"), op) == 0 {
+	} else if libc.StrCmp(libc.CString("<"), op) == 0 {
 		if is_num(lhs) != 0 && is_num(rhs) != 0 {
 			stdio.Sprintf(result, "%d", libc.Atoi(libc.GoString(lhs)) < libc.Atoi(libc.GoString(rhs)))
 		} else {
-			stdio.Sprintf(result, "%d", C.strcasecmp(lhs, rhs) < 0)
+			stdio.Sprintf(result, "%d", libc.StrCaseCmp(lhs, rhs) < 0)
 		}
-	} else if C.strcmp(libc.CString(">"), op) == 0 {
+	} else if libc.StrCmp(libc.CString(">"), op) == 0 {
 		if is_num(lhs) != 0 && is_num(rhs) != 0 {
 			stdio.Sprintf(result, "%d", libc.Atoi(libc.GoString(lhs)) > libc.Atoi(libc.GoString(rhs)))
 		} else {
-			stdio.Sprintf(result, "%d", C.strcasecmp(lhs, rhs) > 0)
+			stdio.Sprintf(result, "%d", libc.StrCaseCmp(lhs, rhs) > 0)
 		}
-	} else if C.strcmp(libc.CString("/="), op) == 0 {
+	} else if libc.StrCmp(libc.CString("/="), op) == 0 {
 		stdio.Sprintf(result, "%c", func() int {
 			if str_str(lhs, rhs) != nil {
 				return '1'
 			}
 			return '0'
 		}())
-	} else if C.strcmp(libc.CString("*"), op) == 0 {
+	} else if libc.StrCmp(libc.CString("*"), op) == 0 {
 		stdio.Sprintf(result, "%d", libc.Atoi(libc.GoString(lhs))*libc.Atoi(libc.GoString(rhs)))
-	} else if C.strcmp(libc.CString("/"), op) == 0 {
+	} else if libc.StrCmp(libc.CString("/"), op) == 0 {
 		stdio.Sprintf(result, "%d", func() int {
 			if (func() int {
 				n = libc.Atoi(libc.GoString(rhs))
@@ -1447,11 +1328,11 @@ func eval_op(op *byte, lhs *byte, rhs *byte, result *byte, gohere unsafe.Pointer
 			}
 			return 0
 		}())
-	} else if C.strcmp(libc.CString("+"), op) == 0 {
+	} else if libc.StrCmp(libc.CString("+"), op) == 0 {
 		stdio.Sprintf(result, "%d", libc.Atoi(libc.GoString(lhs))+libc.Atoi(libc.GoString(rhs)))
-	} else if C.strcmp(libc.CString("-"), op) == 0 {
+	} else if libc.StrCmp(libc.CString("-"), op) == 0 {
 		stdio.Sprintf(result, "%d", libc.Atoi(libc.GoString(lhs))-libc.Atoi(libc.GoString(rhs)))
-	} else if C.strcmp(libc.CString("!"), op) == 0 {
+	} else if libc.StrCmp(libc.CString("!"), op) == 0 {
 		if is_num(rhs) != 0 {
 			stdio.Sprintf(result, "%d", libc.Atoi(libc.GoString(rhs)) == 0)
 		} else {
@@ -1499,12 +1380,12 @@ func eval_expr(line *byte, result *byte, gohere unsafe.Pointer, sc *script_data,
 		p    *byte
 	)
 	_ = p
-	for *line != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*line)))))&int(uint16(int16(_ISspace)))) != 0 {
+	for *line != 0 && unicode.IsSpace(rune(*line)) {
 		line = (*byte)(unsafe.Add(unsafe.Pointer(line), 1))
 	}
 	if eval_lhs_op_rhs(line, result, gohere, sc, trig, type_) != 0 {
 	} else if *line == '(' {
-		p = C.strcpy(&expr[0], line)
+		p = libc.StrCpy(&expr[0], line)
 		p = matching_paren(&expr[0])
 		*p = '\x00'
 		eval_expr(&expr[1], result, gohere, sc, trig, type_)
@@ -1523,15 +1404,15 @@ func eval_lhs_op_rhs(expr *byte, result *byte, gohere unsafe.Pointer, sc *script
 		j      int
 		ops    [15]*byte = [15]*byte{libc.CString("||"), libc.CString("&&"), libc.CString("=="), libc.CString("!="), libc.CString("<="), libc.CString(">="), libc.CString("<"), libc.CString(">"), libc.CString("/="), libc.CString("-"), libc.CString("+"), libc.CString("/"), libc.CString("*"), libc.CString("!"), libc.CString("\n")}
 	)
-	p = C.strcpy(&line[0], expr)
+	p = libc.StrCpy(&line[0], expr)
 	for j = 0; *p != 0; j++ {
 		tokens[j] = p
 		if *p == '(' {
 			p = (*byte)(unsafe.Add(unsafe.Pointer(matching_paren(p)), 1))
 		} else if *p == '"' {
 			p = (*byte)(unsafe.Add(unsafe.Pointer(matching_quote(p)), 1))
-		} else if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p))))) & int(uint16(int16(_ISalnum)))) != 0 {
-			for p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1)); *p != 0 && ((int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p)))))&int(uint16(int16(_ISalnum)))) != 0 || (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p)))))&int(uint16(int16(_ISspace)))) != 0); p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1)) {
+		} else if libc.IsAlnum(rune(*p)) {
+			for p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1)); *p != 0 && (libc.IsAlnum(rune(*p)) || unicode.IsSpace(rune(*p))); p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1)) {
 			}
 		} else {
 			p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1))
@@ -1540,9 +1421,9 @@ func eval_lhs_op_rhs(expr *byte, result *byte, gohere unsafe.Pointer, sc *script
 	tokens[j] = nil
 	for i = 0; *ops[i] != '\n'; i++ {
 		for j = 0; tokens[j] != nil; j++ {
-			if C.strncasecmp(ops[i], tokens[j], uint64(C.strlen(ops[i]))) == 0 {
+			if libc.StrNCaseCmp(ops[i], tokens[j], libc.StrLen(ops[i])) == 0 {
 				*tokens[j] = '\x00'
-				p = (*byte)(unsafe.Add(unsafe.Pointer(tokens[j]), C.strlen(ops[i])))
+				p = (*byte)(unsafe.Add(unsafe.Pointer(tokens[j]), libc.StrLen(ops[i])))
 				eval_expr(&line[0], &lhr[0], gohere, sc, trig, type_)
 				eval_expr(p, &rhr[0], gohere, sc, trig, type_)
 				eval_op(ops[i], &lhr[0], &rhr[0], result, gohere, sc, trig)
@@ -1576,11 +1457,11 @@ func find_end(trig *trig_data, cl *cmdlist_element) *cmdlist_element {
 		return cl
 	}
 	for c = cl.Next; c != nil; c = c.Next {
-		for p = c.Cmd; *p != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p)))))&int(uint16(int16(_ISspace)))) != 0; p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1)) {
+		for p = c.Cmd; *p != 0 && unicode.IsSpace(rune(*p)); p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1)) {
 		}
-		if C.strncasecmp(libc.CString("if "), p, 3) == 0 {
+		if libc.StrNCaseCmp(libc.CString("if "), p, 3) == 0 {
 			c = find_end(trig, c)
-		} else if C.strncasecmp(libc.CString("end"), p, 3) == 0 {
+		} else if libc.StrNCaseCmp(libc.CString("end"), p, 3) == 0 {
 			return c
 		}
 		if c.Next == nil {
@@ -1600,19 +1481,19 @@ func find_else_end(trig *trig_data, cl *cmdlist_element, gohere unsafe.Pointer, 
 		return cl
 	}
 	for c = cl.Next; c.Next != nil; c = c.Next {
-		for p = c.Cmd; *p != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p)))))&int(uint16(int16(_ISspace)))) != 0; p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1)) {
+		for p = c.Cmd; *p != 0 && unicode.IsSpace(rune(*p)); p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1)) {
 		}
-		if C.strncasecmp(libc.CString("if "), p, 3) == 0 {
+		if libc.StrNCaseCmp(libc.CString("if "), p, 3) == 0 {
 			c = find_end(trig, c)
-		} else if C.strncasecmp(libc.CString("elseif "), p, 7) == 0 {
+		} else if libc.StrNCaseCmp(libc.CString("elseif "), p, 7) == 0 {
 			if process_if((*byte)(unsafe.Add(unsafe.Pointer(p), 7)), gohere, sc, trig, type_) != 0 {
 				trig.Depth++
 				return c
 			}
-		} else if C.strncasecmp(libc.CString("else"), p, 4) == 0 {
+		} else if libc.StrNCaseCmp(libc.CString("else"), p, 4) == 0 {
 			trig.Depth++
 			return c
-		} else if C.strncasecmp(libc.CString("end"), p, 3) == 0 {
+		} else if libc.StrNCaseCmp(libc.CString("end"), p, 3) == 0 {
 			return c
 		}
 		if c.Next == nil {
@@ -1620,9 +1501,9 @@ func find_else_end(trig *trig_data, cl *cmdlist_element, gohere unsafe.Pointer, 
 			return c
 		}
 	}
-	for p = c.Cmd; *p != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p)))))&int(uint16(int16(_ISspace)))) != 0; p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1)) {
+	for p = c.Cmd; *p != 0 && unicode.IsSpace(rune(*p)); p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1)) {
 	}
-	if C.strncasecmp(libc.CString("end"), p, 3) != 0 {
+	if libc.StrNCaseCmp(libc.CString("end"), p, 3) != 0 {
 		script_log(libc.CString("Trigger VNum %d has 'if' without 'end'. (error 5)"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
 	}
 	return c
@@ -1644,8 +1525,8 @@ func process_wait(gohere unsafe.Pointer, trig *trig_data, type_ int, cmd *byte, 
 		script_log(libc.CString("Trigger: %s, VNum %d. wait w/o an arg: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, cl.Cmd)
 		return
 	}
-	if C.strncasecmp(arg, libc.CString("until "), 6) == 0 {
-		if __isoc99_sscanf(arg, libc.CString("until %ld:%ld"), &hr, &min) == 2 {
+	if libc.StrNCaseCmp(arg, libc.CString("until "), 6) == 0 {
+		if stdio.Sscanf(arg, "until %ld:%ld", &hr, &min) == 2 {
 			min += hr * 60
 		} else {
 			min = (hr % 100) + (hr/100)*60
@@ -1658,7 +1539,7 @@ func process_wait(gohere unsafe.Pointer, trig *trig_data, type_ int, cmd *byte, 
 			when = ntime - when
 		}
 	} else {
-		if __isoc99_sscanf(arg, libc.CString("%ld %c"), &when, &c) == 2 {
+		if stdio.Sscanf(arg, "%ld %c", &when, &c) == 2 {
 			if int(c) == 't' {
 				when *= SECS_PER_MUD_HOUR * (int(1000000 / OPT_USEC))
 			} else if int(c) == 's' {
@@ -1831,7 +1712,7 @@ func process_detach(gohere unsafe.Pointer, sc *script_data, trig *trig_data, typ
 		}
 	}
 	if c != nil && c.Script != nil {
-		if C.strcmp(&trignum_s[0], libc.CString("all")) == 0 {
+		if libc.StrCmp(&trignum_s[0], libc.CString("all")) == 0 {
 			extract_script(unsafe.Pointer(c), MOB_TRIGGER)
 			return
 		}
@@ -1843,7 +1724,7 @@ func process_detach(gohere unsafe.Pointer, sc *script_data, trig *trig_data, typ
 		return
 	}
 	if o != nil && o.Script != nil {
-		if C.strcmp(&trignum_s[0], libc.CString("all")) == 0 {
+		if libc.StrCmp(&trignum_s[0], libc.CString("all")) == 0 {
 			extract_script(unsafe.Pointer(o), OBJ_TRIGGER)
 			return
 		}
@@ -1855,7 +1736,7 @@ func process_detach(gohere unsafe.Pointer, sc *script_data, trig *trig_data, typ
 		return
 	}
 	if r != nil && r.Script != nil {
-		if C.strcmp(&trignum_s[0], libc.CString("all")) == 0 {
+		if libc.StrCmp(&trignum_s[0], libc.CString("all")) == 0 {
 			extract_script(unsafe.Pointer(r), WLD_TRIGGER)
 			return
 		}
@@ -2024,13 +1905,13 @@ func process_remote(sc *script_data, trig *trig_data, cmd *byte) {
 		return
 	}
 	for vd = trig.Var_list; vd != nil; vd = vd.Next {
-		if C.strcasecmp(vd.Name, &buf[0]) == 0 {
+		if libc.StrCaseCmp(vd.Name, &buf[0]) == 0 {
 			break
 		}
 	}
 	if vd == nil {
 		for vd = sc.Global_vars; vd != nil; vd = vd.Next {
-			if C.strcasecmp(vd.Name, var_) == 0 && (vd.Context == 0 || vd.Context == sc.Context) {
+			if libc.StrCaseCmp(vd.Name, var_) == 0 && (vd.Context == 0 || vd.Context == sc.Context) {
 				break
 			}
 		}
@@ -2151,7 +2032,7 @@ func do_vdelete(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return vd
 		}()
 	}() {
-		if C.strcasecmp(vd.Name, var_) == 0 {
+		if libc.StrCaseCmp(vd.Name, var_) == 0 {
 			break
 		}
 	}
@@ -2253,7 +2134,7 @@ func process_rdelete(sc *script_data, trig *trig_data, cmd *byte) {
 			return vd
 		}()
 	}() {
-		if C.strcasecmp(vd.Name, var_) == 0 && (vd.Context == 0 || vd.Context == sc.Context) {
+		if libc.StrCaseCmp(vd.Name, var_) == 0 && (vd.Context == 0 || vd.Context == sc.Context) {
 			break
 		}
 	}
@@ -2282,7 +2163,7 @@ func process_global(sc *script_data, trig *trig_data, cmd *byte, id int) {
 		return
 	}
 	for vd = trig.Var_list; vd != nil; vd = vd.Next {
-		if C.strcasecmp(vd.Name, var_) == 0 {
+		if libc.StrCaseCmp(vd.Name, var_) == 0 {
 			break
 		}
 	}
@@ -2316,7 +2197,7 @@ func extract_value(sc *script_data, trig *trig_data, cmd *byte) {
 	)
 	buf3 = any_one_arg(cmd, &buf[0])
 	half_chop(buf3, &buf2[0], &buf[0])
-	C.strcpy(&to[0], &buf2[0])
+	libc.StrCpy(&to[0], &buf2[0])
 	num = libc.Atoi(libc.GoString(&buf[0]))
 	if num < 1 {
 		script_log(libc.CString("extract number < 1!"))
@@ -2352,8 +2233,8 @@ func dg_letter_value(sc *script_data, trig *trig_data, cmd *byte) {
 		script_log(libc.CString("Trigger #%d : dg_letter number < 1!"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
 		return
 	}
-	if num > int(C.strlen(&string_[0])) {
-		script_log(libc.CString("Trigger #%d : dg_letter number > C.strlen!"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
+	if num > libc.StrLen(&string_[0]) {
+		script_log(libc.CString("Trigger #%d : dg_letter number > strlen!"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
 		return
 	}
 	junk[0] = string_[num-1]
@@ -2409,24 +2290,24 @@ func script_driver(go_adress unsafe.Pointer, trig *trig_data, type_ int, mode in
 		cl = trig.Curr_state
 	}
 	for cl = cl; cl != nil && trig.Depth != 0; cl = cl.Next {
-		for p = cl.Cmd; *p != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p)))))&int(uint16(int16(_ISspace)))) != 0; p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1)) {
+		for p = cl.Cmd; *p != 0 && unicode.IsSpace(rune(*p)); p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1)) {
 		}
 		if *p == '*' {
 			continue
-		} else if C.strncasecmp(p, libc.CString("if "), 3) == 0 {
+		} else if libc.StrNCaseCmp(p, libc.CString("if "), 3) == 0 {
 			if process_if((*byte)(unsafe.Add(unsafe.Pointer(p), 3)), gohere, sc, trig, type_) != 0 {
 				trig.Depth++
 			} else {
 				cl = find_else_end(trig, cl, gohere, sc, type_)
 			}
-		} else if C.strncasecmp(libc.CString("elseif "), p, 7) == 0 || C.strncasecmp(libc.CString("else"), p, 4) == 0 {
+		} else if libc.StrNCaseCmp(libc.CString("elseif "), p, 7) == 0 || libc.StrNCaseCmp(libc.CString("else"), p, 4) == 0 {
 			if trig.Depth == 1 {
 				script_log(libc.CString("Trigger VNum %d has 'else' without 'if'."), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
 				continue
 			}
 			cl = find_end(trig, cl)
 			trig.Depth--
-		} else if C.strncasecmp(libc.CString("while "), p, 6) == 0 {
+		} else if libc.StrNCaseCmp(libc.CString("while "), p, 6) == 0 {
 			temp = find_done(cl)
 			if temp == nil {
 				script_log(libc.CString("Trigger VNum %d has 'while' without 'done'."), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
@@ -2438,18 +2319,18 @@ func script_driver(go_adress unsafe.Pointer, trig *trig_data, type_ int, mode in
 				cl = temp
 				loops = 0
 			}
-		} else if C.strncasecmp(libc.CString("switch "), p, 7) == 0 {
+		} else if libc.StrNCaseCmp(libc.CString("switch "), p, 7) == 0 {
 			cl = find_case(trig, cl, gohere, sc, type_, (*byte)(unsafe.Add(unsafe.Pointer(p), 7)))
-		} else if C.strncasecmp(libc.CString("end"), p, 3) == 0 {
+		} else if libc.StrNCaseCmp(libc.CString("end"), p, 3) == 0 {
 			if trig.Depth == 1 {
 				script_log(libc.CString("Trigger VNum %d has 'end' without 'if'."), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
 				continue
 			}
 			trig.Depth--
-		} else if C.strncasecmp(libc.CString("done"), p, 4) == 0 {
+		} else if libc.StrNCaseCmp(libc.CString("done"), p, 4) == 0 {
 			if cl.Original != nil {
 				var orig_cmd *byte = cl.Original.Cmd
-				for *orig_cmd != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*orig_cmd)))))&int(uint16(int16(_ISspace)))) != 0 {
+				for *orig_cmd != 0 && unicode.IsSpace(rune(*orig_cmd)) {
 					orig_cmd = (*byte)(unsafe.Add(unsafe.Pointer(orig_cmd), 1))
 				}
 				if cl.Original != nil && process_if((*byte)(unsafe.Add(unsafe.Pointer(orig_cmd), 6)), gohere, sc, trig, type_) != 0 {
@@ -2468,49 +2349,49 @@ func script_driver(go_adress unsafe.Pointer, trig *trig_data, type_ int, mode in
 				} else {
 				}
 			}
-		} else if C.strncasecmp(libc.CString("break"), p, 5) == 0 {
+		} else if libc.StrNCaseCmp(libc.CString("break"), p, 5) == 0 {
 			cl = find_done(cl)
-		} else if C.strncasecmp(libc.CString("case"), p, 4) == 0 {
+		} else if libc.StrNCaseCmp(libc.CString("case"), p, 4) == 0 {
 		} else {
 			var_subst(gohere, sc, trig, type_, p, &cmd[0])
-			if C.strncasecmp(&cmd[0], libc.CString("eval "), 5) == 0 {
+			if libc.StrNCaseCmp(&cmd[0], libc.CString("eval "), 5) == 0 {
 				process_eval(gohere, sc, trig, type_, &cmd[0])
-			} else if C.strncasecmp(&cmd[0], libc.CString("nop "), 4) == 0 {
-			} else if C.strncasecmp(&cmd[0], libc.CString("extract "), 8) == 0 {
+			} else if libc.StrNCaseCmp(&cmd[0], libc.CString("nop "), 4) == 0 {
+			} else if libc.StrNCaseCmp(&cmd[0], libc.CString("extract "), 8) == 0 {
 				extract_value(sc, trig, &cmd[0])
-			} else if C.strncasecmp(&cmd[0], libc.CString("dg_letter "), 10) == 0 {
+			} else if libc.StrNCaseCmp(&cmd[0], libc.CString("dg_letter "), 10) == 0 {
 				dg_letter_value(sc, trig, &cmd[0])
-			} else if C.strncasecmp(&cmd[0], libc.CString("makeuid "), 8) == 0 {
+			} else if libc.StrNCaseCmp(&cmd[0], libc.CString("makeuid "), 8) == 0 {
 				makeuid_var(gohere, sc, trig, type_, &cmd[0])
-			} else if C.strncasecmp(&cmd[0], libc.CString("halt"), 4) == 0 {
+			} else if libc.StrNCaseCmp(&cmd[0], libc.CString("halt"), 4) == 0 {
 				break
-			} else if C.strncasecmp(&cmd[0], libc.CString("dg_cast "), 8) == 0 {
+			} else if libc.StrNCaseCmp(&cmd[0], libc.CString("dg_cast "), 8) == 0 {
 				do_dg_cast(gohere, sc, trig, type_, &cmd[0])
-			} else if C.strncasecmp(&cmd[0], libc.CString("dg_affect "), 10) == 0 {
+			} else if libc.StrNCaseCmp(&cmd[0], libc.CString("dg_affect "), 10) == 0 {
 				do_dg_affect(gohere, sc, trig, type_, &cmd[0])
-			} else if C.strncasecmp(&cmd[0], libc.CString("global "), 7) == 0 {
+			} else if libc.StrNCaseCmp(&cmd[0], libc.CString("global "), 7) == 0 {
 				process_global(sc, trig, &cmd[0], sc.Context)
-			} else if C.strncasecmp(&cmd[0], libc.CString("context "), 8) == 0 {
+			} else if libc.StrNCaseCmp(&cmd[0], libc.CString("context "), 8) == 0 {
 				process_context(sc, trig, &cmd[0])
-			} else if C.strncasecmp(&cmd[0], libc.CString("remote "), 7) == 0 {
+			} else if libc.StrNCaseCmp(&cmd[0], libc.CString("remote "), 7) == 0 {
 				process_remote(sc, trig, &cmd[0])
-			} else if C.strncasecmp(&cmd[0], libc.CString("rdelete "), 8) == 0 {
+			} else if libc.StrNCaseCmp(&cmd[0], libc.CString("rdelete "), 8) == 0 {
 				process_rdelete(sc, trig, &cmd[0])
-			} else if C.strncasecmp(&cmd[0], libc.CString("return "), 7) == 0 {
+			} else if libc.StrNCaseCmp(&cmd[0], libc.CString("return "), 7) == 0 {
 				ret_val = process_return(trig, &cmd[0])
-			} else if C.strncasecmp(&cmd[0], libc.CString("set "), 4) == 0 {
+			} else if libc.StrNCaseCmp(&cmd[0], libc.CString("set "), 4) == 0 {
 				process_set(sc, trig, &cmd[0])
-			} else if C.strncasecmp(&cmd[0], libc.CString("unset "), 6) == 0 {
+			} else if libc.StrNCaseCmp(&cmd[0], libc.CString("unset "), 6) == 0 {
 				process_unset(sc, trig, &cmd[0])
-			} else if C.strncasecmp(&cmd[0], libc.CString("wait "), 5) == 0 {
+			} else if libc.StrNCaseCmp(&cmd[0], libc.CString("wait "), 5) == 0 {
 				process_wait(gohere, trig, type_, &cmd[0], cl)
 				depth--
 				return ret_val
-			} else if C.strncasecmp(&cmd[0], libc.CString("attach "), 7) == 0 {
+			} else if libc.StrNCaseCmp(&cmd[0], libc.CString("attach "), 7) == 0 {
 				process_attach(gohere, sc, trig, type_, &cmd[0])
-			} else if C.strncasecmp(&cmd[0], libc.CString("detach "), 7) == 0 {
+			} else if libc.StrNCaseCmp(&cmd[0], libc.CString("detach "), 7) == 0 {
 				process_detach(gohere, sc, trig, type_, &cmd[0])
-			} else if C.strncasecmp(&cmd[0], libc.CString("version"), 7) == 0 {
+			} else if libc.StrNCaseCmp(&cmd[0], libc.CString("version"), 7) == 0 {
 				mudlog(NRM, ADMLVL_GOD, TRUE, libc.CString("%s"), DG_SCRIPT_VERSION)
 			} else {
 				switch type_ {
@@ -2600,11 +2481,11 @@ func find_case(trig *trig_data, cl *cmdlist_element, gohere unsafe.Pointer, sc *
 		return cl
 	}
 	for c = cl.Next; c.Next != nil; c = c.Next {
-		for p = c.Cmd; *p != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p)))))&int(uint16(int16(_ISspace)))) != 0; p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1)) {
+		for p = c.Cmd; *p != 0 && unicode.IsSpace(rune(*p)); p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1)) {
 		}
-		if C.strncasecmp(libc.CString("while "), p, 6) == 0 || C.strncasecmp(libc.CString("switch"), p, 6) == 0 {
+		if libc.StrNCaseCmp(libc.CString("while "), p, 6) == 0 || libc.StrNCaseCmp(libc.CString("switch"), p, 6) == 0 {
 			c = find_done(c)
-		} else if C.strncasecmp(libc.CString("case "), p, 5) == 0 {
+		} else if libc.StrNCaseCmp(libc.CString("case "), p, 5) == 0 {
 			buf = (*byte)(libc.Malloc(MAX_STRING_LENGTH))
 			eval_op(libc.CString("=="), &result[0], (*byte)(unsafe.Add(unsafe.Pointer(p), 5)), buf, gohere, sc, trig)
 			if *buf != 0 && *buf != '0' {
@@ -2612,9 +2493,9 @@ func find_case(trig *trig_data, cl *cmdlist_element, gohere unsafe.Pointer, sc *
 				return c
 			}
 			libc.Free(unsafe.Pointer(buf))
-		} else if C.strncasecmp(libc.CString("default"), p, 7) == 0 {
+		} else if libc.StrNCaseCmp(libc.CString("default"), p, 7) == 0 {
 			return c
-		} else if C.strncasecmp(libc.CString("done"), p, 3) == 0 {
+		} else if libc.StrNCaseCmp(libc.CString("done"), p, 3) == 0 {
 			return c
 		}
 	}
@@ -2629,25 +2510,25 @@ func find_done(cl *cmdlist_element) *cmdlist_element {
 		return cl
 	}
 	for c = cl.Next; c != nil && c.Next != nil; c = c.Next {
-		for p = c.Cmd; *p != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p)))))&int(uint16(int16(_ISspace)))) != 0; p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1)) {
+		for p = c.Cmd; *p != 0 && unicode.IsSpace(rune(*p)); p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1)) {
 		}
-		if C.strncasecmp(libc.CString("while "), p, 6) == 0 || C.strncasecmp(libc.CString("switch "), p, 7) == 0 {
+		if libc.StrNCaseCmp(libc.CString("while "), p, 6) == 0 || libc.StrNCaseCmp(libc.CString("switch "), p, 7) == 0 {
 			c = find_done(c)
-		} else if C.strncasecmp(libc.CString("done"), p, 3) == 0 {
+		} else if libc.StrNCaseCmp(libc.CString("done"), p, 3) == 0 {
 			return c
 		}
 	}
 	return c
 }
-func fgetline(file *C.FILE, p *byte) int {
+func fgetline(file *stdio.File, p *byte) int {
 	var count int = 0
 	for {
-		*p = byte(int8(fgetc(file)))
-		if *p != '\n' && C.feof(file) == 0 {
+		*p = byte(int8(file.GetC()))
+		if *p != '\n' && int(file.IsEOF()) == 0 {
 			p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1))
 			count++
 		}
-		if *p == '\n' || C.feof(file) != 0 {
+		if *p == '\n' || int(file.IsEOF()) != 0 {
 			break
 		}
 	}
@@ -2658,7 +2539,7 @@ func fgetline(file *C.FILE, p *byte) int {
 }
 func read_saved_vars(ch *char_data) {
 	var (
-		file        *C.FILE
+		file        *stdio.File
 		context     int
 		fn          [127]byte
 		input_line  [1024]byte
@@ -2672,7 +2553,7 @@ func read_saved_vars(ch *char_data) {
 	}
 	ch.Script = new(script_data)
 	get_filename(&fn[0], uint64(127), SCRIPT_VARS_FILE, GET_NAME(ch))
-	file = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fn[0]), "r")))
+	file = stdio.FOpen(libc.GoString(&fn[0]), "r")
 	if file == nil {
 		basic_mud_log(libc.CString("%s had no variable file"), GET_NAME(ch))
 		return
@@ -2680,7 +2561,7 @@ func read_saved_vars(ch *char_data) {
 	for {
 		if get_line(file, &input_line[0]) > 0 {
 			p = func() *byte {
-				temp = C.strdup(&input_line[0])
+				temp = libc.StrDup(&input_line[0])
 				return temp
 			}()
 			temp = any_one_arg(temp, &varname[0])
@@ -2690,15 +2571,15 @@ func read_saved_vars(ch *char_data) {
 			add_var(&ch.Script.Global_vars, &varname[0], temp, context)
 			libc.Free(unsafe.Pointer(p))
 		}
-		if C.feof(file) != 0 {
+		if int(file.IsEOF()) != 0 {
 			break
 		}
 	}
-	C.fclose(file)
+	file.Close()
 }
 func save_char_vars(ch *char_data) {
 	var (
-		file *C.FILE
+		file *stdio.File
 		fn   [127]byte
 		vars *trig_var_data
 	)
@@ -2709,25 +2590,25 @@ func save_char_vars(ch *char_data) {
 		return
 	}
 	get_filename(&fn[0], uint64(127), SCRIPT_VARS_FILE, GET_NAME(ch))
-	unlink(&fn[0])
+	stdio.Unlink(&fn[0])
 	if ch.Script.Global_vars == nil {
 		return
 	}
 	vars = ch.Script.Global_vars
-	file = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fn[0]), "wt")))
+	file = stdio.FOpen(libc.GoString(&fn[0]), "wt")
 	if file == nil {
-		mudlog(NRM, ADMLVL_GOD, TRUE, libc.CString("SYSERR: Could not open player variable file %s for writing.:%s"), &fn[0], C.strerror(*__errno_location()))
+		mudlog(NRM, ADMLVL_GOD, TRUE, libc.CString("SYSERR: Could not open player variable file %s for writing.:%s"), &fn[0], libc.StrError(libc.Errno))
 		return
 	}
 	for vars != nil {
 		if *vars.Name != '-' {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(file)), "%s %ld %s\n", vars.Name, vars.Context, vars.Value)
+			stdio.Fprintf(file, "%s %ld %s\n", vars.Name, vars.Context, vars.Value)
 		}
 		vars = vars.Next
 	}
-	C.fclose(file)
+	file.Close()
 }
-func read_saved_vars_ascii(file *C.FILE, ch *char_data, count int) {
+func read_saved_vars_ascii(file *stdio.File, ch *char_data, count int) {
 	var (
 		context     int
 		input_line  [1024]byte
@@ -2744,7 +2625,7 @@ func read_saved_vars_ascii(file *C.FILE, ch *char_data, count int) {
 	for i = 0; i < count; i++ {
 		if get_line(file, &input_line[0]) > 0 {
 			p = func() *byte {
-				temp = C.strdup(&input_line[0])
+				temp = libc.StrDup(&input_line[0])
 				return temp
 			}()
 			temp = any_one_arg(temp, &varname[0])
@@ -2756,7 +2637,7 @@ func read_saved_vars_ascii(file *C.FILE, ch *char_data, count int) {
 		}
 	}
 }
-func save_char_vars_ascii(file *C.FILE, ch *char_data) {
+func save_char_vars_ascii(file *stdio.File, ch *char_data) {
 	var (
 		vars  *trig_var_data
 		count int = 0
@@ -2776,10 +2657,10 @@ func save_char_vars_ascii(file *C.FILE, ch *char_data) {
 		}
 	}
 	if count != 0 {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(file)), "Vars: %d\n", count)
+		stdio.Fprintf(file, "Vars: %d\n", count)
 		for vars = ch.Script.Global_vars; vars != nil; vars = vars.Next {
 			if *vars.Name != '-' {
-				stdio.Fprintf((*stdio.File)(unsafe.Pointer(file)), "%s %ld %s\n", vars.Name, vars.Context, vars.Value)
+				stdio.Fprintf(file, "%s %ld %s\n", vars.Name, vars.Context, vars.Value)
 			}
 		}
 	}
@@ -2871,14 +2752,14 @@ func check_flags_by_name_ar(array *int, numflags int, search *byte, namelist [0]
 		item int = -1
 	)
 	for i = 0; i < numflags && item < 0; i++ {
-		if C.strcmp(search, namelist[i]) == 0 {
+		if libc.StrCmp(search, namelist[i]) == 0 {
 			item = i
 		}
 	}
 	if item < 0 {
 		return FALSE
 	}
-	if IS_SET_AR([0]bitvector_t(array), bitvector_t(item)) {
+	if IS_SET_AR([0]bitvector_t(array), bitvector_t(int32(item))) {
 		return item
 	}
 	return FALSE

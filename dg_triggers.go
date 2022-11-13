@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"unicode"
 	"unsafe"
 )
 
@@ -18,7 +19,7 @@ func one_phrase(arg *byte, first_arg *byte) *byte {
 		p = matching_quote(arg)
 		c = int8(*p)
 		*p = '\x00'
-		C.strcpy(first_arg, (*byte)(unsafe.Add(unsafe.Pointer(arg), 1)))
+		libc.StrCpy(first_arg, (*byte)(unsafe.Add(unsafe.Pointer(arg), 1)))
 		if int(c) == '\x00' {
 			return p
 		} else {
@@ -31,7 +32,7 @@ func one_phrase(arg *byte, first_arg *byte) *byte {
 		)
 		s = first_arg
 		p = arg
-		for *p != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p)))))&int(uint16(int16(_ISspace)))) == 0 && *p != '"' {
+		for *p != 0 && !unicode.IsSpace(rune(*p)) && *p != '"' {
 			*func() *byte {
 				p := &s
 				x := *p
@@ -56,10 +57,10 @@ func is_substring(sub *byte, string_ *byte) int {
 		return s
 	}()) != nil {
 		var (
-			len_   int = int(C.strlen(string_))
-			sublen int = int(C.strlen(sub))
+			len_   int = libc.StrLen(string_)
+			sublen int = libc.StrLen(sub)
 		)
-		if (s == string_ || (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*((*byte)(unsafe.Add(unsafe.Pointer(s), -1))))))))&int(uint16(int16(_ISspace)))) != 0 || (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*((*byte)(unsafe.Add(unsafe.Pointer(s), -1))))))))&int(uint16(int16(_ISpunct)))) != 0) && ((*byte)(unsafe.Add(unsafe.Pointer(s), sublen)) == (*byte)(unsafe.Add(unsafe.Pointer(string_), len_)) || (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*(*byte)(unsafe.Add(unsafe.Pointer(s), sublen)))))))&int(uint16(int16(_ISspace)))) != 0 || (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*(*byte)(unsafe.Add(unsafe.Pointer(s), sublen)))))))&int(uint16(int16(_ISpunct)))) != 0) {
+		if (s == string_ || unicode.IsSpace(rune(*((*byte)(unsafe.Add(unsafe.Pointer(s), -1))))) || unicode.IsPunct(rune(*((*byte)(unsafe.Add(unsafe.Pointer(s), -1)))))) && ((*byte)(unsafe.Add(unsafe.Pointer(s), sublen)) == (*byte)(unsafe.Add(unsafe.Pointer(string_), len_)) || unicode.IsSpace(rune(*(*byte)(unsafe.Add(unsafe.Pointer(s), sublen)))) || unicode.IsPunct(rune(*(*byte)(unsafe.Add(unsafe.Pointer(s), sublen))))) {
 			return 1
 		}
 	}
@@ -74,7 +75,7 @@ func word_check(str *byte, wordlist *byte) int {
 	if *wordlist == '*' {
 		return 1
 	}
-	C.strcpy(&words[0], wordlist)
+	libc.StrCpy(&words[0], wordlist)
 	for s = one_phrase(&words[0], &phrase[0]); phrase[0] != 0; s = one_phrase(s, &phrase[0]) {
 		if is_substring(&phrase[0], str) != 0 {
 			return 1
@@ -134,7 +135,7 @@ func greet_memory_mtrigger(actor *char_data) {
 			continue
 		}
 		for mem = ch.Memory; mem != nil && ch.Memory != nil; mem = mem.Next {
-			if actor.Id != int32(mem.Id) {
+			if int(actor.Id) != mem.Id {
 				continue
 			}
 			if mem.Cmd != nil {
@@ -231,7 +232,7 @@ func entry_memory_mtrigger(ch *char_data) {
 	for actor = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; actor != nil && ch.Memory != nil; actor = actor.Next_in_room {
 		if actor != ch && ch.Memory != nil {
 			for mem = ch.Memory; mem != nil && ch.Memory != nil; mem = mem.Next {
-				if actor.Id == int32(mem.Id) {
+				if int(actor.Id) == mem.Id {
 					var prev *script_memory
 					if mem.Cmd != nil {
 						command_interpreter(ch, mem.Cmd)
@@ -302,7 +303,7 @@ func command_mtrigger(actor *char_data, cmd *byte, argument *byte) int {
 					mudlog(NRM, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: Command Trigger #%d has no text argument!"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(t.Nr)))).Vnum)
 					continue
 				}
-				if *t.Arglist == '*' || C.strncasecmp(t.Arglist, cmd, uint64(C.strlen(t.Arglist))) == 0 {
+				if *t.Arglist == '*' || libc.StrNCaseCmp(t.Arglist, cmd, libc.StrLen(t.Arglist)) == 0 {
 					for {
 						stdio.Sprintf(&buf[0], "%c%d", UID_CHAR, actor.Id)
 						add_var(&t.Var_list, libc.CString("actor"), &buf[0], 0)
@@ -410,9 +411,9 @@ func act_mtrigger(ch *char_data, str *byte, actor *char_data, victim *char_data,
 				}
 				if str != nil {
 					var (
-						nstr *byte = C.strdup(str)
+						nstr *byte = libc.StrDup(str)
 						fstr *byte = nstr
-						p    *byte = C.strchr(nstr, '\r')
+						p    *byte = libc.StrChr(nstr, '\r')
 					)
 					_ = p
 					skip_spaces(&nstr)
@@ -732,7 +733,7 @@ func cmd_otrig(obj *obj_data, actor *char_data, cmd *byte, argument *byte, type_
 				mudlog(NRM, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: O-Command Trigger #%d has no text argument!"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(t.Nr)))).Vnum)
 				continue
 			}
-			if (t.Narg&type_) != 0 && (*t.Arglist == '*' || C.strncasecmp(t.Arglist, cmd, uint64(C.strlen(t.Arglist))) == 0) {
+			if (t.Narg&type_) != 0 && (*t.Arglist == '*' || libc.StrNCaseCmp(t.Arglist, cmd, libc.StrLen(t.Arglist)) == 0) {
 				for {
 					stdio.Sprintf(&buf[0], "%c%d", UID_CHAR, actor.Id)
 					add_var(&t.Var_list, libc.CString("actor"), &buf[0], 0)
@@ -1114,7 +1115,7 @@ func command_wtrigger(actor *char_data, cmd *byte, argument *byte) int {
 			mudlog(NRM, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: W-Command Trigger #%d has no text argument!"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(t.Nr)))).Vnum)
 			continue
 		}
-		if *t.Arglist == '*' || C.strncasecmp(t.Arglist, cmd, uint64(C.strlen(t.Arglist))) == 0 {
+		if *t.Arglist == '*' || libc.StrNCaseCmp(t.Arglist, cmd, libc.StrLen(t.Arglist)) == 0 {
 			for {
 				stdio.Sprintf(&buf[0], "%c%d", UID_CHAR, actor.Id)
 				add_var(&t.Var_list, libc.CString("actor"), &buf[0], 0)

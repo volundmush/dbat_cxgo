@@ -37,7 +37,7 @@ func remove_var(var_list **trig_var_data, name *byte) int {
 			i = *var_list
 			return i
 		}()
-	}(); i != nil && C.strcasecmp(name, i.Name) != 0; func() *trig_var_data {
+	}(); i != nil && libc.StrCaseCmp(name, i.Name) != 0; func() *trig_var_data {
 		j = i
 		return func() *trig_var_data {
 			i = i.Next
@@ -124,21 +124,18 @@ func extract_script(thing unsafe.Pointer, type_ int) {
 		)
 		if sc != nil {
 			for ; i != nil; i = i.Next {
-				if sc != i.Script {
-				} else {
-					__assert_fail(libc.CString("sc != SCRIPT(i)"), libc.CString(__FILE__), __LINE__, (*byte)(nil))
+				if sc == i.Script {
+					panic("assert failed")
 				}
 			}
 			for ; j != nil; j = j.Next {
-				if sc != j.Script {
-				} else {
-					__assert_fail(libc.CString("sc != SCRIPT(j)"), libc.CString(__FILE__), __LINE__, (*byte)(nil))
+				if sc == j.Script {
+					panic("assert failed")
 				}
 			}
 			for k = 0; k < top_of_world; k++ {
-				if sc != ((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k)))).Script {
-				} else {
-					__assert_fail(libc.CString("sc != SCRIPT(&world[k])"), libc.CString(__FILE__), __LINE__, (*byte)(nil))
+				if sc == ((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k)))).Script {
+					panic("assert failed")
 				}
 			}
 		}
@@ -192,21 +189,18 @@ func free_proto_script(thing unsafe.Pointer, type_ int) {
 		)
 		if proto != nil {
 			for ; i != nil; i = i.Next {
-				if proto != i.Proto_script {
-				} else {
-					__assert_fail(libc.CString("proto != i->proto_script"), libc.CString(__FILE__), __LINE__, (*byte)(nil))
+				if proto == i.Proto_script {
+					panic("assert failed")
 				}
 			}
 			for ; j != nil; j = j.Next {
-				if proto != j.Proto_script {
-				} else {
-					__assert_fail(libc.CString("proto != j->proto_script"), libc.CString(__FILE__), __LINE__, (*byte)(nil))
+				if proto == j.Proto_script {
+					panic("assert failed")
 				}
 			}
 			for k = 0; k < top_of_world; k++ {
-				if proto != (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k)))).Proto_script {
-				} else {
-					__assert_fail(libc.CString("proto != world[k].proto_script"), libc.CString(__FILE__), __LINE__, (*byte)(nil))
+				if proto == (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k)))).Proto_script {
+					panic("assert failed")
 				}
 			}
 		}
@@ -251,12 +245,12 @@ func copy_proto_script(source unsafe.Pointer, dest unsafe.Pointer, type_ int) {
 	}
 }
 func delete_variables(charname *byte) {
-	var filename [4096]byte
-	if get_filename(&filename[0], uint64(4096), SCRIPT_VARS_FILE, charname) == 0 {
+	var filename [260]byte
+	if get_filename(&filename[0], uint64(260), SCRIPT_VARS_FILE, charname) == 0 {
 		return
 	}
-	if stdio.Remove(libc.GoString(&filename[0])) < 0 && (*__errno_location()) != ENOENT {
-		basic_mud_log(libc.CString("SYSERR: deleting variable file %s: %s"), &filename[0], C.strerror(*__errno_location()))
+	if stdio.Remove(libc.GoString(&filename[0])) < 0 && libc.Errno != ENOENT {
+		basic_mud_log(libc.CString("SYSERR: deleting variable file %s: %s"), &filename[0], libc.StrError(libc.Errno))
 	}
 }
 func update_wait_events(to *room_data, from *room_data) {

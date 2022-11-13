@@ -18,7 +18,7 @@ func do_oasis_hedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Sorry, only one person can edit help files at a time.\r\n"))
 		return
 	}
-	if ch.Admlevel < 4 && (C.strcasecmp(libc.CString("Tepsih"), GET_NAME(ch)) == 0 && C.strcasecmp(libc.CString("Rogoshen"), GET_NAME(ch)) == 0) {
+	if ch.Admlevel < 4 && (libc.StrCaseCmp(libc.CString("Tepsih"), GET_NAME(ch)) == 0 && libc.StrCaseCmp(libc.CString("Rogoshen"), GET_NAME(ch)) == 0) {
 		send_to_char(ch, libc.CString("Sorry you are incapable of editing help files at this time.\r\n"))
 		return
 	}
@@ -28,7 +28,7 @@ func do_oasis_hedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	d = ch.Desc
-	if C.strcasecmp(libc.CString("save"), &arg[0]) == 0 {
+	if libc.StrCaseCmp(libc.CString("save"), &arg[0]) == 0 {
 		mudlog(CMP, MAX(ADMLVL_BUILDER, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("OLC: %s saves help files."), GET_NAME(ch))
 		hedit_save_to_disk(d)
 		send_to_char(ch, libc.CString("Saving help files.\r\n"))
@@ -40,7 +40,7 @@ func do_oasis_hedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	d.Olc = new(oasis_olc_data)
 	d.Olc.Number = 0
-	d.Olc.Storage = C.strdup(&arg[0])
+	d.Olc.Storage = libc.StrDup(&arg[0])
 	d.Olc.Zone_num = zone_rnum(search_help(d.Olc.Storage, ADMLVL_IMPL))
 	if d.Olc.Zone_num == zone_rnum(-1) {
 		send_to_char(ch, libc.CString("Do you wish to add the '%s' help file? "), d.Olc.Storage)
@@ -52,15 +52,15 @@ func do_oasis_hedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	d.Connected = CON_HEDIT
 	act(libc.CString("$n starts using OLC."), TRUE, ch, nil, nil, TO_ROOM)
 	HEDITS = TRUE
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(1 << (int(PLR_WRITING % 32)))
+	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
 	mudlog(CMP, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing help files."), GET_NAME(ch))
 }
 func hedit_setup_new(d *descriptor_data) {
 	d.Olc.Help = new(help_index_element)
 	var buf3 [2048]byte
 	stdio.Sprintf(&buf3[0], "<<X<< Put helpfile keywords here in caps")
-	d.Olc.Help.Keywords = C.strdup(&buf3[0])
-	d.Olc.Help.Entry = C.strdup(libc.CString("\r\nThis help file is unfinished.\r\n"))
+	d.Olc.Help.Keywords = libc.StrDup(&buf3[0])
+	d.Olc.Help.Entry = libc.CString("\r\nThis help file is unfinished.\r\n")
 	d.Olc.Help.Min_level = 0
 	d.Olc.Help.Duplicate = 0
 	d.Olc.Value = 0
@@ -99,14 +99,14 @@ func hedit_save_internally(d *descriptor_data) {
 }
 func hedit_save_to_disk(d *descriptor_data) {
 	var (
-		fp         *C.FILE
+		fp         *stdio.File
 		buf1       [64936]byte
 		index_name [256]byte
 		i          int
 	)
 	stdio.Snprintf(&index_name[0], int(256), "%s%s", LIB_TEXT, HELP_FILE)
-	if (func() *C.FILE {
-		fp = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&index_name[0]), "w")))
+	if (func() *stdio.File {
+		fp = stdio.FOpen(libc.GoString(&index_name[0]), "w")
 		return fp
 	}()) == nil {
 		basic_mud_log(libc.CString("SYSERR: Could not write help index file"))
@@ -116,17 +116,17 @@ func hedit_save_to_disk(d *descriptor_data) {
 		if (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(i)))).Duplicate != 0 {
 			continue
 		}
-		C.strncpy(&buf1[0], func() *byte {
+		libc.StrNCpy(&buf1[0], func() *byte {
 			if (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(i)))).Entry != nil {
 				return (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(i)))).Entry
 			}
 			return libc.CString("Empty\r\n")
-		}(), uint64(64936-1))
+		}(), int(64936-1))
 		strip_cr(&buf1[0])
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "%s#%d\n", &buf1[0], (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(i)))).Min_level)
+		stdio.Fprintf(fp, "%s#%d\n", &buf1[0], (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(i)))).Min_level)
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "$~\n")
-	C.fclose(fp)
+	stdio.Fprintf(fp, "$~\n")
+	fp.Close()
 	remove_from_save_list(HEDIT_PERMISSION, int(SL_GLD+2))
 	free_help_table()
 	index_boot(DB_BOOT_HLP)
@@ -150,10 +150,10 @@ func hedit_parse(d *descriptor_data, arg *byte) {
 			if d.Olc.Help.Keywords == nil {
 				hedit_disp_menu(d)
 				write_to_output(d, libc.CString("\n@RYou must fill in the keywords before you save.@n\r\n"))
-			} else if C.strstr(d.Olc.Help.Keywords, libc.CString("undefined")) != nil {
+			} else if libc.StrStr(d.Olc.Help.Keywords, libc.CString("undefined")) != nil {
 				hedit_disp_menu(d)
 				write_to_output(d, libc.CString("\n@RYou must fill in the keywords before you save.@n\r\n"))
-			} else if C.strstr(d.Olc.Help.Keywords, libc.CString("<<X<<")) != nil {
+			} else if libc.StrStr(d.Olc.Help.Keywords, libc.CString("<<X<<")) != nil {
 				hedit_disp_menu(d)
 				write_to_output(d, libc.CString("\n@RYou must fill in the keywords before you save.@n\r\n"))
 			} else {
@@ -250,7 +250,7 @@ func hedit_parse(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("Enter help entry: (/s saves /h for help)\r\n"))
 			if d.Olc.Help.Entry != nil {
 				write_to_output(d, libc.CString("%s"), d.Olc.Help.Entry)
-				oldtext = C.strdup(d.Olc.Help.Entry)
+				oldtext = libc.StrDup(d.Olc.Help.Entry)
 			}
 			string_write(d, &d.Olc.Help.Entry, MAX_MESSAGE_LENGTH, 0, unsafe.Pointer(oldtext))
 			d.Olc.Value = 1
@@ -266,25 +266,25 @@ func hedit_parse(d *descriptor_data, arg *byte) {
 		if d.Olc.Help.Keywords != nil {
 			libc.Free(unsafe.Pointer(d.Olc.Help.Keywords))
 		}
-		if C.strlen(arg) > MAX_HELP_KEYWORDS {
+		if libc.StrLen(arg) > MAX_HELP_KEYWORDS {
 			*(*byte)(unsafe.Add(unsafe.Pointer(arg), int(MAX_HELP_KEYWORDS-1))) = '\x00'
 		}
 		strip_cr(arg)
 		d.Olc.Help.Keywords = str_udup(arg)
 		var buf4 [8192]byte
-		if C.strstr(d.Olc.Help.Keywords, libc.CString("undefined")) != nil {
+		if libc.StrStr(d.Olc.Help.Keywords, libc.CString("undefined")) != nil {
 			d.Olc.Mode = HEDIT_KEYWORDS
 			clear_screen(d)
 			write_to_output(d, libc.CString("@RYou must at least enter SOME keywords.@n\n"))
 			write_to_output(d, libc.CString("Keywords: "))
 			change = FALSE
-		} else if C.strstr(d.Olc.Help.Keywords, libc.CString("<<X<<")) != nil {
+		} else if libc.StrStr(d.Olc.Help.Keywords, libc.CString("<<X<<")) != nil {
 			d.Olc.Mode = HEDIT_KEYWORDS
 			clear_screen(d)
 			write_to_output(d, libc.CString("@RLet's not joke around with help files now.@n\n"))
 			write_to_output(d, libc.CString("Keywords: "))
 			change = FALSE
-		} else if C.strstr(d.Olc.Help.Keywords, libc.CString("<<x<<")) != nil {
+		} else if libc.StrStr(d.Olc.Help.Keywords, libc.CString("<<x<<")) != nil {
 			d.Olc.Mode = HEDIT_KEYWORDS
 			clear_screen(d)
 			write_to_output(d, libc.CString("@RLet's not joke around with help files now.@n\n"))
@@ -292,7 +292,7 @@ func hedit_parse(d *descriptor_data, arg *byte) {
 			change = FALSE
 		} else {
 			stdio.Sprintf(&buf4[0], "%s\r\n----------\r\n\r\n%s", d.Olc.Help.Keywords, d.Olc.Help.Entry)
-			d.Olc.Help.Entry = C.strdup(&buf4[0])
+			d.Olc.Help.Entry = libc.StrDup(&buf4[0])
 		}
 	case HEDIT_ENTRY:
 		mudlog(TRUE, ADMLVL_BUILDER, BRF, libc.CString("SYSERR: Reached HEDIT_ENTRY case in parse_hedit"))
@@ -330,7 +330,7 @@ func do_helpcheck(ch *char_data, argument *byte, cmd int, subcmd int) {
 	)
 	send_to_char(ch, libc.CString("Commands without help entries:\r\n"))
 	for i = 1; *(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Command != '\n'; i++ {
-		if libc.FuncAddr((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Command_pointer) != libc.FuncAddr(do_action) && (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Minimum_level >= 0 {
+		if libc.FuncAddr((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Command_pointer) != libc.FuncAddr(do_action) && int((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Minimum_level) >= 0 {
 			if search_help((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Command, ADMLVL_IMPL) == int(-1) {
 				nlen = uint64(stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "%-20.20s%s", (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Command, func() string {
 					if func() int {

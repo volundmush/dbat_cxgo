@@ -136,7 +136,7 @@ func save_objects(zone_num zone_rnum) int {
 		counter     int
 		counter2    int
 		realcounter int
-		fp          *C.FILE
+		fp          *stdio.File
 		obj         *obj_data
 		ex_desc     *extra_descr_data
 	)
@@ -145,8 +145,8 @@ func save_objects(zone_num zone_rnum) int {
 		return FALSE
 	}
 	stdio.Snprintf(&cmfname[0], int(128), "%s%d.new", LIB_WORLD, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number)
-	if (func() *C.FILE {
-		fp = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&cmfname[0]), "w+")))
+	if (func() *stdio.File {
+		fp = stdio.FOpen(libc.GoString(&cmfname[0]), "w+")
 		return fp
 	}()) == nil {
 		mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("SYSERR: OLC: Cannot open objects file %s!"), &cmfname[0])
@@ -161,12 +161,12 @@ func save_objects(zone_num zone_rnum) int {
 				obj = (*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(realcounter)))
 				return obj
 			}()).Action_description != nil {
-				C.strncpy(&buf[0], obj.Action_description, uint64(64936-1))
+				libc.StrNCpy(&buf[0], obj.Action_description, int(64936-1))
 				strip_cr(&buf[0])
 			} else {
 				buf[0] = '\x00'
 			}
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "#%d\n%s~\n%s~\n%s~\n%s~\n", GET_OBJ_VNUM(obj), func() *byte {
+			stdio.Fprintf(fp, "#%d\n%s~\n%s~\n%s~\n%s~\n", GET_OBJ_VNUM(obj), func() *byte {
 				if obj.Name != nil && *obj.Name != 0 {
 					return obj.Name
 				}
@@ -186,31 +186,31 @@ func save_objects(zone_num zone_rnum) int {
 			sprintascii(&ebuf2[0], obj.Extra_flags[1])
 			sprintascii(&ebuf3[0], obj.Extra_flags[2])
 			sprintascii(&ebuf4[0], obj.Extra_flags[3])
-			sprintascii(&wbuf1[0], bitvector_t(obj.Wear_flags[0]))
-			sprintascii(&wbuf2[0], bitvector_t(obj.Wear_flags[1]))
-			sprintascii(&wbuf3[0], bitvector_t(obj.Wear_flags[2]))
-			sprintascii(&wbuf4[0], bitvector_t(obj.Wear_flags[3]))
+			sprintascii(&wbuf1[0], bitvector_t(int32(obj.Wear_flags[0])))
+			sprintascii(&wbuf2[0], bitvector_t(int32(obj.Wear_flags[1])))
+			sprintascii(&wbuf3[0], bitvector_t(int32(obj.Wear_flags[2])))
+			sprintascii(&wbuf4[0], bitvector_t(int32(obj.Wear_flags[3])))
 			sprintascii(&pbuf1[0], obj.Bitvector[0])
 			sprintascii(&pbuf2[0], obj.Bitvector[1])
 			sprintascii(&pbuf3[0], obj.Bitvector[2])
 			sprintascii(&pbuf4[0], obj.Bitvector[3])
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "%d %s %s %s %s %s %s %s %s %s %s %s %s\n%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n%lld %d %d %d\n", obj.Type_flag, &ebuf1[0], &ebuf2[0], &ebuf3[0], &ebuf4[0], &wbuf1[0], &wbuf2[0], &wbuf3[0], &wbuf4[0], &pbuf1[0], &pbuf2[0], &pbuf3[0], &pbuf4[0], obj.Value[0], obj.Value[1], obj.Value[2], obj.Value[3], obj.Value[4], obj.Value[5], obj.Value[6], obj.Value[7], obj.Value[8], obj.Value[9], obj.Value[10], obj.Value[11], obj.Value[12], obj.Value[13], obj.Value[14], obj.Value[15], obj.Weight, obj.Cost, obj.Cost_per_day, obj.Level)
+			stdio.Fprintf(fp, "%d %s %s %s %s %s %s %s %s %s %s %s %s\n%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n%lld %d %d %d\n", obj.Type_flag, &ebuf1[0], &ebuf2[0], &ebuf3[0], &ebuf4[0], &wbuf1[0], &wbuf2[0], &wbuf3[0], &wbuf4[0], &pbuf1[0], &pbuf2[0], &pbuf3[0], &pbuf4[0], obj.Value[0], obj.Value[1], obj.Value[2], obj.Value[3], obj.Value[4], obj.Value[5], obj.Value[6], obj.Value[7], obj.Value[8], obj.Value[9], obj.Value[10], obj.Value[11], obj.Value[12], obj.Value[13], obj.Value[14], obj.Value[15], obj.Weight, obj.Cost, obj.Cost_per_day, obj.Level)
 			script_save_to_disk(fp, unsafe.Pointer(obj), OBJ_TRIGGER)
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "Z\n%d\n", obj.Size)
+			stdio.Fprintf(fp, "Z\n%d\n", obj.Size)
 			if obj.Ex_description != nil {
 				for ex_desc = obj.Ex_description; ex_desc != nil; ex_desc = ex_desc.Next {
 					if ex_desc.Keyword == nil || ex_desc.Description == nil || *ex_desc.Keyword == 0 || *ex_desc.Description == 0 {
 						mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("SYSERR: OLC: oedit_save_to_disk: Corrupt ex_desc!"))
 						continue
 					}
-					C.strncpy(&buf[0], ex_desc.Description, uint64(64936-1))
+					libc.StrNCpy(&buf[0], ex_desc.Description, int(64936-1))
 					strip_cr(&buf[0])
-					stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "E\n%s~\n%s~\n", ex_desc.Keyword, &buf[0])
+					stdio.Fprintf(fp, "E\n%s~\n%s~\n", ex_desc.Keyword, &buf[0])
 				}
 			}
 			for counter2 = 0; counter2 < MAX_OBJ_AFFECT; counter2++ {
 				if obj.Affected[counter2].Modifier != 0 {
-					stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "A\n%d %d %d\n", obj.Affected[counter2].Location, obj.Affected[counter2].Modifier, obj.Affected[counter2].Specific)
+					stdio.Fprintf(fp, "A\n%d %d %d\n", obj.Affected[counter2].Location, obj.Affected[counter2].Modifier, obj.Affected[counter2].Specific)
 				}
 			}
 			if obj.Sbinfo != nil {
@@ -218,14 +218,14 @@ func save_objects(zone_num zone_rnum) int {
 					if (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(counter2)))).Spellname == 0 {
 						break
 					}
-					stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "S\n%d %d\n", (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(counter2)))).Spellname, (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(counter2)))).Pages)
+					stdio.Fprintf(fp, "S\n%d %d\n", (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(counter2)))).Spellname, (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(counter2)))).Pages)
 					continue
 				}
 			}
 		}
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "$~\n")
-	C.fclose(fp)
+	stdio.Fprintf(fp, "$~\n")
+	fp.Close()
 	stdio.Snprintf(&buf[0], int(64936), "%s%d.obj", LIB_WORLD, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number)
 	stdio.Remove(libc.GoString(&buf[0]))
 	stdio.Rename(libc.GoString(&cmfname[0]), libc.GoString(&buf[0]))
@@ -315,22 +315,22 @@ func free_object_strings_proto(obj *obj_data) {
 }
 func copy_object_strings(to *obj_data, from *obj_data) {
 	if from.Name != nil {
-		to.Name = C.strdup(from.Name)
+		to.Name = libc.StrDup(from.Name)
 	} else {
 		to.Name = nil
 	}
 	if from.Description != nil {
-		to.Description = C.strdup(from.Description)
+		to.Description = libc.StrDup(from.Description)
 	} else {
 		to.Description = nil
 	}
 	if from.Short_description != nil {
-		to.Short_description = C.strdup(from.Short_description)
+		to.Short_description = libc.StrDup(from.Short_description)
 	} else {
 		to.Short_description = nil
 	}
 	if from.Action_description != nil {
-		to.Action_description = C.strdup(from.Action_description)
+		to.Action_description = libc.StrDup(from.Action_description)
 	} else {
 		to.Action_description = nil
 	}
@@ -395,9 +395,8 @@ func delete_object(rnum obj_rnum) int {
 		}
 		extract_obj(tmp)
 	}
-	if (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(rnum)))).Number == 0 {
-	} else {
-		__assert_fail(libc.CString("obj_index[rnum].number == 0"), libc.CString(__FILE__), __LINE__, (*byte)(nil))
+	if (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(rnum)))).Number != 0 {
+		panic("assert failed")
 	}
 	for tmp = object_list; tmp != nil; tmp = tmp.Next {
 		tmp.Item_number -= obj_vnum(libc.BoolToInt(tmp.Item_number > obj_vnum(rnum)))

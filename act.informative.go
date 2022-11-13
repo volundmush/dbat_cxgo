@@ -1,10 +1,10 @@
 package main
 
-import "C"
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
 	"math"
+	"unicode"
 	"unsafe"
 )
 
@@ -13,12 +13,11 @@ const SHOW_OBJ_LONG = 0
 const SHOW_OBJ_SHORT = 1
 const SHOW_OBJ_ACTION = 2
 const HIST_LENGTH = 100
-
 const WHO_FORMAT = "Usage: who [minlev[-maxlev]] [-k] [-n name] [-q] [-r] [-s] [-z]\r\n"
 const USERS_FORMAT = "format: users [-l minlevel[-maxlevel]] [-n name] [-h host] [-o] [-p]\r\n"
 
 func do_evolve(ch *char_data, argument *byte, cmd int, subcmd int) {
-	if ch.Race != RACE_ARLIAN || IS_NPC(ch) {
+	if int(ch.Race) != RACE_ARLIAN || IS_NPC(ch) {
 		send_to_char(ch, libc.CString("You are not an arlian!\r\n"))
 		return
 	}
@@ -38,7 +37,7 @@ func do_evolve(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("@CStamina     @D: @Y%s @Wpts\r\n"), add_commas(stcost))
 		send_to_char(ch, libc.CString("@D[@Y%s @Wpts currently@D]@n\r\n"), add_commas(ch.Moltexp))
 		return
-	} else if C.strcasecmp(&arg[0], libc.CString("powerlevel")) == 0 || C.strcasecmp(&arg[0], libc.CString("pl")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("powerlevel")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("pl")) == 0 {
 		if plcost > molt_threshold(ch) {
 			send_to_char(ch, libc.CString("You need a few more evolution levels before you can start upgrading powerlevel.\r\n"))
 			return
@@ -58,7 +57,7 @@ func do_evolve(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Moltexp -= plcost
 			send_to_char(ch, libc.CString("Your body evolves to make better use of the way it is now, and you feel that your body has strengthened. @D[@RPL@D: @Y+%s@D]@n\r\n"), add_commas(plgain))
 		}
-	} else if C.strcasecmp(&arg[0], libc.CString("ki")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("ki")) == 0 {
 		if kicost > molt_threshold(ch) {
 			send_to_char(ch, libc.CString("You need a few more evolution levels before you can start upgrading ki.\r\n"))
 			return
@@ -78,7 +77,7 @@ func do_evolve(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Moltexp -= kicost
 			send_to_char(ch, libc.CString("Your body evolves to make better use of the way it is now, and you feel that your spirit has strengthened. @D[@CKi@D: @Y+%s@D]@n\r\n"), add_commas(kigain))
 		}
-	} else if C.strcasecmp(&arg[0], libc.CString("stamina")) == 0 || C.strcasecmp(&arg[0], libc.CString("st")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("stamina")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("st")) == 0 {
 		if stcost > molt_threshold(ch) {
 			send_to_char(ch, libc.CString("You need a few more evolution levels before you can start upgrading stamina.\r\n"))
 			return
@@ -182,12 +181,12 @@ func search_room(ch *char_data) {
 			}
 			prob = int(float64(vict.Aff_abils.Dex) + float64(vict.Aff_abils.Intel)*0.6 + float64(GET_SKILL(vict, SKILL_HIDE)) + float64(GET_SKILL(vict, SKILL_MOVE_SILENTLY)))
 			if AFF_FLAGGED(vict, AFF_LIQUEFIED) {
-				prob += int(float64(prob) * .5)
+				prob *= int(1.5)
 			}
-			if ch.Race == RACE_MUTANT && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) {
+			if int(ch.Race) == RACE_MUTANT && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) {
 				perc += 5
 			}
-			if vict.Race == RACE_MUTANT && ((vict.Genome[0]) == 5 || (vict.Genome[1]) == 5) {
+			if int(vict.Race) == RACE_MUTANT && ((vict.Genome[0]) == 5 || (vict.Genome[1]) == 5) {
 				prob += 10
 			}
 			terrain += terrain_bonus(vict)
@@ -205,7 +204,7 @@ func search_room(ch *char_data) {
 		if OBJ_FLAGGED(obj, ITEM_BURIED) && float64(perc)*bonus > float64(rand_number(50, 200)) {
 			act(libc.CString("@YYou uncover @y$p@Y, which had been burried here.@n"), TRUE, ch, obj, nil, TO_CHAR)
 			act(libc.CString("@y$n@Y uncovers @y$p@Y, which had burried here.@n"), TRUE, ch, obj, nil, TO_ROOM)
-			obj.Extra_flags[int(ITEM_BURIED/32)] &= bitvector_t(^(1 << (int(ITEM_BURIED % 32))))
+			obj.Extra_flags[int(ITEM_BURIED/32)] &= bitvector_t(int32(^(1 << (int(ITEM_BURIED % 32)))))
 			found++
 		}
 	}
@@ -253,7 +252,7 @@ func do_mimic(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if arg[0] == 0 {
 		send_to_char(ch, libc.CString("@CMimic Menu\n@c--------------------@W\r\n"))
 		for x = 0; x < NUM_RACES; x++ {
-			if race_ok_gender[int(ch.Sex)][x] != 0 {
+			if race_ok_gender[int(ch.Sex)][x] {
 				if yesrace(x) != 0 {
 					if count == 2 {
 						send_to_char(ch, libc.CString("%s\n"), pc_race_types[x])
@@ -276,9 +275,9 @@ func do_mimic(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var change int = -1
 	x = 0
 	for x = 0; x < NUM_RACES; x++ {
-		if race_ok_gender[int(ch.Sex)][x] != 0 {
+		if race_ok_gender[int(ch.Sex)][x] {
 			if yesrace(x) != 0 {
-				if C.strcasecmp(&arg[0], pc_race_types[x]) == 0 {
+				if libc.StrCaseCmp(&arg[0], pc_race_types[x]) == 0 {
 					if ch.Mimic == x+1 {
 						israce = TRUE
 						x = int(NUM_RACES + 1)
@@ -309,7 +308,7 @@ func do_mimic(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("@mYou concentrate for a moment and your features start to blur as you use your ki to bend the light around your body. You now appear to be %s %s.@n\r\n"), AN(JUGGLERACE(ch)), JUGGLERACELOWER(ch))
 		act(&buf[0], TRUE, ch, nil, nil, TO_ROOM)
 		return
-	} else if C.strcasecmp(&arg[0], libc.CString("stop")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("stop")) == 0 {
 		act(libc.CString("@mYou concentrate for a moment and release the illusion that was mimicing another race.@n"), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("@M$n@m concentrates for a moment and SUDDENLY $s appearance changes some what!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		ch.Mimic = 0
@@ -322,11 +321,11 @@ func do_kyodaika(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if IS_NPC(ch) {
 		return
 	}
-	if ch.Race != RACE_NAMEK {
+	if int(ch.Race) != RACE_NAMEK {
 		send_to_char(ch, libc.CString("You are not a namek!\r\n"))
 		return
 	}
-	if ch.Real_abils.Str+5 > 25 && (ch.Bonuses[BONUS_WIMP]) > 0 && (ch.Genome[0]) == 0 {
+	if int(ch.Real_abils.Str)+5 > 25 && (ch.Bonuses[BONUS_WIMP]) > 0 && (ch.Genome[0]) == 0 {
 		send_to_char(ch, libc.CString("You can't handle having your strength increased beyond 25.\r\n"))
 		return
 	}
@@ -490,7 +489,7 @@ func do_hand(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Syntax: hand (look | show)\r\n"))
 		return
 	}
-	if C.strcasecmp(libc.CString("look"), &arg[0]) == 0 {
+	if libc.StrCaseCmp(libc.CString("look"), &arg[0]) == 0 {
 		send_to_char(ch, libc.CString("@CYour hand contains:\r\n@D---------------------------@n\r\n"))
 		for obj = ch.Carrying; obj != nil; obj = next_obj {
 			next_obj = obj.Next_content
@@ -514,7 +513,7 @@ func do_hand(ch *char_data, argument *byte, cmd int, subcmd int) {
 			stdio.Sprintf(&buf[0], "There are %d cards in the hand.", count)
 			act(&buf[0], TRUE, ch, nil, nil, TO_ROOM)
 		}
-	} else if C.strcasecmp(libc.CString("show"), &arg[0]) == 0 {
+	} else if libc.StrCaseCmp(libc.CString("show"), &arg[0]) == 0 {
 		send_to_char(ch, libc.CString("You show off your hand to the room.\r\n"))
 		act(libc.CString("@C$n's hand contains:\r\n@D---------------------------@n"), TRUE, ch, nil, nil, TO_ROOM)
 		for obj = ch.Carrying; obj != nil; obj = next_obj {
@@ -558,7 +557,7 @@ func do_post(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You don't seem to have that.\r\n"))
 		return
 	}
-	if obj.Type_flag != ITEM_NOTE {
+	if int(obj.Type_flag) != ITEM_NOTE {
 		send_to_char(ch, libc.CString("You can only post notepaper.\r\n"))
 		return
 	}
@@ -597,7 +596,7 @@ func do_post(ch *char_data, argument *byte, cmd int, subcmd int) {
 		} else if obj2.Posted_to != nil {
 			send_to_char(ch, libc.CString("It already has something posted on it. Get that first if you want to post.\r\n"))
 			return
-		} else if obj2.Type_flag == ITEM_BOARD {
+		} else if int(obj2.Type_flag) == ITEM_BOARD {
 			send_to_char(ch, libc.CString("Boards come with their own means of posting messages.\r\n"))
 			return
 		} else {
@@ -615,7 +614,7 @@ func do_post(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 }
 func do_play(ch *char_data, argument *byte, cmd int, subcmd int) {
-	if ch.Position != POS_SITTING {
+	if int(ch.Position) != POS_SITTING {
 		send_to_char(ch, libc.CString("You need to be sitting at an official table to play.\r\n"))
 		return
 	}
@@ -671,7 +670,7 @@ func do_nickname(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Syntax: nickname ship (nickname)\n"))
 		return
 	}
-	if C.strcasecmp(&arg[0], libc.CString("ship")) != 0 {
+	if libc.StrCaseCmp(&arg[0], libc.CString("ship")) != 0 {
 		if (func() *obj_data {
 			obj = get_obj_in_list_vis(ch, &arg[0], nil, ch.Carrying)
 			return obj
@@ -680,11 +679,11 @@ func do_nickname(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	}
-	if C.strlen(&arg2[0]) > 20 {
+	if libc.StrLen(&arg2[0]) > 20 {
 		send_to_char(ch, libc.CString("You can't nickname items with any name longer than 20 characters.\r\n"))
 		return
 	}
-	if C.strcasecmp(&arg[0], libc.CString("ship")) == 0 {
+	if libc.StrCaseCmp(&arg[0], libc.CString("ship")) == 0 {
 		var (
 			ship     *obj_data = nil
 			next_obj *obj_data = nil
@@ -699,13 +698,13 @@ func do_nickname(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 		}
 		if found == TRUE {
-			if C.strstr(&arg2[0], libc.CString("@")) != nil {
+			if libc.StrStr(&arg2[0], libc.CString("@")) != nil {
 				send_to_char(ch, libc.CString("You can't nickname a ship and use color codes. Sorry.\r\n"))
 				return
 			} else {
 				var nick [2048]byte
 				stdio.Sprintf(&nick[0], "%s", CAP(&arg2[0]))
-				ship2.Action_description = C.strdup(&nick[0])
+				ship2.Action_description = libc.StrDup(&nick[0])
 				var k *obj_data
 				for k = object_list; k != nil; k = k.Next {
 					if GET_OBJ_VNUM(k) == GET_OBJ_VNUM(ship2)+1000 {
@@ -724,10 +723,10 @@ func do_nickname(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		return
 	}
-	if C.strstr(obj.Short_description, libc.CString("nicknamed")) != nil {
+	if libc.StrStr(obj.Short_description, libc.CString("nicknamed")) != nil {
 		send_to_char(ch, libc.CString("%s@w has already been nicknamed.@n\r\n"), obj.Short_description)
 		return
-	} else if C.strstr(obj.Name, libc.CString("corpse")) != nil {
+	} else if libc.StrStr(obj.Name, libc.CString("corpse")) != nil {
 		send_to_char(ch, libc.CString("%s@w is a corpse!@n\r\n"), obj.Short_description)
 		return
 	} else {
@@ -736,8 +735,8 @@ func do_nickname(ch *char_data, argument *byte, cmd int, subcmd int) {
 		var nick2 [2048]byte
 		stdio.Sprintf(&nick[0], "%s @wnicknamed @D(@C%s@D)@n", obj.Short_description, CAP(&arg2[0]))
 		stdio.Sprintf(&nick2[0], "%s %s", obj.Name, &arg2[0])
-		obj.Short_description = C.strdup(&nick[0])
-		obj.Name = C.strdup(&nick2[0])
+		obj.Short_description = libc.StrDup(&nick[0])
+		obj.Name = libc.StrDup(&nick2[0])
 		return
 	}
 }
@@ -782,20 +781,20 @@ func do_showoff(ch *char_data, argument *byte, cmd int, subcmd int) {
 func introCreate(ch *char_data) {
 	var (
 		fname [40]byte
-		fl    *C.FILE
+		fl    *stdio.File
 	)
 	if get_filename(&fname[0], uint64(40), INTRO_FILE, GET_NAME(ch)) == 0 {
 		return
 	}
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "w")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(&fname[0]), "w")
 		return fl
 	}()) == nil {
 		basic_mud_log(libc.CString("ERROR: could not save user, %s, to filename, %s."), GET_NAME(ch), &fname[0])
 		return
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "Gibbles Gibbles\n")
-	C.fclose(fl)
+	stdio.Fprintf(fl, "Gibbles Gibbles\n")
+	fl.Close()
 	return
 }
 func readIntro(ch *char_data, vict *char_data) int {
@@ -805,7 +804,7 @@ func readIntro(ch *char_data, vict *char_data) int {
 		scrap  [100]byte
 		line   [256]byte
 		known  int = FALSE
-		fl     *C.FILE
+		fl     *stdio.File
 	)
 	if vict == nil {
 		return 0
@@ -816,24 +815,24 @@ func readIntro(ch *char_data, vict *char_data) int {
 	if get_filename(&fname[0], uint64(40), INTRO_FILE, GET_NAME(ch)) == 0 {
 		introCreate(ch)
 	}
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "r")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(&fname[0]), "r")
 		return fl
 	}()) == nil {
 		return 2
 	}
 	if vict == ch {
-		C.fclose(fl)
+		fl.Close()
 		return 0
 	}
-	for C.feof(fl) == 0 {
+	for int(fl.IsEOF()) == 0 {
 		get_line(fl, &line[0])
-		__isoc99_sscanf(&line[0], libc.CString("%s %s\n"), &filler[0], &scrap[0])
-		if C.strcasecmp(GET_NAME(vict), &filler[0]) == 0 {
+		stdio.Sscanf(&line[0], "%s %s\n", &filler[0], &scrap[0])
+		if libc.StrCaseCmp(GET_NAME(vict), &filler[0]) == 0 {
 			known = TRUE
 		}
 	}
-	C.fclose(fl)
+	fl.Close()
 	if known == TRUE {
 		return 1
 	} else {
@@ -842,50 +841,50 @@ func readIntro(ch *char_data, vict *char_data) int {
 }
 func introWrite(ch *char_data, vict *char_data, name *byte) {
 	var (
-		file   *C.FILE
+		file   *stdio.File
 		fname  [40]byte
 		filler [50]byte
 		scrap  [100]byte
 		line   [256]byte
 		names  [500]*byte = [500]*byte{0: libc.CString("")}
 		alias  [500]*byte = [500]*byte{0: libc.CString("")}
-		fl     *C.FILE
+		fl     *stdio.File
 		count  int = 0
 		x      int = 0
 	)
 	if get_filename(&fname[0], uint64(40), INTRO_FILE, GET_NAME(ch)) == 0 {
 		introCreate(ch)
 	}
-	if (func() *C.FILE {
-		file = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "r")))
+	if (func() *stdio.File {
+		file = stdio.FOpen(libc.GoString(&fname[0]), "r")
 		return file
 	}()) == nil {
 		return
 	}
-	for C.feof(file) == 0 || count < 498 {
+	for int(file.IsEOF()) == 0 || count < 498 {
 		get_line(file, &line[0])
-		__isoc99_sscanf(&line[0], libc.CString("%s %s\n"), &filler[0], &scrap[0])
-		names[count] = C.strdup(&filler[0])
-		alias[count] = C.strdup(&scrap[0])
+		stdio.Sscanf(&line[0], "%s %s\n", &filler[0], &scrap[0])
+		names[count] = libc.StrDup(&filler[0])
+		alias[count] = libc.StrDup(&scrap[0])
 		count++
 		filler[0] = '\x00'
 		scrap[0] = '\x00'
 	}
-	C.fclose(file)
+	file.Close()
 	if get_filename(&fname[0], uint64(40), INTRO_FILE, GET_NAME(ch)) == 0 {
 		return
 	}
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "w")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(&fname[0]), "w")
 		return fl
 	}()) == nil {
 		basic_mud_log(libc.CString("ERROR: could not save intro file, %s, to filename, %s."), GET_NAME(ch), &fname[0])
 		return
 	}
 	for x < count {
-		if x == 0 || C.strcasecmp(names[x-1], names[x]) != 0 {
-			if C.strcasecmp(names[x], GET_NAME(vict)) != 0 {
-				stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s %s\n", names[x], alias[x])
+		if x == 0 || libc.StrCaseCmp(names[x-1], names[x]) != 0 {
+			if libc.StrCaseCmp(names[x], GET_NAME(vict)) != 0 {
+				stdio.Fprintf(fl, "%s %s\n", names[x], alias[x])
 			}
 		}
 		x++
@@ -900,8 +899,8 @@ func introWrite(ch *char_data, vict *char_data, name *byte) {
 		}
 		x++
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s %s\n", GET_NAME(vict), CAP(name))
-	C.fclose(fl)
+	stdio.Fprintf(fl, "%s %s\n", GET_NAME(vict), CAP(name))
+	fl.Close()
 	return
 }
 func do_intro(ch *char_data, argument *byte, cmd int, subcmd int) {
@@ -920,15 +919,15 @@ func do_intro(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Syntax: dub (target) (name)\r\nWhat name do you wish to know them by?\r\n"))
 		return
 	}
-	if C.strlen(&arg2[0]) > 20 {
+	if libc.StrLen(&arg2[0]) > 20 {
 		send_to_char(ch, libc.CString("Limit the name to 20 characters.\r\n"))
 		return
 	}
-	if C.strlen(&arg2[0]) < 3 {
+	if libc.StrLen(&arg2[0]) < 3 {
 		send_to_char(ch, libc.CString("Limit the name to at least 3 characters.\r\n"))
 		return
 	}
-	if C.strstr(&arg2[0], libc.CString("$")) != nil || C.strstr(&arg2[0], libc.CString("@")) != nil || C.strstr(&arg2[0], libc.CString("%")) != nil {
+	if libc.StrStr(&arg2[0], libc.CString("$")) != nil || libc.StrStr(&arg2[0], libc.CString("@")) != nil || libc.StrStr(&arg2[0], libc.CString("%")) != nil {
 		send_to_char(ch, libc.CString("Illegal character. No symbols.\r\n"))
 		return
 	}
@@ -950,7 +949,7 @@ func do_intro(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if readIntro(vict, ch) == 2 {
 		send_to_char(ch, libc.CString("There seems to have been an error, report this to Iovan.\r\n"))
 		return
-	} else if readIntro(ch, vict) == 1 && C.strstr(JUGGLERACE(vict), &arg[0]) != nil {
+	} else if readIntro(ch, vict) == 1 && libc.StrStr(JUGGLERACE(vict), &arg[0]) != nil {
 		send_to_char(ch, libc.CString("You have already dubbed them a name. If you want to redub them target the name you know them by.\r\n"))
 		return
 	} else {
@@ -968,122 +967,122 @@ func bringdesc(ch *char_data, tch *char_data) {
 			send_to_char(ch, libc.CString("            @D[@cHair Color  @D: @WHidden.         @D]@n\r\n"))
 			send_to_char(ch, libc.CString("            @D[@cHair Style  @D: @WHidden.         @D]@n\r\n"))
 			send_to_char(ch, libc.CString("            @D[@cEye Color   @D: @WHidden.         @D]@n\r\n"))
-			if tch.Skin == SKIN_WHITE {
+			if int(tch.Skin) == SKIN_WHITE {
 				send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WWhite.        @D]@n\r\n"))
-			} else if tch.Skin == SKIN_TAN {
+			} else if int(tch.Skin) == SKIN_TAN {
 				send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WTan.          @D]@n\r\n"))
-			} else if tch.Skin == SKIN_BLACK {
+			} else if int(tch.Skin) == SKIN_BLACK {
 				send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WBlack.        @D]@n\r\n"))
-			} else if tch.Skin == SKIN_GREEN {
+			} else if int(tch.Skin) == SKIN_GREEN {
 				send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WGreen.        @D]@n\r\n"))
-			} else if tch.Skin == SKIN_ORANGE {
+			} else if int(tch.Skin) == SKIN_ORANGE {
 				send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WOrange.       @D]@n\r\n"))
-			} else if tch.Skin == SKIN_YELLOW {
+			} else if int(tch.Skin) == SKIN_YELLOW {
 				send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WYellow.       @D]@n\r\n"))
-			} else if tch.Skin == SKIN_RED {
+			} else if int(tch.Skin) == SKIN_RED {
 				send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WRed.          @D]@n\r\n"))
-			} else if tch.Skin == SKIN_GREY {
+			} else if int(tch.Skin) == SKIN_GREY {
 				send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WGrey.         @D]@n\r\n"))
-			} else if tch.Skin == SKIN_BLUE {
+			} else if int(tch.Skin) == SKIN_BLUE {
 				send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WBlue.         @D]@n\r\n"))
-			} else if tch.Skin == SKIN_AQUA {
+			} else if int(tch.Skin) == SKIN_AQUA {
 				send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WAqua.         @D]@n\r\n"))
-			} else if tch.Skin == SKIN_PINK {
+			} else if int(tch.Skin) == SKIN_PINK {
 				send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WPink.         @D]@n\r\n"))
-			} else if tch.Skin == SKIN_PURPLE {
+			} else if int(tch.Skin) == SKIN_PURPLE {
 				send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WPurple.       @D]@n\r\n"))
 			}
 			return
 		}
-		if tch.Race == RACE_HUMAN || tch.Race == RACE_SAIYAN || tch.Race == RACE_KONATSU || tch.Race == RACE_MUTANT || tch.Race == RACE_ANDROID || tch.Race == RACE_KAI || tch.Race == RACE_HALFBREED || tch.Race == RACE_TRUFFLE || tch.Race == RACE_HOSHIJIN {
-			if tch.Race != RACE_SAIYAN && tch.Race != RACE_HALFBREED || (tch.Race == RACE_SAIYAN || tch.Race == RACE_HALFBREED) && !IS_TRANSFORMED(tch) {
-				if tch.Hairl == HAIRL_LONG {
+		if int(tch.Race) == RACE_HUMAN || int(tch.Race) == RACE_SAIYAN || int(tch.Race) == RACE_KONATSU || int(tch.Race) == RACE_MUTANT || int(tch.Race) == RACE_ANDROID || int(tch.Race) == RACE_KAI || int(tch.Race) == RACE_HALFBREED || int(tch.Race) == RACE_TRUFFLE || int(tch.Race) == RACE_HOSHIJIN {
+			if int(tch.Race) != RACE_SAIYAN && int(tch.Race) != RACE_HALFBREED || (int(tch.Race) == RACE_SAIYAN || int(tch.Race) == RACE_HALFBREED) && !IS_TRANSFORMED(tch) {
+				if int(tch.Hairl) == HAIRL_LONG {
 					send_to_char(ch, libc.CString("            @D[@cHair Length @D: @WLong.         @D]@n\r\n"))
-				} else if tch.Hairl == HAIRL_BALD {
+				} else if int(tch.Hairl) == HAIRL_BALD {
 					send_to_char(ch, libc.CString("            @D[@cHair Length @D: @WBald.         @D]@n\r\n"))
-				} else if tch.Hairl == HAIRL_SHORT {
+				} else if int(tch.Hairl) == HAIRL_SHORT {
 					send_to_char(ch, libc.CString("            @D[@cHair Length @D: @WShort.        @D]@n\r\n"))
-				} else if tch.Hairl == HAIRL_MEDIUM {
+				} else if int(tch.Hairl) == HAIRL_MEDIUM {
 					send_to_char(ch, libc.CString("            @D[@cHair Length @D: @WMedium.       @D]@n\r\n"))
-				} else if tch.Hairl == HAIRL_RLONG {
+				} else if int(tch.Hairl) == HAIRL_RLONG {
 					send_to_char(ch, libc.CString("            @D[@cHair Length @D: @WReally Long.  @D]@n\r\n"))
 				}
-				if tch.Hairs == HAIRS_PLAIN {
+				if int(tch.Hairs) == HAIRS_PLAIN {
 					send_to_char(ch, libc.CString("            @D[@cHair Style  @D: @WPlain.        @D]@n\r\n"))
-				} else if tch.Hairs == HAIRS_MOHAWK {
+				} else if int(tch.Hairs) == HAIRS_MOHAWK {
 					send_to_char(ch, libc.CString("            @D[@cHair Style  @D: @WMohawk.       @D]@n\r\n"))
-				} else if tch.Hairs == HAIRS_SPIKY {
+				} else if int(tch.Hairs) == HAIRS_SPIKY {
 					send_to_char(ch, libc.CString("            @D[@cHair Style  @D: @WSpiky.        @D]@n\r\n"))
-				} else if tch.Hairs == HAIRS_CURLY {
+				} else if int(tch.Hairs) == HAIRS_CURLY {
 					send_to_char(ch, libc.CString("            @D[@cHair Style  @D: @WCurly.        @D]@n\r\n"))
-				} else if tch.Hairs == HAIRS_UNEVEN {
+				} else if int(tch.Hairs) == HAIRS_UNEVEN {
 					send_to_char(ch, libc.CString("            @D[@cHair Style  @D: @WUneven.       @D]@n\r\n"))
-				} else if tch.Hairs == HAIRS_PONYTAIL {
+				} else if int(tch.Hairs) == HAIRS_PONYTAIL {
 					send_to_char(ch, libc.CString("            @D[@cHair Style  @D: @WPony Tail.    @D]@n\r\n"))
-				} else if tch.Hairs == HAIRS_AFRO {
+				} else if int(tch.Hairs) == HAIRS_AFRO {
 					send_to_char(ch, libc.CString("            @D[@cHair Style  @D: @WAfro.         @D]@n\r\n"))
-				} else if tch.Hairs == HAIRS_FADE {
+				} else if int(tch.Hairs) == HAIRS_FADE {
 					send_to_char(ch, libc.CString("            @D[@cHair Style  @D: @WFade.         @D]@n\r\n"))
-				} else if tch.Hairs == HAIRS_CREW {
+				} else if int(tch.Hairs) == HAIRS_CREW {
 					send_to_char(ch, libc.CString("            @D[@cHair Style  @D: @WCrew Cut.     @D]@n\r\n"))
-				} else if tch.Hairs == HAIRS_FEATHERED {
+				} else if int(tch.Hairs) == HAIRS_FEATHERED {
 					send_to_char(ch, libc.CString("            @D[@cHair Style  @D: @WFeathered.    @D]@n\r\n"))
-				} else if tch.Hairs == HAIRS_DRED {
+				} else if int(tch.Hairs) == HAIRS_DRED {
 					send_to_char(ch, libc.CString("            @D[@cHair Style  @D: @WDread Locks.  @D]@n\r\n"))
 				}
-				if tch.Hairc == HAIRC_BLACK {
+				if int(tch.Hairc) == HAIRC_BLACK {
 					send_to_char(ch, libc.CString("            @D[@cHair Color  @D: @WBlack.        @D]@n\r\n"))
-				} else if tch.Hairc == HAIRC_BROWN {
+				} else if int(tch.Hairc) == HAIRC_BROWN {
 					send_to_char(ch, libc.CString("            @D[@cHair Color  @D: @WBrown.        @D]@n\r\n"))
-				} else if tch.Hairc == HAIRC_BLONDE {
+				} else if int(tch.Hairc) == HAIRC_BLONDE {
 					send_to_char(ch, libc.CString("            @D[@cHair Color  @D: @WBlonde.       @D]@n\r\n"))
-				} else if tch.Hairc == HAIRC_GREY {
+				} else if int(tch.Hairc) == HAIRC_GREY {
 					send_to_char(ch, libc.CString("            @D[@cHair Color  @D: @WGrey.         @D]@n\r\n"))
-				} else if tch.Hairc == HAIRC_RED {
+				} else if int(tch.Hairc) == HAIRC_RED {
 					send_to_char(ch, libc.CString("            @D[@cHair Color  @D: @WRed.          @D]@n\r\n"))
-				} else if tch.Hairc == HAIRC_ORANGE {
+				} else if int(tch.Hairc) == HAIRC_ORANGE {
 					send_to_char(ch, libc.CString("            @D[@cHair Color  @D: @WOrange.       @D]@n\r\n"))
-				} else if tch.Hairc == HAIRC_GREEN {
+				} else if int(tch.Hairc) == HAIRC_GREEN {
 					send_to_char(ch, libc.CString("            @D[@cHair Color  @D: @WGreen.        @D]@n\r\n"))
-				} else if tch.Hairc == HAIRC_BLUE {
+				} else if int(tch.Hairc) == HAIRC_BLUE {
 					send_to_char(ch, libc.CString("            @D[@cHair Color  @D: @WBlue.         @D]@n\r\n"))
-				} else if tch.Hairc == HAIRC_PINK {
+				} else if int(tch.Hairc) == HAIRC_PINK {
 					send_to_char(ch, libc.CString("            @D[@cHair Color  @D: @WPink.         @D]@n\r\n"))
-				} else if tch.Hairc == HAIRC_PURPLE {
+				} else if int(tch.Hairc) == HAIRC_PURPLE {
 					send_to_char(ch, libc.CString("            @D[@cHair Color  @D: @WPurple.       @D]@n\r\n"))
-				} else if tch.Hairc == HAIRC_SILVER {
+				} else if int(tch.Hairc) == HAIRC_SILVER {
 					send_to_char(ch, libc.CString("            @D[@cHair Color  @D: @WSilver.       @D]@n\r\n"))
-				} else if tch.Hairc == HAIRC_CRIMSON {
+				} else if int(tch.Hairc) == HAIRC_CRIMSON {
 					send_to_char(ch, libc.CString("            @D[@cHair Color  @D: @WCrimson.      @D]@n\r\n"))
-				} else if tch.Hairc == HAIRC_WHITE {
+				} else if int(tch.Hairc) == HAIRC_WHITE {
 					send_to_char(ch, libc.CString("            @D[@cHair Color  @D: @WWhite.        @D]@n\r\n"))
 				}
-			} else if tch.Race == RACE_SAIYAN || tch.Race == RACE_HALFBREED {
+			} else if int(tch.Race) == RACE_SAIYAN || int(tch.Race) == RACE_HALFBREED {
 				if PLR_FLAGGED(tch, PLR_TRANS1) {
-					if tch.Hairl == HAIRL_LONG {
+					if int(tch.Hairl) == HAIRL_LONG {
 						send_to_char(ch, libc.CString("            @D[@cHair Length @D: @WLong.         @D]@n\r\n"))
-					} else if tch.Hairl == HAIRL_BALD {
+					} else if int(tch.Hairl) == HAIRL_BALD {
 						send_to_char(ch, libc.CString("            @D[@cHair Length @D: @WBald.         @D]@n\r\n"))
-					} else if tch.Hairl == HAIRL_SHORT {
+					} else if int(tch.Hairl) == HAIRL_SHORT {
 						send_to_char(ch, libc.CString("            @D[@cHair Length @D: @WShort.        @D]@n\r\n"))
-					} else if tch.Hairl == HAIRL_MEDIUM {
+					} else if int(tch.Hairl) == HAIRL_MEDIUM {
 						send_to_char(ch, libc.CString("            @D[@cHair Length @D: @WMedium.       @D]@n\r\n"))
-					} else if tch.Hairl == HAIRL_RLONG {
+					} else if int(tch.Hairl) == HAIRL_RLONG {
 						send_to_char(ch, libc.CString("            @D[@cHair Length @D: @WReally Long.  @D]@n\r\n"))
 					}
 					send_to_char(ch, libc.CString("            @D[@cHair Style  @D: @WSpiky.        @D]@n\r\n"))
 					send_to_char(ch, libc.CString("            @D[@cHair Color  @D: @WGolden.       @D]@n\r\n"))
 					send_to_char(ch, libc.CString("            @D[@cEye Color   @D: @WEmerald.      @D]@n\r\n"))
 				} else if PLR_FLAGGED(tch, PLR_TRANS2) {
-					if tch.Hairl == HAIRL_LONG {
+					if int(tch.Hairl) == HAIRL_LONG {
 						send_to_char(ch, libc.CString("            @D[@cHair Length @D: @WLong.         @D]@n\r\n"))
-					} else if tch.Hairl == HAIRL_BALD {
+					} else if int(tch.Hairl) == HAIRL_BALD {
 						send_to_char(ch, libc.CString("            @D[@cHair Length @D: @WBald.         @D]@n\r\n"))
-					} else if tch.Hairl == HAIRL_SHORT {
+					} else if int(tch.Hairl) == HAIRL_SHORT {
 						send_to_char(ch, libc.CString("            @D[@cHair Length @D: @WShort.        @D]@n\r\n"))
-					} else if tch.Hairl == HAIRL_MEDIUM {
+					} else if int(tch.Hairl) == HAIRL_MEDIUM {
 						send_to_char(ch, libc.CString("            @D[@cHair Length @D: @WMedium.       @D]@n\r\n"))
-					} else if tch.Hairl == HAIRL_RLONG {
+					} else if int(tch.Hairl) == HAIRL_RLONG {
 						send_to_char(ch, libc.CString("            @D[@cHair Length @D: @WReally Long.  @D]@n\r\n"))
 					}
 					send_to_char(ch, libc.CString("            @D[@cHair Style  @D: @WSharp Spikes. @D]@n\r\n"))
@@ -1102,138 +1101,138 @@ func bringdesc(ch *char_data, tch *char_data) {
 				}
 			}
 		}
-		if tch.Race == RACE_DEMON || tch.Race == RACE_ICER {
-			if tch.Hairl == HAIRL_BALD {
+		if int(tch.Race) == RACE_DEMON || int(tch.Race) == RACE_ICER {
+			if int(tch.Hairl) == HAIRL_BALD {
 				send_to_char(ch, libc.CString("            @D[@cHorn Length @D: @WNone.         @D]@n\r\n"))
 			}
-			if tch.Hairl == HAIRL_SHORT {
+			if int(tch.Hairl) == HAIRL_SHORT {
 				send_to_char(ch, libc.CString("            @D[@cHorn Length @D: @WShort.        @D]@n\r\n"))
 			}
-			if tch.Hairl == HAIRL_MEDIUM {
+			if int(tch.Hairl) == HAIRL_MEDIUM {
 				send_to_char(ch, libc.CString("            @D[@cHorn Length @D: @WMedium.       @D]@n\r\n"))
 			}
-			if tch.Hairl == HAIRL_LONG {
+			if int(tch.Hairl) == HAIRL_LONG {
 				send_to_char(ch, libc.CString("            @D[@cHorn Length @D: @WLong.         @D]@n\r\n"))
 			}
-			if tch.Hairl == HAIRL_RLONG {
+			if int(tch.Hairl) == HAIRL_RLONG {
 				send_to_char(ch, libc.CString("            @D[@cHorn Length @D: @WReally Long.  @D]@n\r\n"))
 			}
 		}
-		if tch.Race == RACE_NAMEK || tch.Race == RACE_ARLIAN {
-			if tch.Hairl == HAIRL_BALD {
+		if int(tch.Race) == RACE_NAMEK || int(tch.Race) == RACE_ARLIAN {
+			if int(tch.Hairl) == HAIRL_BALD {
 				send_to_char(ch, libc.CString("            @D[@cAnt. Length @D: @WTiny.        @D]@n\r\n"))
 			}
-			if tch.Hairl == HAIRL_SHORT {
+			if int(tch.Hairl) == HAIRL_SHORT {
 				send_to_char(ch, libc.CString("            @D[@cAnt. Length @D: @WShort.       @D]@n\r\n"))
 			}
-			if tch.Hairl == HAIRL_MEDIUM {
+			if int(tch.Hairl) == HAIRL_MEDIUM {
 				send_to_char(ch, libc.CString("            @D[@cAnt. Length @D: @WMedium.      @D]@n\r\n"))
 			}
-			if tch.Hairl == HAIRL_LONG {
+			if int(tch.Hairl) == HAIRL_LONG {
 				send_to_char(ch, libc.CString("            @D[@cAnt. Length @D: @WLong.        @D]@n\r\n"))
 			}
-			if tch.Hairl == HAIRL_RLONG {
+			if int(tch.Hairl) == HAIRL_RLONG {
 				send_to_char(ch, libc.CString("            @D[@cAnt. Length @D: @WR. Long.     @D]@n\r\n"))
 			}
 		}
-		if tch.Race == RACE_ARLIAN && tch.Sex == SEX_FEMALE {
-			if tch.Hairc == HAIRC_BLACK {
+		if int(tch.Race) == RACE_ARLIAN && int(tch.Sex) == SEX_FEMALE {
+			if int(tch.Hairc) == HAIRC_BLACK {
 				send_to_char(ch, libc.CString("            @D[@cWing Color  @D: @WBlack.        @D]@n\r\n"))
-			} else if tch.Hairc == HAIRC_BROWN {
+			} else if int(tch.Hairc) == HAIRC_BROWN {
 				send_to_char(ch, libc.CString("            @D[@cWing Color  @D: @WBrown.        @D]@n\r\n"))
-			} else if tch.Hairc == HAIRC_BLONDE {
+			} else if int(tch.Hairc) == HAIRC_BLONDE {
 				send_to_char(ch, libc.CString("            @D[@cWing Color  @D: @WBlonde.       @D]@n\r\n"))
-			} else if tch.Hairc == HAIRC_GREY {
+			} else if int(tch.Hairc) == HAIRC_GREY {
 				send_to_char(ch, libc.CString("            @D[@cWing Color  @D: @WGrey.         @D]@n\r\n"))
-			} else if tch.Hairc == HAIRC_RED {
+			} else if int(tch.Hairc) == HAIRC_RED {
 				send_to_char(ch, libc.CString("            @D[@cWing Color  @D: @WRed.          @D]@n\r\n"))
-			} else if tch.Hairc == HAIRC_ORANGE {
+			} else if int(tch.Hairc) == HAIRC_ORANGE {
 				send_to_char(ch, libc.CString("            @D[@cWing Color  @D: @WOrange.       @D]@n\r\n"))
-			} else if tch.Hairc == HAIRC_GREEN {
+			} else if int(tch.Hairc) == HAIRC_GREEN {
 				send_to_char(ch, libc.CString("            @D[@cWing Color  @D: @WGreen.        @D]@n\r\n"))
-			} else if tch.Hairc == HAIRC_BLUE {
+			} else if int(tch.Hairc) == HAIRC_BLUE {
 				send_to_char(ch, libc.CString("            @D[@cWing Color  @D: @WBlue.         @D]@n\r\n"))
-			} else if tch.Hairc == HAIRC_PINK {
+			} else if int(tch.Hairc) == HAIRC_PINK {
 				send_to_char(ch, libc.CString("            @D[@cWing Color  @D: @WPink.         @D]@n\r\n"))
-			} else if tch.Hairc == HAIRC_PURPLE {
+			} else if int(tch.Hairc) == HAIRC_PURPLE {
 				send_to_char(ch, libc.CString("            @D[@cWing Color  @D: @WPurple.       @D]@n\r\n"))
-			} else if tch.Hairc == HAIRC_SILVER {
+			} else if int(tch.Hairc) == HAIRC_SILVER {
 				send_to_char(ch, libc.CString("            @D[@cWing Color  @D: @WSilver.       @D]@n\r\n"))
-			} else if tch.Hairc == HAIRC_CRIMSON {
+			} else if int(tch.Hairc) == HAIRC_CRIMSON {
 				send_to_char(ch, libc.CString("            @D[@cWing Color  @D: @WCrimson.      @D]@n\r\n"))
-			} else if tch.Hairc == HAIRC_WHITE {
+			} else if int(tch.Hairc) == HAIRC_WHITE {
 				send_to_char(ch, libc.CString("            @D[@cWing Color  @D: @WWhite.        @D]@n\r\n"))
 			}
-		} else if tch.Race == RACE_ARLIAN && tch.Sex != SEX_FEMALE {
+		} else if int(tch.Race) == RACE_ARLIAN && int(tch.Sex) != SEX_FEMALE {
 			send_to_char(ch, libc.CString("            @D[@cWing Color  @D: @WWhite.        @D]@n\r\n"))
 		}
-		if tch.Race == RACE_MAJIN {
-			if tch.Hairl == HAIRL_BALD {
+		if int(tch.Race) == RACE_MAJIN {
+			if int(tch.Hairl) == HAIRL_BALD {
 				send_to_char(ch, libc.CString("            @D[@cFor. Length @D: @WTiny.         @D]@n\r\n"))
 			}
-			if tch.Hairl == HAIRL_SHORT {
+			if int(tch.Hairl) == HAIRL_SHORT {
 				send_to_char(ch, libc.CString("            @D[@cFor. Length @D: @WShort.        @D]@n\r\n"))
 			}
-			if tch.Hairl == HAIRL_MEDIUM {
+			if int(tch.Hairl) == HAIRL_MEDIUM {
 				send_to_char(ch, libc.CString("            @D[@cFor. Length @D: @WMedium.       @D]@n\r\n"))
 			}
-			if tch.Hairl == HAIRL_LONG {
+			if int(tch.Hairl) == HAIRL_LONG {
 				send_to_char(ch, libc.CString("            @D[@cFor. Length @D: @WLong.         @D]@n\r\n"))
 			}
-			if tch.Hairl == HAIRL_RLONG {
+			if int(tch.Hairl) == HAIRL_RLONG {
 				send_to_char(ch, libc.CString("            @D[@cFor. Length @D: @WR. Long.      @D]@n\r\n"))
 			}
 		}
-		if tch.Race != RACE_SAIYAN && tch.Race != RACE_HALFBREED || (tch.Race == RACE_SAIYAN || tch.Race == RACE_HALFBREED) && !IS_TRANSFORMED(tch) {
-			if tch.Eye == EYE_BLUE {
+		if int(tch.Race) != RACE_SAIYAN && int(tch.Race) != RACE_HALFBREED || (int(tch.Race) == RACE_SAIYAN || int(tch.Race) == RACE_HALFBREED) && !IS_TRANSFORMED(tch) {
+			if int(tch.Eye) == EYE_BLUE {
 				send_to_char(ch, libc.CString("            @D[@cEye Color   @D: @WBlue.         @D]@n\r\n"))
-			} else if tch.Eye == EYE_BLACK {
+			} else if int(tch.Eye) == EYE_BLACK {
 				send_to_char(ch, libc.CString("            @D[@cEye Color   @D: @WBlack.        @D]@n\r\n"))
-			} else if tch.Eye == EYE_GREEN {
+			} else if int(tch.Eye) == EYE_GREEN {
 				send_to_char(ch, libc.CString("            @D[@cEye Color   @D: @WGreen.        @D]@n\r\n"))
-			} else if tch.Eye == EYE_BROWN {
+			} else if int(tch.Eye) == EYE_BROWN {
 				send_to_char(ch, libc.CString("            @D[@cEye Color   @D: @WBrown.        @D]@n\r\n"))
-			} else if tch.Eye == EYE_RED {
+			} else if int(tch.Eye) == EYE_RED {
 				send_to_char(ch, libc.CString("            @D[@cEye Color   @D: @WRed.          @D]@n\r\n"))
-			} else if tch.Eye == EYE_AQUA {
+			} else if int(tch.Eye) == EYE_AQUA {
 				send_to_char(ch, libc.CString("            @D[@cEye Color   @D: @WAqua.         @D]@n\r\n"))
-			} else if tch.Eye == EYE_PINK {
+			} else if int(tch.Eye) == EYE_PINK {
 				send_to_char(ch, libc.CString("            @D[@cEye Color   @D: @WPink.         @D]@n\r\n"))
-			} else if tch.Eye == EYE_PURPLE {
+			} else if int(tch.Eye) == EYE_PURPLE {
 				send_to_char(ch, libc.CString("            @D[@cEye Color   @D: @WPurple.       @D]@n\r\n"))
-			} else if tch.Eye == EYE_CRIMSON {
+			} else if int(tch.Eye) == EYE_CRIMSON {
 				send_to_char(ch, libc.CString("            @D[@cEye Color   @D: @WCrimson.      @D]@n\r\n"))
-			} else if tch.Eye == EYE_GOLD {
+			} else if int(tch.Eye) == EYE_GOLD {
 				send_to_char(ch, libc.CString("            @D[@cEye Color   @D: @WGold.         @D]@n\r\n"))
-			} else if tch.Eye == EYE_AMBER {
+			} else if int(tch.Eye) == EYE_AMBER {
 				send_to_char(ch, libc.CString("            @D[@cEye Color   @D: @WAmber.        @D]@n\r\n"))
-			} else if tch.Eye == EYE_EMERALD {
+			} else if int(tch.Eye) == EYE_EMERALD {
 				send_to_char(ch, libc.CString("            @D[@cEye Color   @D: @WEmerald.      @D]@n\r\n"))
 			}
 		}
-		if tch.Skin == SKIN_WHITE {
+		if int(tch.Skin) == SKIN_WHITE {
 			send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WWhite.        @D]@n\r\n"))
-		} else if tch.Skin == SKIN_TAN {
+		} else if int(tch.Skin) == SKIN_TAN {
 			send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WTan.          @D]@n\r\n"))
-		} else if tch.Skin == SKIN_BLACK {
+		} else if int(tch.Skin) == SKIN_BLACK {
 			send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WBlack.        @D]@n\r\n"))
-		} else if tch.Skin == SKIN_GREEN {
+		} else if int(tch.Skin) == SKIN_GREEN {
 			send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WGreen.        @D]@n\r\n"))
-		} else if tch.Skin == SKIN_ORANGE {
+		} else if int(tch.Skin) == SKIN_ORANGE {
 			send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WOrange.       @D]@n\r\n"))
-		} else if tch.Skin == SKIN_YELLOW {
+		} else if int(tch.Skin) == SKIN_YELLOW {
 			send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WYellow.       @D]@n\r\n"))
-		} else if tch.Skin == SKIN_RED {
+		} else if int(tch.Skin) == SKIN_RED {
 			send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WRed.          @D]@n\r\n"))
-		} else if tch.Skin == SKIN_GREY {
+		} else if int(tch.Skin) == SKIN_GREY {
 			send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WGrey.         @D]@n\r\n"))
-		} else if tch.Skin == SKIN_BLUE {
+		} else if int(tch.Skin) == SKIN_BLUE {
 			send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WBlue.         @D]@n\r\n"))
-		} else if tch.Skin == SKIN_AQUA {
+		} else if int(tch.Skin) == SKIN_AQUA {
 			send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WAqua.         @D]@n\r\n"))
-		} else if tch.Skin == SKIN_PINK {
+		} else if int(tch.Skin) == SKIN_PINK {
 			send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WPink.         @D]@n\r\n"))
-		} else if tch.Skin == SKIN_PURPLE {
+		} else if int(tch.Skin) == SKIN_PURPLE {
 			send_to_char(ch, libc.CString("            @D[@cSkin Color  @D: @WPurple.       @D]@n\r\n"))
 		}
 		if tch.Majinize != 0 && tch.Majinize != 3 {
@@ -2284,7 +2283,7 @@ func gen_map(ch *char_data, num int) {
 		send_to_char(ch, libc.CString("@D                ---------@w\r\n"))
 	}
 	for i = 0; i < 9; i++ {
-		C.strcpy(&map_[i][0], libc.CString("         "))
+		libc.StrCpy(&map_[i][0], libc.CString("         "))
 	}
 	map_draw_room(map_, 4, 4, ch.In_room, ch)
 	for door = 0; door < NUM_OF_DIRS; door++ {
@@ -2513,7 +2512,7 @@ func show_obj_to_char(obj *obj_data, ch *char_data, mode int) {
 		if *obj.Description == '.' && (IS_NPC(ch) || !PRF_FLAGGED(ch, PRF_HOLYLIGHT)) {
 			return
 		}
-		if obj.Type_flag == ITEM_VEHICLE && (func() room_vnum {
+		if int(obj.Type_flag) == ITEM_VEHICLE && (func() room_vnum {
 			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
 				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
 			}
@@ -2527,7 +2526,7 @@ func show_obj_to_char(obj *obj_data, ch *char_data, mode int) {
 		if obj.Sitting != nil && ch.Admlevel >= 1 {
 			send_to_char(ch, libc.CString("@D(@YBeing Used@D)@w"))
 		}
-		if obj.Type_flag == ITEM_PLANT && (ROOM_FLAGGED(obj.In_room, ROOM_GARDEN1) || ROOM_FLAGGED(obj.In_room, ROOM_GARDEN2)) {
+		if int(obj.Type_flag) == ITEM_PLANT && (ROOM_FLAGGED(obj.In_room, ROOM_GARDEN1) || ROOM_FLAGGED(obj.In_room, ROOM_GARDEN2)) {
 			see_plant(obj, ch)
 			return
 		}
@@ -2598,21 +2597,21 @@ func show_obj_to_char(obj *obj_data, ch *char_data, mode int) {
 					send_to_char(ch, libc.CString("%s@n"), obj.Description)
 				}
 			}
-			if obj.Type_flag == ITEM_VEHICLE {
+			if int(obj.Type_flag) == ITEM_VEHICLE {
 				if !OBJVAL_FLAGGED(obj, 1<<2) && GET_OBJ_VNUM(obj) > 0x4AFF {
 					send_to_char(ch, libc.CString("\r\n@c...its outer hatch is open@n"))
 				} else if !OBJVAL_FLAGGED(obj, 1<<2) && GET_OBJ_VNUM(obj) <= 0x4AFF {
 					send_to_char(ch, libc.CString("\r\n@c...its door is open@n"))
 				}
 			}
-			if obj.Type_flag == ITEM_CONTAINER && !IS_CORPSE(obj) {
+			if int(obj.Type_flag) == ITEM_CONTAINER && !IS_CORPSE(obj) {
 				if !OBJVAL_FLAGGED(obj, 1<<2) && !OBJ_FLAGGED(obj, ITEM_SHEATH) {
 					send_to_char(ch, libc.CString(". @D[@G-open-@D]@n"))
 				} else if !OBJ_FLAGGED(obj, ITEM_SHEATH) {
 					send_to_char(ch, libc.CString(". @D[@rclosed@D]@n"))
 				}
 			}
-			if obj.Type_flag == ITEM_HATCH {
+			if int(obj.Type_flag) == ITEM_HATCH {
 				if !OBJVAL_FLAGGED(obj, 1<<2) {
 					send_to_char(ch, libc.CString(", it is open"))
 				} else if OBJVAL_FLAGGED(obj, 1<<2) {
@@ -2624,7 +2623,7 @@ func show_obj_to_char(obj *obj_data, ch *char_data, mode int) {
 					send_to_char(ch, libc.CString("@n"))
 				}
 			}
-			if obj.Type_flag == ITEM_FOOD {
+			if int(obj.Type_flag) == ITEM_FOOD {
 				if (obj.Value[VAL_FOOD_FOODVAL]) < obj.Foob {
 					send_to_char(ch, libc.CString(", and it has been ate on@n"))
 				}
@@ -2642,7 +2641,7 @@ func show_obj_to_char(obj *obj_data, ch *char_data, mode int) {
 		} else {
 			send_to_char(ch, libc.CString("%s"), obj.Short_description)
 		}
-		if obj.Type_flag == ITEM_FOOD {
+		if int(obj.Type_flag) == ITEM_FOOD {
 			if (obj.Value[VAL_FOOD_FOODVAL]) < obj.Foob {
 				send_to_char(ch, libc.CString(", and it has been ate on.@n"))
 			}
@@ -2678,7 +2677,7 @@ func show_obj_to_char(obj *obj_data, ch *char_data, mode int) {
 		if OBJ_FLAGGED(obj, ITEM_THROW) {
 			send_to_char(ch, libc.CString(" @D[@RThrow Only@D]@n"))
 		}
-		if obj.Type_flag == ITEM_PLANT && !OBJ_FLAGGED(obj, ITEM_MATURE) {
+		if int(obj.Type_flag) == ITEM_PLANT && !OBJ_FLAGGED(obj, ITEM_MATURE) {
 			if (obj.Value[VAL_WATERLEVEL]) < -9 {
 				send_to_char(ch, libc.CString("@D[@RDead@D]@n"))
 			} else {
@@ -2700,7 +2699,7 @@ func show_obj_to_char(obj *obj_data, ch *char_data, mode int) {
 				}
 			}
 		}
-		if obj.Type_flag == ITEM_CONTAINER && !IS_CORPSE(obj) {
+		if int(obj.Type_flag) == ITEM_CONTAINER && !IS_CORPSE(obj) {
 			if !OBJVAL_FLAGGED(obj, 1<<2) && !OBJ_FLAGGED(obj, ITEM_SHEATH) {
 				send_to_char(ch, libc.CString(" @D[@G-open-@D]@n"))
 			} else if !OBJ_FLAGGED(obj, ITEM_SHEATH) {
@@ -2840,7 +2839,7 @@ func show_obj_to_char(obj *obj_data, ch *char_data, mode int) {
 				send_to_char(ch, libc.CString("\r\n"))
 			}
 		}
-		if obj.Type_flag == ITEM_WEAPON {
+		if int(obj.Type_flag) == ITEM_WEAPON {
 			var num int = 0
 			if (obj.Value[VAL_WEAPON_DAMTYPE]) == int(TYPE_PIERCE-TYPE_HIT) {
 				num = 1
@@ -2942,8 +2941,8 @@ func show_obj_modifiers(obj *obj_data, ch *char_data) int {
 		}
 		found++
 	} else {
-		if obj.Type_flag != ITEM_BOARD {
-			if obj.Type_flag != ITEM_CONTAINER {
+		if int(obj.Type_flag) != ITEM_BOARD {
+			if int(obj.Type_flag) != ITEM_CONTAINER {
 				send_to_char(ch, libc.CString("."))
 			}
 			if !IS_NPC(ch) && obj.Posted_to != nil && obj.Posttype <= 0 {
@@ -2981,17 +2980,17 @@ func list_obj_to_char(list *obj_data, ch *char_data, mode int, show int) {
 		if i.Description == nil {
 			continue
 		}
-		if C.strcasecmp(i.Description, libc.CString("undefined")) == 0 {
+		if libc.StrCaseCmp(i.Description, libc.CString("undefined")) == 0 {
 			continue
 		}
 		num = 0
 		d = i
 		if config_info.Play.Stack_objs != 0 {
 			for j = list; j != i; j = j.Next_content {
-				if C.strcasecmp(j.Short_description, i.Short_description) == 0 && C.strcasecmp(j.Description, i.Description) == 0 && j.Item_number == i.Item_number && (OBJ_FLAGGED(j, ITEM_BROKEN) && OBJ_FLAGGED(i, ITEM_BROKEN) || !OBJ_FLAGGED(j, ITEM_BROKEN) && !OBJ_FLAGGED(i, ITEM_BROKEN)) {
+				if libc.StrCaseCmp(j.Short_description, i.Short_description) == 0 && libc.StrCaseCmp(j.Description, i.Description) == 0 && j.Item_number == i.Item_number && (OBJ_FLAGGED(j, ITEM_BROKEN) && OBJ_FLAGGED(i, ITEM_BROKEN) || !OBJ_FLAGGED(j, ITEM_BROKEN) && !OBJ_FLAGGED(i, ITEM_BROKEN)) {
 					if j.Sitting == nil && i.Sitting == nil {
 						if (j.Value[6]) == (i.Value[6]) {
-							if j.Type_flag != ITEM_PLANT && i.Type_flag != ITEM_PLANT || j.Type_flag == ITEM_PLANT && i.Type_flag == ITEM_PLANT && (j.Value[VAL_MATURITY]) == (i.Value[VAL_MATURITY]) && (j.Value[VAL_WATERLEVEL]) == (i.Value[VAL_WATERLEVEL]) {
+							if int(j.Type_flag) != ITEM_PLANT && int(i.Type_flag) != ITEM_PLANT || int(j.Type_flag) == ITEM_PLANT && int(i.Type_flag) == ITEM_PLANT && (j.Value[VAL_MATURITY]) == (i.Value[VAL_MATURITY]) && (j.Value[VAL_WATERLEVEL]) == (i.Value[VAL_WATERLEVEL]) {
 								if !OBJ_FLAGGED(j, ITEM_DUPLICATE) && !OBJ_FLAGGED(i, ITEM_DUPLICATE) || OBJ_FLAGGED(j, ITEM_DUPLICATE) && OBJ_FLAGGED(i, ITEM_DUPLICATE) {
 									if j.Posttype == 0 && i.Posttype == 0 {
 										if j.Fellow_wall == nil && i.Fellow_wall == nil {
@@ -3013,11 +3012,11 @@ func list_obj_to_char(list *obj_data, ch *char_data, mode int, show int) {
 				j = i
 				return j
 			}(); j != nil; j = j.Next_content {
-				if C.strcasecmp(j.Short_description, i.Short_description) == 0 && C.strcasecmp(j.Description, i.Description) == 0 && j.Item_number == i.Item_number && (OBJ_FLAGGED(j, ITEM_BROKEN) && OBJ_FLAGGED(i, ITEM_BROKEN) || !OBJ_FLAGGED(j, ITEM_BROKEN) && !OBJ_FLAGGED(i, ITEM_BROKEN)) {
+				if libc.StrCaseCmp(j.Short_description, i.Short_description) == 0 && libc.StrCaseCmp(j.Description, i.Description) == 0 && j.Item_number == i.Item_number && (OBJ_FLAGGED(j, ITEM_BROKEN) && OBJ_FLAGGED(i, ITEM_BROKEN) || !OBJ_FLAGGED(j, ITEM_BROKEN) && !OBJ_FLAGGED(i, ITEM_BROKEN)) {
 					if j.Sitting == nil && i.Sitting == nil {
 						if j.Posttype == 0 && i.Posttype == 0 {
 							if (j.Value[6]) == (i.Value[6]) {
-								if j.Type_flag != ITEM_PLANT && i.Type_flag != ITEM_PLANT || j.Type_flag == ITEM_PLANT && i.Type_flag == ITEM_PLANT && (j.Value[VAL_MATURITY]) == (i.Value[VAL_MATURITY]) && (j.Value[VAL_WATERLEVEL]) == (i.Value[VAL_WATERLEVEL]) {
+								if int(j.Type_flag) != ITEM_PLANT && int(i.Type_flag) != ITEM_PLANT || int(j.Type_flag) == ITEM_PLANT && int(i.Type_flag) == ITEM_PLANT && (j.Value[VAL_MATURITY]) == (i.Value[VAL_MATURITY]) && (j.Value[VAL_WATERLEVEL]) == (i.Value[VAL_WATERLEVEL]) {
 									if !OBJ_FLAGGED(j, ITEM_DUPLICATE) && !OBJ_FLAGGED(i, ITEM_DUPLICATE) || OBJ_FLAGGED(j, ITEM_DUPLICATE) && OBJ_FLAGGED(i, ITEM_DUPLICATE) {
 										if j.Fellow_wall == nil && i.Fellow_wall == nil {
 											if (j.Value[0]) == (i.Value[0]) && GET_OBJ_VNUM(i) == math.MaxUint8 && GET_OBJ_VNUM(j) == math.MaxUint8 || GET_OBJ_VNUM(j) != math.MaxUint8 && GET_OBJ_VNUM(i) != math.MaxUint8 {
@@ -3037,7 +3036,7 @@ func list_obj_to_char(list *obj_data, ch *char_data, mode int, show int) {
 				}
 			}
 		}
-		if CAN_SEE_OBJ(ch, d) && (*d.Description != '.' && *d.Short_description != '.' || PRF_FLAGGED(ch, PRF_HOLYLIGHT)) || d.Type_flag == ITEM_LIGHT {
+		if CAN_SEE_OBJ(ch, d) && (*d.Description != '.' && *d.Short_description != '.' || PRF_FLAGGED(ch, PRF_HOLYLIGHT)) || int(d.Type_flag) == ITEM_LIGHT {
 			if num > 1 {
 				send_to_char(ch, libc.CString("@D(@Rx@Y%2i@D)@n "), num)
 			}
@@ -3072,7 +3071,7 @@ func diag_obj_to_char(obj *obj_data, ch *char_data) {
 			break
 		}
 	}
-	send_to_char(ch, libc.CString("\r\n%c%s %s\r\n"), C.toupper(int(*objs)), (*byte)(unsafe.Add(unsafe.Pointer(objs), 1)), diagnosis[ar_index].Text)
+	send_to_char(ch, libc.CString("\r\n%c%s %s\r\n"), unicode.ToUpper(rune(*objs)), (*byte)(unsafe.Add(unsafe.Pointer(objs), 1)), diagnosis[ar_index].Text)
 }
 func diag_char_to_char(i *char_data, ch *char_data) {
 	var (
@@ -3145,40 +3144,40 @@ func look_at_char(i *char_data, ch *char_data) {
 	}
 	send_to_char(ch, libc.CString("\r\n"))
 	if !IS_NPC(i) {
-		if (i.Limb_condition[0]) >= 50 && !PLR_FLAGGED(i, PLR_CRARM) {
-			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), i.Limb_condition[0], "%", "%")
-		} else if (i.Limb_condition[0]) > 0 && !PLR_FLAGGED(i, PLR_CRARM) {
-			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), i.Limb_condition[0], "%", "%")
-		} else if (i.Limb_condition[0]) > 0 && PLR_FLAGGED(i, PLR_CRARM) {
-			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), i.Limb_condition[0], "%", "%")
-		} else if (i.Limb_condition[0]) <= 0 {
+		if (i.Limb_condition[1]) >= 50 && !PLR_FLAGGED(i, PLR_CRARM) {
+			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), i.Limb_condition[1], "%", "%")
+		} else if (i.Limb_condition[1]) > 0 && !PLR_FLAGGED(i, PLR_CRARM) {
+			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), i.Limb_condition[1], "%", "%")
+		} else if (i.Limb_condition[1]) > 0 && PLR_FLAGGED(i, PLR_CRARM) {
+			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), i.Limb_condition[1], "%", "%")
+		} else if (i.Limb_condition[1]) <= 0 {
 			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @rMissing.            @D]@n\r\n"))
 		}
-		if (i.Limb_condition[1]) >= 50 && !PLR_FLAGGED(i, PLR_CLARM) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), i.Limb_condition[1], "%", "%")
-		} else if (i.Limb_condition[1]) > 0 && !PLR_FLAGGED(i, PLR_CLARM) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), i.Limb_condition[1], "%", "%")
-		} else if (i.Limb_condition[1]) > 0 && PLR_FLAGGED(i, PLR_CLARM) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), i.Limb_condition[1], "%", "%")
-		} else if (i.Limb_condition[1]) <= 0 {
+		if (i.Limb_condition[2]) >= 50 && !PLR_FLAGGED(i, PLR_CLARM) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), i.Limb_condition[2], "%", "%")
+		} else if (i.Limb_condition[2]) > 0 && !PLR_FLAGGED(i, PLR_CLARM) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), i.Limb_condition[2], "%", "%")
+		} else if (i.Limb_condition[2]) > 0 && PLR_FLAGGED(i, PLR_CLARM) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), i.Limb_condition[2], "%", "%")
+		} else if (i.Limb_condition[2]) <= 0 {
 			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @rMissing.            @D]@n\r\n"))
 		}
-		if (i.Limb_condition[2]) >= 50 && !PLR_FLAGGED(i, PLR_CLARM) {
-			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), i.Limb_condition[2], "%", "%")
-		} else if (i.Limb_condition[2]) > 0 && !PLR_FLAGGED(i, PLR_CRLEG) {
-			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), i.Limb_condition[2], "%", "%")
-		} else if (i.Limb_condition[2]) > 0 && PLR_FLAGGED(i, PLR_CRLEG) {
-			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), i.Limb_condition[2], "%", "%")
-		} else if (i.Limb_condition[2]) <= 0 {
+		if (i.Limb_condition[3]) >= 50 && !PLR_FLAGGED(i, PLR_CLARM) {
+			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), i.Limb_condition[3], "%", "%")
+		} else if (i.Limb_condition[3]) > 0 && !PLR_FLAGGED(i, PLR_CRLEG) {
+			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), i.Limb_condition[3], "%", "%")
+		} else if (i.Limb_condition[3]) > 0 && PLR_FLAGGED(i, PLR_CRLEG) {
+			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), i.Limb_condition[3], "%", "%")
+		} else if (i.Limb_condition[3]) <= 0 {
 			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @rMissing.            @D]@n\r\n"))
 		}
-		if (i.Limb_condition[3]) >= 50 && !PLR_FLAGGED(i, PLR_CLLEG) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), i.Limb_condition[3], "%", "%")
-		} else if (i.Limb_condition[3]) > 0 && !PLR_FLAGGED(i, PLR_CLLEG) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), i.Limb_condition[3], "%", "%")
-		} else if (i.Limb_condition[3]) > 0 && PLR_FLAGGED(i, PLR_CLLEG) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), i.Limb_condition[3], "%", "%")
-		} else if (i.Limb_condition[3]) <= 0 {
+		if (i.Limb_condition[4]) >= 50 && !PLR_FLAGGED(i, PLR_CLLEG) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), i.Limb_condition[4], "%", "%")
+		} else if (i.Limb_condition[4]) > 0 && !PLR_FLAGGED(i, PLR_CLLEG) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), i.Limb_condition[4], "%", "%")
+		} else if (i.Limb_condition[4]) > 0 && PLR_FLAGGED(i, PLR_CLLEG) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), i.Limb_condition[4], "%", "%")
+		} else if (i.Limb_condition[4]) <= 0 {
 			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @rMissing.             @D]@n\r\n"))
 		}
 		if PLR_FLAGGED(i, PLR_HEAD) {
@@ -3187,21 +3186,21 @@ func look_at_char(i *char_data, ch *char_data) {
 		if !PLR_FLAGGED(i, PLR_HEAD) {
 			send_to_char(ch, libc.CString("            @D[@cHead        @D: @rMissing.             @D]@n\r\n"))
 		}
-		if (i.Race == RACE_SAIYAN || i.Race == RACE_HALFBREED) && PLR_FLAGGED(i, PLR_STAIL) && !PLR_FLAGGED(i, PLR_TAILHIDE) {
+		if (int(i.Race) == RACE_SAIYAN || int(i.Race) == RACE_HALFBREED) && PLR_FLAGGED(i, PLR_STAIL) && !PLR_FLAGGED(i, PLR_TAILHIDE) {
 			send_to_char(ch, libc.CString("            @D[@cTail        @D: @GHas.                 @D]@n\r\n"))
 		}
-		if (i.Race == RACE_SAIYAN || i.Race == RACE_HALFBREED) && !PLR_FLAGGED(i, PLR_STAIL) && !PLR_FLAGGED(i, PLR_TAILHIDE) {
+		if (int(i.Race) == RACE_SAIYAN || int(i.Race) == RACE_HALFBREED) && !PLR_FLAGGED(i, PLR_STAIL) && !PLR_FLAGGED(i, PLR_TAILHIDE) {
 			send_to_char(ch, libc.CString("            @D[@cTail        @D: @rMissing.             @D]@n\r\n"))
 		}
-		if (i.Race == RACE_ICER || i.Race == RACE_BIO) && PLR_FLAGGED(i, PLR_TAIL) {
+		if (int(i.Race) == RACE_ICER || int(i.Race) == RACE_BIO) && PLR_FLAGGED(i, PLR_TAIL) {
 			send_to_char(ch, libc.CString("            @D[@cTail        @D: @GHas.                 @D]@n\r\n"))
 		}
-		if (i.Race == RACE_ICER || i.Race == RACE_BIO) && !PLR_FLAGGED(i, PLR_TAIL) {
+		if (int(i.Race) == RACE_ICER || int(i.Race) == RACE_BIO) && !PLR_FLAGGED(i, PLR_TAIL) {
 			send_to_char(ch, libc.CString("            @D[@cTail        @D: @rMissing.             @D]@n\r\n"))
 		}
 	}
 	send_to_char(ch, libc.CString("\r\n"))
-	if i.Clan != nil && unsafe.Pointer(C.strstr(i.Clan, libc.CString("None"))) == unsafe.Pointer(uintptr(FALSE)) {
+	if i.Clan != nil && unsafe.Pointer(libc.StrStr(i.Clan, libc.CString("None"))) == unsafe.Pointer(uintptr(FALSE)) {
 		stdio.Sprintf(&buf[0], "%s", i.Clan)
 		clan = TRUE
 	}
@@ -3227,19 +3226,19 @@ func look_at_char(i *char_data, ch *char_data) {
 	}
 	send_to_char(ch, libc.CString("\r\n"))
 	if !PLR_FLAGGED(i, PLR_DISGUISED) && (readIntro(ch, i) == 1 && !IS_NPC(i)) {
-		if i.Sex == SEX_NEUTRAL {
+		if int(i.Sex) == SEX_NEUTRAL {
 			send_to_char(ch, libc.CString("%s appears to be %s %s, "), get_i_name(ch, i), AN(JUGGLERACE(i)), JUGGLERACELOWER(i))
 		} else {
 			send_to_char(ch, libc.CString("%s appears to be %s %s %s, "), get_i_name(ch, i), AN(MAFE(i)), MAFE(i), JUGGLERACELOWER(i))
 		}
 	} else if ch == i || IS_NPC(i) {
-		if i.Sex == SEX_NEUTRAL {
-			send_to_char(ch, libc.CString("%c%s appears to be %s %s, "), C.toupper(int(*GET_NAME(i))), (*byte)(unsafe.Add(unsafe.Pointer(GET_NAME(i)), 1)), AN(JUGGLERACE(i)), JUGGLERACELOWER(i))
+		if int(i.Sex) == SEX_NEUTRAL {
+			send_to_char(ch, libc.CString("%c%s appears to be %s %s, "), unicode.ToUpper(rune(*GET_NAME(i))), (*byte)(unsafe.Add(unsafe.Pointer(GET_NAME(i)), 1)), AN(JUGGLERACE(i)), JUGGLERACELOWER(i))
 		} else {
-			send_to_char(ch, libc.CString("%c%s appears to be %s %s %s, "), C.toupper(int(*GET_NAME(i))), (*byte)(unsafe.Add(unsafe.Pointer(GET_NAME(i)), 1)), AN(MAFE(i)), MAFE(i), JUGGLERACELOWER(i))
+			send_to_char(ch, libc.CString("%c%s appears to be %s %s %s, "), unicode.ToUpper(rune(*GET_NAME(i))), (*byte)(unsafe.Add(unsafe.Pointer(GET_NAME(i)), 1)), AN(MAFE(i)), MAFE(i), JUGGLERACELOWER(i))
 		}
 	} else {
-		if i.Sex == SEX_NEUTRAL {
+		if int(i.Sex) == SEX_NEUTRAL {
 			send_to_char(ch, libc.CString("Appears to be %s %s, "), AN(JUGGLERACE(i)), JUGGLERACELOWER(i))
 		} else {
 			send_to_char(ch, libc.CString("Appears to be %s %s %s, "), AN(MAFE(i)), MAFE(i), JUGGLERACELOWER(i))
@@ -3249,27 +3248,27 @@ func look_at_char(i *char_data, ch *char_data) {
 		send_to_char(ch, libc.CString("is %s sized, and\r\n"), size_names[get_size(i)])
 	}
 	if !IS_NPC(i) {
-		if !PLR_FLAGGED(i, PLR_OOZARU) && (i.Race != RACE_ICER || !IS_TRANSFORMED(i)) && (i.Genome[0]) < 11 {
+		if !PLR_FLAGGED(i, PLR_OOZARU) && (int(i.Race) != RACE_ICER || !IS_TRANSFORMED(i)) && (i.Genome[0]) < 11 {
 			send_to_char(ch, libc.CString("is %s sized, about %dcm tall,\r\nabout %dkg heavy,"), size_names[get_size(i)], GET_PC_HEIGHT(i), GET_PC_WEIGHT(i))
-		} else if i.Race == RACE_ICER && PLR_FLAGGED(i, PLR_TRANS1) {
+		} else if int(i.Race) == RACE_ICER && PLR_FLAGGED(i, PLR_TRANS1) {
 			var (
 				num1 int = GET_PC_HEIGHT(i) * 3
 				num2 int = GET_PC_WEIGHT(i) * 4
 			)
 			send_to_char(ch, libc.CString("is %s sized, about %dcm tall,\r\nabout %dkg heavy,"), size_names[get_size(i)], num1, num2)
-		} else if i.Race == RACE_ICER && PLR_FLAGGED(i, PLR_TRANS2) {
+		} else if int(i.Race) == RACE_ICER && PLR_FLAGGED(i, PLR_TRANS2) {
 			var (
 				num1 int = GET_PC_HEIGHT(i) * 3
 				num2 int = GET_PC_WEIGHT(i) * 4
 			)
 			send_to_char(ch, libc.CString("is %s sized, about %dcm tall,\r\nabout %dkg heavy,"), size_names[get_size(i)], num1, num2)
-		} else if i.Race == RACE_ICER && PLR_FLAGGED(i, PLR_TRANS3) {
+		} else if int(i.Race) == RACE_ICER && PLR_FLAGGED(i, PLR_TRANS3) {
 			var (
 				num1 int = int(float64(GET_PC_HEIGHT(i)) * 1.5)
 				num2 int = GET_PC_WEIGHT(i) * 2
 			)
 			send_to_char(ch, libc.CString("is %s sized, about %dcm tall,\r\nabout %dkg heavy,"), size_names[get_size(i)], num1, num2)
-		} else if i.Race == RACE_ICER && PLR_FLAGGED(i, PLR_TRANS4) {
+		} else if int(i.Race) == RACE_ICER && PLR_FLAGGED(i, PLR_TRANS4) {
 			var (
 				num1 int = GET_PC_HEIGHT(i) * 2
 				num2 int = GET_PC_WEIGHT(i) * 3
@@ -3284,36 +3283,36 @@ func look_at_char(i *char_data, ch *char_data) {
 		}
 		if i == ch {
 			send_to_char(ch, libc.CString(" and "))
-		} else if age(ch).Year >= age(i).Year+30 {
+		} else if int(age(ch).Year) >= int(age(i).Year)+30 {
 			send_to_char(ch, libc.CString(" appears to be very much younger than you, and "))
-		} else if age(ch).Year >= age(i).Year+25 {
+		} else if int(age(ch).Year) >= int(age(i).Year)+25 {
 			send_to_char(ch, libc.CString(" appears to be much younger than you, and "))
-		} else if age(ch).Year >= age(i).Year+15 {
+		} else if int(age(ch).Year) >= int(age(i).Year)+15 {
 			send_to_char(ch, libc.CString(" appears to be a good amount younger than you, and "))
-		} else if age(ch).Year >= age(i).Year+10 {
+		} else if int(age(ch).Year) >= int(age(i).Year)+10 {
 			send_to_char(ch, libc.CString(" appears to be about a decade younger than you, and "))
-		} else if age(ch).Year >= age(i).Year+5 {
+		} else if int(age(ch).Year) >= int(age(i).Year)+5 {
 			send_to_char(ch, libc.CString(" appears to be several years younger than you, and "))
-		} else if age(ch).Year >= age(i).Year+2 {
+		} else if int(age(ch).Year) >= int(age(i).Year)+2 {
 			send_to_char(ch, libc.CString(" appears to be a bit younger than you, and "))
-		} else if age(ch).Year > age(i).Year {
+		} else if int(age(ch).Year) > int(age(i).Year) {
 			send_to_char(ch, libc.CString(" appears to be slightly younger than you, and "))
-		} else if age(ch).Year == age(i).Year {
+		} else if int(age(ch).Year) == int(age(i).Year) {
 			send_to_char(ch, libc.CString(" appears to be the same age as you, and "))
 		}
-		if age(i).Year >= age(ch).Year+30 {
+		if int(age(i).Year) >= int(age(ch).Year)+30 {
 			send_to_char(ch, libc.CString(" appears to be very much older than you, and "))
-		} else if age(i).Year >= age(ch).Year+25 {
+		} else if int(age(i).Year) >= int(age(ch).Year)+25 {
 			send_to_char(ch, libc.CString(" appears to be much older than you, and "))
-		} else if age(i).Year >= age(ch).Year+15 {
+		} else if int(age(i).Year) >= int(age(ch).Year)+15 {
 			send_to_char(ch, libc.CString(" appears to be a good amount older than you, and "))
-		} else if age(i).Year >= age(ch).Year+10 {
+		} else if int(age(i).Year) >= int(age(ch).Year)+10 {
 			send_to_char(ch, libc.CString(" appears to be about a decade older than you, and "))
-		} else if age(i).Year >= age(ch).Year+5 {
+		} else if int(age(i).Year) >= int(age(ch).Year)+5 {
 			send_to_char(ch, libc.CString(" appears to be several years older than you, and "))
-		} else if age(i).Year >= age(ch).Year+2 {
+		} else if int(age(i).Year) >= int(age(ch).Year)+2 {
 			send_to_char(ch, libc.CString(" appears to be a bit older than you, and "))
-		} else if age(i).Year > age(ch).Year {
+		} else if int(age(i).Year) > int(age(ch).Year) {
 			send_to_char(ch, libc.CString(" appears to be slightly older than you, and "))
 		}
 	}
@@ -3418,7 +3417,7 @@ func list_one_char(i *char_data, ch *char_data) {
 			return ""
 		}())
 	}
-	if IS_NPC(i) && i.Long_descr != nil && i.Position == i.Mob_specials.Default_pos && i.Fighting == nil {
+	if IS_NPC(i) && i.Long_descr != nil && int(i.Position) == int(i.Mob_specials.Default_pos) && i.Fighting == nil {
 		send_to_char(ch, libc.CString("%s"), i.Long_descr)
 		if IS_NPC(i) && float64(i.Hit) >= float64(gear_pl(i))*0.9 && i.Hit != gear_pl(i) {
 			act(libc.CString("@R...Some slight wounds on $s body.@w"), TRUE, i, nil, unsafe.Pointer(ch), TO_VICT)
@@ -3486,28 +3485,28 @@ func list_one_char(i *char_data, ch *char_data) {
 		}
 		return
 	}
-	if IS_NPC(i) && i.Fighting == nil && i.Position != POS_SITTING && i.Position != POS_SLEEPING {
-		send_to_char(ch, libc.CString("@w%c%s"), C.toupper(int(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)))
+	if IS_NPC(i) && i.Fighting == nil && int(i.Position) != POS_SITTING && int(i.Position) != POS_SLEEPING {
+		send_to_char(ch, libc.CString("@w%c%s"), unicode.ToUpper(rune(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)))
 	} else if IS_NPC(i) && i.Grappled != nil && i.Grappled == ch {
-		send_to_char(ch, libc.CString("@w%c%s is being grappled with by YOU!"), C.toupper(int(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)))
+		send_to_char(ch, libc.CString("@w%c%s is being grappled with by YOU!"), unicode.ToUpper(rune(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)))
 	} else if IS_NPC(i) && i.Grappled != nil && i.Grappled != ch {
-		send_to_char(ch, libc.CString("@w%c%s is being absorbed from by %s!"), C.toupper(int(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)), func() *byte {
+		send_to_char(ch, libc.CString("@w%c%s is being absorbed from by %s!"), unicode.ToUpper(rune(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)), func() *byte {
 			if readIntro(ch, i.Grappled) == 1 {
 				return get_i_name(ch, i.Grappled)
 			}
 			return AN(JUGGLERACE(i.Grappled))
 		}())
 	} else if IS_NPC(i) && i.Absorbby != nil && i.Absorbby == ch {
-		send_to_char(ch, libc.CString("@w%c%s is being absorbed from by YOU!"), C.toupper(int(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)))
+		send_to_char(ch, libc.CString("@w%c%s is being absorbed from by YOU!"), unicode.ToUpper(rune(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)))
 	} else if IS_NPC(i) && i.Absorbby != nil && i.Absorbby != ch {
-		send_to_char(ch, libc.CString("@w%c%s is being absorbed from by %s!"), C.toupper(int(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)), func() *byte {
+		send_to_char(ch, libc.CString("@w%c%s is being absorbed from by %s!"), unicode.ToUpper(rune(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)), func() *byte {
 			if readIntro(ch, i.Absorbby) == 1 {
 				return get_i_name(ch, i.Absorbby)
 			}
 			return AN(JUGGLERACE(i.Absorbby))
 		}())
-	} else if IS_NPC(i) && i.Fighting != nil && i.Fighting != ch && i.Position != POS_SITTING && i.Position != POS_SLEEPING && is_sparring(i) {
-		send_to_char(ch, libc.CString("@w%c%s is sparring with %s!"), C.toupper(int(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)), func() *byte {
+	} else if IS_NPC(i) && i.Fighting != nil && i.Fighting != ch && int(i.Position) != POS_SITTING && int(i.Position) != POS_SLEEPING && is_sparring(i) {
+		send_to_char(ch, libc.CString("@w%c%s is sparring with %s!"), unicode.ToUpper(rune(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)), func() *byte {
 			if ch.Admlevel != 0 {
 				return GET_NAME(i.Fighting)
 			}
@@ -3516,10 +3515,10 @@ func list_one_char(i *char_data, ch *char_data) {
 			}
 			return JUGGLERACELOWER(i.Fighting)
 		}())
-	} else if IS_NPC(i) && i.Fighting != nil && is_sparring(i) && i.Fighting == ch && i.Position != POS_SITTING && i.Position != POS_SLEEPING {
-		send_to_char(ch, libc.CString("@w%c%s is sparring with you!"), C.toupper(int(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)))
-	} else if IS_NPC(i) && i.Fighting != nil && i.Fighting != ch && i.Position != POS_SITTING && i.Position != POS_SLEEPING {
-		send_to_char(ch, libc.CString("@w%c%s is fighting %s!"), C.toupper(int(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)), func() *byte {
+	} else if IS_NPC(i) && i.Fighting != nil && is_sparring(i) && i.Fighting == ch && int(i.Position) != POS_SITTING && int(i.Position) != POS_SLEEPING {
+		send_to_char(ch, libc.CString("@w%c%s is sparring with you!"), unicode.ToUpper(rune(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)))
+	} else if IS_NPC(i) && i.Fighting != nil && i.Fighting != ch && int(i.Position) != POS_SITTING && int(i.Position) != POS_SLEEPING {
+		send_to_char(ch, libc.CString("@w%c%s is fighting %s!"), unicode.ToUpper(rune(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)), func() *byte {
 			if ch.Admlevel != 0 {
 				return GET_NAME(i.Fighting)
 			}
@@ -3528,16 +3527,16 @@ func list_one_char(i *char_data, ch *char_data) {
 			}
 			return JUGGLERACELOWER(i.Fighting)
 		}())
-	} else if IS_NPC(i) && i.Fighting != nil && i.Fighting == ch && i.Position != POS_SITTING && i.Position != POS_SLEEPING {
-		send_to_char(ch, libc.CString("@w%c%s is fighting YOU!"), C.toupper(int(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)))
-	} else if IS_NPC(i) && i.Fighting != nil && i.Position == POS_SITTING {
-		send_to_char(ch, libc.CString("@w%c%s is sitting here."), C.toupper(int(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)))
-	} else if IS_NPC(i) && i.Fighting != nil && i.Position == POS_SLEEPING {
-		send_to_char(ch, libc.CString("@w%c%s is sleeping here."), C.toupper(int(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)))
+	} else if IS_NPC(i) && i.Fighting != nil && i.Fighting == ch && int(i.Position) != POS_SITTING && int(i.Position) != POS_SLEEPING {
+		send_to_char(ch, libc.CString("@w%c%s is fighting YOU!"), unicode.ToUpper(rune(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)))
+	} else if IS_NPC(i) && i.Fighting != nil && int(i.Position) == POS_SITTING {
+		send_to_char(ch, libc.CString("@w%c%s is sitting here."), unicode.ToUpper(rune(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)))
+	} else if IS_NPC(i) && i.Fighting != nil && int(i.Position) == POS_SLEEPING {
+		send_to_char(ch, libc.CString("@w%c%s is sleeping here."), unicode.ToUpper(rune(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)))
 	} else if IS_NPC(i) {
-		send_to_char(ch, libc.CString("@w%c%s"), C.toupper(int(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)))
+		send_to_char(ch, libc.CString("@w%c%s"), unicode.ToUpper(rune(*i.Short_descr)), (*byte)(unsafe.Add(unsafe.Pointer(i.Short_descr), 1)))
 	} else if !IS_NPC(i) {
-		if i.Race == RACE_MAJIN && AFF_FLAGGED(i, AFF_LIQUEFIED) {
+		if int(i.Race) == RACE_MAJIN && AFF_FLAGGED(i, AFF_LIQUEFIED) {
 			send_to_char(ch, libc.CString("@wSeveral blobs of %s colored goo spread out here.@n\n"), skin_types[int(i.Skin)])
 			return
 		}
@@ -3546,103 +3545,103 @@ func list_one_char(i *char_data, ch *char_data) {
 		} else if !PLR_FLAGGED(i, PLR_DISGUISED) && readIntro(ch, i) == 1 {
 			send_to_char(ch, libc.CString("@w%s"), get_i_name(ch, i))
 		} else if !PLR_FLAGGED(i, PLR_DISGUISED) && readIntro(ch, i) != 1 {
-			if i.Distfea == DISTFEA_EYE {
+			if int(i.Distfea) == DISTFEA_EYE {
 				send_to_char(ch, libc.CString("@wA %s eyed %s %s"), eye_types[int(i.Eye)], MAFE(i), JUGGLERACELOWER(i))
-			} else if i.Distfea == DISTFEA_HAIR {
-				if i.Race == RACE_MAJIN {
+			} else if int(i.Distfea) == DISTFEA_HAIR {
+				if int(i.Race) == RACE_MAJIN {
 					send_to_char(ch, libc.CString("@wA %s majin, with a %s forelock,"), MAFE(i), FHA_types[int(i.Hairl)])
-				} else if i.Race == RACE_NAMEK {
+				} else if int(i.Race) == RACE_NAMEK {
 					send_to_char(ch, libc.CString("@wA namek, with %s antennae,"), FHA_types[int(i.Hairl)])
-				} else if i.Race == RACE_ARLIAN {
+				} else if int(i.Race) == RACE_ARLIAN {
 					send_to_char(ch, libc.CString("@wA arlian, with %s antennae,"), FHA_types[int(i.Hairl)])
-				} else if i.Race == RACE_ICER || i.Race == RACE_DEMON {
+				} else if int(i.Race) == RACE_ICER || int(i.Race) == RACE_DEMON {
 					send_to_char(ch, libc.CString("@wA %s %s, with %s horns"), MAFE(i), JUGGLERACELOWER(i), FHA_types[int(i.Hairl)])
 				} else {
 					var blarg [2048]byte
 					stdio.Sprintf(&blarg[0], "%s %s hair %s", hairl_types[int(i.Hairl)], hairc_types[int(i.Hairc)], hairs_types[int(i.Hairs)])
 					send_to_char(ch, libc.CString("@wA %s %s, with %s"), MAFE(i), JUGGLERACELOWER(i), func() string {
-						if i.Hairl == 0 {
+						if int(i.Hairl) == 0 {
 							return "a bald head"
 						}
 						return libc.GoString(&blarg[0])
 					}())
 				}
-			} else if i.Distfea == DISTFEA_SKIN {
+			} else if int(i.Distfea) == DISTFEA_SKIN {
 				send_to_char(ch, libc.CString("@wA %s skinned %s %s"), skin_types[int(i.Skin)], MAFE(i), JUGGLERACELOWER(i))
-			} else if i.Distfea == DISTFEA_HEIGHT {
+			} else if int(i.Distfea) == DISTFEA_HEIGHT {
 				var height *byte
-				if i.Race == RACE_TRUFFLE {
+				if int(i.Race) == RACE_TRUFFLE {
 					if GET_PC_HEIGHT(i) > 70 {
-						height = C.strdup(libc.CString("very tall"))
+						height = libc.CString("very tall")
 					} else if GET_PC_HEIGHT(i) > 55 {
-						height = C.strdup(libc.CString("tall"))
+						height = libc.CString("tall")
 					} else if GET_PC_HEIGHT(i) > 35 {
-						height = C.strdup(libc.CString("average height"))
+						height = libc.CString("average height")
 					} else {
-						height = C.strdup(libc.CString("short"))
+						height = libc.CString("short")
 					}
 				} else if PLR_FLAGGED(i, PLR_OOZARU) || (i.Genome[0]) == 11 {
 					if GET_PC_HEIGHT(i)*10 > 2000 {
-						height = C.strdup(libc.CString("very tall"))
+						height = libc.CString("very tall")
 					} else if GET_PC_HEIGHT(i)*10 > 1800 {
-						height = C.strdup(libc.CString("tall"))
+						height = libc.CString("tall")
 					} else if GET_PC_HEIGHT(i)*10 > 1500 {
-						height = C.strdup(libc.CString("average height"))
+						height = libc.CString("average height")
 					} else {
-						height = C.strdup(libc.CString("short"))
+						height = libc.CString("short")
 					}
 				} else {
 					if GET_PC_HEIGHT(i) > 200 {
-						height = C.strdup(libc.CString("very tall"))
+						height = libc.CString("very tall")
 					} else if GET_PC_HEIGHT(i) > 180 {
-						height = C.strdup(libc.CString("tall"))
+						height = libc.CString("tall")
 					} else if GET_PC_HEIGHT(i) > 150 {
-						height = C.strdup(libc.CString("average height"))
+						height = libc.CString("average height")
 					} else if GET_PC_HEIGHT(i) > 120 {
-						height = C.strdup(libc.CString("short"))
+						height = libc.CString("short")
 					} else {
-						height = C.strdup(libc.CString("very short"))
+						height = libc.CString("very short")
 					}
 				}
 				send_to_char(ch, libc.CString("@wA %s %s %s"), height, MAFE(i), JUGGLERACELOWER(i))
 				if height != nil {
 					libc.Free(unsafe.Pointer(height))
 				}
-			} else if i.Distfea == DISTFEA_WEIGHT {
+			} else if int(i.Distfea) == DISTFEA_WEIGHT {
 				var height *byte
-				if i.Race == RACE_TRUFFLE {
+				if int(i.Race) == RACE_TRUFFLE {
 					if GET_PC_WEIGHT(i) > 35 {
-						height = C.strdup(libc.CString("very heavy"))
+						height = libc.CString("very heavy")
 					} else if GET_PC_WEIGHT(i) > 25 {
-						height = C.strdup(libc.CString("heavy"))
+						height = libc.CString("heavy")
 					} else if GET_PC_WEIGHT(i) > 15 {
-						height = C.strdup(libc.CString("average weight"))
+						height = libc.CString("average weight")
 					} else {
-						height = C.strdup(libc.CString("welterweight"))
+						height = libc.CString("welterweight")
 					}
 				} else if PLR_FLAGGED(i, PLR_OOZARU) || (i.Genome[0]) == 11 {
 					if GET_PC_WEIGHT(i)*50 > 6000 {
-						height = C.strdup(libc.CString("very heavy"))
+						height = libc.CString("very heavy")
 					} else if GET_PC_WEIGHT(i)*50 > 5000 {
-						height = C.strdup(libc.CString("heavy"))
+						height = libc.CString("heavy")
 					} else if GET_PC_WEIGHT(i)*50 > 4000 {
-						height = C.strdup(libc.CString("average weight"))
+						height = libc.CString("average weight")
 					} else if GET_PC_WEIGHT(i)*50 > 3000 {
-						height = C.strdup(libc.CString("lightweight"))
+						height = libc.CString("lightweight")
 					} else {
-						height = C.strdup(libc.CString("welterweight"))
+						height = libc.CString("welterweight")
 					}
 				} else {
 					if GET_PC_WEIGHT(i) > 120 {
-						height = C.strdup(libc.CString("very heavy"))
+						height = libc.CString("very heavy")
 					} else if GET_PC_WEIGHT(i) > 100 {
-						height = C.strdup(libc.CString("heavy"))
+						height = libc.CString("heavy")
 					} else if GET_PC_WEIGHT(i) > 80 {
-						height = C.strdup(libc.CString("average weight"))
+						height = libc.CString("average weight")
 					} else if GET_PC_WEIGHT(i) > 60 {
-						height = C.strdup(libc.CString("lightweight"))
+						height = libc.CString("lightweight")
 					} else {
-						height = C.strdup(libc.CString("welterweight"))
+						height = libc.CString("welterweight")
 					}
 				}
 				send_to_char(ch, libc.CString("@wA %s %s %s"), height, MAFE(i), JUGGLERACELOWER(i))
@@ -3863,26 +3862,26 @@ func list_one_char(i *char_data, ch *char_data) {
 	if !IS_NPC(i) && PLR_FLAGGED(i, PLR_SPIRAL) {
 		act(libc.CString("@w...$e is spinning in a vortex!"), FALSE, i, nil, unsafe.Pointer(ch), TO_VICT)
 	}
-	if IS_TRANSFORMED(i) && i.Race != RACE_ANDROID && i.Race != RACE_SAIYAN && i.Race != RACE_HALFBREED {
+	if IS_TRANSFORMED(i) && int(i.Race) != RACE_ANDROID && int(i.Race) != RACE_SAIYAN && int(i.Race) != RACE_HALFBREED {
 		act(libc.CString("@w...$e has energy crackling around $s body!"), TRUE, i, nil, unsafe.Pointer(ch), TO_VICT)
 	}
-	if i.Charge != 0 && i.Race != RACE_SAIYAN && i.Race != RACE_HALFBREED {
+	if i.Charge != 0 && int(i.Race) != RACE_SAIYAN && int(i.Race) != RACE_HALFBREED {
 		var aura [2048]byte
 		stdio.Sprintf(&aura[0], "@w...$e has a @Ybright@w %s aura around $s body!", aura_types[i.Aura])
 		act(&aura[0], TRUE, i, nil, unsafe.Pointer(ch), TO_VICT)
 	}
-	if !PLR_FLAGGED(i, PLR_OOZARU) && i.Charge != 0 && IS_TRANSFORMED(i) && (i.Race == RACE_SAIYAN || i.Race == RACE_HALFBREED) {
+	if !PLR_FLAGGED(i, PLR_OOZARU) && i.Charge != 0 && IS_TRANSFORMED(i) && (int(i.Race) == RACE_SAIYAN || int(i.Race) == RACE_HALFBREED) {
 		act(libc.CString("@w...$e has a @Ybright @Yg@yo@Yl@yd@Ye@yn@w aura around $s body!"), TRUE, i, nil, unsafe.Pointer(ch), TO_VICT)
 	}
-	if !PLR_FLAGGED(i, PLR_OOZARU) && i.Charge != 0 && !IS_TRANSFORMED(i) && (i.Race == RACE_SAIYAN || i.Race == RACE_HALFBREED) {
+	if !PLR_FLAGGED(i, PLR_OOZARU) && i.Charge != 0 && !IS_TRANSFORMED(i) && (int(i.Race) == RACE_SAIYAN || int(i.Race) == RACE_HALFBREED) {
 		var aura [2048]byte
 		stdio.Sprintf(&aura[0], "@w...$e has a @Ybright@w %s aura around $s body!", aura_types[i.Aura])
 		act(&aura[0], TRUE, i, nil, unsafe.Pointer(ch), TO_VICT)
 	}
-	if !PLR_FLAGGED(i, PLR_OOZARU) && i.Charge == 0 && IS_TRANSFORMED(i) && (i.Race == RACE_SAIYAN || i.Race == RACE_HALFBREED) {
+	if !PLR_FLAGGED(i, PLR_OOZARU) && i.Charge == 0 && IS_TRANSFORMED(i) && (int(i.Race) == RACE_SAIYAN || int(i.Race) == RACE_HALFBREED) {
 		act(libc.CString("@w...$e has energy crackling around $s body!"), TRUE, i, nil, unsafe.Pointer(ch), TO_VICT)
 	}
-	if PLR_FLAGGED(i, PLR_OOZARU) && i.Charge != 0 && (i.Race == RACE_SAIYAN || i.Race == RACE_HALFBREED) {
+	if PLR_FLAGGED(i, PLR_OOZARU) && i.Charge != 0 && (int(i.Race) == RACE_SAIYAN || int(i.Race) == RACE_HALFBREED) {
 		act(libc.CString("@w...$e is in the form of a @rgreat ape@w!"), TRUE, i, nil, unsafe.Pointer(ch), TO_VICT)
 	}
 	if (i.Genome[0]) == 11 {
@@ -3891,7 +3890,7 @@ func list_one_char(i *char_data, ch *char_data) {
 	if AFF_FLAGGED(i, AFF_HAYASA) {
 		act(libc.CString("@w...$e has a soft @cblue@w glow around $s body!"), FALSE, i, nil, unsafe.Pointer(ch), TO_VICT)
 	}
-	if PLR_FLAGGED(i, PLR_OOZARU) && i.Charge == 0 && (i.Race == RACE_SAIYAN || i.Race == RACE_HALFBREED) {
+	if PLR_FLAGGED(i, PLR_OOZARU) && i.Charge == 0 && (int(i.Race) == RACE_SAIYAN || int(i.Race) == RACE_HALFBREED) {
 		act(libc.CString("@w...$e has energy crackling around $s @rgreat ape@w body!"), TRUE, i, nil, unsafe.Pointer(ch), TO_VICT)
 	}
 	if i.Feature != nil {
@@ -3907,19 +3906,21 @@ func list_one_char(i *char_data, ch *char_data) {
 		}
 	}
 }
+
+type hide_node struct {
+	Next   *hide_node
+	Hidden *char_data
+}
+
 func list_char_to_char(list *char_data, ch *char_data) {
 	var (
-		i *char_data
-		j *char_data
+		i        *char_data
+		j        *char_data
+		hideinfo *hide_node
+		lasthide *hide_node
+		tmphide  *hide_node
+		num      int
 	)
-	type hide_node struct {
-		Next   *hide_node
-		Hidden *char_data
-	}
-	var hideinfo *hide_node
-	var lasthide *hide_node
-	var tmphide *hide_node
-	var num int
 	hideinfo = func() *hide_node {
 		lasthide = nil
 		return lasthide
@@ -3960,7 +3961,7 @@ func list_char_to_char(list *char_data, ch *char_data) {
 			num = 0
 			if config_info.Play.Stack_mobs != 0 {
 				for j = list; j != i; j = j.Next_in_room {
-					if i.Nr == j.Nr && i.Position == j.Position && i.Affected_by[0] == j.Affected_by[0] && i.Affected_by[1] == j.Affected_by[1] && i.Affected_by[2] == j.Affected_by[2] && i.Affected_by[3] == j.Affected_by[3] && (i.Fighting == nil && j.Fighting == nil) && (i.Hit == gear_pl(i) && j.Hit == gear_pl(j)) && C.strcmp(GET_NAME(i), GET_NAME(j)) == 0 {
+					if i.Nr == j.Nr && int(i.Position) == int(j.Position) && i.Affected_by[0] == j.Affected_by[0] && i.Affected_by[1] == j.Affected_by[1] && i.Affected_by[2] == j.Affected_by[2] && i.Affected_by[3] == j.Affected_by[3] && (i.Fighting == nil && j.Fighting == nil) && (i.Hit == gear_pl(i) && j.Hit == gear_pl(j)) && libc.StrCmp(GET_NAME(i), GET_NAME(j)) == 0 {
 						for tmphide = hideinfo; tmphide != nil; tmphide = tmphide.Next {
 							if tmphide.Hidden == j {
 								break
@@ -3975,7 +3976,7 @@ func list_char_to_char(list *char_data, ch *char_data) {
 					continue
 				}
 				for j = i; j != nil; j = j.Next_in_room {
-					if i.Nr == j.Nr && i.Position == j.Position && i.Affected_by[0] == j.Affected_by[0] && i.Affected_by[1] == j.Affected_by[1] && i.Affected_by[2] == j.Affected_by[2] && i.Affected_by[3] == j.Affected_by[3] && (i.Fighting == nil && j.Fighting == nil) && (i.Hit == i.Max_hit && j.Hit == j.Max_hit) && C.strcmp(GET_NAME(i), GET_NAME(j)) == 0 {
+					if i.Nr == j.Nr && int(i.Position) == int(j.Position) && i.Affected_by[0] == j.Affected_by[0] && i.Affected_by[1] == j.Affected_by[1] && i.Affected_by[2] == j.Affected_by[2] && i.Affected_by[3] == j.Affected_by[3] && (i.Fighting == nil && j.Fighting == nil) && (i.Hit == i.Max_hit && j.Hit == j.Max_hit) && libc.StrCmp(GET_NAME(i), GET_NAME(j)) == 0 {
 						for tmphide = hideinfo; tmphide != nil; tmphide = tmphide.Next {
 							if tmphide.Hidden == j {
 								break
@@ -4075,7 +4076,7 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 		}
 		for i = 0; i < NUM_WEARS; i++ {
 			if (ch.Equipment[i]) != nil {
-				if (ch.Equipment[i]).Type_flag == ITEM_LIGHT {
+				if int((ch.Equipment[i]).Type_flag) == ITEM_LIGHT {
 					if ((ch.Equipment[i]).Value[VAL_LIGHT_HOURS]) != 0 {
 						has_light = TRUE
 					}
@@ -4091,7 +4092,7 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 					door_found++
 					var blam [9]byte
 					stdio.Sprintf(&blam[0], "%s", dirs[door])
-					blam[0] = byte(int8(C.toupper(int(blam[0]))))
+					blam[0] = byte(int8(unicode.ToUpper(rune(blam[0]))))
 					if door == 6 {
 						stdio.Sprintf(&dlist1[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Number, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
 						if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<0)) != 0 || (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<4)) != 0 {
@@ -4107,23 +4108,23 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 								return
 							}
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
-							stdio.Sprintf(&dlist1[C.strlen(&dlist1[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
+							stdio.Sprintf(&dlist1[libc.StrLen(&dlist1[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
 								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
-								if C.strstr(&argh[0], libc.CString("s ")) != nil {
+								if libc.StrStr(&argh[0], libc.CString("s ")) != nil {
 									return "are"
 								}
 								return "is"
@@ -4160,23 +4161,23 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 							}
 							var argh [200]byte
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
-							stdio.Sprintf(&dlist2[C.strlen(&dlist2[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
+							stdio.Sprintf(&dlist2[libc.StrLen(&dlist2[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
 								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
-								if C.strstr(&argh[0], libc.CString("s ")) != nil {
+								if libc.StrStr(&argh[0], libc.CString("s ")) != nil {
 									return "are"
 								}
 								return "is"
@@ -4213,23 +4214,23 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 							}
 							var argh [100]byte
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
-							stdio.Sprintf(&dlist3[C.strlen(&dlist3[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
+							stdio.Sprintf(&dlist3[libc.StrLen(&dlist3[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
 								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
-								if C.strstr(&argh[0], libc.CString("s ")) != nil {
+								if libc.StrStr(&argh[0], libc.CString("s ")) != nil {
 									return "are"
 								}
 								return "is"
@@ -4266,23 +4267,23 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 							}
 							var argh [100]byte
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
-							stdio.Sprintf(&dlist4[C.strlen(&dlist4[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
+							stdio.Sprintf(&dlist4[libc.StrLen(&dlist4[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
 								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
-								if C.strstr(&argh[0], libc.CString("s ")) != nil {
+								if libc.StrStr(&argh[0], libc.CString("s ")) != nil {
 									return "are"
 								}
 								return "is"
@@ -4319,23 +4320,23 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 							}
 							var argh [100]byte
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
-							stdio.Sprintf(&dlist5[C.strlen(&dlist5[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
+							stdio.Sprintf(&dlist5[libc.StrLen(&dlist5[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
 								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
-								if C.strstr(&argh[0], libc.CString("s ")) != nil {
+								if libc.StrStr(&argh[0], libc.CString("s ")) != nil {
 									return "are"
 								}
 								return "is"
@@ -4372,23 +4373,23 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 							}
 							var argh [100]byte
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
-							stdio.Sprintf(&dlist6[C.strlen(&dlist6[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
+							stdio.Sprintf(&dlist6[libc.StrLen(&dlist6[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
 								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
-								if C.strstr(&argh[0], libc.CString("s ")) != nil {
+								if libc.StrStr(&argh[0], libc.CString("s ")) != nil {
 									return "are"
 								}
 								return "is"
@@ -4425,23 +4426,23 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 							}
 							var argh [100]byte
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
-							stdio.Sprintf(&dlist7[C.strlen(&dlist7[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
+							stdio.Sprintf(&dlist7[libc.StrLen(&dlist7[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
 								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
-								if C.strstr(&argh[0], libc.CString("s ")) != nil {
+								if libc.StrStr(&argh[0], libc.CString("s ")) != nil {
 									return "are"
 								}
 								return "is"
@@ -4478,23 +4479,23 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 							}
 							var argh [100]byte
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
-							stdio.Sprintf(&dlist8[C.strlen(&dlist8[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
+							stdio.Sprintf(&dlist8[libc.StrLen(&dlist8[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
 								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
-								if C.strstr(&argh[0], libc.CString("s ")) != nil {
+								if libc.StrStr(&argh[0], libc.CString("s ")) != nil {
 									return "are"
 								}
 								return "is"
@@ -4531,23 +4532,23 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 							}
 							var argh [100]byte
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
-							stdio.Sprintf(&dlist9[C.strlen(&dlist9[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
+							stdio.Sprintf(&dlist9[libc.StrLen(&dlist9[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
 								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
-								if C.strstr(&argh[0], libc.CString("s ")) != nil {
+								if libc.StrStr(&argh[0], libc.CString("s ")) != nil {
 									return "are"
 								}
 								return "is"
@@ -4584,23 +4585,23 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 							}
 							var argh [100]byte
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
-							stdio.Sprintf(&dlist10[C.strlen(&dlist10[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
+							stdio.Sprintf(&dlist10[libc.StrLen(&dlist10[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
 								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
-								if C.strstr(&argh[0], libc.CString("s ")) != nil {
+								if libc.StrStr(&argh[0], libc.CString("s ")) != nil {
 									return "are"
 								}
 								return "is"
@@ -4637,23 +4638,23 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 							}
 							var argh [100]byte
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
-							stdio.Sprintf(&dlist11[C.strlen(&dlist11[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
+							stdio.Sprintf(&dlist11[libc.StrLen(&dlist11[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
 								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
-								if C.strstr(&argh[0], libc.CString("s ")) != nil {
+								if libc.StrStr(&argh[0], libc.CString("s ")) != nil {
 									return "are"
 								}
 								return "is"
@@ -4690,23 +4691,23 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 							}
 							var argh [100]byte
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
-							stdio.Sprintf(&dlist12[C.strlen(&dlist12[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
+							stdio.Sprintf(&dlist12[libc.StrLen(&dlist12[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
 								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && C.strcasecmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
 									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
-								if C.strstr(&argh[0], libc.CString("s ")) != nil {
+								if libc.StrStr(&argh[0], libc.CString("s ")) != nil {
 									return "are"
 								}
 								return "is"
@@ -4733,7 +4734,7 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 						door_found++
 						var blam [9]byte
 						stdio.Sprintf(&blam[0], "%s", dirs[door])
-						blam[0] = byte(int8(C.toupper(int(blam[0]))))
+						blam[0] = byte(int8(unicode.ToUpper(rune(blam[0]))))
 						if door == 6 {
 							stdio.Sprintf(&dlist1[0], "@c%-9s @D-@w %s\r\n", &blam[0], func() string {
 								if room_is_dark(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
@@ -4834,7 +4835,7 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 						door_found++
 						var blam [9]byte
 						stdio.Sprintf(&blam[0], "%s", dirs[door])
-						blam[0] = byte(int8(C.toupper(int(blam[0]))))
+						blam[0] = byte(int8(unicode.ToUpper(rune(blam[0]))))
 						if door == 6 {
 							stdio.Sprintf(&dlist1[0], "@c%-9s @D-@w The %s appears @rclosed.@n\r\n", &blam[0], func() *byte {
 								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil {
@@ -4938,51 +4939,51 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 		if door_found == 0 {
 			send_to_char(ch, libc.CString(" None.\r\n"))
 		}
-		if C.strstr(&dlist1[0], libc.CString("Northwest")) != nil {
+		if libc.StrStr(&dlist1[0], libc.CString("Northwest")) != nil {
 			send_to_char(ch, libc.CString("%s"), &dlist1[0])
 			dlist1[0] = '\x00'
 		}
-		if C.strstr(&dlist2[0], libc.CString("North")) != nil {
+		if libc.StrStr(&dlist2[0], libc.CString("North")) != nil {
 			send_to_char(ch, libc.CString("%s"), &dlist2[0])
 			dlist2[0] = '\x00'
 		}
-		if C.strstr(&dlist3[0], libc.CString("Northeast")) != nil {
+		if libc.StrStr(&dlist3[0], libc.CString("Northeast")) != nil {
 			send_to_char(ch, libc.CString("%s"), &dlist3[0])
 			dlist3[0] = '\x00'
 		}
-		if C.strstr(&dlist4[0], libc.CString("East")) != nil {
+		if libc.StrStr(&dlist4[0], libc.CString("East")) != nil {
 			send_to_char(ch, libc.CString("%s"), &dlist4[0])
 			dlist4[0] = '\x00'
 		}
-		if C.strstr(&dlist5[0], libc.CString("Southeast")) != nil {
+		if libc.StrStr(&dlist5[0], libc.CString("Southeast")) != nil {
 			send_to_char(ch, libc.CString("%s"), &dlist5[0])
 			dlist5[0] = '\x00'
 		}
-		if C.strstr(&dlist6[0], libc.CString("South")) != nil {
+		if libc.StrStr(&dlist6[0], libc.CString("South")) != nil {
 			send_to_char(ch, libc.CString("%s"), &dlist6[0])
 			dlist6[0] = '\x00'
 		}
-		if C.strstr(&dlist7[0], libc.CString("Southwest")) != nil {
+		if libc.StrStr(&dlist7[0], libc.CString("Southwest")) != nil {
 			send_to_char(ch, libc.CString("%s"), &dlist7[0])
 			dlist7[0] = '\x00'
 		}
-		if C.strstr(&dlist8[0], libc.CString("West")) != nil {
+		if libc.StrStr(&dlist8[0], libc.CString("West")) != nil {
 			send_to_char(ch, libc.CString("%s"), &dlist8[0])
 			dlist8[0] = '\x00'
 		}
-		if C.strstr(&dlist9[0], libc.CString("Up")) != nil {
+		if libc.StrStr(&dlist9[0], libc.CString("Up")) != nil {
 			send_to_char(ch, libc.CString("%s"), &dlist9[0])
 			dlist9[0] = '\x00'
 		}
-		if C.strstr(&dlist10[0], libc.CString("Down")) != nil {
+		if libc.StrStr(&dlist10[0], libc.CString("Down")) != nil {
 			send_to_char(ch, libc.CString("%s"), &dlist10[0])
 			dlist10[0] = '\x00'
 		}
-		if C.strstr(&dlist11[0], libc.CString("Inside")) != nil {
+		if libc.StrStr(&dlist11[0], libc.CString("Inside")) != nil {
 			send_to_char(ch, libc.CString("%s"), &dlist11[0])
 			dlist11[0] = '\x00'
 		}
-		if C.strstr(&dlist12[0], libc.CString("Outside")) != nil {
+		if libc.StrStr(&dlist12[0], libc.CString("Outside")) != nil {
 			send_to_char(ch, libc.CString("%s"), &dlist12[0])
 			dlist12[0] = '\x00'
 		}
@@ -5158,14 +5159,14 @@ func do_autoexit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	switch tp {
 	case EXIT_OFF:
-		ch.Player_specials.Pref[int(PRF_AUTOEXIT/32)] &= bitvector_t(^(1 << (int(PRF_AUTOEXIT % 32))))
-		ch.Player_specials.Pref[int(PRF_FULL_EXIT/32)] &= bitvector_t(^(1 << (int(PRF_FULL_EXIT % 32))))
+		ch.Player_specials.Pref[int(PRF_AUTOEXIT/32)] &= bitvector_t(int32(^(1 << (int(PRF_AUTOEXIT % 32)))))
+		ch.Player_specials.Pref[int(PRF_FULL_EXIT/32)] &= bitvector_t(int32(^(1 << (int(PRF_FULL_EXIT % 32)))))
 	case EXIT_NORMAL:
-		ch.Player_specials.Pref[int(PRF_AUTOEXIT/32)] |= bitvector_t(1 << (int(PRF_AUTOEXIT % 32)))
-		ch.Player_specials.Pref[int(PRF_FULL_EXIT/32)] &= bitvector_t(^(1 << (int(PRF_FULL_EXIT % 32))))
+		ch.Player_specials.Pref[int(PRF_AUTOEXIT/32)] |= bitvector_t(int32(1 << (int(PRF_AUTOEXIT % 32))))
+		ch.Player_specials.Pref[int(PRF_FULL_EXIT/32)] &= bitvector_t(int32(^(1 << (int(PRF_FULL_EXIT % 32)))))
 	case EXIT_COMPLETE:
-		ch.Player_specials.Pref[int(PRF_AUTOEXIT/32)] |= bitvector_t(1 << (int(PRF_AUTOEXIT % 32)))
-		ch.Player_specials.Pref[int(PRF_FULL_EXIT/32)] |= bitvector_t(1 << (int(PRF_FULL_EXIT % 32)))
+		ch.Player_specials.Pref[int(PRF_AUTOEXIT/32)] |= bitvector_t(int32(1 << (int(PRF_AUTOEXIT % 32))))
+		ch.Player_specials.Pref[int(PRF_FULL_EXIT/32)] |= bitvector_t(int32(1 << (int(PRF_FULL_EXIT % 32))))
 	}
 	send_to_char(ch, libc.CString("Your @rautoexit level@n is now %s.\r\n"), exitlevels[func() int {
 		if !IS_NPC(ch) {
@@ -5593,7 +5594,7 @@ func look_in_obj(ch *char_data, arg *byte) {
 		send_to_char(ch, libc.CString("There doesn't seem to be %s %s here.\r\n"), AN(arg), arg)
 	} else if find_exdesc(arg, obj.Ex_description) != nil && bits == 0 {
 		send_to_char(ch, libc.CString("There's nothing inside that!\r\n"))
-	} else if obj.Type_flag == ITEM_PORTAL && !OBJVAL_FLAGGED(obj, 1<<0) {
+	} else if int(obj.Type_flag) == ITEM_PORTAL && !OBJVAL_FLAGGED(obj, 1<<0) {
 		if (obj.Value[VAL_PORTAL_APPEAR]) < 0 {
 			var portal_dest room_rnum = real_room(room_vnum(obj.Value[VAL_PORTAL_DEST]))
 			if portal_dest == room_rnum(-1) {
@@ -5608,7 +5609,7 @@ func look_in_obj(ch *char_data, arg *byte) {
 		} else {
 			send_to_char(ch, libc.CString("All you can see is the glow of the portal.\r\n"))
 		}
-	} else if obj.Type_flag == ITEM_VEHICLE {
+	} else if int(obj.Type_flag) == ITEM_VEHICLE {
 		if OBJVAL_FLAGGED(obj, 1<<2) {
 			send_to_char(ch, libc.CString("It is closed.\r\n"))
 		} else if (obj.Value[VAL_VEHICLE_APPEAR]) < 0 {
@@ -5624,16 +5625,16 @@ func look_in_obj(ch *char_data, arg *byte) {
 		} else {
 			send_to_char(ch, libc.CString("You cannot see inside that.\r\n"))
 		}
-	} else if obj.Type_flag == ITEM_WINDOW {
+	} else if int(obj.Type_flag) == ITEM_WINDOW {
 		look_out_window(ch, arg)
-	} else if obj.Type_flag != ITEM_DRINKCON && obj.Type_flag != ITEM_FOUNTAIN && obj.Type_flag != ITEM_CONTAINER && obj.Type_flag != ITEM_PORTAL {
+	} else if int(obj.Type_flag) != ITEM_DRINKCON && int(obj.Type_flag) != ITEM_FOUNTAIN && int(obj.Type_flag) != ITEM_CONTAINER && int(obj.Type_flag) != ITEM_PORTAL {
 		send_to_char(ch, libc.CString("There's nothing inside that!\r\n"))
-	} else if obj.Type_flag == ITEM_CONTAINER || obj.Type_flag == ITEM_PORTAL {
+	} else if int(obj.Type_flag) == ITEM_CONTAINER || int(obj.Type_flag) == ITEM_PORTAL {
 		if OBJVAL_FLAGGED(obj, 1<<2) {
 			send_to_char(ch, libc.CString("It is closed.\r\n"))
 		} else {
 			send_to_char(ch, libc.CString("%s"), obj.Short_description)
-			if obj.Type_flag == ITEM_CONTAINER && (GET_OBJ_VNUM(obj) == 697 || GET_OBJ_VNUM(obj) == 698 || GET_OBJ_VNUM(obj) == 682 || GET_OBJ_VNUM(obj) == 683 || GET_OBJ_VNUM(obj) == 684) {
+			if int(obj.Type_flag) == ITEM_CONTAINER && (GET_OBJ_VNUM(obj) == 697 || GET_OBJ_VNUM(obj) == 698 || GET_OBJ_VNUM(obj) == 682 || GET_OBJ_VNUM(obj) == 683 || GET_OBJ_VNUM(obj) == 684) {
 				act(libc.CString("$n looks in $p."), TRUE, ch, obj, nil, TO_ROOM)
 			}
 			switch bits {
@@ -5652,7 +5653,7 @@ func look_in_obj(ch *char_data, arg *byte) {
 		} else {
 			if (obj.Value[VAL_DRINKCON_CAPACITY]) < 0 {
 				var buf2 [64936]byte
-				sprinttype(obj.Value[VAL_DRINKCON_LIQUID], color_liquid, &buf2[0], uint64(64936))
+				sprinttype(obj.Value[VAL_DRINKCON_LIQUID], color_liquid[:], &buf2[0], uint64(64936))
 				send_to_char(ch, libc.CString("It's full of a %s liquid.\r\n"), &buf2[0])
 			} else if (obj.Value[VAL_DRINKCON_HOWFULL]) > (obj.Value[VAL_DRINKCON_CAPACITY]) {
 				send_to_char(ch, libc.CString("Its contents seem somewhat murky.\r\n"))
@@ -5715,14 +5716,14 @@ func look_at_target(ch *char_data, arg *byte, cmread int) {
 	}
 	if cmread != 0 {
 		for obj = ch.Carrying; obj != nil; obj = obj.Next_content {
-			if obj.Type_flag == ITEM_BOARD {
+			if int(obj.Type_flag) == ITEM_BOARD {
 				found = TRUE
 				break
 			}
 		}
 		if obj == nil {
 			for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; obj != nil; obj = obj.Next_content {
-				if obj.Type_flag == ITEM_BOARD {
+				if int(obj.Type_flag) == ITEM_BOARD {
 					found = TRUE
 					break
 				}
@@ -5736,10 +5737,10 @@ func look_at_target(ch *char_data, arg *byte, cmread int) {
 			}
 			if isname(&number[0], obj.Name) != 0 {
 				show_board(GET_OBJ_VNUM(obj), ch)
-			} else if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(number[0])))))&int(uint16(int16(_ISdigit)))) == 0 || (func() int {
+			} else if !unicode.IsDigit(rune(number[0])) || (func() int {
 				msg = libc.Atoi(libc.GoString(&number[0]))
 				return msg
-			}()) == 0 || C.strchr(&number[0], '.') != nil {
+			}()) == 0 || libc.StrChr(&number[0], '.') != nil {
 				stdio.Sprintf(arg, "%s %s", &number[0], arg)
 				look_at_target(ch, arg, 0)
 			} else {
@@ -5788,13 +5789,13 @@ func look_at_target(ch *char_data, arg *byte, cmread int) {
 				}() == fnum {
 					send_to_char(ch, libc.CString("%s"), desc)
 					if isname(arg, (ch.Equipment[j]).Name) != 0 {
-						if (ch.Equipment[j]).Type_flag == ITEM_WEAPON {
+						if int((ch.Equipment[j]).Type_flag) == ITEM_WEAPON {
 							send_to_char(ch, libc.CString("The weapon type of %s is a %s.\r\n"), (ch.Equipment[j]).Short_description, weapon_type[(ch.Equipment[j]).Value[VAL_WEAPON_SKILL]])
 						}
-						if (ch.Equipment[j]).Type_flag == ITEM_SPELLBOOK {
+						if int((ch.Equipment[j]).Type_flag) == ITEM_SPELLBOOK {
 							display_spells(ch, ch.Equipment[j])
 						}
-						if (ch.Equipment[j]).Type_flag == ITEM_SCROLL {
+						if int((ch.Equipment[j]).Type_flag) == ITEM_SCROLL {
 							display_scroll(ch, ch.Equipment[j])
 						}
 						diag_obj_to_char(ch.Equipment[j], ch)
@@ -5814,18 +5815,18 @@ func look_at_target(ch *char_data, arg *byte, cmread int) {
 					*p++
 					return *p
 				}() == fnum {
-					if obj.Type_flag == ITEM_BOARD {
+					if int(obj.Type_flag) == ITEM_BOARD {
 						show_board(GET_OBJ_VNUM(obj), ch)
 					} else {
 						send_to_char(ch, libc.CString("%s"), desc)
 						if isname(arg, obj.Name) != 0 {
-							if obj.Type_flag == ITEM_WEAPON {
+							if int(obj.Type_flag) == ITEM_WEAPON {
 								send_to_char(ch, libc.CString("The weapon type of %s is a %s.\r\n"), obj.Short_description, weapon_type[obj.Value[VAL_WEAPON_SKILL]])
 							}
-							if obj.Type_flag == ITEM_SPELLBOOK {
+							if int(obj.Type_flag) == ITEM_SPELLBOOK {
 								display_spells(ch, obj)
 							}
-							if obj.Type_flag == ITEM_SCROLL {
+							if int(obj.Type_flag) == ITEM_SCROLL {
 								display_scroll(ch, obj)
 							}
 							diag_obj_to_char(obj, ch)
@@ -5846,26 +5847,26 @@ func look_at_target(ch *char_data, arg *byte, cmread int) {
 					*p++
 					return *p
 				}() == fnum {
-					if obj.Type_flag == ITEM_BOARD {
+					if int(obj.Type_flag) == ITEM_BOARD {
 						show_board(GET_OBJ_VNUM(obj), ch)
 					} else {
 						send_to_char(ch, libc.CString("%s"), desc)
-						if obj.Type_flag == ITEM_VEHICLE {
+						if int(obj.Type_flag) == ITEM_VEHICLE {
 							send_to_char(ch, libc.CString("@YSyntax@D: @CUnlock hatch\r\n"))
 							send_to_char(ch, libc.CString("@YSyntax@D: @COpen hatch\r\n"))
 							send_to_char(ch, libc.CString("@YSyntax@D: @CClose hatch\r\n"))
 							send_to_char(ch, libc.CString("@YSyntax@D: @CUnlock hatch\r\n"))
 							send_to_char(ch, libc.CString("@YSyntax@D: @CEnter hatch\r\n"))
-						} else if obj.Type_flag == ITEM_HATCH {
+						} else if int(obj.Type_flag) == ITEM_HATCH {
 							send_to_char(ch, libc.CString("@YSyntax@D: @CUnlock hatch\r\n"))
 							send_to_char(ch, libc.CString("@YSyntax@D: @COpen hatch\r\n"))
 							send_to_char(ch, libc.CString("@YSyntax@D: @CClose hatch\r\n"))
 							send_to_char(ch, libc.CString("@YSyntax@D: @CUnlock hatch\r\n"))
 							send_to_char(ch, libc.CString("@YSyntax@D: @CLeave@n\r\n"))
-						} else if obj.Type_flag == ITEM_WINDOW {
+						} else if int(obj.Type_flag) == ITEM_WINDOW {
 							look_out_window(ch, obj.Name)
 						}
-						if obj.Type_flag == ITEM_CONTROL {
+						if int(obj.Type_flag) == ITEM_CONTROL {
 							send_to_char(ch, libc.CString("@RFUEL@D: %s%s@n\r\n"), func() string {
 								if (obj.Value[2]) >= 200 {
 									return "@G"
@@ -5876,7 +5877,7 @@ func look_at_target(ch *char_data, arg *byte, cmread int) {
 								return "@r"
 							}(), add_commas(int64(obj.Value[2])))
 						}
-						if obj.Type_flag == ITEM_WEAPON {
+						if int(obj.Type_flag) == ITEM_WEAPON {
 							send_to_char(ch, libc.CString("The weapon type of %s is a %s.\r\n"), obj.Short_description, weapon_type[obj.Value[VAL_WEAPON_SKILL]])
 						}
 						diag_obj_to_char(obj, ch)
@@ -5916,7 +5917,7 @@ func look_out_window(ch *char_data, arg *byte) {
 		}()) == 0 {
 			send_to_char(ch, libc.CString("You don't see that here.\r\n"))
 			return
-		} else if viewport.Type_flag != ITEM_WINDOW {
+		} else if int(viewport.Type_flag) != ITEM_WINDOW {
 			send_to_char(ch, libc.CString("You can't look out that!\r\n"))
 			return
 		}
@@ -5925,7 +5926,7 @@ func look_out_window(ch *char_data, arg *byte) {
 		return
 	} else {
 		for i = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; i != nil; i = i.Next_content {
-			if i.Type_flag == ITEM_WINDOW && isname(libc.CString("window"), i.Name) != 0 {
+			if int(i.Type_flag) == ITEM_WINDOW && isname(libc.CString("window"), i.Name) != 0 {
 				viewport = i
 				continue
 			}
@@ -6020,7 +6021,7 @@ func do_rptrans(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if k.Connected != CON_PLAYING {
 			continue
 		}
-		if C.strcasecmp(k.User, &arg[0]) == 0 {
+		if libc.StrCaseCmp(k.User, &arg[0]) == 0 {
 			vict = k.Character
 		}
 	}
@@ -6101,7 +6102,7 @@ func do_rbanktrans(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if k.Connected != CON_PLAYING {
 			continue
 		}
-		if C.strcasecmp(k.User, &arg[0]) == 0 {
+		if libc.StrCaseCmp(k.User, &arg[0]) == 0 {
 			vict = k.Character
 		}
 	}
@@ -6131,9 +6132,9 @@ func do_rdisplay(ch *char_data, argument *byte, cmd int, subcmd int) {
 		ch.Rdisplay = libc.CString("Empty")
 	} else {
 		var derp [64936]byte
-		C.strcpy(&derp[0], argument)
+		libc.StrCpy(&derp[0], argument)
 		send_to_char(ch, libc.CString("You set your display to; %s\r\n"), &derp[0])
-		ch.Rdisplay = C.strdup(&derp[0])
+		ch.Rdisplay = libc.StrDup(&derp[0])
 	}
 }
 func perf_skill(skill int) int {
@@ -6190,7 +6191,7 @@ func do_perf(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Syntax: perfect (skillname) (type 1/2/or 3)\r\n"))
 		return
 	}
-	if C.strlen(&arg[0]) < 4 {
+	if libc.StrLen(&arg[0]) < 4 {
 		send_to_char(ch, libc.CString("The skill name should be longer than 3 characters...\r\n"))
 		return
 	}
@@ -6201,7 +6202,7 @@ func do_perf(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if found == TRUE {
 			continue
 		}
-		if C.strstr(spell_info[i].Name, &arg[0]) != nil {
+		if libc.StrStr(spell_info[i].Name, &arg[0]) != nil {
 			skill = i
 			found = TRUE
 		}
@@ -6218,7 +6219,7 @@ func do_perf(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You have not mastered the skill %s and thus can't perfect it.\r\n"), &arg[0])
 		return
 	}
-	if (ch.Skillperfs[skill]) > 0 {
+	if int(ch.Skillperfs[skill]) > 0 {
 		send_to_char(ch, libc.CString("You have already mastered the skill %s and chosen how to perfect it.\r\n"), &arg[0])
 		return
 	}
@@ -6252,7 +6253,7 @@ func do_look(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if ch.Desc == nil {
 		return
 	}
-	if ch.Position < POS_SLEEPING {
+	if int(ch.Position) < POS_SLEEPING {
 		send_to_char(ch, libc.CString("You can't see anything but stars!\r\n"))
 	} else if AFF_FLAGGED(ch, AFF_BLIND) {
 		send_to_char(ch, libc.CString("You can't see a damned thing, you're blind!\r\n"))
@@ -6372,10 +6373,10 @@ func do_examine(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Examine what?\r\n"))
 		return
 	}
-	look_at_target(ch, C.strcpy(&tempsave[0], &arg[0]), 0)
+	look_at_target(ch, libc.StrCpy(&tempsave[0], &arg[0]), 0)
 	generic_find(&arg[0], (1<<2)|1<<3|1<<0|1<<5, ch, &tmp_char, &tmp_object)
 	if tmp_object != nil {
-		if tmp_object.Type_flag == ITEM_DRINKCON || tmp_object.Type_flag == ITEM_FOUNTAIN || tmp_object.Type_flag == ITEM_CONTAINER {
+		if int(tmp_object.Type_flag) == ITEM_DRINKCON || int(tmp_object.Type_flag) == ITEM_FOUNTAIN || int(tmp_object.Type_flag) == ITEM_CONTAINER {
 			send_to_char(ch, libc.CString("When you look inside, you see:\r\n"))
 			look_in_obj(ch, &arg[0])
 		}
@@ -6404,13 +6405,13 @@ func do_score(ch *char_data, argument *byte, cmd int, subcmd int) {
 	one_argument(argument, &arg[0])
 	if arg[0] == 0 {
 		view = full
-	} else if C.strstr(libc.CString("personal"), &arg[0]) != nil || C.strstr(libc.CString("Personal"), &arg[0]) != nil {
+	} else if libc.StrStr(libc.CString("personal"), &arg[0]) != nil || libc.StrStr(libc.CString("Personal"), &arg[0]) != nil {
 		view = personal
-	} else if C.strstr(libc.CString("health"), &arg[0]) != nil || C.strstr(libc.CString("Health"), &arg[0]) != nil {
+	} else if libc.StrStr(libc.CString("health"), &arg[0]) != nil || libc.StrStr(libc.CString("Health"), &arg[0]) != nil {
 		view = health
-	} else if C.strstr(libc.CString("statistics"), &arg[0]) != nil || C.strstr(libc.CString("Statistics"), &arg[0]) != nil {
+	} else if libc.StrStr(libc.CString("statistics"), &arg[0]) != nil || libc.StrStr(libc.CString("Statistics"), &arg[0]) != nil {
 		view = stats
-	} else if C.strstr(libc.CString("other"), &arg[0]) != nil || C.strstr(libc.CString("Other"), &arg[0]) != nil {
+	} else if libc.StrStr(libc.CString("other"), &arg[0]) != nil || libc.StrStr(libc.CString("Other"), &arg[0]) != nil {
 		view = other
 	} else {
 		send_to_char(ch, libc.CString("Syntax: score, or... score (personal, health, statistics, other)\r\n"))
@@ -6419,7 +6420,7 @@ func do_score(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if view == full || view == personal {
 		send_to_char(ch, libc.CString("  @cO@D-----------------------------[  @cPersonal  @D]-----------------------------@cO@n\n"))
 		send_to_char(ch, libc.CString("  @D|  @CName@D: @W%15s@D,   @CTitle@D: @W%-38s@D|@n\n"), GET_NAME(ch), GET_TITLE(ch))
-		if ch.Race == RACE_ANDROID {
+		if int(ch.Race) == RACE_ANDROID {
 			var (
 				model   [100]byte
 				version [100]byte
@@ -6471,9 +6472,9 @@ func do_score(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("    @wCurrent   @D-[@R%-16s@D]-[@R%-16s@D]-[@R%-16s@D]@n\n"), add_commas(ch.Hit), add_commas(ch.Mana), add_commas(ch.Move))
 		send_to_char(ch, libc.CString("    @wMaximum   @D-[@r%-16s@D]-[@r%-16s@D]-[@r%-16s@D]@n\n"), add_commas(ch.Max_hit), add_commas(ch.Max_mana), add_commas(ch.Max_move))
 		send_to_char(ch, libc.CString("    @wBase      @D-[@m%-16s@D]-[@m%-16s@D]-[@m%-16s@D]@n\n"), add_commas(ch.Basepl), add_commas(ch.Baseki), add_commas(ch.Basest))
-		if ch.Race != RACE_ANDROID && ch.Lifeforce > 0 {
+		if int(ch.Race) != RACE_ANDROID && ch.Lifeforce > 0 {
 			send_to_char(ch, libc.CString("    @wLife Force@D-[@C%16s@D%s@c%16s@D]- @wLife Percent@D-[@Y%3d%s@D]@n\n"), add_commas(ch.Lifeforce), "/", add_commas(int64(GET_LIFEMAX(ch))), ch.Lifeperc, "%")
-		} else if ch.Race != RACE_ANDROID {
+		} else if int(ch.Race) != RACE_ANDROID {
 			send_to_char(ch, libc.CString("    @wLife Force@D-[@C%16s@D%s@c%16s@D]- @wLife Percent@D-[@Y%3d%s@D]@n\n"), add_commas(0), "/", add_commas(int64(GET_LIFEMAX(ch))), ch.Lifeperc, "%")
 		}
 	}
@@ -6502,7 +6503,7 @@ func do_score(ch *char_data, argument *byte, cmd int, subcmd int) {
 			numb = 7500
 		}
 		send_to_char(ch, libc.CString("      @D[  @CInterest@D| @W%-15s@D]\n"), add_commas(int64(numb)))
-		if ch.Race == RACE_ARLIAN {
+		if int(ch.Race) == RACE_ARLIAN {
 			send_to_char(ch, libc.CString("                             @D<@GEvolution @D>@n\n"))
 			send_to_char(ch, libc.CString("      @D[ @CEvo Level@D| @W%-15d@D] [   @CEvo Exp@D| @W%-15s@D]\n"), ch.Moltlevel, add_commas(ch.Moltexp))
 			send_to_char(ch, libc.CString("      @D[ @CThreshold@D| @W%-15s@D]@n\n"), add_commas(molt_threshold(ch)))
@@ -6519,7 +6520,7 @@ func do_score(ch *char_data, argument *byte, cmd int, subcmd int) {
 	send_to_char(ch, libc.CString("  @cO@D------------------------------------------------------------------------@cO@n\n"))
 }
 func trans_check(ch *char_data, vict *char_data) {
-	if vict.Race == RACE_HUMAN {
+	if int(vict.Race) == RACE_HUMAN {
 		if PLR_FLAGGED(vict, PLR_TRANS1) {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @CSuper Human First@n\r\n"))
 		} else if PLR_FLAGGED(vict, PLR_TRANS2) {
@@ -6531,7 +6532,7 @@ func trans_check(ch *char_data, vict *char_data) {
 		} else {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @wNone@n\r\n"))
 		}
-	} else if vict.Race == RACE_HOSHIJIN {
+	} else if int(vict.Race) == RACE_HOSHIJIN {
 		if vict.Mimic == 0 || vict == ch {
 			if vict.Starphase == 1 {
 				send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @CBirth Phase@n\r\n"))
@@ -6543,7 +6544,7 @@ func trans_check(ch *char_data, vict *char_data) {
 		} else {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @wNone@n\r\n"))
 		}
-	} else if (vict.Race == RACE_SAIYAN || vict.Race == RACE_HALFBREED) && !PLR_FLAGGED(vict, PLR_LSSJ) {
+	} else if (int(vict.Race) == RACE_SAIYAN || int(vict.Race) == RACE_HALFBREED) && !PLR_FLAGGED(vict, PLR_LSSJ) {
 		if PLR_FLAGGED(vict, PLR_TRANS1) && !PLR_FLAGGED(vict, PLR_FPSSJ) {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @CSuper Saiyan First@n\r\n"))
 		} else if PLR_FLAGGED(vict, PLR_TRANS1) && PLR_FLAGGED(vict, PLR_FPSSJ) {
@@ -6559,7 +6560,7 @@ func trans_check(ch *char_data, vict *char_data) {
 		} else {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @wNone@n\r\n"))
 		}
-	} else if vict.Race == RACE_SAIYAN && PLR_FLAGGED(vict, PLR_LSSJ) {
+	} else if int(vict.Race) == RACE_SAIYAN && PLR_FLAGGED(vict, PLR_LSSJ) {
 		if PLR_FLAGGED(vict, PLR_TRANS1) {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @CSuper Saiyan First@n\r\n"))
 		} else if PLR_FLAGGED(vict, PLR_TRANS2) {
@@ -6569,7 +6570,7 @@ func trans_check(ch *char_data, vict *char_data) {
 		} else {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @wNone@n\r\n"))
 		}
-	} else if vict.Race == RACE_NAMEK {
+	} else if int(vict.Race) == RACE_NAMEK {
 		if PLR_FLAGGED(vict, PLR_TRANS1) {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @CSuper Namek First@n\r\n"))
 		} else if PLR_FLAGGED(vict, PLR_TRANS2) {
@@ -6581,7 +6582,7 @@ func trans_check(ch *char_data, vict *char_data) {
 		} else {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @wNone@n\r\n"))
 		}
-	} else if vict.Race == RACE_ICER {
+	} else if int(vict.Race) == RACE_ICER {
 		if PLR_FLAGGED(vict, PLR_TRANS1) {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @CTransform First@n\r\n"))
 		} else if PLR_FLAGGED(vict, PLR_TRANS2) {
@@ -6593,7 +6594,7 @@ func trans_check(ch *char_data, vict *char_data) {
 		} else {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @wNone@n\r\n"))
 		}
-	} else if vict.Race == RACE_KONATSU {
+	} else if int(vict.Race) == RACE_KONATSU {
 		if PLR_FLAGGED(vict, PLR_TRANS1) {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @CShadow First@n\r\n"))
 		} else if PLR_FLAGGED(vict, PLR_TRANS2) {
@@ -6605,7 +6606,7 @@ func trans_check(ch *char_data, vict *char_data) {
 		} else {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @wNone@n\r\n"))
 		}
-	} else if vict.Race == RACE_MUTANT {
+	} else if int(vict.Race) == RACE_MUTANT {
 		if PLR_FLAGGED(vict, PLR_TRANS1) {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @CMutate First@n\r\n"))
 		} else if PLR_FLAGGED(vict, PLR_TRANS2) {
@@ -6615,7 +6616,7 @@ func trans_check(ch *char_data, vict *char_data) {
 		} else {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @wNone@n\r\n"))
 		}
-	} else if vict.Race == RACE_BIO {
+	} else if int(vict.Race) == RACE_BIO {
 		if PLR_FLAGGED(vict, PLR_TRANS1) {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @CMature@n\r\n"))
 		} else if PLR_FLAGGED(vict, PLR_TRANS2) {
@@ -6627,7 +6628,7 @@ func trans_check(ch *char_data, vict *char_data) {
 		} else {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @wNone@n\r\n"))
 		}
-	} else if vict.Race == RACE_ANDROID {
+	} else if int(vict.Race) == RACE_ANDROID {
 		if PLR_FLAGGED(vict, PLR_TRANS1) {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @CSeries 1.0@n\r\n"))
 		} else if PLR_FLAGGED(vict, PLR_TRANS2) {
@@ -6643,7 +6644,7 @@ func trans_check(ch *char_data, vict *char_data) {
 		} else {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @wNone@n\r\n"))
 		}
-	} else if vict.Race == RACE_MAJIN {
+	} else if int(vict.Race) == RACE_MAJIN {
 		if PLR_FLAGGED(vict, PLR_TRANS1) {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @CAffinity@n\r\n"))
 		} else if PLR_FLAGGED(vict, PLR_TRANS2) {
@@ -6653,7 +6654,7 @@ func trans_check(ch *char_data, vict *char_data) {
 		} else {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @wNone@n\r\n"))
 		}
-	} else if vict.Race == RACE_TRUFFLE {
+	} else if int(vict.Race) == RACE_TRUFFLE {
 		if PLR_FLAGGED(vict, PLR_TRANS1) {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @CAscend First@n\r\n"))
 		} else if PLR_FLAGGED(vict, PLR_TRANS2) {
@@ -6663,7 +6664,7 @@ func trans_check(ch *char_data, vict *char_data) {
 		} else {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @wNone@n\r\n"))
 		}
-	} else if vict.Race == RACE_KAI {
+	} else if int(vict.Race) == RACE_KAI {
 		if PLR_FLAGGED(vict, PLR_TRANS1) {
 			send_to_char(ch, libc.CString("         @cCurrent Transformation@D: @CMystic First@n\r\n"))
 		} else if PLR_FLAGGED(vict, PLR_TRANS2) {
@@ -6695,96 +6696,96 @@ func do_status(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if !PLR_FLAGGED(ch, PLR_HEAD) {
 			send_to_char(ch, libc.CString("            @D[@cHead        @D: @rMissing.         @D]@n\r\n"))
 		}
-		if (ch.Limb_condition[0]) >= 50 && !PLR_FLAGGED(ch, PLR_CRARM) {
-			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), ch.Limb_condition[0], "%", "%")
-		} else if (ch.Limb_condition[0]) > 0 && !PLR_FLAGGED(ch, PLR_CRARM) {
-			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), ch.Limb_condition[0], "%", "%")
-		} else if (ch.Limb_condition[0]) > 0 && PLR_FLAGGED(ch, PLR_CRARM) {
-			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), ch.Limb_condition[0], "%", "%")
-		} else if (ch.Limb_condition[0]) <= 0 {
+		if (ch.Limb_condition[1]) >= 50 && !PLR_FLAGGED(ch, PLR_CRARM) {
+			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), ch.Limb_condition[1], "%", "%")
+		} else if (ch.Limb_condition[1]) > 0 && !PLR_FLAGGED(ch, PLR_CRARM) {
+			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), ch.Limb_condition[1], "%", "%")
+		} else if (ch.Limb_condition[1]) > 0 && PLR_FLAGGED(ch, PLR_CRARM) {
+			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), ch.Limb_condition[1], "%", "%")
+		} else if (ch.Limb_condition[1]) <= 0 {
 			send_to_char(ch, libc.CString("            @D[@cRight Arm   @D: @rMissing.         @D]@n\r\n"))
 		}
-		if (ch.Limb_condition[1]) >= 50 && !PLR_FLAGGED(ch, PLR_CLARM) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), ch.Limb_condition[1], "%", "%")
-		} else if (ch.Limb_condition[1]) > 0 && !PLR_FLAGGED(ch, PLR_CLARM) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), ch.Limb_condition[1], "%", "%")
-		} else if (ch.Limb_condition[1]) > 0 && PLR_FLAGGED(ch, PLR_CLARM) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), ch.Limb_condition[1], "%", "%")
-		} else if (ch.Limb_condition[1]) <= 0 {
+		if (ch.Limb_condition[2]) >= 50 && !PLR_FLAGGED(ch, PLR_CLARM) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), ch.Limb_condition[2], "%", "%")
+		} else if (ch.Limb_condition[2]) > 0 && !PLR_FLAGGED(ch, PLR_CLARM) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), ch.Limb_condition[2], "%", "%")
+		} else if (ch.Limb_condition[2]) > 0 && PLR_FLAGGED(ch, PLR_CLARM) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), ch.Limb_condition[2], "%", "%")
+		} else if (ch.Limb_condition[2]) <= 0 {
 			send_to_char(ch, libc.CString("            @D[@cLeft Arm    @D: @rMissing.         @D]@n\r\n"))
 		}
-		if (ch.Limb_condition[2]) >= 50 && !PLR_FLAGGED(ch, PLR_CLARM) {
-			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), ch.Limb_condition[2], "%", "%")
-		} else if (ch.Limb_condition[2]) > 0 && !PLR_FLAGGED(ch, PLR_CRLEG) {
-			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), ch.Limb_condition[2], "%", "%")
-		} else if (ch.Limb_condition[2]) > 0 && PLR_FLAGGED(ch, PLR_CRLEG) {
-			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), ch.Limb_condition[2], "%", "%")
-		} else if (ch.Limb_condition[2]) <= 0 {
+		if (ch.Limb_condition[3]) >= 50 && !PLR_FLAGGED(ch, PLR_CLARM) {
+			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), ch.Limb_condition[3], "%", "%")
+		} else if (ch.Limb_condition[3]) > 0 && !PLR_FLAGGED(ch, PLR_CRLEG) {
+			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), ch.Limb_condition[3], "%", "%")
+		} else if (ch.Limb_condition[3]) > 0 && PLR_FLAGGED(ch, PLR_CRLEG) {
+			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), ch.Limb_condition[3], "%", "%")
+		} else if (ch.Limb_condition[3]) <= 0 {
 			send_to_char(ch, libc.CString("            @D[@cRight Leg   @D: @rMissing.         @D]@n\r\n"))
 		}
-		if (ch.Limb_condition[3]) >= 50 && !PLR_FLAGGED(ch, PLR_CLLEG) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), ch.Limb_condition[3], "%", "%")
-		} else if (ch.Limb_condition[3]) > 0 && !PLR_FLAGGED(ch, PLR_CLLEG) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), ch.Limb_condition[3], "%", "%")
-		} else if (ch.Limb_condition[3]) > 0 && PLR_FLAGGED(ch, PLR_CLLEG) {
-			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), ch.Limb_condition[3], "%", "%")
-		} else if (ch.Limb_condition[3]) <= 0 {
+		if (ch.Limb_condition[4]) >= 50 && !PLR_FLAGGED(ch, PLR_CLLEG) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @G%2d%s@D/@g100%s        @D]@n\r\n"), ch.Limb_condition[4], "%", "%")
+		} else if (ch.Limb_condition[4]) > 0 && !PLR_FLAGGED(ch, PLR_CLLEG) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @rBroken @y%2d%s@D/@g100%s @D]@n\r\n"), ch.Limb_condition[4], "%", "%")
+		} else if (ch.Limb_condition[4]) > 0 && PLR_FLAGGED(ch, PLR_CLLEG) {
+			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @cCybernetic @G%2d%s@D/@G100%s@D]@n\r\n"), ch.Limb_condition[4], "%", "%")
+		} else if (ch.Limb_condition[4]) <= 0 {
 			send_to_char(ch, libc.CString("            @D[@cLeft Leg    @D: @rMissing.         @D]@n\r\n"))
 		}
-		if (ch.Race == RACE_SAIYAN || ch.Race == RACE_HALFBREED) && PLR_FLAGGED(ch, PLR_STAIL) {
+		if (int(ch.Race) == RACE_SAIYAN || int(ch.Race) == RACE_HALFBREED) && PLR_FLAGGED(ch, PLR_STAIL) {
 			send_to_char(ch, libc.CString("            @D[@cTail        @D: @GHave.            @D]@n\r\n"))
 		}
-		if (ch.Race == RACE_SAIYAN || ch.Race == RACE_HALFBREED) && !PLR_FLAGGED(ch, PLR_STAIL) {
+		if (int(ch.Race) == RACE_SAIYAN || int(ch.Race) == RACE_HALFBREED) && !PLR_FLAGGED(ch, PLR_STAIL) {
 			send_to_char(ch, libc.CString("            @D[@cTail        @D: @rMissing.         @D]@n\r\n"))
 		}
-		if (ch.Race == RACE_ICER || ch.Race == RACE_BIO) && PLR_FLAGGED(ch, PLR_TAIL) {
+		if (int(ch.Race) == RACE_ICER || int(ch.Race) == RACE_BIO) && PLR_FLAGGED(ch, PLR_TAIL) {
 			send_to_char(ch, libc.CString("            @D[@cTail        @D: @GHave.            @D]@n\r\n"))
 		}
-		if (ch.Race == RACE_ICER || ch.Race == RACE_BIO) && !PLR_FLAGGED(ch, PLR_TAIL) {
+		if (int(ch.Race) == RACE_ICER || int(ch.Race) == RACE_BIO) && !PLR_FLAGGED(ch, PLR_TAIL) {
 			send_to_char(ch, libc.CString("            @D[@cTail        @D: @rMissing.         @D]@n\r\n"))
 		}
 		send_to_char(ch, libc.CString("\r\n"))
 		send_to_char(ch, libc.CString("         @D-----------------@YHunger@D/@yThirst@D-----------------@n\r\n"))
-		if (ch.Player_specials.Conditions[HUNGER]) >= 48 {
+		if int(ch.Player_specials.Conditions[HUNGER]) >= 48 {
 			send_to_char(ch, libc.CString("         You are full.\r\n"))
-		} else if (ch.Player_specials.Conditions[HUNGER]) >= 40 {
+		} else if int(ch.Player_specials.Conditions[HUNGER]) >= 40 {
 			send_to_char(ch, libc.CString("         You are nearly full.\r\n"))
-		} else if (ch.Player_specials.Conditions[HUNGER]) >= 30 {
+		} else if int(ch.Player_specials.Conditions[HUNGER]) >= 30 {
 			send_to_char(ch, libc.CString("         You are not hungry.\r\n"))
-		} else if (ch.Player_specials.Conditions[HUNGER]) >= 21 {
+		} else if int(ch.Player_specials.Conditions[HUNGER]) >= 21 {
 			send_to_char(ch, libc.CString("         You wouldn't mind a snack.\r\n"))
-		} else if (ch.Player_specials.Conditions[HUNGER]) >= 15 {
+		} else if int(ch.Player_specials.Conditions[HUNGER]) >= 15 {
 			send_to_char(ch, libc.CString("         You are slightly hungry.\r\n"))
-		} else if (ch.Player_specials.Conditions[HUNGER]) >= 10 {
+		} else if int(ch.Player_specials.Conditions[HUNGER]) >= 10 {
 			send_to_char(ch, libc.CString("         You are partially hungry.\r\n"))
-		} else if (ch.Player_specials.Conditions[HUNGER]) >= 5 {
+		} else if int(ch.Player_specials.Conditions[HUNGER]) >= 5 {
 			send_to_char(ch, libc.CString("         You are really hungry.\r\n"))
-		} else if (ch.Player_specials.Conditions[HUNGER]) >= 2 {
+		} else if int(ch.Player_specials.Conditions[HUNGER]) >= 2 {
 			send_to_char(ch, libc.CString("         You are extremely hungry.\r\n"))
-		} else if (ch.Player_specials.Conditions[HUNGER]) >= 0 {
+		} else if int(ch.Player_specials.Conditions[HUNGER]) >= 0 {
 			send_to_char(ch, libc.CString("         You are starving!\r\n"))
-		} else if (ch.Player_specials.Conditions[HUNGER]) < 0 {
+		} else if int(ch.Player_specials.Conditions[HUNGER]) < 0 {
 			send_to_char(ch, libc.CString("         You need not eat.\r\n"))
 		}
-		if (ch.Player_specials.Conditions[THIRST]) >= 48 {
+		if int(ch.Player_specials.Conditions[THIRST]) >= 48 {
 			send_to_char(ch, libc.CString("         You are not thirsty.\r\n"))
-		} else if (ch.Player_specials.Conditions[THIRST]) >= 40 {
+		} else if int(ch.Player_specials.Conditions[THIRST]) >= 40 {
 			send_to_char(ch, libc.CString("         You are nearly quenched.\r\n"))
-		} else if (ch.Player_specials.Conditions[THIRST]) >= 30 {
+		} else if int(ch.Player_specials.Conditions[THIRST]) >= 30 {
 			send_to_char(ch, libc.CString("         You are not thirsty.\r\n"))
-		} else if (ch.Player_specials.Conditions[THIRST]) >= 21 {
+		} else if int(ch.Player_specials.Conditions[THIRST]) >= 21 {
 			send_to_char(ch, libc.CString("         You wouldn't mind a drink.\r\n"))
-		} else if (ch.Player_specials.Conditions[THIRST]) >= 15 {
+		} else if int(ch.Player_specials.Conditions[THIRST]) >= 15 {
 			send_to_char(ch, libc.CString("         You are slightly thirsty.\r\n"))
-		} else if (ch.Player_specials.Conditions[THIRST]) >= 10 {
+		} else if int(ch.Player_specials.Conditions[THIRST]) >= 10 {
 			send_to_char(ch, libc.CString("         You are partially thirsty.\r\n"))
-		} else if (ch.Player_specials.Conditions[THIRST]) >= 5 {
+		} else if int(ch.Player_specials.Conditions[THIRST]) >= 5 {
 			send_to_char(ch, libc.CString("         You are really thirsty.\r\n"))
-		} else if (ch.Player_specials.Conditions[THIRST]) >= 2 {
+		} else if int(ch.Player_specials.Conditions[THIRST]) >= 2 {
 			send_to_char(ch, libc.CString("         You are extremely thirsty.\r\n"))
-		} else if (ch.Player_specials.Conditions[THIRST]) >= 0 {
+		} else if int(ch.Player_specials.Conditions[THIRST]) >= 0 {
 			send_to_char(ch, libc.CString("         You are dehydrated!\r\n"))
-		} else if (ch.Player_specials.Conditions[THIRST]) < 0 {
+		} else if int(ch.Player_specials.Conditions[THIRST]) < 0 {
 			send_to_char(ch, libc.CString("         You need not drink.\r\n"))
 		}
 		send_to_char(ch, libc.CString("         @D--------------------@D[@GInfo@D]---------------------@n\r\n"))
@@ -6811,7 +6812,7 @@ func do_status(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if ch.Voice != nil {
 			send_to_char(ch, libc.CString("         Your voice desc: '%s'\r\n"), ch.Voice)
 		}
-		if ch.Distfea == DISTFEA_EYE {
+		if int(ch.Distfea) == DISTFEA_EYE {
 			send_to_char(ch, libc.CString("         Your eyes are your most distinctive feature.\r\n"))
 		}
 		if ch.Preference == 0 {
@@ -6825,24 +6826,24 @@ func do_status(ch *char_data, argument *byte, cmd int, subcmd int) {
 		} else if ch.Preference == PREFERENCE_THROWING {
 			send_to_char(ch, libc.CString("         You preferred a throwing dominate form of fighting.\r\n"))
 		}
-		if ch.Distfea == DISTFEA_HAIR && ch.Race != RACE_DEMON && ch.Race != RACE_MAJIN && ch.Race != RACE_ICER && ch.Race != RACE_NAMEK {
+		if int(ch.Distfea) == DISTFEA_HAIR && int(ch.Race) != RACE_DEMON && int(ch.Race) != RACE_MAJIN && int(ch.Race) != RACE_ICER && int(ch.Race) != RACE_NAMEK {
 			send_to_char(ch, libc.CString("         Your hair is your most distinctive feature.\r\n"))
-		} else if ch.Distfea == DISTFEA_HAIR && ch.Race == RACE_DEMON {
+		} else if int(ch.Distfea) == DISTFEA_HAIR && int(ch.Race) == RACE_DEMON {
 			send_to_char(ch, libc.CString("         Your horns are your most distinctive feature.\r\n"))
-		} else if ch.Distfea == DISTFEA_HAIR && ch.Race == RACE_MAJIN {
+		} else if int(ch.Distfea) == DISTFEA_HAIR && int(ch.Race) == RACE_MAJIN {
 			send_to_char(ch, libc.CString("         Your forelock is your most distinctive feature.\r\n"))
-		} else if ch.Distfea == DISTFEA_HAIR && ch.Race == RACE_ICER {
+		} else if int(ch.Distfea) == DISTFEA_HAIR && int(ch.Race) == RACE_ICER {
 			send_to_char(ch, libc.CString("         Your horns are your most distinctive feature.\r\n"))
-		} else if ch.Distfea == DISTFEA_HAIR && ch.Race == RACE_NAMEK {
+		} else if int(ch.Distfea) == DISTFEA_HAIR && int(ch.Race) == RACE_NAMEK {
 			send_to_char(ch, libc.CString("         Your antennae are your most distinctive feature.\r\n"))
 		}
-		if ch.Distfea == DISTFEA_SKIN {
+		if int(ch.Distfea) == DISTFEA_SKIN {
 			send_to_char(ch, libc.CString("         Your skin is your most distinctive feature.\r\n"))
 		}
-		if ch.Distfea == DISTFEA_HEIGHT {
+		if int(ch.Distfea) == DISTFEA_HEIGHT {
 			send_to_char(ch, libc.CString("         Your height is your most distinctive feature.\r\n"))
 		}
-		if ch.Distfea == DISTFEA_WEIGHT {
+		if int(ch.Distfea) == DISTFEA_WEIGHT {
 			send_to_char(ch, libc.CString("         Your weight is your most distinctive feature.\r\n"))
 		}
 		if (ch.Equipment[WEAR_EYE]) != nil {
@@ -6868,15 +6869,15 @@ func do_status(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if ch.Suppression > 0 {
 			send_to_char(ch, libc.CString("         You are suppressing current PL to %lld.\r\n"), ch.Suppression)
 		}
-		if ch.Race == RACE_MAJIN {
+		if int(ch.Race) == RACE_MAJIN {
 			send_to_char(ch, libc.CString("         You have ingested %d people.\r\n"), ch.Absorbs)
 		}
-		if ch.Race == RACE_BIO {
+		if int(ch.Race) == RACE_BIO {
 			send_to_char(ch, libc.CString("         You have %d absorbs left.\r\n"), ch.Absorbs)
 		}
 		send_to_char(ch, libc.CString("         You have %s colored aura.\r\n"), aura_types[ch.Aura])
 		if GET_LEVEL(ch) < 100 {
-			if ch.Race == RACE_ANDROID && PLR_FLAGGED(ch, PLR_ABSORB) || ch.Race != RACE_ANDROID && ch.Race != RACE_BIO && ch.Race != RACE_MAJIN {
+			if int(ch.Race) == RACE_ANDROID && PLR_FLAGGED(ch, PLR_ABSORB) || int(ch.Race) != RACE_ANDROID && int(ch.Race) != RACE_BIO && int(ch.Race) != RACE_MAJIN {
 				send_to_char(ch, libc.CString("         @R%s@n to SC a stat this level.\r\n"), add_commas(show_softcap(ch)))
 			} else {
 				send_to_char(ch, libc.CString("         @R%s@n in PL/KI/ST combined to SC this level.\r\n"), add_commas(show_softcap(ch)))
@@ -6908,9 +6909,9 @@ func do_status(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if (ch.Bonuses[BONUS_INSOMNIAC]) != 0 {
 			send_to_char(ch, libc.CString("You can not sleep.\r\n"))
 		} else {
-			if ch.Sleeptime > 6 && ch.Position != POS_SLEEPING {
+			if ch.Sleeptime > 6 && int(ch.Position) != POS_SLEEPING {
 				send_to_char(ch, libc.CString("You are well rested.\r\n"))
-			} else if ch.Sleeptime > 6 && ch.Position == POS_SLEEPING {
+			} else if ch.Sleeptime > 6 && int(ch.Position) == POS_SLEEPING {
 				send_to_char(ch, libc.CString("You are getting the rest you need.\r\n"))
 			} else if ch.Sleeptime > 4 {
 				send_to_char(ch, libc.CString("You are rested.\r\n"))
@@ -6932,7 +6933,7 @@ func do_status(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if ch.Mimic > 0 {
 			send_to_char(ch, libc.CString("You are mimicing the general appearance of %s %s\r\n"), AN(JUGGLERACELOWER(ch)), JUGGLERACELOWER(ch))
 		}
-		if ch.Race == RACE_MUTANT {
+		if int(ch.Race) == RACE_MUTANT {
 			send_to_char(ch, libc.CString("Your Mutations:\r\n"))
 			if (ch.Genome[0]) == 1 {
 				send_to_char(ch, libc.CString("  Extreme Speed.\r\n"))
@@ -6995,7 +6996,7 @@ func do_status(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_char(ch, libc.CString("  Natural Energy.\r\n"))
 			}
 		}
-		if ch.Race == RACE_BIO {
+		if int(ch.Race) == RACE_BIO {
 			send_to_char(ch, libc.CString("Your genes carry:\r\n"))
 			if (ch.Genome[0]) == 1 {
 				send_to_char(ch, libc.CString("  Human DNA.\r\n"))
@@ -7121,105 +7122,105 @@ func do_status(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if AFF_FLAGGED(ch, AFF_HYDROZAP) {
 			send_to_char(ch, libc.CString("You are effected by Kanso Suru.\r\n"))
 		}
-		if (ch.Player_specials.Conditions[DRUNK]) > 15 {
+		if int(ch.Player_specials.Conditions[DRUNK]) > 15 {
 			send_to_char(ch, libc.CString("You are extremely drunk.\r\n"))
-		} else if (ch.Player_specials.Conditions[DRUNK]) > 10 {
+		} else if int(ch.Player_specials.Conditions[DRUNK]) > 10 {
 			send_to_char(ch, libc.CString("You are pretty drunk.\r\n"))
-		} else if (ch.Player_specials.Conditions[DRUNK]) > 4 {
+		} else if int(ch.Player_specials.Conditions[DRUNK]) > 4 {
 			send_to_char(ch, libc.CString("You are drunk.\r\n"))
-		} else if (ch.Player_specials.Conditions[DRUNK]) > 0 {
+		} else if int(ch.Player_specials.Conditions[DRUNK]) > 0 {
 			send_to_char(ch, libc.CString("You have an alcoholic buzz.\r\n"))
 		}
 		if ch.Affected != nil {
 			var lasttype int = 0
 			for aff = ch.Affected; aff != nil; aff = aff.Next {
-				if C.strcasecmp(skill_name(int(aff.Type)), libc.CString("runic")) == 0 && int(aff.Type) != lasttype {
+				if libc.StrCaseCmp(skill_name(int(aff.Type)), libc.CString("runic")) == 0 && int(aff.Type) != lasttype {
 					lasttype = int(aff.Type)
-					send_to_char(ch, libc.CString("Your Kenaz rune is still in effect! (%2d Mud Hours)\r\n"), aff.Duration+1)
+					send_to_char(ch, libc.CString("Your Kenaz rune is still in effect! (%2d Mud Hours)\r\n"), int(aff.Duration)+1)
 				}
-				if C.strcasecmp(skill_name(int(aff.Type)), libc.CString("punch")) == 0 && int(aff.Type) != lasttype {
+				if libc.StrCaseCmp(skill_name(int(aff.Type)), libc.CString("punch")) == 0 && int(aff.Type) != lasttype {
 					lasttype = int(aff.Type)
-					send_to_char(ch, libc.CString("Your Algiz rune is still in effect! (%2d Mud Hours)\r\n"), aff.Duration+1)
+					send_to_char(ch, libc.CString("Your Algiz rune is still in effect! (%2d Mud Hours)\r\n"), int(aff.Duration)+1)
 				}
-				if C.strcasecmp(skill_name(int(aff.Type)), libc.CString("knee")) == 0 && int(aff.Type) != lasttype {
+				if libc.StrCaseCmp(skill_name(int(aff.Type)), libc.CString("knee")) == 0 && int(aff.Type) != lasttype {
 					lasttype = int(aff.Type)
-					send_to_char(ch, libc.CString("Your Oagaz rune is still in effect! (%2d Mud Hours)\r\n"), aff.Duration+1)
+					send_to_char(ch, libc.CString("Your Oagaz rune is still in effect! (%2d Mud Hours)\r\n"), int(aff.Duration)+1)
 				}
-				if C.strcasecmp(skill_name(int(aff.Type)), libc.CString("slam")) == 0 && int(aff.Type) != lasttype {
+				if libc.StrCaseCmp(skill_name(int(aff.Type)), libc.CString("slam")) == 0 && int(aff.Type) != lasttype {
 					lasttype = int(aff.Type)
-					send_to_char(ch, libc.CString("Your Wunjo rune is still in effect! (%2d Mud Hours)\r\n"), aff.Duration+1)
+					send_to_char(ch, libc.CString("Your Wunjo rune is still in effect! (%2d Mud Hours)\r\n"), int(aff.Duration)+1)
 				}
-				if C.strcasecmp(skill_name(int(aff.Type)), libc.CString("heeldrop")) == 0 && int(aff.Type) != lasttype {
+				if libc.StrCaseCmp(skill_name(int(aff.Type)), libc.CString("heeldrop")) == 0 && int(aff.Type) != lasttype {
 					lasttype = int(aff.Type)
-					send_to_char(ch, libc.CString("Your Purisaz rune is still in effect! (%2d Mud Hours)\r\n"), aff.Duration+1)
+					send_to_char(ch, libc.CString("Your Purisaz rune is still in effect! (%2d Mud Hours)\r\n"), int(aff.Duration)+1)
 				}
-				if C.strcasecmp(skill_name(int(aff.Type)), libc.CString("special beam cannon")) == 0 && int(aff.Type) != lasttype {
+				if libc.StrCaseCmp(skill_name(int(aff.Type)), libc.CString("special beam cannon")) == 0 && int(aff.Type) != lasttype {
 					lasttype = int(aff.Type)
-					send_to_char(ch, libc.CString("Your Laguz rune is still in effect! (%2d Mud Hours)\r\n"), aff.Duration+1)
+					send_to_char(ch, libc.CString("Your Laguz rune is still in effect! (%2d Mud Hours)\r\n"), int(aff.Duration)+1)
 				}
-				if C.strcasecmp(skill_name(int(aff.Type)), libc.CString("might")) == 0 && int(aff.Type) != lasttype {
+				if libc.StrCaseCmp(skill_name(int(aff.Type)), libc.CString("might")) == 0 && int(aff.Type) != lasttype {
 					lasttype = int(aff.Type)
-					send_to_char(ch, libc.CString("Your muscles are pumped! (%2d Mud Hours)\r\n"), aff.Duration+1)
+					send_to_char(ch, libc.CString("Your muscles are pumped! (%2d Mud Hours)\r\n"), int(aff.Duration)+1)
 				}
-				if C.strcasecmp(skill_name(int(aff.Type)), libc.CString("flex")) == 0 && int(aff.Type) != lasttype {
+				if libc.StrCaseCmp(skill_name(int(aff.Type)), libc.CString("flex")) == 0 && int(aff.Type) != lasttype {
 					lasttype = int(aff.Type)
-					send_to_char(ch, libc.CString("You are more agile right now! (%2d Mud Hours)\r\n"), aff.Duration+1)
+					send_to_char(ch, libc.CString("You are more agile right now! (%2d Mud Hours)\r\n"), int(aff.Duration)+1)
 				}
-				if C.strcasecmp(skill_name(int(aff.Type)), libc.CString("bless")) == 0 && int(aff.Type) != lasttype {
+				if libc.StrCaseCmp(skill_name(int(aff.Type)), libc.CString("bless")) == 0 && int(aff.Type) != lasttype {
 					lasttype = int(aff.Type)
-					send_to_char(ch, libc.CString("You have been blessed! (%2d Mud Hours)\r\n"), aff.Duration+1)
+					send_to_char(ch, libc.CString("You have been blessed! (%2d Mud Hours)\r\n"), int(aff.Duration)+1)
 				}
-				if C.strcasecmp(skill_name(int(aff.Type)), libc.CString("curse")) == 0 && int(aff.Type) != lasttype {
+				if libc.StrCaseCmp(skill_name(int(aff.Type)), libc.CString("curse")) == 0 && int(aff.Type) != lasttype {
 					lasttype = int(aff.Type)
-					send_to_char(ch, libc.CString("You have been cursed! (%2d Mud Hours)\r\n"), aff.Duration+1)
+					send_to_char(ch, libc.CString("You have been cursed! (%2d Mud Hours)\r\n"), int(aff.Duration)+1)
 				}
-				if C.strcasecmp(skill_name(int(aff.Type)), libc.CString("healing glow")) == 0 && int(aff.Type) != lasttype {
+				if libc.StrCaseCmp(skill_name(int(aff.Type)), libc.CString("healing glow")) == 0 && int(aff.Type) != lasttype {
 					lasttype = int(aff.Type)
-					send_to_char(ch, libc.CString("You have a healing glow enveloping your body! (%2d Mud Hours)\r\n"), aff.Duration+1)
+					send_to_char(ch, libc.CString("You have a healing glow enveloping your body! (%2d Mud Hours)\r\n"), int(aff.Duration)+1)
 				}
-				if C.strcasecmp(skill_name(int(aff.Type)), libc.CString("genius")) == 0 && int(aff.Type) != lasttype {
+				if libc.StrCaseCmp(skill_name(int(aff.Type)), libc.CString("genius")) == 0 && int(aff.Type) != lasttype {
 					lasttype = int(aff.Type)
-					send_to_char(ch, libc.CString("You are smarter right now! (%2d Mud Hours)\r\n"), aff.Duration+1)
+					send_to_char(ch, libc.CString("You are smarter right now! (%2d Mud Hours)\r\n"), int(aff.Duration)+1)
 				}
-				if C.strcasecmp(skill_name(int(aff.Type)), libc.CString("enlighten")) == 0 && int(aff.Type) != lasttype {
+				if libc.StrCaseCmp(skill_name(int(aff.Type)), libc.CString("enlighten")) == 0 && int(aff.Type) != lasttype {
 					lasttype = int(aff.Type)
-					send_to_char(ch, libc.CString("You are wiser right now! (%2d Mud Hours)\r\n"), aff.Duration+1)
+					send_to_char(ch, libc.CString("You are wiser right now! (%2d Mud Hours)\r\n"), int(aff.Duration)+1)
 				}
-				if C.strcasecmp(skill_name(int(aff.Type)), libc.CString("yoikominminken")) == 0 && int(aff.Type) != lasttype {
+				if libc.StrCaseCmp(skill_name(int(aff.Type)), libc.CString("yoikominminken")) == 0 && int(aff.Type) != lasttype {
 					lasttype = int(aff.Type)
-					send_to_char(ch, libc.CString("You have been lulled to sleep! (%2d Mud Hours)\r\n"), aff.Duration+1)
+					send_to_char(ch, libc.CString("You have been lulled to sleep! (%2d Mud Hours)\r\n"), int(aff.Duration)+1)
 				}
-				if C.strcasecmp(skill_name(int(aff.Type)), libc.CString("solar flare")) == 0 && int(aff.Type) != lasttype {
+				if libc.StrCaseCmp(skill_name(int(aff.Type)), libc.CString("solar flare")) == 0 && int(aff.Type) != lasttype {
 					lasttype = int(aff.Type)
-					send_to_char(ch, libc.CString("You have been blinded! (%2d Mud Hours)\r\n"), aff.Duration+1)
+					send_to_char(ch, libc.CString("You have been blinded! (%2d Mud Hours)\r\n"), int(aff.Duration)+1)
 				}
-				if C.strcasecmp(skill_name(int(aff.Type)), libc.CString("spirit control")) == 0 && int(aff.Type) != lasttype {
+				if libc.StrCaseCmp(skill_name(int(aff.Type)), libc.CString("spirit control")) == 0 && int(aff.Type) != lasttype {
 					lasttype = int(aff.Type)
-					send_to_char(ch, libc.CString("You have full control of your spirit! (%2d Mud Hours)\r\n"), aff.Duration+1)
+					send_to_char(ch, libc.CString("You have full control of your spirit! (%2d Mud Hours)\r\n"), int(aff.Duration)+1)
 				}
-				if C.strcasecmp(skill_name(int(aff.Type)), libc.CString("!UNUSED!")) == 0 && int(aff.Type) != lasttype {
+				if libc.StrCaseCmp(skill_name(int(aff.Type)), libc.CString("!UNUSED!")) == 0 && int(aff.Type) != lasttype {
 					lasttype = int(aff.Type)
-					send_to_char(ch, libc.CString("You feel poison burning through your blood! (%2d Mud Hours)\r\n"), aff.Duration+1)
+					send_to_char(ch, libc.CString("You feel poison burning through your blood! (%2d Mud Hours)\r\n"), int(aff.Duration)+1)
 				}
-				if C.strcasecmp(skill_name(int(aff.Type)), libc.CString("tough skin")) == 0 && int(aff.Type) != lasttype {
+				if libc.StrCaseCmp(skill_name(int(aff.Type)), libc.CString("tough skin")) == 0 && int(aff.Type) != lasttype {
 					lasttype = int(aff.Type)
-					send_to_char(ch, libc.CString("You have toughened skin right now! (%2d Mud Hours)\r\n"), aff.Duration+1)
+					send_to_char(ch, libc.CString("You have toughened skin right now! (%2d Mud Hours)\r\n"), int(aff.Duration)+1)
 				}
-				if C.strcasecmp(skill_name(int(aff.Type)), libc.CString("poison")) == 0 && int(aff.Type) != lasttype {
+				if libc.StrCaseCmp(skill_name(int(aff.Type)), libc.CString("poison")) == 0 && int(aff.Type) != lasttype {
 					lasttype = int(aff.Type)
-					send_to_char(ch, libc.CString("You have been poisoned! (%2d Mud Hours)\r\n"), aff.Duration+1)
+					send_to_char(ch, libc.CString("You have been poisoned! (%2d Mud Hours)\r\n"), int(aff.Duration)+1)
 				}
-				if C.strcasecmp(skill_name(int(aff.Type)), libc.CString("warp pool")) == 0 && int(aff.Type) != lasttype {
+				if libc.StrCaseCmp(skill_name(int(aff.Type)), libc.CString("warp pool")) == 0 && int(aff.Type) != lasttype {
 					lasttype = int(aff.Type)
-					send_to_char(ch, libc.CString("Weakened State! (%2d Mud Hours)\r\n"), aff.Duration+1)
+					send_to_char(ch, libc.CString("Weakened State! (%2d Mud Hours)\r\n"), int(aff.Duration)+1)
 				}
-				if C.strcasecmp(skill_name(int(aff.Type)), libc.CString("dark metamorphosis")) == 0 && int(aff.Type) != lasttype {
+				if libc.StrCaseCmp(skill_name(int(aff.Type)), libc.CString("dark metamorphosis")) == 0 && int(aff.Type) != lasttype {
 					lasttype = int(aff.Type)
-					send_to_char(ch, libc.CString("Your Dark Metamorphosis is still in effect. (%2d Mud Hours)\r\n"), aff.Duration+1)
+					send_to_char(ch, libc.CString("Your Dark Metamorphosis is still in effect. (%2d Mud Hours)\r\n"), int(aff.Duration)+1)
 				}
-				if C.strcasecmp(skill_name(int(aff.Type)), libc.CString("hayasa")) == 0 && int(aff.Type) != lasttype {
+				if libc.StrCaseCmp(skill_name(int(aff.Type)), libc.CString("hayasa")) == 0 && int(aff.Type) != lasttype {
 					lasttype = int(aff.Type)
-					send_to_char(ch, libc.CString("Your body has been infused to move faster! (%2d Mud Hours)\r\n"), aff.Duration+1)
+					send_to_char(ch, libc.CString("Your body has been infused to move faster! (%2d Mud Hours)\r\n"), int(aff.Duration)+1)
 				}
 			}
 		}
@@ -7300,7 +7301,7 @@ func do_status(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		send_to_char(ch, libc.CString("@D<@b--------------------------------------------------------------@D>@n\r\n"))
 		send_to_char(ch, libc.CString("To view your bonus/negative traits enter: status traits\r\n"))
-	} else if C.strcasecmp(&arg[0], libc.CString("traits")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("traits")) == 0 {
 		bonus_status(ch)
 	} else {
 		send_to_char(ch, libc.CString("The only argument status takes is 'traits'. If you just want your status do not use an argument.\r\n"))
@@ -7345,7 +7346,7 @@ func do_inventory(ch *char_data, argument *byte, cmd int, subcmd int) {
 	send_to_char(ch, libc.CString("@w              @YInventory\r\n@D-------------------------------------@w\r\n"))
 	if !IS_NPC(ch) {
 		if PLR_FLAGGED(ch, PLR_STOLEN) {
-			ch.Act[int(PLR_STOLEN/32)] &= bitvector_t(^(1 << (int(PLR_STOLEN % 32))))
+			ch.Act[int(PLR_STOLEN/32)] &= bitvector_t(int32(^(1 << (int(PLR_STOLEN % 32)))))
 			send_to_char(ch, libc.CString("@r   --------------------------------------------------@n\n"))
 			send_to_char(ch, libc.CString("@R    You notice that you have been robbed sometime recently!\n"))
 			send_to_char(ch, libc.CString("@r   --------------------------------------------------@n\n"))
@@ -7404,9 +7405,9 @@ func do_equipment(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_char(ch, libc.CString("Something.\r\n"))
 			}
 		} else {
-			if BODY_FLAGGED(ch, bitvector_t(i)) && i != WEAR_WIELD2 {
+			if BODY_FLAGGED(ch, bitvector_t(int32(i))) && i != WEAR_WIELD2 {
 				send_to_char(ch, libc.CString("%s@wNothing.@n\r\n"), wear_where[i])
-			} else if BODY_FLAGGED(ch, bitvector_t(i)) && (i == WEAR_WIELD2 && !PLR_FLAGGED(ch, PLR_THANDW)) {
+			} else if BODY_FLAGGED(ch, bitvector_t(int32(i))) && (i == WEAR_WIELD2 && !PLR_FLAGGED(ch, PLR_THANDW)) {
 				send_to_char(ch, libc.CString("%s@wNothing.@n\r\n"), wear_where[i])
 			}
 		}
@@ -7462,7 +7463,7 @@ func do_weather(ch *char_data, argument *byte, cmd int, subcmd int) {
 }
 func space_to_minus(str *byte) {
 	for (func() *byte {
-		str = C.strchr(str, ' ')
+		str = libc.StrChr(str, ' ')
 		return str
 	}()) != nil {
 		*str = '-'
@@ -7478,20 +7479,20 @@ func search_help(argument *byte, level int) int {
 	)
 	bot = 0
 	top = top_of_helpt
-	minlen = int(C.strlen(argument))
+	minlen = libc.StrLen(argument)
 	for bot <= top {
 		mid = (bot + top) / 2
 		if (func() int {
-			chk = C.strncasecmp(argument, (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid)))).Keywords, uint64(minlen))
+			chk = libc.StrNCaseCmp(argument, (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid)))).Keywords, minlen)
 			return chk
 		}()) == 0 {
-			for mid > 0 && C.strncasecmp(argument, (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid-1)))).Keywords, uint64(minlen)) == 0 {
+			for mid > 0 && libc.StrNCaseCmp(argument, (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid-1)))).Keywords, minlen) == 0 {
 				mid--
 			}
 			for level < (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid)))).Min_level && mid < (bot+top)/2 {
 				mid++
 			}
-			if C.strncasecmp(argument, (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid)))).Keywords, uint64(minlen)) != 0 {
+			if libc.StrNCaseCmp(argument, (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid)))).Keywords, minlen) != 0 {
 				break
 			}
 			return mid
@@ -7559,10 +7560,10 @@ func do_help(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	stdio.Sprintf(&buf[0], "@b~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~@n\n")
-	stdio.Sprintf(&buf[C.strlen(&buf[0])], "%s", (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid)))).Entry)
-	stdio.Sprintf(&buf[C.strlen(&buf[0])], "@b~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~@n\n")
+	stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "%s", (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid)))).Entry)
+	stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "@b~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~@n\n")
 	if ch.Admlevel > 0 {
-		stdio.Sprintf(&buf[C.strlen(&buf[0])], "@WHelp File Level@w: @D(@R%d@D)@n\n", (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid)))).Min_level)
+		stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "@WHelp File Level@w: @D(@R%d@D)@n\n", (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid)))).Min_level)
 	}
 	page_string(ch.Desc, &buf[0], 0)
 }
@@ -7588,7 +7589,7 @@ func do_who(ch *char_data, argument *byte, cmd int, subcmd int) {
 		line_color  *byte = libc.CString("@n")
 	)
 	skip_spaces(&argument)
-	C.strcpy(&buf[0], argument)
+	libc.StrCpy(&buf[0], argument)
 	name_search[0] = '\x00'
 	var rank [3]struct {
 		Disp      *byte
@@ -7602,8 +7603,8 @@ func do_who(ch *char_data, argument *byte, cmd int, subcmd int) {
 		Count     int
 	}{{Disp: libc.CString("\r\n               @c------------  @D[    @gI@Gm@Wm@Do@Gr@Dt@Wa@Gl@gs   @D]  @c------------@n\r\n"), Min_level: ADMLVL_IMMORT, Max_level: ADMLVL_IMPL, Count: 0}, {Disp: libc.CString("\r\n@D[@wx@D]@yxxxxxxxxxx@W  [    @GImmortals   @W]  @yxxxxxxxxxx@D[@wx@D]@n\r\n"), Min_level: int(ADMLVL_IMMORT + 8), Max_level: int(ADMLVL_GRGOD + 8), Count: 0}, {Disp: libc.CString("\r\n               @c------------  @D[     @DM@ro@Rr@wt@Ra@rl@Ds    ]  @c------------@n\r\n"), Min_level: 0, Max_level: int(ADMLVL_IMMORT - 1), Count: 0}}
 	var tmstr *byte
-	tmstr = C.asctime(C.localtime(&PCOUNTDATE))
-	*((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(tmstr), C.strlen(tmstr)))), -1))) = '\x00'
+	tmstr = libc.AscTime(libc.LocalTime(&PCOUNTDATE))
+	*((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(tmstr), libc.StrLen(tmstr)))), -1))) = '\x00'
 	var num_ranks int = int(unsafe.Sizeof([3]struct {
 		Disp      *byte
 		Min_level int
@@ -7634,7 +7635,7 @@ func do_who(ch *char_data, argument *byte, cmd int, subcmd int) {
 			line_color = libc.CString("@w")
 		}
 		if CAN_SEE(ch, tch) && IS_PLAYING(d) {
-			if name_search[0] != 0 && C.strcasecmp(GET_NAME(tch), &name_search[0]) != 0 && C.strstr(GET_TITLE(tch), &name_search[0]) == nil {
+			if name_search[0] != 0 && libc.StrCaseCmp(GET_NAME(tch), &name_search[0]) != 0 && libc.StrStr(GET_TITLE(tch), &name_search[0]) == nil {
 				continue
 			}
 			if !CAN_SEE(ch, tch) || GET_LEVEL(tch) < low || GET_LEVEL(tch) > high {
@@ -7656,7 +7657,7 @@ func do_who(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if who_room != 0 && tch.In_room != ch.In_room {
 				continue
 			}
-			if showclass != 0 && (showclass&int(1<<tch.Chclass)) == 0 {
+			if showclass != 0 && (showclass&(1<<int(tch.Chclass))) == 0 {
 				continue
 			}
 			if showgroup != 0 && (tch.Master == nil || !AFF_FLAGGED(tch, AFF_GROUP)) {
@@ -7696,7 +7697,7 @@ func do_who(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if !IS_PLAYING(d) {
 				continue
 			}
-			if name_search[0] != 0 && C.strcasecmp(GET_NAME(tch), &name_search[0]) != 0 && C.strstr(GET_TITLE(tch), &name_search[0]) == nil {
+			if name_search[0] != 0 && libc.StrCaseCmp(GET_NAME(tch), &name_search[0]) != 0 && libc.StrStr(GET_TITLE(tch), &name_search[0]) == nil {
 				continue
 			}
 			if !CAN_SEE(ch, tch) || GET_LEVEL(tch) < low || GET_LEVEL(tch) > high {
@@ -7717,7 +7718,7 @@ func do_who(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if PRF_FLAGGED(tch, PRF_HIDE) && tch != ch && ch.Admlevel < ADMLVL_IMMORT {
 				continue
 			}
-			if showclass != 0 && (showclass&int(1<<tch.Chclass)) == 0 {
+			if showclass != 0 && (showclass&(1<<int(tch.Chclass))) == 0 {
 				continue
 			}
 			if showgroup != 0 && (tch.Master == nil || !AFF_FLAGGED(tch, AFF_GROUP)) {
@@ -7776,7 +7777,7 @@ func do_who(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if d.Snooping != nil && d.Snooping.Character != ch && ch.Admlevel >= 3 {
 					send_to_char(ch, libc.CString(" (Snoop: %s)"), GET_NAME(d.Snooping.Character))
 				}
-				if tch.Player_specials.Invis_level != 0 {
+				if int(tch.Player_specials.Invis_level) != 0 {
 					send_to_char(ch, libc.CString(" (i%d)"), tch.Player_specials.Invis_level)
 				} else if AFF_FLAGGED(tch, AFF_INVISIBLE) {
 					send_to_char(ch, libc.CString(" (invis)"))
@@ -7913,7 +7914,7 @@ func do_users(ch *char_data, argument *byte, cmd int, subcmd int) {
 		name_search[0] = '\x00'
 		return *p
 	}()
-	C.strcpy(&buf[0], argument)
+	libc.StrCpy(&buf[0], argument)
 	for buf[0] != 0 {
 		var buf1 [2048]byte
 		half_chop(&buf[0], &arg[0], &buf1[0])
@@ -7925,17 +7926,17 @@ func do_users(ch *char_data, argument *byte, cmd int, subcmd int) {
 			case 'k':
 				outlaws = 1
 				playing = 1
-				C.strcpy(&buf[0], &buf1[0])
+				libc.StrCpy(&buf[0], &buf1[0])
 			case 'p':
 				playing = 1
-				C.strcpy(&buf[0], &buf1[0])
+				libc.StrCpy(&buf[0], &buf1[0])
 			case 'd':
 				deadweight = 1
-				C.strcpy(&buf[0], &buf1[0])
+				libc.StrCpy(&buf[0], &buf1[0])
 			case 'l':
 				playing = 1
 				half_chop(&buf1[0], &arg[0], &buf[0])
-				__isoc99_sscanf(&arg[0], libc.CString("%d-%d"), &low, &high)
+				stdio.Sscanf(&arg[0], "%d-%d", &low, &high)
 			case 'n':
 				playing = 1
 				half_chop(&buf1[0], &name_search[0], &buf[0])
@@ -7969,10 +7970,10 @@ func do_users(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}()) == nil {
 				continue
 			}
-			if host_search[0] != 0 && C.strstr(&d.Host[0], &host_search[0]) == nil {
+			if host_search[0] != 0 && libc.StrStr(&d.Host[0], &host_search[0]) == nil {
 				continue
 			}
-			if name_search[0] != 0 && C.strcasecmp(GET_NAME(tch), &name_search[0]) != 0 {
+			if name_search[0] != 0 && libc.StrCaseCmp(GET_NAME(tch), &name_search[0]) != 0 {
 				continue
 			}
 			if !CAN_SEE(ch, tch) || GET_LEVEL(tch) < low || GET_LEVEL(tch) > high {
@@ -7984,28 +7985,28 @@ func do_users(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if outlaws != 0 && !PLR_FLAGGED(tch, PLR_KILLER) && !PLR_FLAGGED(tch, PLR_THIEF) {
 				continue
 			}
-			if showclass != 0 && (showclass&int(1<<tch.Chclass)) == 0 {
+			if showclass != 0 && (showclass&(1<<int(tch.Chclass))) == 0 {
 				continue
 			}
-			if showrace != 0 && (showrace&int(1<<tch.Race)) == 0 {
+			if showrace != 0 && (showrace&(1<<int(tch.Race))) == 0 {
 				continue
 			}
 			if int(tch.Player_specials.Invis_level) > ch.Admlevel {
 				continue
 			}
 		}
-		timeptr = C.asctime(C.localtime(&d.Login_time))
+		timeptr = libc.AscTime(libc.LocalTime(&d.Login_time))
 		timeptr = (*byte)(unsafe.Add(unsafe.Pointer(timeptr), 11))
 		*((*byte)(unsafe.Add(unsafe.Pointer(timeptr), 8))) = '\x00'
 		if d.Connected == CON_PLAYING && d.Original != nil {
-			C.strcpy(&state[0], libc.CString("Switched"))
+			libc.StrCpy(&state[0], libc.CString("Switched"))
 		} else {
-			C.strcpy(&state[0], connected_types[d.Connected])
+			libc.StrCpy(&state[0], connected_types[d.Connected])
 		}
 		if d.Character != nil && d.Connected == CON_PLAYING && d.Character.Admlevel <= ch.Admlevel {
 			stdio.Sprintf(&idletime[0], "%3d", d.Character.Timer*SECS_PER_MUD_HOUR/SECS_PER_REAL_MIN)
 		} else {
-			C.strcpy(&idletime[0], libc.CString(""))
+			libc.StrCpy(&idletime[0], libc.CString(""))
 		}
 		stdio.Sprintf(&line[0], "%3d %-20s %-20s %-14s %-3s %-8s %1s ", d.Desc_num, func() *byte {
 			if d.Original != nil && d.Original.Name != nil {
@@ -8020,24 +8021,16 @@ func do_users(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return d.User
 			}
 			return libc.CString("UNKNOWN")
-		}(), &state[0], &idletime[0], timeptr, func() string {
-			if d.Comp.State != 0 {
-				if d.Comp.State == 1 {
-					return "?"
-				}
-				return "Y"
-			}
-			return "N"
-		}())
+		}(), &state[0], &idletime[0], timeptr, "N")
 		if d.Host != nil && d.Host[0] != 0 {
-			stdio.Sprintf(&line[C.strlen(&line[0])], "\n%3d [%s Site: %s]\r\n", d.Desc_num, func() *byte {
+			stdio.Sprintf(&line[libc.StrLen(&line[0])], "\n%3d [%s Site: %s]\r\n", d.Desc_num, func() *byte {
 				if d.User != nil {
 					return d.User
 				}
 				return libc.CString("UNKNOWN")
 			}(), &d.Host[0])
 		} else {
-			stdio.Sprintf(&line[C.strlen(&line[0])], "\n%3d [%s Site: Hostname unknown]\r\n", d.Desc_num, func() *byte {
+			stdio.Sprintf(&line[libc.StrLen(&line[0])], "\n%3d [%s Site: Hostname unknown]\r\n", d.Desc_num, func() *byte {
 				if d.User != nil {
 					return d.User
 				}
@@ -8046,7 +8039,7 @@ func do_users(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		if d.Connected != CON_PLAYING {
 			stdio.Sprintf(&line2[0], "@g%s@n", &line[0])
-			C.strcpy(&line[0], &line2[0])
+			libc.StrCpy(&line[0], &line2[0])
 		}
 		if d.Connected != CON_PLAYING || d.Connected == CON_PLAYING && CAN_SEE(ch, d.Character) {
 			send_to_char(ch, libc.CString("%s"), &line[0])
@@ -8066,7 +8059,7 @@ func do_gen_ps(ch *char_data, argument *byte, cmd int, subcmd int) {
 		page_string(ch.Desc, credits, 0)
 	case SCMD_NEWS:
 		page_string(ch.Desc, news, 0)
-		ch.Lastpl = C.time(nil)
+		ch.Lastpl = libc.GetTime(nil)
 	case SCMD_INFO:
 		page_string(ch.Desc, info, 0)
 	case SCMD_WIZLIST:
@@ -8411,10 +8404,10 @@ func do_diagnose(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("%s"), config_info.Play.NOPERSON)
 		} else {
 			send_to_char(ch, libc.CString("%s"), func() string {
-				if vict.Sex == SEX_MALE {
+				if int(vict.Sex) == SEX_MALE {
 					return "He "
 				}
-				if vict.Sex == SEX_FEMALE {
+				if int(vict.Sex) == SEX_FEMALE {
 					return "She "
 				}
 				return "It "
@@ -8424,10 +8417,10 @@ func do_diagnose(ch *char_data, argument *byte, cmd int, subcmd int) {
 	} else {
 		if ch.Fighting != nil {
 			send_to_char(ch, libc.CString("%s"), func() string {
-				if ch.Fighting.Sex == SEX_MALE {
+				if int(ch.Fighting.Sex) == SEX_MALE {
 					return "He "
 				}
-				if ch.Fighting.Sex == SEX_FEMALE {
+				if int(ch.Fighting.Sex) == SEX_FEMALE {
 					return "She "
 				}
 				return "It "
@@ -8455,7 +8448,7 @@ func cchoice_to_str(col *byte) *byte {
 		return &buf[0]
 	}
 	for *col != 0 {
-		if C.strchr(libc.CString(ANSISTART), int(*col)) != nil {
+		if libc.StrChr(libc.CString(ANSISTART), *col) != nil {
 			col = (*byte)(unsafe.Add(unsafe.Pointer(col), 1))
 		} else {
 			switch *col {
@@ -8629,9 +8622,9 @@ func str_to_cchoice(str *byte, choice *byte) int {
 		}{{Name: libc.CString("default"), Val: -1, Bold: 0}, {Name: libc.CString("normal"), Val: -1, Bold: 0}, {Name: libc.CString("black"), Val: 0, Bold: 0}, {Name: libc.CString("red"), Val: 1, Bold: 0}, {Name: libc.CString("green"), Val: 2, Bold: 0}, {Name: libc.CString("yellow"), Val: 3, Bold: 0}, {Name: libc.CString("blue"), Val: 4, Bold: 0}, {Name: libc.CString("magenta"), Val: 5, Bold: 0}, {Name: libc.CString("cyan"), Val: 6, Bold: 0}, {Name: libc.CString("white"), Val: 7, Bold: 0}, {Name: libc.CString("grey"), Val: 0, Bold: 1}, {Name: libc.CString("gray"), Val: 0, Bold: 1}, {}}
 	)
 	skip_spaces(&str)
-	if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*str))))) & int(uint16(int16(_ISdigit)))) != 0 {
-		C.strcpy(choice, str)
-		for i = 0; *(*byte)(unsafe.Add(unsafe.Pointer(choice), i)) != 0 && ((int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*(*byte)(unsafe.Add(unsafe.Pointer(choice), i)))))))&int(uint16(int16(_ISdigit)))) != 0 || *(*byte)(unsafe.Add(unsafe.Pointer(choice), i)) == ';'); i++ {
+	if unicode.IsDigit(rune(*str)) {
+		libc.StrCpy(choice, str)
+		for i = 0; *(*byte)(unsafe.Add(unsafe.Pointer(choice), i)) != 0 && (unicode.IsDigit(rune(*(*byte)(unsafe.Add(unsafe.Pointer(choice), i)))) || *(*byte)(unsafe.Add(unsafe.Pointer(choice), i)) == ';'); i++ {
 		}
 		error = int(libc.BoolToInt(*(*byte)(unsafe.Add(unsafe.Pointer(choice), i)) != 0))
 		*(*byte)(unsafe.Add(unsafe.Pointer(choice), i)) = 0
@@ -8639,13 +8632,13 @@ func str_to_cchoice(str *byte, choice *byte) int {
 	}
 	for *str != 0 {
 		str = any_one_arg(str, &buf[0])
-		if C.strcmp(&buf[0], libc.CString("on")) == 0 {
+		if libc.StrCmp(&buf[0], libc.CString("on")) == 0 {
 			bg = 1
 			continue
 		}
 		if fg == 0 {
 			for i = 0; attribs[i].Name != nil; i++ {
-				if C.strncmp(attribs[i].Name, &buf[0], uint64(C.strlen(&buf[0]))) == 0 {
+				if libc.StrNCmp(attribs[i].Name, &buf[0], libc.StrLen(&buf[0])) == 0 {
 					break
 				}
 			}
@@ -8655,7 +8648,7 @@ func str_to_cchoice(str *byte, choice *byte) int {
 			}
 		}
 		for i = 0; colors[i].Name != nil; i++ {
-			if C.strncmp(colors[i].Name, &buf[0], uint64(C.strlen(&buf[0]))) == 0 {
+			if libc.StrNCmp(colors[i].Name, &buf[0], libc.StrLen(&buf[0])) == 0 {
 				break
 			}
 		}
@@ -8768,9 +8761,9 @@ func do_color(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	switch tp {
 	case C_OFF:
-		ch.Player_specials.Pref[int(PRF_COLOR/32)] &= bitvector_t(^(1 << (int(PRF_COLOR % 32))))
+		ch.Player_specials.Pref[int(PRF_COLOR/32)] &= bitvector_t(int32(^(1 << (int(PRF_COLOR % 32)))))
 	case C_ON:
-		ch.Player_specials.Pref[int(PRF_COLOR/32)] |= bitvector_t(1 << (int(PRF_COLOR % 32)))
+		ch.Player_specials.Pref[int(PRF_COLOR/32)] |= bitvector_t(int32(1 << (int(PRF_COLOR % 32))))
 	}
 	send_to_char(ch, libc.CString("Your color is now @o%s@n.\r\n"), ctypes[tp])
 }
@@ -8780,7 +8773,7 @@ func do_toggle(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if ch.Player_specials.Wimp_level == 0 {
-		C.strcpy(&buf2[0], libc.CString("OFF"))
+		libc.StrCpy(&buf2[0], libc.CString("OFF"))
 	} else {
 		stdio.Sprintf(&buf2[0], "%-3.3d", ch.Player_specials.Wimp_level)
 	}
@@ -8947,7 +8940,7 @@ func do_toggle(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 }
 func sort_commands_helper(a unsafe.Pointer, b unsafe.Pointer) int {
-	return C.strcmp((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(*(*int)(a))))).Sort_as, (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(*(*int)(b))))).Sort_as)
+	return libc.StrCmp((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(*(*int)(a))))).Sort_as, (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(*(*int)(b))))).Sort_as)
 }
 func sort_commands() {
 	var (
@@ -9021,13 +9014,13 @@ func do_commands(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}()
 	}(); *(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(*(*int)(unsafe.Add(unsafe.Pointer(cmd_sort_info), unsafe.Sizeof(int(0))*uintptr(cmd_num))))))).Command != '\n'; cmd_num++ {
 		i = *(*int)(unsafe.Add(unsafe.Pointer(cmd_sort_info), unsafe.Sizeof(int(0))*uintptr(cmd_num)))
-		if (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Minimum_level < 0 || GET_LEVEL(vict) < int((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Minimum_level) {
+		if int((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Minimum_level) < 0 || GET_LEVEL(vict) < int((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Minimum_level) {
 			continue
 		}
-		if (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Minimum_admlevel < 0 || vict.Admlevel < int((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Minimum_admlevel) {
+		if int((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Minimum_admlevel) < 0 || vict.Admlevel < int((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Minimum_admlevel) {
 			continue
 		}
-		if int(libc.BoolToInt((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Minimum_admlevel >= ADMLVL_IMMORT)) != wizhelp {
+		if int(libc.BoolToInt(int((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Minimum_admlevel) >= ADMLVL_IMMORT)) != wizhelp {
 			continue
 		}
 		if wizhelp == 0 && socials != int(libc.BoolToInt(libc.FuncAddr((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Command_pointer) == libc.FuncAddr(do_action) || libc.FuncAddr((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Command_pointer) == libc.FuncAddr(do_insult))) {
@@ -9110,24 +9103,24 @@ func add_history(ch *char_data, str *byte, type_ int) {
 		time_str [64936]byte
 		buf      [64936]byte
 		tmp      *txt_block
-		ct       int64
+		ct       libc.Time
 	)
 	if IS_NPC(ch) {
 		return
 	}
 	tmp = ch.Player_specials.Comm_hist[type_]
-	ct = C.time(nil)
-	strftime(&time_str[0], uint64(64936), libc.CString("%H:%M "), C.localtime(&ct))
+	ct = libc.GetTime(nil)
+	strftime(&time_str[0], uint64(64936), libc.CString("%H:%M "), libc.LocalTime(&ct))
 	stdio.Sprintf(&buf[0], "%s%s", &time_str[0], str)
 	if tmp == nil {
 		ch.Player_specials.Comm_hist[type_] = new(txt_block)
-		(ch.Player_specials.Comm_hist[type_]).Text = C.strdup(&buf[0])
+		(ch.Player_specials.Comm_hist[type_]).Text = libc.StrDup(&buf[0])
 	} else {
 		for tmp.Next != nil {
 			tmp = tmp.Next
 		}
 		tmp.Next = new(txt_block)
-		tmp.Next.Text = C.strdup(&buf[0])
+		tmp.Next.Text = libc.StrDup(&buf[0])
 		for tmp = ch.Player_specials.Comm_hist[type_]; tmp != nil; func() int {
 			tmp = tmp.Next
 			return func() int {
@@ -9157,7 +9150,7 @@ func do_scan(ch *char_data, argument *byte, cmd int, subcmd int) {
 		newroom  int
 		dirnames [12]*byte = [12]*byte{libc.CString("North"), libc.CString("East"), libc.CString("South"), libc.CString("West"), libc.CString("Up"), libc.CString("Down"), libc.CString("Northwest"), libc.CString("Northeast"), libc.CString("Southeast"), libc.CString("Southwest"), libc.CString("Inside"), libc.CString("Outside")}
 	)
-	if ch.Position < POS_SLEEPING {
+	if int(ch.Position) < POS_SLEEPING {
 		send_to_char(ch, libc.CString("You can't see anything but stars!\n\r"))
 		return
 	}
@@ -9335,7 +9328,7 @@ func do_toplist(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if IS_NPC(ch) {
 		return
 	}
-	var file *C.FILE
+	var file *stdio.File
 	var fname [40]byte
 	var filler [50]byte
 	var line [256]byte
@@ -9348,20 +9341,20 @@ func do_toplist(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if get_filename(&fname[0], uint64(40), INTRO_FILE, libc.CString("toplist")) == 0 {
 		send_to_char(ch, libc.CString("The toplist file does not exist."))
 		return
-	} else if (func() *C.FILE {
-		file = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "r")))
+	} else if (func() *stdio.File {
+		file = stdio.FOpen(libc.GoString(&fname[0]), "r")
 		return file
 	}()) == nil {
 		send_to_char(ch, libc.CString("The toplist file does not exist."))
 		return
 	}
-	for C.feof(file) == 0 || count < 25 {
+	for int(file.IsEOF()) == 0 || count < 25 {
 		get_line(file, &line[0])
 		switch count {
 		default:
-			__isoc99_sscanf(&line[0], libc.CString("%s %lld\n"), &filler[0], &stats)
+			stdio.Sscanf(&line[0], "%s %lld\n", &filler[0], &stats)
 		}
-		title[count] = C.strdup(&filler[0])
+		title[count] = libc.StrDup(&filler[0])
 		points[count] = stats
 		count++
 		filler[0] = '\x00'
@@ -9446,7 +9439,7 @@ func do_toplist(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		x++
 	}
-	C.fclose(file)
+	file.Close()
 }
 func do_whois(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var (
@@ -9464,16 +9457,16 @@ func do_whois(ch *char_data, argument *byte, cmd int, subcmd int) {
 		victim.Player_specials = new(player_special_data)
 		if load_char(argument, victim) >= 0 {
 			if victim.Clan != nil {
-				if C.strstr(victim.Clan, libc.CString("None")) == nil {
+				if libc.StrStr(victim.Clan, libc.CString("None")) == nil {
 					stdio.Sprintf(&buf[0], "%s", victim.Clan)
 					clan = TRUE
 				}
-				if C.strstr(victim.Clan, libc.CString("Applying")) != nil {
+				if libc.StrStr(victim.Clan, libc.CString("Applying")) != nil {
 					stdio.Sprintf(&buf[0], "%s", victim.Clan)
 					clan = TRUE
 				}
 			}
-			if victim.Clan == nil || C.strstr(victim.Clan, libc.CString("None")) != nil {
+			if victim.Clan == nil || libc.StrStr(victim.Clan, libc.CString("None")) != nil {
 				clan = FALSE
 			}
 			send_to_char(ch, libc.CString("@D~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~@n\r\n"))
@@ -9492,7 +9485,7 @@ func do_whois(ch *char_data, argument *byte, cmd int, subcmd int) {
 						return t
 					}()
 				}()[0])
-				if clan == TRUE && C.strstr(victim.Clan, libc.CString("Applying")) == nil {
+				if clan == TRUE && libc.StrStr(victim.Clan, libc.CString("Applying")) == nil {
 					if checkCLAN(victim) == TRUE {
 						clanRANKD(victim.Clan, ch, victim)
 					}
@@ -9514,10 +9507,10 @@ func search_in_direction(ch *char_data, dir int) {
 	send_to_char(ch, libc.CString("You search for secret doors.\r\n"))
 	act(libc.CString("$n searches the area intently."), TRUE, ch, nil, nil, TO_ROOM)
 	skill_lvl = GET_SKILL(ch, SKILL_SEARCH)
-	if ch.Race == RACE_TRUFFLE || ch.Race == RACE_HUMAN {
+	if int(ch.Race) == RACE_TRUFFLE || int(ch.Race) == RACE_HUMAN {
 		skill_lvl = skill_lvl + 2
 	}
-	if ch.Race == RACE_HALFBREED {
+	if int(ch.Race) == RACE_HALFBREED {
 		skill_lvl = skill_lvl + 1
 	}
 	if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]) != nil {

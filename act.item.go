@@ -1,10 +1,10 @@
 package main
 
-import "C"
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
 	"math"
+	"unicode"
 	"unsafe"
 )
 
@@ -285,7 +285,7 @@ func do_garden(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if arg[0] != 0 {
-		if C.strcasecmp(&arg[0], libc.CString("collect")) == 0 {
+		if libc.StrCaseCmp(&arg[0], libc.CString("collect")) == 0 {
 			var (
 				obj2   *obj_data
 				shovel *obj_data = nil
@@ -364,7 +364,7 @@ func do_garden(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You are not even in a garden!\r\n"))
 		return
 	}
-	if C.strcasecmp(&arg2[0], libc.CString("plant")) == 0 {
+	if libc.StrCaseCmp(&arg2[0], libc.CString("plant")) == 0 {
 		if (func() *obj_data {
 			obj = get_obj_in_list_vis(ch, &arg[0], nil, ch.Carrying)
 			return obj
@@ -392,7 +392,7 @@ func do_garden(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("@WYou need at least @G%s@W stamina to garden.\r\n"), add_commas(cost))
 		return
 	} else {
-		if C.strcasecmp(&arg2[0], libc.CString("water")) == 0 {
+		if libc.StrCaseCmp(&arg2[0], libc.CString("water")) == 0 {
 			var (
 				obj2     *obj_data
 				water    *obj_data = nil
@@ -442,7 +442,7 @@ func do_garden(ch *char_data, argument *byte, cmd int, subcmd int) {
 				improve_skill(ch, SKILL_GARDENING, 0)
 				return
 			}
-		} else if C.strcasecmp(&arg2[0], libc.CString("harvest")) == 0 {
+		} else if libc.StrCaseCmp(&arg2[0], libc.CString("harvest")) == 0 {
 			var (
 				obj2     *obj_data
 				clippers *obj_data = nil
@@ -490,7 +490,7 @@ func do_garden(ch *char_data, argument *byte, cmd int, subcmd int) {
 				improve_skill(ch, SKILL_GARDENING, 0)
 				return
 			}
-		} else if C.strcasecmp(&arg2[0], libc.CString("dig")) == 0 {
+		} else if libc.StrCaseCmp(&arg2[0], libc.CString("dig")) == 0 {
 			var (
 				obj2   *obj_data
 				shovel *obj_data = nil
@@ -519,7 +519,7 @@ func do_garden(ch *char_data, argument *byte, cmd int, subcmd int) {
 				improve_skill(ch, SKILL_GARDENING, 0)
 				return
 			}
-		} else if C.strcasecmp(&arg2[0], libc.CString("plant")) == 0 {
+		} else if libc.StrCaseCmp(&arg2[0], libc.CString("plant")) == 0 {
 			var (
 				obj2   *obj_data
 				shovel *obj_data
@@ -593,7 +593,7 @@ func do_garden(ch *char_data, argument *byte, cmd int, subcmd int) {
 				WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 				improve_skill(ch, SKILL_GARDENING, 0)
 			}
-		} else if C.strcasecmp(&arg2[0], libc.CString("pick")) == 0 {
+		} else if libc.StrCaseCmp(&arg2[0], libc.CString("pick")) == 0 {
 			if !OBJ_FLAGGED(obj, ITEM_MATURE) {
 				send_to_char(ch, libc.CString("You can't pick that type of plant. Syntax: garden (plant) harvest\r\n"))
 				return
@@ -676,11 +676,11 @@ func do_pack(ch *char_data, argument *byte, cmd int, subcmd int) {
 				obj_to_room(packed, ch.In_room)
 			}
 			return
-		} else if GET_OBJ_VNUM(obj) >= 18800 && GET_OBJ_VNUM(obj) <= 0x4AFF && obj.Type_flag == ITEM_VEHICLE {
+		} else if GET_OBJ_VNUM(obj) >= 18800 && GET_OBJ_VNUM(obj) <= 0x4AFF && int(obj.Type_flag) == ITEM_VEHICLE {
 			if arg2[0] == 0 {
 				send_to_char(ch, libc.CString("This will sell off your house and delete everything inside. Are you sure? If you are then enter the command again with a yes at the end.\nSyntax: pack (house) yes\r\n"))
 				return
-			} else if C.strcasecmp(&arg2[0], libc.CString("yes")) != 0 {
+			} else if libc.StrCaseCmp(&arg2[0], libc.CString("yes")) != 0 {
 				send_to_char(ch, libc.CString("This will sell off your house and delete everything inside. Are you sure? If you are then enter the command again with a yes at the end.\nSyntax: pack (house) yes\r\n"))
 				return
 			} else if has_housekey(ch, obj) == 0 {
@@ -763,7 +763,7 @@ func check_insidebag(cont *obj_data, mult float64) int {
 	)
 	for inside = cont.Contains; inside != nil; inside = next_obj2 {
 		next_obj2 = inside.Next_content
-		if inside.Type_flag == ITEM_CONTAINER {
+		if int(inside.Type_flag) == ITEM_CONTAINER {
 			count++
 			count += check_insidebag(inside, mult)
 			containers++
@@ -988,18 +988,18 @@ func do_twohand(ch *char_data, argument *byte, cmd int, subcmd int) {
 	} else if (ch.Equipment[WEAR_WIELD2]) != nil && !PLR_FLAGGED(ch, PLR_THANDW) {
 		send_to_char(ch, libc.CString("You have something in your offhand already and can't two hand wield your main weapon.\r\n"))
 		return
-	} else if ((ch.Limb_condition[0]) <= 0 || (ch.Limb_condition[1]) <= 0) && !PLR_FLAGGED(ch, PLR_THANDW) {
+	} else if ((ch.Limb_condition[1]) <= 0 || (ch.Limb_condition[2]) <= 0) && !PLR_FLAGGED(ch, PLR_THANDW) {
 		send_to_char(ch, libc.CString("Kind of hard with only one arm...\r\n"))
 		return
 	} else if PLR_FLAGGED(ch, PLR_THANDW) {
 		send_to_char(ch, libc.CString("You stop wielding your weapon with both hands.\r\n"))
 		act(libc.CString("$n stops wielding $s weapon with both hands."), TRUE, ch, nil, nil, TO_ROOM)
-		ch.Act[int(PLR_THANDW/32)] &= bitvector_t(^(1 << (int(PLR_THANDW % 32))))
+		ch.Act[int(PLR_THANDW/32)] &= bitvector_t(int32(^(1 << (int(PLR_THANDW % 32)))))
 		return
 	} else {
 		send_to_char(ch, libc.CString("You grab your weapon with both hands.\r\n"))
 		act(libc.CString("$n starts wielding $s weapon with both hands."), TRUE, ch, nil, nil, TO_ROOM)
-		ch.Act[int(PLR_THANDW/32)] |= bitvector_t(1 << (int(PLR_THANDW % 32)))
+		ch.Act[int(PLR_THANDW/32)] |= bitvector_t(int32(1 << (int(PLR_THANDW % 32))))
 		return
 	}
 }
@@ -1660,24 +1660,24 @@ func do_bid(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	masterList = list
 	list = 0
-	if C.strcasecmp(&arg[0], libc.CString("list")) == 0 {
+	if libc.StrCaseCmp(&arg[0], libc.CString("list")) == 0 {
 		send_to_char(ch, libc.CString("@Y                                   Auction@n\r\n"))
 		send_to_char(ch, libc.CString("@c------------------------------------------------------------------------------@n\r\n"))
 		for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(auct_room)))).Contents; obj != nil; obj = next_obj {
 			next_obj = obj.Next_content
 			if obj != nil {
-				if obj.Aucter <= 0 {
+				if int(obj.Aucter) <= 0 {
 					continue
 				}
 				list++
-				if obj.AucTime+86400 > C.time(nil) && obj.CurBidder <= -1 {
+				if obj.AucTime+86400 > libc.GetTime(nil) && int(obj.CurBidder) <= -1 {
 					send_to_char(ch, libc.CString("@D[@R#@W%3d@D][@mOwner@W: @w%10s@D][@GItem Name@W: @w%-*s@D][@GCost@W: @Y%s@D]@n\r\n"), list, func() *byte {
 						if get_name_by_id(int(obj.Aucter)) != nil {
 							return CAP(get_name_by_id(int(obj.Aucter)))
 						}
 						return libc.CString("Nobody")
 					}(), count_color_chars(obj.Short_description)+30, obj.Short_description, add_commas(int64(obj.Bid)))
-				} else if obj.AucTime+86400 > C.time(nil) && obj.CurBidder > -1 {
+				} else if obj.AucTime+86400 > libc.GetTime(nil) && int(obj.CurBidder) > -1 {
 					send_to_char(ch, libc.CString("@D[@R#@W%3d@D][@mOwner@W: @w%10s@D][@GItem Name@W: @w%-*s@D][@RTop Bid@W: %s @Y%s@D]@n\r\n"), list, func() *byte {
 						if get_name_by_id(int(obj.Aucter)) != nil {
 							return CAP(get_name_by_id(int(obj.Aucter)))
@@ -1689,7 +1689,7 @@ func do_bid(ch *char_data, argument *byte, cmd int, subcmd int) {
 						}
 						return libc.CString("Nobody")
 					}(), add_commas(int64(obj.Bid)))
-				} else if obj.AucTime+86400 < C.time(nil) && obj.CurBidder > -1 {
+				} else if obj.AucTime+86400 < libc.GetTime(nil) && int(obj.CurBidder) > -1 {
 					send_to_char(ch, libc.CString("@D[@R#@W%3d@D][@mOwner@W: @w%10s@D][@GItem Name@W: @w%-*s@D][@RBid Winner@W: %s @Y%s@D]@n\r\n"), list, func() *byte {
 						if get_name_by_id(int(obj.Aucter)) != nil {
 							return CAP(get_name_by_id(int(obj.Aucter)))
@@ -1716,7 +1716,7 @@ func do_bid(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("No items are currently being auctioned.\r\n"))
 		}
 		send_to_char(ch, libc.CString("@c------------------------------------------------------------------------------@n\r\n"))
-	} else if C.strcasecmp(&arg[0], libc.CString("appraise")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("appraise")) == 0 {
 		if arg2[0] == 0 {
 			send_to_char(ch, libc.CString("Syntax: bid [ list | # ] (amt)\r\nOr...\r\nSyntax: bid appraise (list number)\r\n"))
 			send_to_char(ch, libc.CString("What item number did you want to appraise?\r\n"))
@@ -1729,7 +1729,7 @@ func do_bid(ch *char_data, argument *byte, cmd int, subcmd int) {
 		for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(auct_room)))).Contents; obj != nil; obj = next_obj {
 			next_obj = obj.Next_content
 			if obj != nil {
-				if obj.Aucter <= 0 {
+				if int(obj.Aucter) <= 0 {
 					continue
 				}
 				list++
@@ -1780,7 +1780,7 @@ func do_bid(ch *char_data, argument *byte, cmd int, subcmd int) {
 				sprintbitarray(obj2.Wear_flags[:], wear_bits[:], TW_ARRAY_MAX, &bits[0])
 				search_replace(&bits[0], libc.CString("TAKE"), libc.CString(""))
 				send_to_char(ch, libc.CString("@GWear Loc.   @W:@w%s\n"), &bits[0])
-				if obj2.Type_flag == ITEM_WEAPON {
+				if int(obj2.Type_flag) == ITEM_WEAPON {
 					if OBJ_FLAGGED(obj2, ITEM_WEAPLVL1) {
 						send_to_char(ch, libc.CString("@GWeapon Level@W: @D[@C1@D]\n@GDamage Bonus@W: @D[@w5%s@D]@n\r\n"), "%")
 					} else if OBJ_FLAGGED(obj2, ITEM_WEAPLVL2) {
@@ -1844,7 +1844,7 @@ func do_bid(ch *char_data, argument *byte, cmd int, subcmd int) {
 		for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(auct_room)))).Contents; obj != nil; obj = next_obj {
 			next_obj = obj.Next_content
 			if obj != nil {
-				if obj.Aucter <= 0 {
+				if int(obj.Aucter) <= 0 {
 					continue
 				}
 				list++
@@ -1856,22 +1856,22 @@ func do_bid(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if obj2 == nil {
 			send_to_char(ch, libc.CString("That item number is not found.\r\n"))
 			return
-		} else if obj2.CurBidder == ch.Id {
+		} else if int(obj2.CurBidder) == int(ch.Id) {
 			send_to_char(ch, libc.CString("You already have the highest bid.\r\n"))
 			return
-		} else if obj2.Aucter == ch.Id {
+		} else if int(obj2.Aucter) == int(ch.Id) {
 			send_to_char(ch, libc.CString("You auctioned the item, go to the auction house and cancel if you can.\r\n"))
 			return
-		} else if obj2.CurBidder > 0 && float64(libc.Atoi(libc.GoString(&arg2[0]))) <= (float64(obj2.Bid)+float64(obj2.Bid)*0.1) && obj2.CurBidder > -1 {
+		} else if int(obj2.CurBidder) > 0 && float64(libc.Atoi(libc.GoString(&arg2[0]))) <= (float64(obj2.Bid)+float64(obj2.Bid)*0.1) && int(obj2.CurBidder) > -1 {
 			send_to_char(ch, libc.CString("You have to bid at least 10 percent over the current bid.\r\n"))
 			return
-		} else if libc.Atoi(libc.GoString(&arg2[0])) < obj2.Bid && obj2.CurBidder <= -1 {
+		} else if libc.Atoi(libc.GoString(&arg2[0])) < obj2.Bid && int(obj2.CurBidder) <= -1 {
 			send_to_char(ch, libc.CString("You have to bid at least the starting bid.\r\n"))
 			return
 		} else if libc.Atoi(libc.GoString(&arg2[0])) > (((ch.Gold+ch.Bank_gold)/100)*50)+(ch.Gold+ch.Bank_gold) {
 			send_to_char(ch, libc.CString("You can not bid more than 150%s of your total money (on hand and in the bank).\r\n"), "%")
 			return
-		} else if obj2.AucTime+86400 <= C.time(nil) {
+		} else if obj2.AucTime+86400 <= libc.GetTime(nil) {
 			send_to_char(ch, libc.CString("Bidding on that object has been closed.\r\n"))
 			return
 		} else {
@@ -2016,11 +2016,11 @@ func do_assemble(ch *char_data, argument *byte, cmd int, subcmd int) {
 	} else if ROOM_FLAGGED(ch.In_room, ROOM_SPACE) {
 		send_to_char(ch, libc.CString("You can't do that in space."))
 		return
-	} else if GET_SKILL(ch, SKILL_SURVIVAL) == 0 && C.strcasecmp(argument, libc.CString("campfire")) == 0 {
+	} else if GET_SKILL(ch, SKILL_SURVIVAL) == 0 && libc.StrCaseCmp(argument, libc.CString("campfire")) == 0 {
 		send_to_char(ch, libc.CString("You know nothing about building campfires.\r\n"))
 		return
 	}
-	if C.strstr(argument, libc.CString("Signal")) != nil || C.strstr(argument, libc.CString("signal")) != nil {
+	if libc.StrStr(argument, libc.CString("Signal")) != nil || libc.StrStr(argument, libc.CString("signal")) != nil {
 		if GET_SKILL(ch, SKILL_BUILD) < 70 {
 			send_to_char(ch, libc.CString("You need at least a build skill level of 70.\r\n"))
 			return
@@ -2030,7 +2030,7 @@ func do_assemble(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You wish you had tools, but make the best out of what you do have anyway...\r\n"))
 		roll = 20
 	}
-	if C.strcasecmp(argument, libc.CString("campfire")) != 0 {
+	if libc.StrCaseCmp(argument, libc.CString("campfire")) != 0 {
 		if ROOM_FLAGGED(ch.In_room, ROOM_SPACE) || (func() int {
 			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
 				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
@@ -2096,7 +2096,7 @@ func do_assemble(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	}
-	if axion_dice(0)-int(ch.Aff_abils.Intel/5) > 95 {
+	if axion_dice(0)-int(ch.Aff_abils.Intel)/5 > 95 {
 		if (func() *obj_data {
 			pObject = read_object(obj_vnum(lVnum), VIRTUAL)
 			return pObject
@@ -2131,7 +2131,7 @@ func do_assemble(ch *char_data, argument *byte, cmd int, subcmd int) {
 	add_unique_id(pObject)
 	if GET_OBJ_VNUM(pObject) != 1611 {
 		obj_to_char(pObject, ch)
-		if ch.Race == RACE_TRUFFLE {
+		if int(ch.Race) == RACE_TRUFFLE {
 			var (
 				count    int = 0
 				plused   int = FALSE
@@ -2175,17 +2175,17 @@ func do_assemble(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if assemblyCheckComponents(lVnum, ch, TRUE) {
 		roll = 9001
 	}
-	if ch.Race != RACE_TRUFFLE && axion_dice(8) > GET_SKILL(ch, SKILL_BUILD) {
+	if int(ch.Race) != RACE_TRUFFLE && axion_dice(8) > GET_SKILL(ch, SKILL_BUILD) {
 		send_to_char(ch, libc.CString("@yYou've made an inferior product. Its value will be somewhat less.@n\r\n"))
 		pObject.Cost -= int(float64(pObject.Cost) * 0.25)
-	} else if ch.Race == RACE_TRUFFLE && axion_dice(18) > GET_SKILL(ch, SKILL_BUILD) {
+	} else if int(ch.Race) == RACE_TRUFFLE && axion_dice(18) > GET_SKILL(ch, SKILL_BUILD) {
 		send_to_char(ch, libc.CString("@yYou've made an inferior product. Its value will be somewhat less.@n\r\n"))
 		pObject.Cost -= int(float64(pObject.Cost) * 0.12)
-	} else if int(libc.BoolToInt(ch.Race == RACE_TRUFFLE)) < GET_SKILL(ch, SKILL_BUILD) {
+	} else if int(libc.BoolToInt(int(ch.Race) == RACE_TRUFFLE)) < GET_SKILL(ch, SKILL_BUILD) {
 		send_to_char(ch, libc.CString("@YYou've made an excellent product. Its value will be somewhat more.@n\r\n"))
 		pObject.Cost += int(float64(pObject.Cost) * 0.12)
 	}
-	if ch.Race == RACE_TRUFFLE && rand_number(1, 5) >= 4 && pObject.Cost >= 500 {
+	if int(ch.Race) == RACE_TRUFFLE && rand_number(1, 5) >= 4 && pObject.Cost >= 500 {
 		if GET_LEVEL(ch) < 100 && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 {
 			var gain int64 = int64(float64(level_exp(ch, GET_LEVEL(ch)+1)) * 0.011)
 			send_to_char(ch, libc.CString("@RExp Bonus@D: @G%s@n\r\n"), add_commas(gain))
@@ -2208,7 +2208,7 @@ func perform_put(ch *char_data, obj *obj_data, cont *obj_data) {
 		act(libc.CString("$P is forged and won't hold anything."), FALSE, ch, nil, unsafe.Pointer(cont), TO_CHAR)
 		return
 	}
-	if OBJ_FLAGGED(cont, ITEM_SHEATH) && obj.Type_flag != ITEM_WEAPON {
+	if OBJ_FLAGGED(cont, ITEM_SHEATH) && int(obj.Type_flag) != ITEM_WEAPON {
 		send_to_char(ch, libc.CString("That is made to only hold weapons.\r\n"))
 		return
 	}
@@ -2236,13 +2236,13 @@ func perform_put(ch *char_data, obj *obj_data, cont *obj_data) {
 			return
 		}
 	}
-	if cont.Type_flag == ITEM_CONTAINER && (cont.Value[VAL_CONTAINER_CAPACITY]) == 0 {
+	if int(cont.Type_flag) == ITEM_CONTAINER && (cont.Value[VAL_CONTAINER_CAPACITY]) == 0 {
 		act(libc.CString("$p won't fit in $P."), FALSE, ch, obj, unsafe.Pointer(cont), TO_CHAR)
 	} else if GET_OBJ_VNUM(cont) >= 600 && GET_OBJ_VNUM(cont) <= 603 {
 		send_to_char(ch, libc.CString("You can't put cards on a duel table. You have to @Gplay@n them.\r\n"))
 	} else if (GET_OBJ_VNUM(cont) == 697 || GET_OBJ_VNUM(cont) == 698 || GET_OBJ_VNUM(cont) == 682 || GET_OBJ_VNUM(cont) == 683 || GET_OBJ_VNUM(cont) == 684 || OBJ_FLAGGED(cont, ITEM_CARDCASE)) && !OBJ_FLAGGED(obj, ITEM_ANTI_HIEROPHANT) {
 		send_to_char(ch, libc.CString("You can only put cards in a case.\r\n"))
-	} else if cont.Type_flag == ITEM_CONTAINER && (cont.Value[VAL_CONTAINER_CAPACITY]) > 0 && cont.Weight+obj.Weight > int64(cont.Value[VAL_CONTAINER_CAPACITY]) {
+	} else if int(cont.Type_flag) == ITEM_CONTAINER && (cont.Value[VAL_CONTAINER_CAPACITY]) > 0 && cont.Weight+obj.Weight > int64(cont.Value[VAL_CONTAINER_CAPACITY]) {
 		act(libc.CString("$p won't fit in $P."), FALSE, ch, obj, unsafe.Pointer(cont), TO_CHAR)
 	} else if OBJ_FLAGGED(obj, ITEM_NODROP) && cont.In_room != room_rnum(-1) {
 		act(libc.CString("You can't get $p out of your hand."), FALSE, ch, obj, nil, TO_CHAR)
@@ -2261,15 +2261,15 @@ func perform_put(ch *char_data, obj *obj_data, cont *obj_data) {
 			act(libc.CString("$n puts an @DA@wd@cv@Ce@Wnt @DD@wu@ce@Cl @mC@Ma@Wr@wd@n in $P."), TRUE, ch, obj, unsafe.Pointer(cont), TO_ROOM)
 		}
 		if OBJ_FLAGGED(obj, ITEM_NODROP) && !OBJ_FLAGGED(cont, ITEM_NODROP) {
-			cont.Extra_flags[int(ITEM_NODROP/32)] |= bitvector_t(1 << (int(ITEM_NODROP % 32)))
+			cont.Extra_flags[int(ITEM_NODROP/32)] |= bitvector_t(int32(1 << (int(ITEM_NODROP % 32))))
 			act(libc.CString("You get a strange feeling as you put $p in $P."), FALSE, ch, obj, unsafe.Pointer(cont), TO_CHAR)
 		} else {
 			act(libc.CString("You put $p in $P."), FALSE, ch, obj, unsafe.Pointer(cont), TO_CHAR)
 		}
-		if cont.Type_flag == ITEM_PORTAL || cont.Type_flag == ITEM_VEHICLE {
+		if int(cont.Type_flag) == ITEM_PORTAL || int(cont.Type_flag) == ITEM_VEHICLE {
 			obj_from_obj(obj)
 			obj_to_room(obj, real_room(room_vnum(cont.Value[VAL_CONTAINER_CAPACITY])))
-			if cont.Type_flag == ITEM_PORTAL {
+			if int(cont.Type_flag) == ITEM_PORTAL {
 				act(libc.CString("What? $U$p disappears from $P in a puff of smoke!"), TRUE, ch, obj, unsafe.Pointer(cont), TO_ROOM)
 				act(libc.CString("What? $U$p disappears from $P in a puff of smoke!"), FALSE, ch, obj, unsafe.Pointer(cont), TO_CHAR)
 			}
@@ -2322,7 +2322,7 @@ func do_put(ch *char_data, argument *byte, cmd int, subcmd int) {
 		generic_find(thecont, (1<<2)|1<<5|1<<3, ch, &tmp_char, &cont)
 		if cont == nil {
 			send_to_char(ch, libc.CString("You don't see %s %s here.\r\n"), AN(thecont), thecont)
-		} else if cont.Type_flag != ITEM_CONTAINER && cont.Type_flag != ITEM_PORTAL && cont.Type_flag != ITEM_VEHICLE {
+		} else if int(cont.Type_flag) != ITEM_CONTAINER && int(cont.Type_flag) != ITEM_PORTAL && int(cont.Type_flag) != ITEM_VEHICLE {
 			act(libc.CString("$p is not a container."), FALSE, ch, cont, nil, TO_CHAR)
 		} else if OBJVAL_FLAGGED(cont, 1<<2) {
 			send_to_char(ch, libc.CString("You'd better open it first!\r\n"))
@@ -2368,7 +2368,7 @@ func can_take_obj(ch *char_data, obj *obj_data) int {
 	if !OBJWEAR_FLAGGED(obj, ITEM_WEAR_TAKE) {
 		act(libc.CString("$p: you can't take that!"), FALSE, ch, obj, nil, TO_CHAR)
 		return 0
-	} else if ch.Carry_items >= 50 {
+	} else if int(ch.Carry_items) >= 50 {
 		act(libc.CString("$p: your arms are full!"), FALSE, ch, obj, nil, TO_CHAR)
 		return 0
 	} else if (gear_weight(ch) + int(obj.Weight)) > int(max_carry_weight(ch)) {
@@ -2382,7 +2382,7 @@ func can_take_obj(ch *char_data, obj *obj_data) int {
 }
 func get_check_money(ch *char_data, obj *obj_data) {
 	var value int = (obj.Value[VAL_MONEY_SIZE])
-	if obj.Type_flag != ITEM_MONEY || value <= 0 {
+	if int(obj.Type_flag) != ITEM_MONEY || value <= 0 {
 		return
 	}
 	if ch.Gold+value > GOLD_CARRY(ch) {
@@ -2411,7 +2411,7 @@ func get_check_money(ch *char_data, obj *obj_data) {
 }
 func perform_get_from_container(ch *char_data, obj *obj_data, cont *obj_data, mode int) {
 	if mode == (1<<2) || mode == (1<<5) || can_take_obj(ch, obj) != 0 {
-		if ch.Carry_items >= 50 {
+		if int(ch.Carry_items) >= 50 {
 			act(libc.CString("$p: you can't hold any more items."), FALSE, ch, obj, nil, TO_CHAR)
 			return
 		}
@@ -2429,7 +2429,7 @@ func perform_get_from_container(ch *char_data, obj *obj_data, cont *obj_data, mo
 				act(libc.CString("$n gets $p from $P."), TRUE, ch, obj, unsafe.Pointer(cont), TO_ROOM)
 			}
 			if OBJ_FLAGGED(obj, ITEM_HOT) {
-				if (ch.Bonuses[BONUS_FIREPROOF]) <= 0 && ch.Race != RACE_DEMON {
+				if (ch.Bonuses[BONUS_FIREPROOF]) <= 0 && int(ch.Race) != RACE_DEMON {
 					ch.Hit -= int64(float64(ch.Hit) * 0.25)
 					if (ch.Bonuses[BONUS_FIREPRONE]) > 0 {
 						ch.Hit = 1
@@ -2519,7 +2519,7 @@ func perform_get_from_room(ch *char_data, obj *obj_data) int {
 		act(libc.CString("You get $p."), FALSE, ch, obj, nil, TO_CHAR)
 		act(libc.CString("$n gets $p."), TRUE, ch, obj, nil, TO_ROOM)
 		if OBJ_FLAGGED(obj, ITEM_HOT) {
-			if (ch.Bonuses[BONUS_FIREPROOF]) <= 0 && ch.Race != RACE_DEMON {
+			if (ch.Bonuses[BONUS_FIREPROOF]) <= 0 && int(ch.Race) != RACE_DEMON {
 				ch.Hit -= int64(float64(ch.Hit) * 0.25)
 				if (ch.Bonuses[BONUS_FIREPRONE]) > 0 {
 					ch.Hit = 1
@@ -2629,17 +2629,17 @@ func do_get(ch *char_data, argument *byte, cmd int, subcmd int) {
 		var amount int = 1
 		if is_number(&arg1[0]) != 0 {
 			amount = libc.Atoi(libc.GoString(&arg1[0]))
-			C.strcpy(&arg1[0], &arg2[0])
-			C.strcpy(&arg2[0], &arg3[0])
+			libc.StrCpy(&arg1[0], &arg2[0])
+			libc.StrCpy(&arg2[0], &arg3[0])
 		}
 		cont_dotmode = find_all_dots(&arg2[0])
 		if cont_dotmode == FIND_INDIV {
 			mode = generic_find(&arg2[0], (1<<2)|1<<5|1<<3, ch, &tmp_char, &cont)
 			if cont == nil {
 				send_to_char(ch, libc.CString("You don't have %s %s.\r\n"), AN(&arg2[0]), &arg2[0])
-			} else if cont.Type_flag == ITEM_VEHICLE {
+			} else if int(cont.Type_flag) == ITEM_VEHICLE {
 				send_to_char(ch, libc.CString("You will need to enter it first.\r\n"))
-			} else if cont.Type_flag != ITEM_CONTAINER && (cont.Type_flag != ITEM_PORTAL || !OBJVAL_FLAGGED(cont, 1<<0)) {
+			} else if int(cont.Type_flag) != ITEM_CONTAINER && (int(cont.Type_flag) != ITEM_PORTAL || !OBJVAL_FLAGGED(cont, 1<<0)) {
 				act(libc.CString("$p is not a container."), FALSE, ch, cont, nil, TO_CHAR)
 			} else {
 				get_from_container(ch, cont, &arg1[0], mode, amount)
@@ -2651,7 +2651,7 @@ func do_get(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 			for cont = ch.Carrying; cont != nil; cont = cont.Next_content {
 				if CAN_SEE_OBJ(ch, cont) && (cont_dotmode == FIND_ALL || isname(&arg2[0], cont.Name) != 0) {
-					if cont.Type_flag == ITEM_CONTAINER {
+					if int(cont.Type_flag) == ITEM_CONTAINER {
 						found = 1
 						get_from_container(ch, cont, &arg1[0], 1<<2, amount)
 					} else if cont_dotmode == FIND_ALLDOT {
@@ -2662,7 +2662,7 @@ func do_get(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 			for cont = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; cont != nil; cont = cont.Next_content {
 				if CAN_SEE_OBJ(ch, cont) && (cont_dotmode == FIND_ALL || isname(&arg2[0], cont.Name) != 0) {
-					if cont.Type_flag == ITEM_CONTAINER {
+					if int(cont.Type_flag) == ITEM_CONTAINER {
 						get_from_container(ch, cont, &arg1[0], 1<<3, amount)
 						found = 1
 					} else if cont_dotmode == FIND_ALLDOT {
@@ -2688,10 +2688,10 @@ func perform_drop_gold(ch *char_data, amount int, mode int8, RDR room_rnum) {
 	} else if ch.Gold < amount {
 		send_to_char(ch, libc.CString("You don't have that many zenni!\r\n"))
 	} else {
-		if mode != SCMD_JUNK {
+		if int(mode) != SCMD_JUNK {
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*1)
 			obj = create_money(amount)
-			if mode == SCMD_DONATE {
+			if int(mode) == SCMD_DONATE {
 				send_to_char(ch, libc.CString("You throw some zenni into the air where it disappears in a puff of smoke!\r\n"))
 				act(libc.CString("$n throws some gold into the air where it disappears in a puff of smoke!"), FALSE, ch, nil, nil, TO_ROOM)
 				obj_to_room(obj, RDR)
@@ -2746,7 +2746,7 @@ func perform_drop(ch *char_data, obj *obj_data, mode int8, sname *byte, RDR room
 	if drop_otrigger(obj, ch) == 0 {
 		return 0
 	}
-	if mode == SCMD_DROP && drop_wtrigger(obj, ch) == 0 {
+	if int(mode) == SCMD_DROP && drop_wtrigger(obj, ch) == 0 {
 		return 0
 	}
 	if GET_OBJ_VNUM(obj) == 17 || GET_OBJ_VNUM(obj) == 0x464E {
@@ -2765,7 +2765,7 @@ func perform_drop(ch *char_data, obj *obj_data, mode int8, sname *byte, RDR room
 			act(&buf[0], FALSE, ch, obj, nil, TO_CHAR)
 			return 0
 		}
-		if mode == SCMD_DROP && OBJ_FLAGGED(obj, ITEM_NORENT) {
+		if int(mode) == SCMD_DROP && OBJ_FLAGGED(obj, ITEM_NORENT) {
 			stdio.Snprintf(&buf[0], int(64936), "You drop $p but it gets lost on the ground!")
 			act(&buf[0], FALSE, ch, obj, nil, TO_CHAR)
 			obj_from_char(obj)
@@ -2793,7 +2793,7 @@ func perform_drop(ch *char_data, obj *obj_data, mode int8, sname *byte, RDR room
 		act(&buf[0], FALSE, ch, obj, nil, TO_CHAR)
 		return 0
 	}
-	if (mode == SCMD_DONATE || mode == SCMD_JUNK) && OBJ_FLAGGED(obj, ITEM_NODONATE) {
+	if (int(mode) == SCMD_DONATE || int(mode) == SCMD_JUNK) && OBJ_FLAGGED(obj, ITEM_NODONATE) {
 		stdio.Snprintf(&buf[0], int(64936), "You can't %s $p!", sname)
 		act(&buf[0], FALSE, ch, obj, nil, TO_CHAR)
 		return 0
@@ -2914,7 +2914,7 @@ func do_drop(ch *char_data, argument *byte, cmd int, subcmd int) {
 	} else if is_number(&arg[0]) != 0 {
 		multi = libc.Atoi(libc.GoString(&arg[0]))
 		one_argument(argument, &arg[0])
-		if C.strcasecmp(libc.CString("zenni"), &arg[0]) == 0 || C.strcasecmp(libc.CString("gold"), &arg[0]) == 0 {
+		if libc.StrCaseCmp(libc.CString("zenni"), &arg[0]) == 0 || libc.StrCaseCmp(libc.CString("gold"), &arg[0]) == 0 {
 			perform_drop_gold(ch, multi, mode, RDR)
 		} else if multi <= 0 {
 			send_to_char(ch, libc.CString("Yeah, that makes sense.\r\n"))
@@ -3017,7 +3017,7 @@ func perform_give(ch *char_data, vict *char_data, obj *obj_data) {
 		act(libc.CString("You can't let go of $p!!  Yeech!"), FALSE, ch, obj, nil, TO_CHAR)
 		return
 	}
-	if vict.Carry_items >= 50 {
+	if int(vict.Carry_items) >= 50 {
 		act(libc.CString("$N seems to have $S hands full."), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 		if IS_NPC(ch) {
 			act(libc.CString("$n@n drops $p because you can't carry anymore."), TRUE, ch, obj, unsafe.Pointer(vict), TO_VICT)
@@ -3066,7 +3066,7 @@ func perform_give(ch *char_data, vict *char_data, obj *obj_data) {
 	act(libc.CString("$n gives you $p."), FALSE, ch, obj, unsafe.Pointer(vict), TO_VICT)
 	act(libc.CString("$n gives $p to $N."), TRUE, ch, obj, unsafe.Pointer(vict), TO_NOTVICT)
 	if OBJ_FLAGGED(obj, ITEM_HOT) {
-		if (vict.Bonuses[BONUS_FIREPROOF]) <= 0 && vict.Race != RACE_DEMON {
+		if (vict.Bonuses[BONUS_FIREPROOF]) <= 0 && int(vict.Race) != RACE_DEMON {
 			vict.Hit -= int64(float64(vict.Hit) * 0.25)
 			if (vict.Bonuses[BONUS_FIREPRONE]) > 0 {
 				vict.Hit = 1
@@ -3142,7 +3142,7 @@ func do_give(ch *char_data, argument *byte, cmd int, subcmd int) {
 	} else if is_number(&arg[0]) != 0 {
 		amount = libc.Atoi(libc.GoString(&arg[0]))
 		argument = one_argument(argument, &arg[0])
-		if C.strcasecmp(libc.CString("zenni"), &arg[0]) == 0 || C.strcasecmp(libc.CString("gold"), &arg[0]) == 0 {
+		if libc.StrCaseCmp(libc.CString("zenni"), &arg[0]) == 0 || libc.StrCaseCmp(libc.CString("gold"), &arg[0]) == 0 {
 			one_argument(argument, &arg[0])
 			if (func() *char_data {
 				vict = give_find_vict(ch, &arg[0])
@@ -3262,34 +3262,34 @@ func name_from_drinkcon(obj *obj_data) {
 		liqlen   int
 		cpylen   int
 	)
-	if obj == nil || obj.Type_flag != ITEM_DRINKCON && obj.Type_flag != ITEM_FOUNTAIN {
+	if obj == nil || int(obj.Type_flag) != ITEM_DRINKCON && int(obj.Type_flag) != ITEM_FOUNTAIN {
 		return
 	}
 	liqname = drinknames[obj.Value[VAL_DRINKCON_LIQUID]]
 	if isname(liqname, obj.Name) == 0 {
 		return
 	}
-	liqlen = int(C.strlen(liqname))
-	new_name = (*byte)(unsafe.Pointer(&make([]int8, int(C.strlen(obj.Name)-C.strlen(liqname)))[0]))
+	liqlen = libc.StrLen(liqname)
+	new_name = (*byte)(unsafe.Pointer(&make([]int8, libc.StrLen(obj.Name)-libc.StrLen(liqname))[0]))
 	for cur_name = obj.Name; cur_name != nil; cur_name = next {
 		if *cur_name == ' ' {
 			cur_name = (*byte)(unsafe.Add(unsafe.Pointer(cur_name), 1))
 		}
 		if (func() *byte {
-			next = C.strchr(cur_name, ' ')
+			next = libc.StrChr(cur_name, ' ')
 			return next
 		}()) != nil {
 			cpylen = int(int64(uintptr(unsafe.Pointer(next)) - uintptr(unsafe.Pointer(cur_name))))
 		} else {
-			cpylen = int(C.strlen(cur_name))
+			cpylen = libc.StrLen(cur_name)
 		}
-		if C.strncasecmp(cur_name, liqname, uint64(liqlen)) == 0 {
+		if libc.StrNCaseCmp(cur_name, liqname, liqlen) == 0 {
 			continue
 		}
 		if *new_name != 0 {
-			C.strcat(new_name, libc.CString(" "))
+			libc.StrCat(new_name, libc.CString(" "))
 		}
-		C.strncat(new_name, cur_name, uint64(cpylen))
+		libc.StrNCat(new_name, cur_name, cpylen)
 	}
 	if obj.Item_number == obj_vnum(-1) || obj.Name != (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(obj.Item_number)))).Name {
 		libc.Free(unsafe.Pointer(obj.Name))
@@ -3298,10 +3298,10 @@ func name_from_drinkcon(obj *obj_data) {
 }
 func name_to_drinkcon(obj *obj_data, type_ int) {
 	var new_name *byte
-	if obj == nil || obj.Type_flag != ITEM_DRINKCON && obj.Type_flag != ITEM_FOUNTAIN {
+	if obj == nil || int(obj.Type_flag) != ITEM_DRINKCON && int(obj.Type_flag) != ITEM_FOUNTAIN {
 		return
 	}
-	new_name = (*byte)(unsafe.Pointer(&make([]int8, int(C.strlen(obj.Name)+C.strlen(drinknames[type_])+2))[0]))
+	new_name = (*byte)(unsafe.Pointer(&make([]int8, libc.StrLen(obj.Name)+libc.StrLen(drinknames[type_])+2)[0]))
 	stdio.Sprintf(new_name, "%s %s", obj.Name, drinknames[type_])
 	if obj.Item_number == obj_vnum(-1) || obj.Name != (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(obj.Item_number)))).Name {
 		libc.Free(unsafe.Pointer(obj.Name))
@@ -3322,7 +3322,7 @@ func do_drink(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if IS_NPC(ch) {
 		return
 	}
-	if ch.Race == RACE_ANDROID || (ch.Player_specials.Conditions[THIRST]) < 0 {
+	if int(ch.Race) == RACE_ANDROID || int(ch.Player_specials.Conditions[THIRST]) < 0 {
 		send_to_char(ch, libc.CString("You need not drink!\r\n"))
 		return
 	}
@@ -3330,7 +3330,7 @@ func do_drink(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You are inside a healing tank!\r\n"))
 		return
 	}
-	if (ch.Player_specials.Conditions[HUNGER]) <= 1 && (ch.Player_specials.Conditions[THIRST]) >= 2 && ch.Race != RACE_NAMEK && (ch.Genome[0]) != 3 && (ch.Genome[1]) != 3 {
+	if int(ch.Player_specials.Conditions[HUNGER]) <= 1 && int(ch.Player_specials.Conditions[THIRST]) >= 2 && int(ch.Race) != RACE_NAMEK && (ch.Genome[0]) != 3 && (ch.Genome[1]) != 3 {
 		send_to_char(ch, libc.CString("You need to eat first!\r\n"))
 		return
 	}
@@ -3359,7 +3359,7 @@ func do_drink(ch *char_data, argument *byte, cmd int, subcmd int) {
 				}
 				send_to_char(ch, libc.CString("You feel your ki return to full strength.\r\n"))
 			}
-			if (ch.Player_specials.Conditions[THIRST]) >= 48 {
+			if int(ch.Player_specials.Conditions[THIRST]) >= 48 {
 				send_to_char(ch, libc.CString("You don't feel thirsty anymore.\r\n"))
 			}
 			return
@@ -3386,7 +3386,7 @@ func do_drink(ch *char_data, argument *byte, cmd int, subcmd int) {
 						send_to_char(ch, libc.CString("You feel your ki has rejuvenated.\r\n"))
 					}
 				}
-				if (ch.Player_specials.Conditions[THIRST]) >= 48 {
+				if int(ch.Player_specials.Conditions[THIRST]) >= 48 {
 					send_to_char(ch, libc.CString("You don't feel thirsty anymore.\r\n"))
 				}
 			}
@@ -3407,7 +3407,7 @@ func do_drink(ch *char_data, argument *byte, cmd int, subcmd int) {
 			on_ground = 1
 		}
 	}
-	if temp.Type_flag != ITEM_DRINKCON && temp.Type_flag != ITEM_FOUNTAIN {
+	if int(temp.Type_flag) != ITEM_DRINKCON && int(temp.Type_flag) != ITEM_FOUNTAIN {
 		if GET_OBJ_VNUM(temp) == 86 && on_ground != 1 {
 			act(libc.CString("@wYou uncork the $p and tip it to your lips. Drinking it down you feel a warmth flow through your body and your ki returns to full strength .@n"), TRUE, ch, temp, nil, TO_CHAR)
 			act(libc.CString("@C$n@w uncorks the $p and tips it to $s lips. Drinking it down and then smiling.@n"), TRUE, ch, temp, nil, TO_ROOM)
@@ -3424,7 +3424,7 @@ func do_drink(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	}
-	if on_ground != 0 && temp.Type_flag == ITEM_DRINKCON {
+	if on_ground != 0 && int(temp.Type_flag) == ITEM_DRINKCON {
 		send_to_char(ch, libc.CString("You have to be holding that to drink from it.\r\n"))
 		return
 	}
@@ -3442,7 +3442,7 @@ func do_drink(ch *char_data, argument *byte, cmd int, subcmd int) {
 		extract_obj(temp)
 		return
 	}
-	if (ch.Player_specials.Conditions[DRUNK]) > 10 && (ch.Player_specials.Conditions[THIRST]) > 0 {
+	if int(ch.Player_specials.Conditions[DRUNK]) > 10 && int(ch.Player_specials.Conditions[THIRST]) > 0 {
 		send_to_char(ch, libc.CString("You can't seem to get close enough to your mouth.\r\n"))
 		act(libc.CString("$n tries to drink but misses $s mouth!"), TRUE, ch, nil, nil, TO_ROOM)
 		return
@@ -3499,13 +3499,13 @@ func do_drink(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 		}
 	}
-	if (ch.Player_specials.Conditions[DRUNK]) > 10 {
+	if int(ch.Player_specials.Conditions[DRUNK]) > 10 {
 		send_to_char(ch, libc.CString("You feel drunk.\r\n"))
 	}
-	if (ch.Player_specials.Conditions[THIRST]) >= 48 {
+	if int(ch.Player_specials.Conditions[THIRST]) >= 48 {
 		send_to_char(ch, libc.CString("You don't feel thirsty anymore.\r\n"))
 	}
-	if (temp.Value[VAL_DRINKCON_POISON]) != 0 && (ch.Race != RACE_MUTANT || (ch.Genome[0]) != 7 && (ch.Genome[1]) != 7) {
+	if (temp.Value[VAL_DRINKCON_POISON]) != 0 && (int(ch.Race) != RACE_MUTANT || (ch.Genome[0]) != 7 && (ch.Genome[1]) != 7) {
 		send_to_char(ch, libc.CString("Oops, it tasted rather strange!\r\n"))
 		act(libc.CString("$n chokes and utters some strange sounds."), TRUE, ch, nil, nil, TO_ROOM)
 		af.Type = SPELL_POISON
@@ -3535,7 +3535,7 @@ func do_eat(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if IS_NPC(ch) {
 		return
 	}
-	if ch.Race == RACE_ANDROID || (ch.Player_specials.Conditions[HUNGER]) < 0 {
+	if int(ch.Race) == RACE_ANDROID || int(ch.Player_specials.Conditions[HUNGER]) < 0 {
 		send_to_char(ch, libc.CString("You need not eat!\r\n"))
 		return
 	}
@@ -3558,15 +3558,15 @@ func do_eat(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You don't seem to have %s %s.\r\n"), AN(&arg[0]), &arg[0])
 		return
 	}
-	if (ch.Player_specials.Conditions[THIRST]) <= 1 && (ch.Player_specials.Conditions[HUNGER]) >= 2 {
+	if int(ch.Player_specials.Conditions[THIRST]) <= 1 && int(ch.Player_specials.Conditions[HUNGER]) >= 2 {
 		send_to_char(ch, libc.CString("You need to drink first!\r\n"))
 		return
 	}
-	if subcmd == SCMD_TASTE && (food.Type_flag == ITEM_DRINKCON || food.Type_flag == ITEM_FOUNTAIN) {
+	if subcmd == SCMD_TASTE && (int(food.Type_flag) == ITEM_DRINKCON || int(food.Type_flag) == ITEM_FOUNTAIN) {
 		do_drink(ch, argument, 0, SCMD_SIP)
 		return
 	}
-	if food.Type_flag != ITEM_FOOD {
+	if int(food.Type_flag) != ITEM_FOOD {
 		send_to_char(ch, libc.CString("You can't eat THAT!\r\n"))
 		return
 	}
@@ -3587,7 +3587,7 @@ func do_eat(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	}
-	var foob int = int(48 - (ch.Player_specials.Conditions[HUNGER]))
+	var foob int = 48 - int(ch.Player_specials.Conditions[HUNGER])
 	if subcmd == SCMD_EAT {
 		amount = food.Value[VAL_FOOD_FOODVAL]
 	} else {
@@ -3605,7 +3605,7 @@ func do_eat(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		send_to_char(ch, libc.CString("You feel rejuvinated by it.\r\n"))
 	}
-	if GET_OBJ_VNUM(food) >= MEAL_START && GET_OBJ_VNUM(food) <= MEAL_LAST && (ch.Player_specials.Conditions[HUNGER]) < 48 && (!ROOM_FLAGGED(ch.In_room, ROOM_AL) && !ROOM_FLAGGED(ch.In_room, ROOM_RHELL)) {
+	if GET_OBJ_VNUM(food) >= MEAL_START && GET_OBJ_VNUM(food) <= MEAL_LAST && int(ch.Player_specials.Conditions[HUNGER]) < 48 && (!ROOM_FLAGGED(ch.In_room, ROOM_AL) && !ROOM_FLAGGED(ch.In_room, ROOM_RHELL)) {
 		if subcmd != SCMD_TASTE {
 			var (
 				psbonus  int = (food.Value[1])
@@ -3658,7 +3658,7 @@ func do_eat(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("@MYou feel some of your strength return!@n\r\n"))
 		}
 	}
-	if (ch.Player_specials.Conditions[HUNGER]) >= 48 && ch.Race != RACE_MAJIN {
+	if int(ch.Player_specials.Conditions[HUNGER]) >= 48 && int(ch.Race) != RACE_MAJIN {
 		send_to_char(ch, libc.CString("You are full, but may continue to stuff yourself.\r\n"))
 	}
 	if (food.Value[VAL_FOOD_POISON]) != 0 && !ADM_FLAGGED(ch, ADM_NOPOISON) {
@@ -3822,7 +3822,7 @@ func do_eat(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 }
 func majin_gain(ch *char_data, type_ int) {
-	if ch.Race != RACE_MAJIN || IS_NPC(ch) {
+	if int(ch.Race) != RACE_MAJIN || IS_NPC(ch) {
 		return
 	}
 	if !soft_cap(ch, 0) {
@@ -3999,7 +3999,7 @@ func do_pour(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("You can't find it!\r\n"))
 			return
 		}
-		if from_obj.Type_flag != ITEM_DRINKCON {
+		if int(from_obj.Type_flag) != ITEM_DRINKCON {
 			send_to_char(ch, libc.CString("You can't pour from that!\r\n"))
 			return
 		}
@@ -4016,7 +4016,7 @@ func do_pour(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("You can't find it!\r\n"))
 			return
 		}
-		if to_obj.Type_flag != ITEM_DRINKCON {
+		if int(to_obj.Type_flag) != ITEM_DRINKCON {
 			act(libc.CString("You can't fill $p!"), FALSE, ch, to_obj, nil, TO_CHAR)
 			return
 		}
@@ -4031,10 +4031,10 @@ func do_pour(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("There doesn't seem to be %s %s here.\r\n"), AN(&arg2[0]), &arg2[0])
 			return
 		}
-		if from_obj.Type_flag != ITEM_FOUNTAIN && !OBJ_FLAGGED(from_obj, ITEM_BROKEN) {
+		if int(from_obj.Type_flag) != ITEM_FOUNTAIN && !OBJ_FLAGGED(from_obj, ITEM_BROKEN) {
 			act(libc.CString("You can't fill something from $p."), FALSE, ch, from_obj, nil, TO_CHAR)
 			return
-		} else if from_obj.Type_flag == ITEM_FOUNTAIN && OBJ_FLAGGED(from_obj, ITEM_BROKEN) {
+		} else if int(from_obj.Type_flag) == ITEM_FOUNTAIN && OBJ_FLAGGED(from_obj, ITEM_BROKEN) {
 			act(libc.CString("You can't fill something from a broken fountain."), FALSE, ch, from_obj, nil, TO_CHAR)
 			return
 		}
@@ -4048,7 +4048,7 @@ func do_pour(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("Where do you want it?  Out or in what?\r\n"))
 			return
 		}
-		if C.strcasecmp(&arg2[0], libc.CString("out")) == 0 {
+		if libc.StrCaseCmp(&arg2[0], libc.CString("out")) == 0 {
 			if (from_obj.Value[VAL_DRINKCON_CAPACITY]) > 0 {
 				act(libc.CString("$n empties $p."), TRUE, ch, from_obj, nil, TO_ROOM)
 				act(libc.CString("You empty $p."), FALSE, ch, from_obj, nil, TO_CHAR)
@@ -4069,7 +4069,7 @@ func do_pour(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("You can't find it!\r\n"))
 			return
 		}
-		if to_obj.Type_flag != ITEM_DRINKCON && to_obj.Type_flag != ITEM_FOUNTAIN {
+		if int(to_obj.Type_flag) != ITEM_DRINKCON && int(to_obj.Type_flag) != ITEM_FOUNTAIN {
 			send_to_char(ch, libc.CString("You can't pour anything into that.\r\n"))
 			return
 		}
@@ -4150,11 +4150,11 @@ func perform_wear(ch *char_data, obj *obj_data, where int) {
 		wear_bitvectors [23]int   = [23]int{ITEM_WEAR_TAKE, ITEM_WEAR_FINGER, ITEM_WEAR_FINGER, ITEM_WEAR_NECK, ITEM_WEAR_NECK, ITEM_WEAR_BODY, ITEM_WEAR_HEAD, ITEM_WEAR_LEGS, ITEM_WEAR_FEET, ITEM_WEAR_HANDS, ITEM_WEAR_ARMS, ITEM_WEAR_SHIELD, ITEM_WEAR_ABOUT, ITEM_WEAR_WAIST, ITEM_WEAR_WRIST, ITEM_WEAR_WRIST, ITEM_WEAR_TAKE, ITEM_WEAR_TAKE, ITEM_WEAR_PACK, ITEM_WEAR_EAR, ITEM_WEAR_EAR, ITEM_WEAR_SH, ITEM_WEAR_EYE}
 		already_wearing [23]*byte = [23]*byte{libc.CString("You're already using a light.\r\n"), libc.CString("YOU SHOULD NEVER SEE THIS MESSAGE.  PLEASE REPORT.\r\n"), libc.CString("You're already wearing something on both of your ring fingers.\r\n"), libc.CString("YOU SHOULD NEVER SEE THIS MESSAGE.  PLEASE REPORT.\r\n"), libc.CString("You can't wear anything else around your neck.\r\n"), libc.CString("You're already wearing something on your body.\r\n"), libc.CString("You're already wearing something on your head.\r\n"), libc.CString("You're already wearing something on your legs.\r\n"), libc.CString("You're already wearing something on your feet.\r\n"), libc.CString("You're already wearing something on your hands.\r\n"), libc.CString("You're already wearing something on your arms.\r\n"), libc.CString("You're already using a shield.\r\n"), libc.CString("You're already wearing something about your body.\r\n"), libc.CString("You already have something around your waist.\r\n"), libc.CString("YOU SHOULD NEVER SEE THIS MESSAGE.  PLEASE REPORT.\r\n"), libc.CString("You're already wearing something around both of your wrists.\r\n"), libc.CString("You're already wielding a weapon.\r\n"), libc.CString("You're already holding something.\r\n"), libc.CString("You're already wearing something on your back.\r\n"), libc.CString("YOU SHOULD NEVER SEE THIS MESSAGE.  PLEASE REPORT.\r\n"), libc.CString("You're already wearing something in both ears.\r\n"), libc.CString("You're already wearing something on your shoulders.\r\n"), libc.CString("You're already wearing something as a scouter.\r\n")}
 	)
-	if !OBJWEAR_FLAGGED(obj, bitvector_t(wear_bitvectors[where])) {
+	if !OBJWEAR_FLAGGED(obj, bitvector_t(int32(wear_bitvectors[where]))) {
 		act(libc.CString("You can't wear $p there."), FALSE, ch, obj, nil, TO_CHAR)
 		return
 	}
-	if !BODY_FLAGGED(ch, bitvector_t(where)) {
+	if !BODY_FLAGGED(ch, bitvector_t(int32(where))) {
 		send_to_char(ch, libc.CString("Seems like your body type doesn't really allow that.\r\n"))
 		return
 	}
@@ -4182,17 +4182,17 @@ func perform_wear(ch *char_data, obj *obj_data, where int) {
 	if wear_otrigger(obj, ch, where) == 0 || obj.Carried_by != ch {
 		return
 	}
-	if obj.Type_flag == ITEM_WEAPON && OBJ_FLAGGED(obj, ITEM_CUSTOM) {
+	if int(obj.Type_flag) == ITEM_WEAPON && OBJ_FLAGGED(obj, ITEM_CUSTOM) {
 		if GET_LEVEL(ch) < 20 {
 			send_to_char(ch, libc.CString("You are not experienced enough to hold that.\r\n"))
 			return
 		}
 	}
-	if obj.Type_flag != ITEM_LIGHT && obj.Size > get_size(ch) {
+	if int(obj.Type_flag) != ITEM_LIGHT && obj.Size > get_size(ch) {
 		send_to_char(ch, libc.CString("Seems like it is too big for you.\r\n"))
 		return
 	}
-	if obj.Size < get_size(ch) && obj.Type_flag != ITEM_LIGHT {
+	if obj.Size < get_size(ch) && int(obj.Type_flag) != ITEM_LIGHT {
 		send_to_char(ch, libc.CString("Seems like it is too small for you.\r\n"))
 		return
 	}
@@ -4302,7 +4302,7 @@ func do_wear(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("$p: it seems to be fake..."), FALSE, ch, obj, nil, TO_CHAR)
 				} else {
 					items_worn++
-					if is_proficient_with_armor(ch, obj.Value[VAL_ARMOR_SKILL]) == 0 && obj.Type_flag == ITEM_ARMOR {
+					if is_proficient_with_armor(ch, obj.Value[VAL_ARMOR_SKILL]) == 0 && int(obj.Type_flag) == ITEM_ARMOR {
 						send_to_char(ch, libc.CString("You have no proficiency with this type of armor.\r\nYour fighting and physical skills will be greatly impeded.\r\n"))
 					}
 					perform_wear(ch, obj, where)
@@ -4331,7 +4331,7 @@ func do_wear(ch *char_data, argument *byte, cmd int, subcmd int) {
 					where = find_eq_pos(ch, obj, nil)
 					return where
 				}()) >= 0 {
-					if is_proficient_with_armor(ch, obj.Value[VAL_ARMOR_SKILL]) == 0 && obj.Type_flag == ITEM_ARMOR {
+					if is_proficient_with_armor(ch, obj.Value[VAL_ARMOR_SKILL]) == 0 && int(obj.Type_flag) == ITEM_ARMOR {
 						send_to_char(ch, libc.CString("You have no proficiency with this type of armor.\r\nYour fighting and physical skills will be greatly impeded.\r\n"))
 					}
 					perform_wear(ch, obj, where)
@@ -4358,7 +4358,7 @@ func do_wear(ch *char_data, argument *byte, cmd int, subcmd int) {
 				where = find_eq_pos(ch, obj, &arg2[0])
 				return where
 			}()) >= 0 {
-				if is_proficient_with_armor(ch, obj.Value[VAL_ARMOR_SKILL]) == 0 && obj.Type_flag == ITEM_ARMOR {
+				if is_proficient_with_armor(ch, obj.Value[VAL_ARMOR_SKILL]) == 0 && int(obj.Type_flag) == ITEM_ARMOR {
 					send_to_char(ch, libc.CString("You have no proficiency with this type of armor.\r\nYour fighting and physical skills will be greatly impeded.\r\n"))
 				}
 				perform_wear(ch, obj, where)
@@ -4395,7 +4395,7 @@ func do_wield(ch *char_data, argument *byte, cmd int, subcmd int) {
 		} else if PLR_FLAGGED(ch, PLR_THANDW) {
 			send_to_char(ch, libc.CString("You are holding a weapon with two hands right now!\r\n"))
 		} else {
-			if !IS_NPC(ch) && is_proficient_with_weapon(ch, obj.Value[VAL_WEAPON_SKILL]) == 0 && obj.Type_flag == ITEM_ARMOR {
+			if !IS_NPC(ch) && is_proficient_with_weapon(ch, obj.Value[VAL_WEAPON_SKILL]) == 0 && int(obj.Type_flag) == ITEM_ARMOR {
 				send_to_char(ch, libc.CString("You have no proficiency with this type of weapon.\r\nYour attack accuracy will be greatly reduced.\r\n"))
 			}
 			perform_wear(ch, obj, WEAR_WIELD1)
@@ -4420,7 +4420,7 @@ func do_grab(ch *char_data, argument *byte, cmd int, subcmd int) {
 	} else if PLR_FLAGGED(ch, PLR_THANDW) {
 		send_to_char(ch, libc.CString("You are wielding a weapon with both hands currently.\r\n"))
 	} else {
-		if obj.Type_flag == ITEM_LIGHT {
+		if int(obj.Type_flag) == ITEM_LIGHT {
 			perform_wear(ch, obj, WEAR_WIELD2)
 			if (obj.Value[VAL_LIGHT_HOURS]) > 0 || (obj.Value[VAL_LIGHT_HOURS]) < 0 {
 				act(libc.CString("@wYou light $p@w."), TRUE, ch, obj, nil, TO_CHAR)
@@ -4431,7 +4431,7 @@ func do_grab(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@C$n@w tries to light $p@w but nothing happens."), TRUE, ch, obj, nil, TO_ROOM)
 			}
 		} else {
-			if !OBJWEAR_FLAGGED(obj, ITEM_WEAR_HOLD) && obj.Type_flag != ITEM_WAND && obj.Type_flag != ITEM_STAFF && obj.Type_flag != ITEM_SCROLL && obj.Type_flag != ITEM_POTION {
+			if !OBJWEAR_FLAGGED(obj, ITEM_WEAR_HOLD) && int(obj.Type_flag) != ITEM_WAND && int(obj.Type_flag) != ITEM_STAFF && int(obj.Type_flag) != ITEM_SCROLL && int(obj.Type_flag) != ITEM_POTION {
 				send_to_char(ch, libc.CString("You can't hold that.\r\n"))
 			} else {
 				perform_wear(ch, obj, WEAR_WIELD2)
@@ -4451,14 +4451,14 @@ func perform_remove(ch *char_data, pos int) {
 		basic_mud_log(libc.CString("SYSERR: perform_remove: bad pos %d passed."), pos)
 	} else if OBJ_FLAGGED(obj, ITEM_NODROP) && ch.Admlevel < 1 {
 		act(libc.CString("You can't remove $p, it must be CURSED!"), FALSE, ch, obj, nil, TO_CHAR)
-	} else if ch.Carry_items >= 50 {
+	} else if int(ch.Carry_items) >= 50 {
 		act(libc.CString("$p: your arms are full!"), FALSE, ch, obj, nil, TO_CHAR)
 	} else {
 		if remove_otrigger(obj, ch) == 0 {
 			return
 		}
 		if pos == WEAR_WIELD1 && PLR_FLAGGED(ch, PLR_THANDW) {
-			ch.Act[int(PLR_THANDW/32)] &= bitvector_t(^(1 << (int(PLR_THANDW % 32))))
+			ch.Act[int(PLR_THANDW/32)] &= bitvector_t(int32(^(1 << (int(PLR_THANDW % 32)))))
 		}
 		obj_to_char(unequip_char(ch, pos), ch)
 		act(libc.CString("You stop using $p."), FALSE, ch, obj, nil, TO_CHAR)
@@ -4485,21 +4485,21 @@ func do_remove(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	for obj = ch.Carrying; obj != nil; obj = obj.Next_content {
-		if obj.Type_flag == ITEM_BOARD {
+		if int(obj.Type_flag) == ITEM_BOARD {
 			found = 1
 			break
 		}
 	}
 	if obj == nil {
 		for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; obj != nil; obj = obj.Next_content {
-			if obj.Type_flag == ITEM_BOARD {
+			if int(obj.Type_flag) == ITEM_BOARD {
 				found = 1
 				break
 			}
 		}
 	}
 	if found != 0 {
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(arg[0])))))&int(uint16(int16(_ISdigit)))) == 0 || (func() int {
+		if !unicode.IsDigit(rune(arg[0])) || (func() int {
 			msg = libc.Atoi(libc.GoString(&arg[0]))
 			return msg
 		}()) == 0 {
@@ -4613,7 +4613,7 @@ func max_carry_weight(ch *char_data) int64 {
 		abil  int64
 		total int
 	)
-	abil = (ch.Max_hit / 200) + int64(ch.Aff_abils.Str*50)
+	abil = (ch.Max_hit / 200) + int64(int(ch.Aff_abils.Str)*50)
 	total = 1
 	return int64(total * int(abil))
 }

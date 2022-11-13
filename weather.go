@@ -203,7 +203,7 @@ func oozaru_add(tch *char_data) {
 				if d.Character.Kaioken > 0 {
 					do_kaioken(d.Character, libc.CString("0"), 0, 0)
 				}
-				d.Character.Act[int(PLR_OOZARU/32)] |= bitvector_t(1 << (int(PLR_OOZARU % 32)))
+				d.Character.Act[int(PLR_OOZARU/32)] |= bitvector_t(int32(1 << (int(PLR_OOZARU % 32))))
 				var add int = 10000
 				var mult int = 2
 				d.Character.Max_hit = (d.Character.Basepl + int64(add)) * int64(mult)
@@ -231,7 +231,7 @@ func oozaru_add(tch *char_data) {
 		if MOON_OK(tch) && !PLR_FLAGGED(tch, PLR_OOZARU) {
 			act(libc.CString("@rLooking up at the moon your heart begins to beat loudly. Sudden rage begins to fill your mind while your body begins to grow. Hair sprouts  all over your body and your teeth become sharp as your body takes on the Oozaru form!@n"), TRUE, tch, nil, nil, TO_CHAR)
 			act(libc.CString("@R$n@r looks up at the moon as $s eyes turn red and $s heart starts to beat loudly. Hair starts to grow all over $s body as $e starts screaming. The scream turns into a roar as $s body begins to grow into a giant ape!@n"), TRUE, tch, nil, nil, TO_ROOM)
-			tch.Act[int(PLR_OOZARU/32)] |= bitvector_t(1 << (int(PLR_OOZARU % 32)))
+			tch.Act[int(PLR_OOZARU/32)] |= bitvector_t(int32(1 << (int(PLR_OOZARU % 32))))
 			var add int = 10000
 			var mult int = 2
 			tch.Max_hit = (tch.Basepl + int64(add)) * int64(mult)
@@ -265,7 +265,7 @@ func oozaru_drop(tch *char_data) {
 			if PLR_FLAGGED(d.Character, PLR_OOZARU) {
 				act(libc.CString("@CYour body begins to shrink back to its normal form as the power of the Oozaru leaves you. You fall asleep shortly after returning to normal!@n"), TRUE, d.Character, nil, nil, TO_CHAR)
 				act(libc.CString("@c$n@C's body begins to shrink and return to normal. Their giant ape features fading back into humanoid features until $e is left normal and asleep.@n"), TRUE, d.Character, nil, nil, TO_ROOM)
-				d.Character.Act[int(PLR_OOZARU/32)] &= bitvector_t(^(1 << (int(PLR_OOZARU % 32))))
+				d.Character.Act[int(PLR_OOZARU/32)] &= bitvector_t(int32(^(1 << (int(PLR_OOZARU % 32)))))
 				d.Character.Position = POS_SLEEPING
 				d.Character.Hit = (d.Character.Hit / 2) - 10000
 				d.Character.Mana = (d.Character.Mana / 2) - 10000
@@ -288,7 +288,7 @@ func oozaru_drop(tch *char_data) {
 		if PLR_FLAGGED(tch, PLR_OOZARU) {
 			act(libc.CString("@CYour body begins to shrink back to its normal form as the power of the Oozaru leaves you. You fall asleep shortly after returning to normal!@n"), TRUE, tch, nil, nil, TO_CHAR)
 			act(libc.CString("@c$n@C's body begins to shrink and return to normal. Their giant ape features fading back into humanoid features until $e is left normal and asleep.@n"), TRUE, tch, nil, nil, TO_ROOM)
-			tch.Act[int(PLR_OOZARU/32)] &= bitvector_t(^(1 << (int(PLR_OOZARU % 32))))
+			tch.Act[int(PLR_OOZARU/32)] &= bitvector_t(int32(^(1 << (int(PLR_OOZARU % 32)))))
 			tch.Position = POS_SLEEPING
 			tch.Hit = (tch.Hit / 2) - 10000
 			tch.Mana = (tch.Mana / 2) - 10000
@@ -321,7 +321,7 @@ func star_phase(ch *char_data, type_ int) {
 			if GET_LEVEL(d.Character) < 2 {
 				continue
 			}
-			if d.Character.Race == RACE_HOSHIJIN {
+			if int(d.Character.Race) == RACE_HOSHIJIN {
 				ch = d.Character
 				switch type_ {
 				case 0:
@@ -351,7 +351,7 @@ func star_phase(ch *char_data, type_ int) {
 		}
 		return
 	} else if ch != nil && !IS_NPC(ch) && GET_LEVEL(ch) > 1 {
-		if ch.Race == RACE_HOSHIJIN {
+		if int(ch.Race) == RACE_HOSHIJIN {
 			switch type_ {
 			case 0:
 				if ch.Starphase > 0 {
@@ -427,10 +427,10 @@ func phase_powerup(ch *char_data, type_ int, phase int) {
 		ch.Max_hit = ch.Basepl
 		ch.Max_mana = ch.Baseki
 		ch.Max_move = ch.Basest
-		if (ch.Bonuses[BONUS_WIMP]) > 0 && ch.Aff_abils.Str < 25 {
+		if (ch.Bonuses[BONUS_WIMP]) > 0 && int(ch.Aff_abils.Str) < 25 {
 			ch.Real_abils.Str -= int8(bonus)
 		}
-		if (ch.Bonuses[BONUS_SLOW]) > 0 && ch.Aff_abils.Cha < 25 {
+		if (ch.Bonuses[BONUS_SLOW]) > 0 && int(ch.Aff_abils.Cha) < 25 {
 			ch.Real_abils.Cha -= int8(bonus)
 		}
 		ch.Starphase = 0

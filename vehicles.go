@@ -132,49 +132,49 @@ func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 		}
 		return -1
 	}()) == 50 {
-		if C.strcasecmp(arg, libc.CString("Nexus City")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Nexus City")) == 0 {
 			landspot = 300
 			landspot += rand_number(0, 63)
 			return landspot
-		} else if C.strcasecmp(arg, libc.CString("South Ocean")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("South Ocean")) == 0 {
 			landspot = 800
 			landspot += rand_number(0, 99)
 			return landspot
-		} else if C.strcasecmp(arg, libc.CString("Nexus Field")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Nexus Field")) == 0 {
 			landspot = 1150
 			landspot += rand_number(-16, 28)
 			return landspot
-		} else if C.strcasecmp(arg, libc.CString("Cherry Blossom Mountain")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Cherry Blossom Mountain")) == 0 {
 			landspot = 1180
 			landspot += rand_number(0, 19)
 			return landspot
-		} else if C.strcasecmp(arg, libc.CString("Sandy Desert")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Sandy Desert")) == 0 {
 			landspot = 1287
 			landspot += rand_number(0, 64)
 			return landspot
-		} else if C.strcasecmp(arg, libc.CString("Northern Plains")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Northern Plains")) == 0 {
 			landspot = 1428
 			landspot += rand_number(0, 55)
 			return landspot
-		} else if C.strcasecmp(arg, libc.CString("Korin's Tower")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Korin's Tower")) == 0 {
 			return 1456
-		} else if C.strcasecmp(arg, libc.CString("Kami's Lookout")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Kami's Lookout")) == 0 {
 			landspot = 1506
 			landspot += rand_number(0, 30)
 			return landspot
-		} else if C.strcasecmp(arg, libc.CString("Shadow Forest")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Shadow Forest")) == 0 {
 			landspot = 1600
 			landspot += rand_number(0, 66)
 			return landspot
-		} else if C.strcasecmp(arg, libc.CString("Decrepit Area")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Decrepit Area")) == 0 {
 			return 1710
-		} else if C.strcasecmp(arg, libc.CString("West City")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("West City")) == 0 {
 			return 19510
-		} else if C.strcasecmp(arg, libc.CString("Hercule Beach")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Hercule Beach")) == 0 {
 			landspot = 2141
 			landspot += rand_number(0, 53)
 			return landspot
-		} else if C.strcasecmp(arg, libc.CString("Satan City")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Satan City")) == 0 {
 			landspot = 1150
 			landspot += rand_number(-16, 28)
 			return landspot
@@ -189,29 +189,29 @@ func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 		}
 		return -1
 	}()) == 51 {
-		if C.strcasecmp(arg, libc.CString("Ice Crown City")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Ice Crown City")) == 0 {
 			return 4264
-		} else if C.strcasecmp(arg, libc.CString("Ice Highway")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Ice Highway")) == 0 {
 			return 4300
-		} else if C.strcasecmp(arg, libc.CString("Topica Snowfield")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Topica Snowfield")) == 0 {
 			return 4351
-		} else if C.strcasecmp(arg, libc.CString("Glug's Volcano")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Glug's Volcano")) == 0 {
 			return 4400
-		} else if C.strcasecmp(arg, libc.CString("Platonic Sea")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Platonic Sea")) == 0 {
 			return 4600
-		} else if C.strcasecmp(arg, libc.CString("Slave City")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Slave City")) == 0 {
 			return 4800
-		} else if C.strcasecmp(arg, libc.CString("Acturian Woods")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Acturian Woods")) == 0 {
 			return 5100
-		} else if C.strcasecmp(arg, libc.CString("Desolate Demesne")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Desolate Demesne")) == 0 {
 			return 5150
-		} else if C.strcasecmp(arg, libc.CString("Chateau Ishran")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Chateau Ishran")) == 0 {
 			return 5165
-		} else if C.strcasecmp(arg, libc.CString("Wyrm Spine Mountain")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Wyrm Spine Mountain")) == 0 {
 			return 5200
-		} else if C.strcasecmp(arg, libc.CString("Cloud Ruler Temple")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Cloud Ruler Temple")) == 0 {
 			return 5500
-		} else if C.strcasecmp(arg, libc.CString("Koltoan Mine")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Koltoan Mine")) == 0 {
 			return 4944
 		} else {
 			send_to_char(ch, libc.CString("You don't know where that made up place is, but decided to land anyway."))
@@ -223,37 +223,37 @@ func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 		}
 		return -1
 	}()) == 52 {
-		if C.strcasecmp(arg, libc.CString("Tiranoc City")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Tiranoc City")) == 0 {
 			return 8006
-		} else if C.strcasecmp(arg, libc.CString("Great Oroist Temple")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Great Oroist Temple")) == 0 {
 			return 8300
-		} else if C.strcasecmp(arg, libc.CString("Elzthuan Forest")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Elzthuan Forest")) == 0 {
 			return 8400
-		} else if C.strcasecmp(arg, libc.CString("Mazori Farm")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Mazori Farm")) == 0 {
 			return 8447
-		} else if C.strcasecmp(arg, libc.CString("Dres")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Dres")) == 0 {
 			return 8500
-		} else if C.strcasecmp(arg, libc.CString("Colvian Farm")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Colvian Farm")) == 0 {
 			return 8600
-		} else if C.strcasecmp(arg, libc.CString("St Alucia")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("St Alucia")) == 0 {
 			return 8700
-		} else if C.strcasecmp(arg, libc.CString("Meridius Memorial")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Meridius Memorial")) == 0 {
 			return 8800
-		} else if C.strcasecmp(arg, libc.CString("Desert of Illusion")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Desert of Illusion")) == 0 {
 			return 8900
-		} else if C.strcasecmp(arg, libc.CString("Plains of Confusion")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Plains of Confusion")) == 0 {
 			return 8954
-		} else if C.strcasecmp(arg, libc.CString("Turlon Fair")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Turlon Fair")) == 0 {
 			return 9200
-		} else if C.strcasecmp(arg, libc.CString("Wetlands")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Wetlands")) == 0 {
 			return 9700
-		} else if C.strcasecmp(arg, libc.CString("Kerberos")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Kerberos")) == 0 {
 			return 9855
-		} else if C.strcasecmp(arg, libc.CString("Shaeras Mansion")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Shaeras Mansion")) == 0 {
 			return 9864
-		} else if C.strcasecmp(arg, libc.CString("Slavinus Ravine")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Slavinus Ravine")) == 0 {
 			return 9900
-		} else if C.strcasecmp(arg, libc.CString("Furian Citadel")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Furian Citadel")) == 0 {
 			return 9949
 		} else {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
@@ -265,19 +265,19 @@ func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 		}
 		return -1
 	}()) == 53 {
-		if C.strcasecmp(arg, libc.CString("Vegetos City")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Vegetos City")) == 0 {
 			return 2226
-		} else if C.strcasecmp(arg, libc.CString("Blood Dunes")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Blood Dunes")) == 0 {
 			return 2600
-		} else if C.strcasecmp(arg, libc.CString("Ancestral Mountains")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Ancestral Mountains")) == 0 {
 			return 2616
-		} else if C.strcasecmp(arg, libc.CString("Destopa Swamp")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Destopa Swamp")) == 0 {
 			return 2709
-		} else if C.strcasecmp(arg, libc.CString("Pride forest")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Pride forest")) == 0 {
 			return 2800
-		} else if C.strcasecmp(arg, libc.CString("Pride Tower")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Pride Tower")) == 0 {
 			return 2899
-		} else if C.strcasecmp(arg, libc.CString("Ruby Cave")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Ruby Cave")) == 0 {
 			return 2615
 		} else {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
@@ -289,17 +289,17 @@ func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 		}
 		return -1
 	}()) == 54 {
-		if C.strcasecmp(arg, libc.CString("Senzu Village")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Senzu Village")) == 0 {
 			return 11600
-		} else if C.strcasecmp(arg, libc.CString("Guru's House")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Guru's House")) == 0 {
 			return 0x27C6
-		} else if C.strcasecmp(arg, libc.CString("Crystalline Cave")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Crystalline Cave")) == 0 {
 			return 0x28EA
-		} else if C.strcasecmp(arg, libc.CString("Elder Village")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Elder Village")) == 0 {
 			return 13300
-		} else if C.strcasecmp(arg, libc.CString("Frieza's Ship")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Frieza's Ship")) == 0 {
 			return 0x27DB
-		} else if C.strcasecmp(arg, libc.CString("Kakureta Village")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Kakureta Village")) == 0 {
 			return 0x2AAA
 		} else {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
@@ -311,15 +311,15 @@ func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 		}
 		return -1
 	}()) == 55 {
-		if C.strcasecmp(arg, libc.CString("Haven City")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Haven City")) == 0 {
 			return 12010
-		} else if C.strcasecmp(arg, libc.CString("Serenity Lake")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Serenity Lake")) == 0 {
 			return 0x2F47
-		} else if C.strcasecmp(arg, libc.CString("Kaiju Forest")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Kaiju Forest")) == 0 {
 			return 12300
-		} else if C.strcasecmp(arg, libc.CString("Ortusian Temple")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Ortusian Temple")) == 0 {
 			return 12400
-		} else if C.strcasecmp(arg, libc.CString("Silent Glade")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Silent Glade")) == 0 {
 			return 0x30C0
 		} else {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
@@ -331,13 +331,13 @@ func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 		}
 		return -1
 	}()) == 56 {
-		if C.strcasecmp(arg, libc.CString("Yardra City")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Yardra City")) == 0 {
 			return 0x36B8
-		} else if C.strcasecmp(arg, libc.CString("Jade Forest")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Jade Forest")) == 0 {
 			return 14100
-		} else if C.strcasecmp(arg, libc.CString("Jade Cliffs")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Jade Cliffs")) == 0 {
 			return 14200
-		} else if C.strcasecmp(arg, libc.CString("Mount Valaria")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Mount Valaria")) == 0 {
 			return 14300
 		} else {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
@@ -349,11 +349,11 @@ func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 		}
 		return -1
 	}()) == 198 {
-		if C.strcasecmp(arg, libc.CString("Cerria Colony")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Cerria Colony")) == 0 {
 			return 0x447B
-		} else if C.strcasecmp(arg, libc.CString("Crystalline Forest")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Crystalline Forest")) == 0 {
 			return 7950
-		} else if C.strcasecmp(arg, libc.CString("Fistarl Volcano")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Fistarl Volcano")) == 0 {
 			return 17420
 		} else {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
@@ -365,11 +365,11 @@ func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 		}
 		return -1
 	}()) == 57 {
-		if C.strcasecmp(arg, libc.CString("Utatlan City")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Utatlan City")) == 0 {
 			return 3412
-		} else if C.strcasecmp(arg, libc.CString("Zenith Jungle")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Zenith Jungle")) == 0 {
 			return 3520
-		} else if C.strcasecmp(arg, libc.CString("Ancient Castle")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Ancient Castle")) == 0 {
 			return 19600
 		} else {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
@@ -381,9 +381,9 @@ func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 		}
 		return -1
 	}()) == 58 {
-		if C.strcasecmp(arg, libc.CString("Aquis City")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Aquis City")) == 0 {
 			return 0x3A38
-		} else if C.strcasecmp(arg, libc.CString("Yunkai Pirate Base")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Yunkai Pirate Base")) == 0 {
 			return 0x3D27
 		} else {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
@@ -395,13 +395,13 @@ func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 		}
 		return -1
 	}()) == 59 {
-		if C.strcasecmp(arg, libc.CString("Janacre")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Janacre")) == 0 {
 			return 0x3E89
-		} else if C.strcasecmp(arg, libc.CString("Arlian Wasteland")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Arlian Wasteland")) == 0 {
 			return 0x40A0
-		} else if C.strcasecmp(arg, libc.CString("Arlia Mine")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Arlia Mine")) == 0 {
 			return 16600
-		} else if C.strcasecmp(arg, libc.CString("Kemabra Wastes")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Kemabra Wastes")) == 0 {
 			return 0x41B0
 		} else {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
@@ -415,7 +415,7 @@ func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 func find_vehicle_by_vnum(vnum int) *obj_data {
 	var i *obj_data
 	for i = object_list; i != nil; i = i.Next {
-		if i.Type_flag == ITEM_VEHICLE {
+		if int(i.Type_flag) == ITEM_VEHICLE {
 			if GET_OBJ_VNUM(i) == obj_vnum(vnum) {
 				return i
 			}
@@ -426,7 +426,7 @@ func find_vehicle_by_vnum(vnum int) *obj_data {
 func find_hatch_by_vnum(vnum int) *obj_data {
 	var i *obj_data
 	for i = object_list; i != nil; i = i.Next {
-		if i.Type_flag == ITEM_HATCH {
+		if int(i.Type_flag) == ITEM_HATCH {
 			if GET_OBJ_VNUM(i) == obj_vnum(vnum) {
 				return i
 			}
@@ -452,14 +452,14 @@ func find_control(ch *char_data) *obj_data {
 	controls = get_obj_in_list_type(ITEM_CONTROL, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents)
 	if controls == nil {
 		for obj = ch.Carrying; obj != nil && controls == nil; obj = obj.Next_content {
-			if CAN_SEE_OBJ(ch, obj) && obj.Type_flag == ITEM_CONTROL {
+			if CAN_SEE_OBJ(ch, obj) && int(obj.Type_flag) == ITEM_CONTROL {
 				controls = obj
 			}
 		}
 	}
 	if controls == nil {
 		for j = 0; j < NUM_WEARS && controls == nil; j++ {
-			if (ch.Equipment[j]) != nil && CAN_SEE_OBJ(ch, ch.Equipment[j]) && (ch.Equipment[j]).Type_flag == ITEM_CONTROL {
+			if (ch.Equipment[j]) != nil && CAN_SEE_OBJ(ch, ch.Equipment[j]) && int((ch.Equipment[j]).Type_flag) == ITEM_CONTROL {
 				controls = ch.Equipment[j]
 			}
 		}
@@ -482,7 +482,7 @@ func drive_into_vehicle(ch *char_data, vehicle *obj_data, arg *byte) {
 		return vehicle_in_out
 	}()) == nil {
 		send_to_char(ch, libc.CString("@wNothing here by that name!\r\n"))
-	} else if vehicle_in_out.Type_flag != ITEM_VEHICLE {
+	} else if int(vehicle_in_out.Type_flag) != ITEM_VEHICLE {
 		send_to_char(ch, libc.CString("@wThat's not a ship.\r\n"))
 	} else if vehicle == vehicle_in_out {
 		send_to_char(ch, libc.CString("@wMy, we are in a clever mood today, aren't we.\r\n"))
@@ -582,7 +582,7 @@ func drive_in_direction(ch *char_data, vehicle *obj_data, dir int) {
 		}
 		var hatch *obj_data = nil
 		for hatch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(room_vnum(vehicle.Value[0])))))).Contents; hatch != nil; hatch = hatch.Next_content {
-			if hatch.Type_flag == ITEM_HATCH {
+			if int(hatch.Type_flag) == ITEM_HATCH {
 				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
 					hatch.Value[3] = int((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number)
 				} else {
@@ -651,7 +651,7 @@ func do_warp(ch *char_data, argument *byte, cmd int, subcmd int) {
 	} else if arg[0] == 0 {
 		send_to_char(ch, libc.CString("Syntax: shipwarp [ earth | vegeta | namek | konack | aether | frigid | buoy1 | buoy2 | buoy3 ]\r\n"))
 		return
-	} else if C.strcasecmp(&arg[0], libc.CString("earth")) != 0 && C.strcasecmp(&arg[0], libc.CString("vegeta")) != 0 && C.strcasecmp(&arg[0], libc.CString("namek")) != 0 && C.strcasecmp(&arg[0], libc.CString("konack")) != 0 && C.strcasecmp(&arg[0], libc.CString("frigid")) != 0 && C.strcasecmp(&arg[0], libc.CString("aether")) != 0 && C.strcasecmp(&arg[0], libc.CString("buoy1")) != 0 && C.strcasecmp(&arg[0], libc.CString("buoy2")) != 0 && C.strcasecmp(&arg[0], libc.CString("buoy3")) != 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("earth")) != 0 && libc.StrCaseCmp(&arg[0], libc.CString("vegeta")) != 0 && libc.StrCaseCmp(&arg[0], libc.CString("namek")) != 0 && libc.StrCaseCmp(&arg[0], libc.CString("konack")) != 0 && libc.StrCaseCmp(&arg[0], libc.CString("frigid")) != 0 && libc.StrCaseCmp(&arg[0], libc.CString("aether")) != 0 && libc.StrCaseCmp(&arg[0], libc.CString("buoy1")) != 0 && libc.StrCaseCmp(&arg[0], libc.CString("buoy2")) != 0 && libc.StrCaseCmp(&arg[0], libc.CString("buoy3")) != 0 {
 		send_to_char(ch, libc.CString("Syntax: shipwarp [ earth | vegeta | namek | konack | aether | frigid | buoy1 | buoy2 | buoy3 ]\r\n"))
 		return
 	} else if ROOM_FLAGGED(room_rnum(libc.BoolToInt(vehicle.In_room == 0)), ROOM_SPACE) {
@@ -661,7 +661,7 @@ func do_warp(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Your ship is not outfitted with an Instant Travel Warp Accelerator.\r\n"))
 		return
 	} else {
-		if C.strcasecmp(&arg[0], libc.CString("earth")) == 0 {
+		if libc.StrCaseCmp(&arg[0], libc.CString("earth")) == 0 {
 			if (func() room_vnum {
 				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
 					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
@@ -683,7 +683,7 @@ func do_warp(ch *char_data, argument *byte, cmd int, subcmd int) {
 				obj_to_room(vehicle, real_room(0xA013))
 				send_to_room(vehicle.In_room, libc.CString("@BSuddenly in a flash of blue light @n%s @B appears instantly!@n\r\n"), vehicle.Short_description)
 			}
-		} else if C.strcasecmp(&arg[0], libc.CString("namek")) == 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("namek")) == 0 {
 			if (func() room_vnum {
 				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
 					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
@@ -705,7 +705,7 @@ func do_warp(ch *char_data, argument *byte, cmd int, subcmd int) {
 				obj_to_room(vehicle, real_room(0xA780))
 				send_to_room(vehicle.In_room, libc.CString("@BSuddenly in a flash of blue light @n%s @B appears instantly!@n\r\n"), vehicle.Short_description)
 			}
-		} else if C.strcasecmp(&arg[0], libc.CString("frigid")) == 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("frigid")) == 0 {
 			if (func() room_vnum {
 				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
 					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
@@ -727,7 +727,7 @@ func do_warp(ch *char_data, argument *byte, cmd int, subcmd int) {
 				obj_to_room(vehicle, real_room(0x78A9))
 				send_to_room(vehicle.In_room, libc.CString("@BSuddenly in a flash of blue light @n%s @B appears instantly!@n\r\n"), vehicle.Short_description)
 			}
-		} else if C.strcasecmp(&arg[0], libc.CString("konack")) == 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("konack")) == 0 {
 			if (func() room_vnum {
 				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
 					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
@@ -749,7 +749,7 @@ func do_warp(ch *char_data, argument *byte, cmd int, subcmd int) {
 				obj_to_room(vehicle, real_room(0x69B9))
 				send_to_room(vehicle.In_room, libc.CString("@BSuddenly in a flash of blue light @n%s @B appears instantly!@n\r\n"), vehicle.Short_description)
 			}
-		} else if C.strcasecmp(&arg[0], libc.CString("vegeta")) == 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("vegeta")) == 0 {
 			if (func() room_vnum {
 				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
 					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
@@ -771,7 +771,7 @@ func do_warp(ch *char_data, argument *byte, cmd int, subcmd int) {
 				obj_to_room(vehicle, real_room(0x7E6D))
 				send_to_room(vehicle.In_room, libc.CString("@BSuddenly in a flash of blue light @n%s @B appears instantly!@n\r\n"), vehicle.Short_description)
 			}
-		} else if C.strcasecmp(&arg[0], libc.CString("aether")) == 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("aether")) == 0 {
 			if (func() room_vnum {
 				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
 					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
@@ -793,7 +793,7 @@ func do_warp(ch *char_data, argument *byte, cmd int, subcmd int) {
 				obj_to_room(vehicle, real_room(0xA3E7))
 				send_to_room(vehicle.In_room, libc.CString("@BSuddenly in a flash of blue light @n%s @B appears instantly!@n\r\n"), vehicle.Short_description)
 			}
-		} else if C.strcasecmp(&arg[0], libc.CString("buoy1")) == 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("buoy1")) == 0 {
 			if ch.Radar1 <= 0 {
 				send_to_char(ch, libc.CString("You have not launched that buoy!\r\n"))
 				return
@@ -813,7 +813,7 @@ func do_warp(ch *char_data, argument *byte, cmd int, subcmd int) {
 				obj_to_room(vehicle, real_room(ch.Radar1))
 				send_to_room(vehicle.In_room, libc.CString("@BSuddenly in a flash of blue light @n%s @B appears instantly!@n\r\n"), vehicle.Short_description)
 			}
-		} else if C.strcasecmp(&arg[0], libc.CString("buoy2")) == 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("buoy2")) == 0 {
 			if ch.Radar2 <= 0 {
 				send_to_char(ch, libc.CString("You have not launched that buoy!\r\n"))
 				return
@@ -833,7 +833,7 @@ func do_warp(ch *char_data, argument *byte, cmd int, subcmd int) {
 				obj_to_room(vehicle, real_room(ch.Radar2))
 				send_to_room(vehicle.In_room, libc.CString("@BSuddenly in a flash of blue light @n%s @B appears instantly!@n\r\n"), vehicle.Short_description)
 			}
-		} else if C.strcasecmp(&arg[0], libc.CString("buoy3")) == 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("buoy3")) == 0 {
 			if ch.Radar3 <= 0 {
 				send_to_char(ch, libc.CString("You have not launched that buoy!\r\n"))
 				return
@@ -874,7 +874,7 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You have no arms!\r\n"))
 		return
 	}
-	if C.strcasecmp(&arg3[0], libc.CString("unready")) == 0 && !IS_NPC(ch) {
+	if libc.StrCaseCmp(&arg3[0], libc.CString("unready")) == 0 && !IS_NPC(ch) {
 		if !PLR_FLAGGED(ch, PLR_PILOTING) {
 			send_to_char(ch, libc.CString("You are already not flying the ship!\r\n"))
 			return
@@ -882,11 +882,11 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 			act(libc.CString("@w$n stands up and stops piloting the ship."), TRUE, ch, nil, nil, TO_ROOM)
 			send_to_char(ch, libc.CString("@wYou stand up from the pilot's seat.\r\n"))
 			ch.Position = POS_STANDING
-			ch.Act[int(PLR_PILOTING/32)] &= bitvector_t(^(1 << (int(PLR_PILOTING % 32))))
+			ch.Act[int(PLR_PILOTING/32)] &= bitvector_t(int32(^(1 << (int(PLR_PILOTING % 32)))))
 			return
 		}
 	}
-	if C.strcasecmp(&arg3[0], libc.CString("ready")) == 0 && !IS_NPC(ch) {
+	if libc.StrCaseCmp(&arg3[0], libc.CString("ready")) == 0 && !IS_NPC(ch) {
 		if (func() *obj_data {
 			controls = find_control(ch)
 			return controls
@@ -925,14 +925,14 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 	}
 	if confirmed == TRUE {
-		ch.Act[int(PLR_PILOTING/32)] |= bitvector_t(1 << (int(PLR_PILOTING % 32)))
+		ch.Act[int(PLR_PILOTING/32)] |= bitvector_t(int32(1 << (int(PLR_PILOTING % 32))))
 		act(libc.CString("@w$n sits down and begins piloting the ship."), TRUE, ch, nil, nil, TO_ROOM)
 		ch.Position = POS_SITTING
 		send_to_char(ch, libc.CString("@wYou take a seat in the pilot's chair.\r\n"))
 		return
 	} else if !PLR_FLAGGED(ch, PLR_PILOTING) {
 		send_to_char(ch, libc.CString("@wYou need to be seated in the pilot's seat.\r\n[Enter: Pilot ready/unready]\r\n"))
-	} else if ch.Position < POS_SLEEPING {
+	} else if int(ch.Position) < POS_SLEEPING {
 		send_to_char(ch, libc.CString("@wYou can't see anything but stars!\r\n"))
 	} else if AFF_FLAGGED(ch, AFF_BLIND) {
 		send_to_char(ch, libc.CString("@wYou can't see a damned thing, you're blind!\r\n"))
@@ -972,7 +972,7 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_char(ch, libc.CString("@wThe hatch is open, are you insane!?\r\n"))
 				return
 			}
-			if C.strcasecmp(&arg[0], libc.CString("north")) == 0 || C.strcasecmp(&arg[0], libc.CString("n")) == 0 {
+			if libc.StrCaseCmp(&arg[0], libc.CString("north")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("n")) == 0 {
 				dir = 0
 				drive_in_direction(ch, vehicle, dir)
 				if (controls.Value[1]) == 1 {
@@ -986,7 +986,7 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 				} else if (controls.Value[1]) == 5 {
 					WAIT_STATE(ch, int(float64((int(1000000/OPT_USEC))*1)*0.5))
 				}
-			} else if C.strcasecmp(&arg[0], libc.CString("east")) == 0 || C.strcasecmp(&arg[0], libc.CString("e")) == 0 {
+			} else if libc.StrCaseCmp(&arg[0], libc.CString("east")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("e")) == 0 {
 				dir = 1
 				drive_in_direction(ch, vehicle, dir)
 				if (controls.Value[1]) == 1 {
@@ -1000,7 +1000,7 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 				} else if (controls.Value[1]) == 5 {
 					WAIT_STATE(ch, int(float64((int(1000000/OPT_USEC))*1)*0.5))
 				}
-			} else if C.strcasecmp(&arg[0], libc.CString("south")) == 0 || C.strcasecmp(&arg[0], libc.CString("s")) == 0 {
+			} else if libc.StrCaseCmp(&arg[0], libc.CString("south")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("s")) == 0 {
 				dir = 2
 				drive_in_direction(ch, vehicle, dir)
 				if (controls.Value[1]) == 1 {
@@ -1014,7 +1014,7 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 				} else if (controls.Value[1]) == 5 {
 					WAIT_STATE(ch, int(float64((int(1000000/OPT_USEC))*1)*0.5))
 				}
-			} else if C.strcasecmp(&arg[0], libc.CString("west")) == 0 || C.strcasecmp(&arg[0], libc.CString("w")) == 0 {
+			} else if libc.StrCaseCmp(&arg[0], libc.CString("west")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("w")) == 0 {
 				dir = 3
 				drive_in_direction(ch, vehicle, dir)
 				if (controls.Value[1]) == 1 {
@@ -1028,7 +1028,7 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 				} else if (controls.Value[1]) == 5 {
 					WAIT_STATE(ch, int(float64((int(1000000/OPT_USEC))*1)*0.5))
 				}
-			} else if C.strcasecmp(&arg[0], libc.CString("up")) == 0 || C.strcasecmp(&arg[0], libc.CString("u")) == 0 {
+			} else if libc.StrCaseCmp(&arg[0], libc.CString("up")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("u")) == 0 {
 				dir = 4
 				drive_in_direction(ch, vehicle, dir)
 				if (controls.Value[1]) == 1 {
@@ -1042,7 +1042,7 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 				} else if (controls.Value[1]) == 5 {
 					WAIT_STATE(ch, int(float64((int(1000000/OPT_USEC))*1)*0.5))
 				}
-			} else if C.strcasecmp(&arg[0], libc.CString("down")) == 0 || C.strcasecmp(&arg[0], libc.CString("d")) == 0 {
+			} else if libc.StrCaseCmp(&arg[0], libc.CString("down")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("d")) == 0 {
 				dir = 5
 				drive_in_direction(ch, vehicle, dir)
 				if (controls.Value[1]) == 1 {
@@ -1056,7 +1056,7 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 				} else if (controls.Value[1]) == 5 {
 					WAIT_STATE(ch, int(float64((int(1000000/OPT_USEC))*1)*0.5))
 				}
-			} else if C.strcasecmp(&arg[0], libc.CString("northwest")) == 0 || C.strcasecmp(&arg[0], libc.CString("nw")) == 0 || C.strcasecmp(&arg[0], libc.CString("northw")) == 0 {
+			} else if libc.StrCaseCmp(&arg[0], libc.CString("northwest")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("nw")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("northw")) == 0 {
 				dir = 6
 				drive_in_direction(ch, vehicle, dir)
 				if (controls.Value[1]) == 1 {
@@ -1070,7 +1070,7 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 				} else if (controls.Value[1]) == 5 {
 					WAIT_STATE(ch, int(float64((int(1000000/OPT_USEC))*1)*0.5))
 				}
-			} else if C.strcasecmp(&arg[0], libc.CString("northeast")) == 0 || C.strcasecmp(&arg[0], libc.CString("ne")) == 0 || C.strcasecmp(&arg[0], libc.CString("northe")) == 0 {
+			} else if libc.StrCaseCmp(&arg[0], libc.CString("northeast")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("ne")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("northe")) == 0 {
 				dir = 7
 				drive_in_direction(ch, vehicle, dir)
 				if (controls.Value[1]) == 1 {
@@ -1084,7 +1084,7 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 				} else if (controls.Value[1]) == 5 {
 					WAIT_STATE(ch, int(float64((int(1000000/OPT_USEC))*1)*0.5))
 				}
-			} else if C.strcasecmp(&arg[0], libc.CString("southeast")) == 0 || C.strcasecmp(&arg[0], libc.CString("se")) == 0 || C.strcasecmp(&arg[0], libc.CString("southe")) == 0 {
+			} else if libc.StrCaseCmp(&arg[0], libc.CString("southeast")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("se")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("southe")) == 0 {
 				dir = 8
 				drive_in_direction(ch, vehicle, dir)
 				if (controls.Value[1]) == 1 {
@@ -1098,7 +1098,7 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 				} else if (controls.Value[1]) == 5 {
 					WAIT_STATE(ch, int(float64((int(1000000/OPT_USEC))*1)*0.5))
 				}
-			} else if C.strcasecmp(&arg[0], libc.CString("southwest")) == 0 || C.strcasecmp(&arg[0], libc.CString("sw")) == 0 || C.strcasecmp(&arg[0], libc.CString("southw")) == 0 {
+			} else if libc.StrCaseCmp(&arg[0], libc.CString("southwest")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("sw")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("southw")) == 0 {
 				dir = 9
 				drive_in_direction(ch, vehicle, dir)
 				if (controls.Value[1]) == 1 {
@@ -1112,7 +1112,7 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 				} else if (controls.Value[1]) == 5 {
 					WAIT_STATE(ch, int(float64((int(1000000/OPT_USEC))*1)*0.5))
 				}
-			} else if C.strcasecmp(&arg[0], libc.CString("inside")) == 0 {
+			} else if libc.StrCaseCmp(&arg[0], libc.CString("inside")) == 0 {
 				dir = 10
 				drive_in_direction(ch, vehicle, dir)
 				if (controls.Value[1]) == 1 {
@@ -1126,7 +1126,7 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 				} else if (controls.Value[1]) == 5 {
 					WAIT_STATE(ch, int(float64((int(1000000/OPT_USEC))*1)*0.5))
 				}
-			} else if C.strcasecmp(&arg[0], libc.CString("outside")) == 0 {
+			} else if libc.StrCaseCmp(&arg[0], libc.CString("outside")) == 0 {
 				dir = 11
 				drive_in_direction(ch, vehicle, dir)
 				if (controls.Value[1]) == 1 {
@@ -1140,7 +1140,7 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 				} else if (controls.Value[1]) == 5 {
 					WAIT_STATE(ch, int(float64((int(1000000/OPT_USEC))*1)*0.5))
 				}
-			} else if C.strcasecmp(&arg[0], libc.CString("land")) == 0 {
+			} else if libc.StrCaseCmp(&arg[0], libc.CString("land")) == 0 {
 				if arg2[0] == 0 {
 					if GET_OBJ_VNUM(vehicle) >= 46000 && GET_OBJ_VNUM(vehicle) <= 0xB413 {
 						send_to_char(ch, libc.CString("@wLand on which pad? 1, 2, 3 or 4?\r\n"))
@@ -1155,11 +1155,11 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 				_ = blah
 				var land_location int = 50
 				if GET_OBJ_VNUM(vehicle) > 0xB413 {
-					if C.strcasecmp(&arg2[0], libc.CString("1")) != 0 && C.strcasecmp(&arg2[0], libc.CString("2")) != 0 && C.strcasecmp(&arg2[0], libc.CString("3")) != 0 && C.strcasecmp(&arg2[0], libc.CString("4")) != 0 {
+					if libc.StrCaseCmp(&arg2[0], libc.CString("1")) != 0 && libc.StrCaseCmp(&arg2[0], libc.CString("2")) != 0 && libc.StrCaseCmp(&arg2[0], libc.CString("3")) != 0 && libc.StrCaseCmp(&arg2[0], libc.CString("4")) != 0 {
 						send_to_char(ch, libc.CString("@wLand on which pad? 1, 2, 3 or 4?\r\n"))
 						return
 					}
-				} else if C.strcasecmp(&arg2[0], libc.CString("1")) != 0 && C.strcasecmp(&arg2[0], libc.CString("2")) != 0 && C.strcasecmp(&arg2[0], libc.CString("3")) != 0 && C.strcasecmp(&arg2[0], libc.CString("4")) != 0 {
+				} else if libc.StrCaseCmp(&arg2[0], libc.CString("1")) != 0 && libc.StrCaseCmp(&arg2[0], libc.CString("2")) != 0 && libc.StrCaseCmp(&arg2[0], libc.CString("3")) != 0 && libc.StrCaseCmp(&arg2[0], libc.CString("4")) != 0 {
 					land_location = ship_land_location(ch, vehicle, &arg2[0])
 				}
 				var buf3 [2048]byte
@@ -1178,25 +1178,25 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 					obj_from_room(vehicle)
 					obj_to_room(vehicle, real_room(room_vnum(land_location)))
 				} else if vehicle.In_room == real_room(50) {
-					if C.strcasecmp(&arg2[0], libc.CString("1")) == 0 {
+					if libc.StrCaseCmp(&arg2[0], libc.CString("1")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(409))
-					} else if C.strcasecmp(&arg2[0], libc.CString("2")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("2")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(411))
-					} else if C.strcasecmp(&arg2[0], libc.CString("3")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("3")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(412))
-					} else if C.strcasecmp(&arg2[0], libc.CString("4")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("4")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(410))
-					} else if C.strcasecmp(&arg2[0], libc.CString("4365")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("4365")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(0x49D8))
-					} else if C.strcasecmp(&arg2[0], libc.CString("6329")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("6329")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(0x49ED))
-					} else if C.strcasecmp(&arg2[0], libc.CString("1983")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("1983")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(0x4A33))
 					} else {
@@ -1213,19 +1213,19 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 					obj_from_room(vehicle)
 					obj_to_room(vehicle, real_room(0x3A38))
 				} else if vehicle.In_room == real_room(53) {
-					if C.strcasecmp(&arg2[0], libc.CString("1")) == 0 {
+					if libc.StrCaseCmp(&arg2[0], libc.CString("1")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(2319))
-					} else if C.strcasecmp(&arg2[0], libc.CString("2")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("2")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(2318))
-					} else if C.strcasecmp(&arg2[0], libc.CString("3")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("3")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(2320))
-					} else if C.strcasecmp(&arg2[0], libc.CString("4")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("4")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(2322))
-					} else if C.strcasecmp(&arg2[0], libc.CString("4126")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("4126")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(0x4724))
 					} else {
@@ -1233,16 +1233,16 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 						act(libc.CString("@wLanding sequence aborted, improper coordinates.@n"), FALSE, ch, nil, nil, TO_ROOM)
 					}
 				} else if vehicle.In_room == real_room(56) {
-					if C.strcasecmp(&arg2[0], libc.CString("1")) == 0 {
+					if libc.StrCaseCmp(&arg2[0], libc.CString("1")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(0x36B3))
-					} else if C.strcasecmp(&arg2[0], libc.CString("2")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("2")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(0x36B4))
-					} else if C.strcasecmp(&arg2[0], libc.CString("3")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("3")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(0x36B5))
-					} else if C.strcasecmp(&arg2[0], libc.CString("4")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("4")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(0x36B6))
 					} else {
@@ -1250,16 +1250,16 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 						act(libc.CString("@wLanding sequence aborted, improper coordinates.@n"), FALSE, ch, nil, nil, TO_ROOM)
 					}
 				} else if vehicle.In_room == real_room(55) {
-					if C.strcasecmp(&arg2[0], libc.CString("1")) == 0 {
+					if libc.StrCaseCmp(&arg2[0], libc.CString("1")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(0x2EE3))
-					} else if C.strcasecmp(&arg2[0], libc.CString("2")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("2")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(0x2EE4))
-					} else if C.strcasecmp(&arg2[0], libc.CString("3")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("3")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(0x2EE6))
-					} else if C.strcasecmp(&arg2[0], libc.CString("4")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("4")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(0x2EE5))
 					} else {
@@ -1267,16 +1267,16 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 						act(libc.CString("@wLanding sequence aborted, improper coordinates.@n"), FALSE, ch, nil, nil, TO_ROOM)
 					}
 				} else if vehicle.In_room == real_room(59) {
-					if C.strcasecmp(&arg2[0], libc.CString("1")) == 0 {
+					if libc.StrCaseCmp(&arg2[0], libc.CString("1")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(0x3EC1))
-					} else if C.strcasecmp(&arg2[0], libc.CString("2")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("2")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(0x3EC2))
-					} else if C.strcasecmp(&arg2[0], libc.CString("3")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("3")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(0x3EC3))
-					} else if C.strcasecmp(&arg2[0], libc.CString("4")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("4")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(0x3EC4))
 					} else {
@@ -1284,19 +1284,19 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 						act(libc.CString("@wLanding sequence aborted, improper coordinates.@n"), FALSE, ch, nil, nil, TO_ROOM)
 					}
 				} else if vehicle.In_room == real_room(51) {
-					if C.strcasecmp(&arg2[0], libc.CString("1")) == 0 {
+					if libc.StrCaseCmp(&arg2[0], libc.CString("1")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(4264))
-					} else if C.strcasecmp(&arg2[0], libc.CString("2")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("2")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(4263))
-					} else if C.strcasecmp(&arg2[0], libc.CString("3")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("3")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(4261))
-					} else if C.strcasecmp(&arg2[0], libc.CString("4")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("4")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(4262))
-					} else if C.strcasecmp(&arg2[0], libc.CString("1337")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("1337")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(0x46C4))
 					} else {
@@ -1304,16 +1304,16 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 						act(libc.CString("@wLanding sequence aborted, improper coordinates.@n"), FALSE, ch, nil, nil, TO_ROOM)
 					}
 				} else if vehicle.In_room == real_room(54) {
-					if C.strcasecmp(&arg2[0], libc.CString("1")) == 0 {
+					if libc.StrCaseCmp(&arg2[0], libc.CString("1")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(0x2D6C))
-					} else if C.strcasecmp(&arg2[0], libc.CString("2")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("2")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(0x2D6D))
-					} else if C.strcasecmp(&arg2[0], libc.CString("3")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("3")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(11630))
-					} else if C.strcasecmp(&arg2[0], libc.CString("4")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("4")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(0x2D6B))
 					} else {
@@ -1321,16 +1321,16 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 						act(libc.CString("@wLanding sequence aborted, improper coordinates.@n"), FALSE, ch, nil, nil, TO_ROOM)
 					}
 				} else if vehicle.In_room == real_room(52) {
-					if C.strcasecmp(&arg2[0], libc.CString("1")) == 0 {
+					if libc.StrCaseCmp(&arg2[0], libc.CString("1")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(8195))
-					} else if C.strcasecmp(&arg2[0], libc.CString("2")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("2")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(8196))
-					} else if C.strcasecmp(&arg2[0], libc.CString("3")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("3")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(8197))
-					} else if C.strcasecmp(&arg2[0], libc.CString("4")) == 0 {
+					} else if libc.StrCaseCmp(&arg2[0], libc.CString("4")) == 0 {
 						obj_from_room(vehicle)
 						obj_to_room(vehicle, real_room(8198))
 					} else {
@@ -1353,7 +1353,7 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 					look_at_room(vehicle.In_room, ch, 0)
 					send_to_room(vehicle.In_room, &buf3[0])
 				}
-			} else if C.strcasecmp(&arg[0], libc.CString("launch")) == 0 {
+			} else if libc.StrCaseCmp(&arg[0], libc.CString("launch")) == 0 {
 				var (
 					lnum int = 0
 					rnum int = 0
@@ -1470,14 +1470,14 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 					}
 					return "@r"
 				}(), add_commas(int64(controls.Value[2])))
-			} else if C.strcasecmp(&arg[0], libc.CString("mark")) == 0 {
+			} else if libc.StrCaseCmp(&arg[0], libc.CString("mark")) == 0 {
 				var rnum int = 0
 				_ = rnum
 				if arg2[0] == 0 {
 					send_to_char(ch, libc.CString("@wWhich marker are you wanting to launch? 1, 2, or 3?\r\n"))
 					return
 				}
-				if C.strcasecmp(&arg2[0], libc.CString("1")) != 0 && C.strcasecmp(&arg2[0], libc.CString("2")) != 0 && C.strcasecmp(&arg2[0], libc.CString("3")) != 0 {
+				if libc.StrCaseCmp(&arg2[0], libc.CString("1")) != 0 && libc.StrCaseCmp(&arg2[0], libc.CString("2")) != 0 && libc.StrCaseCmp(&arg2[0], libc.CString("3")) != 0 {
 					send_to_char(ch, libc.CString("@wWhich marker are you wanting to launch? 1, 2, or 3?\r\n"))
 					return
 				}
@@ -1486,10 +1486,10 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 					return
 				}
 				rnum = int(vehicle.In_room)
-				if ch.Radar1 > 0 && C.strcasecmp(&arg2[0], libc.CString("1")) == 0 {
+				if ch.Radar1 > 0 && libc.StrCaseCmp(&arg2[0], libc.CString("1")) == 0 {
 					send_to_char(ch, libc.CString("@wYou need to 'deactivate' that marker.\r\n"))
 					return
-				} else if ch.Radar1 <= 0 && C.strcasecmp(&arg2[0], libc.CString("1")) == 0 {
+				} else if ch.Radar1 <= 0 && libc.StrCaseCmp(&arg2[0], libc.CString("1")) == 0 {
 					act(libc.CString("@wYou enter a unique code and launch a marker buoy.@n\r\n"), FALSE, ch, nil, nil, TO_CHAR)
 					act(libc.CString("@C$n@w manipulates the ship controls.@n\r\n"), FALSE, ch, nil, nil, TO_ROOM)
 					if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
@@ -1498,10 +1498,10 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 						ch.Radar1 = -1
 					}
 				}
-				if ch.Radar2 > 0 && C.strcasecmp(&arg2[0], libc.CString("2")) == 0 {
+				if ch.Radar2 > 0 && libc.StrCaseCmp(&arg2[0], libc.CString("2")) == 0 {
 					send_to_char(ch, libc.CString("@wYou need to 'deactivate' that marker.\r\n"))
 					return
-				} else if ch.Radar2 <= 0 && C.strcasecmp(&arg2[0], libc.CString("2")) == 0 {
+				} else if ch.Radar2 <= 0 && libc.StrCaseCmp(&arg2[0], libc.CString("2")) == 0 {
 					act(libc.CString("@wYou enter a unique code and launch a marker buoy.@n\r\n"), FALSE, ch, nil, nil, TO_CHAR)
 					act(libc.CString("@C$n@w manipulates the ship controls.@n\r\n"), FALSE, ch, nil, nil, TO_ROOM)
 					if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
@@ -1510,10 +1510,10 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 						ch.Radar2 = -1
 					}
 				}
-				if ch.Radar3 > 0 && C.strcasecmp(&arg2[0], libc.CString("3")) == 0 {
+				if ch.Radar3 > 0 && libc.StrCaseCmp(&arg2[0], libc.CString("3")) == 0 {
 					send_to_char(ch, libc.CString("@wYou need to 'deactivate' that marker.\r\n"))
 					return
-				} else if ch.Radar3 <= 0 && C.strcasecmp(&arg2[0], libc.CString("3")) == 0 {
+				} else if ch.Radar3 <= 0 && libc.StrCaseCmp(&arg2[0], libc.CString("3")) == 0 {
 					act(libc.CString("@wYou enter a unique code and launch a marker buoy.@n\r\n"), FALSE, ch, nil, nil, TO_CHAR)
 					act(libc.CString("@C$n@w manipulates the ship controls.@n\r\n"), FALSE, ch, nil, nil, TO_ROOM)
 					if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
@@ -1522,35 +1522,35 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 						ch.Radar3 = -1
 					}
 				}
-			} else if C.strcasecmp(&arg[0], libc.CString("deactivate")) == 0 {
+			} else if libc.StrCaseCmp(&arg[0], libc.CString("deactivate")) == 0 {
 				if arg2[0] == 0 {
 					send_to_char(ch, libc.CString("@wWhich marker are you wanting to launch? 1, 2, or 3?\r\n"))
 					return
 				}
-				if C.strcasecmp(&arg2[0], libc.CString("1")) != 0 && C.strcasecmp(&arg2[0], libc.CString("2")) != 0 && C.strcasecmp(&arg2[0], libc.CString("3")) != 0 {
+				if libc.StrCaseCmp(&arg2[0], libc.CString("1")) != 0 && libc.StrCaseCmp(&arg2[0], libc.CString("2")) != 0 && libc.StrCaseCmp(&arg2[0], libc.CString("3")) != 0 {
 					send_to_char(ch, libc.CString("@wWhich marker are you wanting to deactivate? 1, 2, or 3?\r\n"))
 					return
 				}
-				if ch.Radar1 <= 0 && C.strcasecmp(&arg2[0], libc.CString("1")) == 0 {
+				if ch.Radar1 <= 0 && libc.StrCaseCmp(&arg2[0], libc.CString("1")) == 0 {
 					send_to_char(ch, libc.CString("@wYou haven't launched that buoy yet.\r\n"))
 					return
-				} else if ch.Radar1 > 0 && C.strcasecmp(&arg2[0], libc.CString("1")) == 0 {
+				} else if ch.Radar1 > 0 && libc.StrCaseCmp(&arg2[0], libc.CString("1")) == 0 {
 					act(libc.CString("@wYou enter buoy one's code and command it to deactivate.@n\r\n"), FALSE, ch, nil, nil, TO_CHAR)
 					act(libc.CString("@C$n@w manipulates the ship controls.@n\r\n"), FALSE, ch, nil, nil, TO_ROOM)
 					ch.Radar1 = 0
 				}
-				if ch.Radar2 <= 0 && C.strcasecmp(&arg2[0], libc.CString("2")) == 0 {
+				if ch.Radar2 <= 0 && libc.StrCaseCmp(&arg2[0], libc.CString("2")) == 0 {
 					send_to_char(ch, libc.CString("@wYou haven't launched that buoy yet.\r\n"))
 					return
-				} else if ch.Radar2 > 0 && C.strcasecmp(&arg2[0], libc.CString("2")) == 0 {
+				} else if ch.Radar2 > 0 && libc.StrCaseCmp(&arg2[0], libc.CString("2")) == 0 {
 					act(libc.CString("@wYou enter buoy two's code and command it to deactivate.@n\r\n"), FALSE, ch, nil, nil, TO_CHAR)
 					act(libc.CString("@C$n@w manipulates the ship controls.@n\r\n"), FALSE, ch, nil, nil, TO_ROOM)
 					ch.Radar2 = 0
 				}
-				if ch.Radar3 <= 0 && C.strcasecmp(&arg2[0], libc.CString("3")) == 0 {
+				if ch.Radar3 <= 0 && libc.StrCaseCmp(&arg2[0], libc.CString("3")) == 0 {
 					send_to_char(ch, libc.CString("@wYou haven't launched that buoy yet.\r\n"))
 					return
-				} else if ch.Radar3 > 0 && C.strcasecmp(&arg2[0], libc.CString("3")) == 0 {
+				} else if ch.Radar3 > 0 && libc.StrCaseCmp(&arg2[0], libc.CString("3")) == 0 {
 					act(libc.CString("@wYou enter buoy three's code and command it to deactivate.@n\r\n"), FALSE, ch, nil, nil, TO_CHAR)
 					act(libc.CString("@C$n@w manipulates the ship controls.@n\r\n"), FALSE, ch, nil, nil, TO_ROOM)
 					ch.Radar3 = 0
@@ -1597,8 +1597,8 @@ func do_ship_fire(ch *char_data, argument *byte, cmd int, subcmd int) {
 	for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; obj != nil; obj = next_obj {
 		next_obj = obj.Next_content
 		if shot == FALSE {
-			if obj.Type_flag == ITEM_VEHICLE && obj != vehicle {
-				if C.strcasecmp(&arg1[0], obj.Name) == 0 {
+			if int(obj.Type_flag) == ITEM_VEHICLE && obj != vehicle {
+				if libc.StrCaseCmp(&arg1[0], obj.Name) == 0 {
 					obj2 = obj
 					shot = TRUE
 				}

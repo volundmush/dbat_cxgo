@@ -1,8 +1,10 @@
 package main
 
 import (
+	"github.com/gotranspile/cxgo/runtime/csys"
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"os"
 	"unsafe"
 )
 
@@ -12,7 +14,7 @@ const CURRENT_BOARD_VER = 2
 
 type board_msg struct {
 	Poster    int
-	Timestamp int64
+	Timestamp libc.Time
 	Subject   *byte
 	Data      *byte
 	Next      *board_msg
@@ -50,9 +52,9 @@ func init_boards() {
 	)
 	if insure_directory(libc.CString("etc/boards/"), 0) == 0 {
 		basic_mud_log(libc.CString("Unable to open/create directory '%s' - Exiting"), "etc/boards/")
-		C.exit(1)
+		os.Exit(1)
 	}
-	C.strcpy(&dir_name[0], libc.CString("etc/boards"))
+	libc.StrCpy(&dir_name[0], libc.CString("etc/boards"))
 	if (func() int {
 		i = xdir_scan(&dir_name[0], &xd)
 		return i
@@ -61,8 +63,8 @@ func init_boards() {
 		return
 	}
 	for j = 0; j < i; j++ {
-		if C.strcmp(libc.CString(".."), xdir_get_name(&xd, j)) != 0 && C.strcmp(libc.CString("."), xdir_get_name(&xd, j)) != 0 && C.strcmp(libc.CString(".cvsignore"), xdir_get_name(&xd, j)) != 0 {
-			__isoc99_sscanf(xdir_get_name(&xd, j), libc.CString("%ld"), &board_vnum)
+		if libc.StrCmp(libc.CString(".."), xdir_get_name(&xd, j)) != 0 && libc.StrCmp(libc.CString("."), xdir_get_name(&xd, j)) != 0 && libc.StrCmp(libc.CString(".cvsignore"), xdir_get_name(&xd, j)) != 0 {
+			stdio.Sscanf(xdir_get_name(&xd, j), "%ld", &board_vnum)
 			if (func() *board_info {
 				tmp_board = load_board(obj_vnum(board_vnum))
 				return tmp_board
@@ -77,18 +79,18 @@ func init_boards() {
 func create_new_board(board_vnum obj_vnum) *board_info {
 	var (
 		buf    [512]byte
-		fl     *C.FILE
+		fl     *stdio.File
 		temp   *board_info = nil
 		backup *board_info
 		obj    *obj_data = nil
 	)
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&buf[0]), "r")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(&buf[0]), "r")
 		return fl
 	}()) != nil {
-		C.fclose(fl)
+		fl.Close()
 		basic_mud_log(libc.CString("Preexisting board file when attempting to create new board [vnum: %d]. Attempting to correct."), board_vnum)
-		unlink(&buf[0])
+		stdio.Unlink(&buf[0])
 		for func() *board_info {
 			temp = bboards
 			return func() *board_info {
@@ -143,25 +145,25 @@ func save_board(ts *board_info) int {
 	var (
 		message  *board_msg
 		memboard *board_memory
-		fl       *C.FILE
+		fl       *stdio.File
 		buf      [512]byte
 		i        int = 1
 	)
 	stdio.Sprintf(&buf[0], "%s%d", "etc/boards/", ts.Vnum)
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&buf[0]), "wb")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(&buf[0]), "wb")
 		return fl
 	}()) == nil {
 		basic_mud_log(libc.CString("Hm. Error while creating attempting to save board [vnum: %d].  Unable to create file '%s'"), ts.Vnum, &buf[0])
 		return 0
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "Board File\n%d %d %d %d %d\n", ts.Read_lvl, ts.Write_lvl, ts.Remove_lvl, ts.Num_messages, CURRENT_BOARD_VER)
+	stdio.Fprintf(fl, "Board File\n%d %d %d %d %d\n", ts.Read_lvl, ts.Write_lvl, ts.Remove_lvl, ts.Num_messages, CURRENT_BOARD_VER)
 	for message = ts.Messages; message != nil; message = message.Next {
 		if ts.Version != CURRENT_BOARD_VER {
 			message.Name = get_name_by_id(message.Poster)
 		}
 		if message != nil {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "#%d\n%s\n%ld\n%s\n%s~\n", func() int {
+			stdio.Fprintf(fl, "#%d\n%s\n%ld\n%s\n%s~\n", func() int {
 				p := &i
 				x := *p
 				*p++
@@ -172,11 +174,11 @@ func save_board(ts *board_info) int {
 	for i = 0; i != 301; i++ {
 		memboard = ts.Memory[i]
 		for memboard != nil {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "S%d %s %d\n", i, memboard.Name, +memboard.Timestamp)
+			stdio.Fprintf(fl, "S%d %s %d\n", i, memboard.Name, +memboard.Timestamp)
 			memboard = memboard.Next
 		}
 	}
-	C.fclose(fl)
+	fl.Close()
 	return 1
 }
 func load_board(board_vnum obj_vnum) *board_info {
@@ -184,7 +186,7 @@ func load_board(board_vnum obj_vnum) *board_info {
 		temp_board  *board_info
 		bmsg        *board_msg
 		obj         *obj_data = nil
-		st          stat
+		st          csys.StatRes
 		memboard    *board_memory
 		list        *board_memory
 		t           [10]int
@@ -196,19 +198,19 @@ func load_board(board_vnum obj_vnum) *board_info {
 		filebuf     [512]byte
 		buf         [512]byte
 		poster_name [128]byte
-		fl          *C.FILE
+		fl          *stdio.File
 		sflag       int
 	)
 	stdio.Sprintf(&filebuf[0], "%s%d", "etc/boards/", board_vnum)
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&filebuf[0]), "r")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(&filebuf[0]), "r")
 		return fl
 	}()) == nil {
 		basic_mud_log(libc.CString("Request to open board [vnum %d] failed - unable to open file '%s'."), board_vnum, &filebuf[0])
 		return nil
 	}
 	get_line(fl, &buf[0])
-	if C.strcmp(libc.CString("Board File"), &buf[0]) != 0 {
+	if libc.StrCmp(libc.CString("Board File"), &buf[0]) != 0 {
 		basic_mud_log(libc.CString("Invalid board file '%s' [vnum: %d] - failed to load."), &filebuf[0], board_vnum)
 		return nil
 	}
@@ -216,7 +218,7 @@ func load_board(board_vnum obj_vnum) *board_info {
 	temp_board.Vnum = int(board_vnum)
 	get_line(fl, &buf[0])
 	if (func() int {
-		retval = __isoc99_sscanf(&buf[0], libc.CString("%d %d %d %d %d"), &t[0], &t[1], &t[2], &t[3], &t[4])
+		retval = stdio.Sscanf(&buf[0], "%d %d %d %d %d", &t[0], &t[1], &t[2], &t[3], &t[4])
 		return retval
 	}()) != 5 {
 		if retval == 4 {
@@ -239,10 +241,10 @@ func load_board(board_vnum obj_vnum) *board_info {
 	}
 	if real_object(board_vnum) == obj_rnum(-1) {
 		basic_mud_log(libc.CString("No associated object exists when attempting to create a board [vnum %d]."), board_vnum)
-		C.stat(&filebuf[0], &st)
-		if C.time(nil)-int64(st.St_mtim.Tv_sec) > (60 * 60 * 24 * 7) {
+		csys.Stat(&filebuf[0], &st)
+		if libc.TimeVal(libc.GetTime(nil))-st.MTime > libc.TimeVal(60*60*24*7) {
 			basic_mud_log(libc.CString("Deleting old board file '%s' [vnum %d].  7 days without modification & no associated object."), &filebuf[0], board_vnum)
-			unlink(&filebuf[0])
+			stdio.Unlink(&filebuf[0])
 			libc.Free(unsafe.Pointer(temp_board))
 			return nil
 		}
@@ -268,15 +270,15 @@ func load_board(board_vnum obj_vnum) *board_info {
 	msg_num = 0
 	for get_line(fl, &buf[0]) != 0 {
 		if buf[0] == 'S' && temp_board.Version != CURRENT_BOARD_VER {
-			if __isoc99_sscanf(&buf[0], libc.CString("S %d %d %d "), &mnum, &poster, &timestamp) == 3 {
+			if stdio.Sscanf(&buf[0], "S %d %d %d ", &mnum, &poster, &timestamp) == 3 {
 				memboard = new(board_memory)
 				memboard.Reader = poster
 				memboard.Timestamp = timestamp
 			}
 		} else if buf[0] == 'S' && temp_board.Version == CURRENT_BOARD_VER {
-			if __isoc99_sscanf(&buf[0], libc.CString("S %d %s %d "), &mnum, &poster_name[0], &timestamp) == 3 {
+			if stdio.Sscanf(&buf[0], "S %d %s %d ", &mnum, &poster_name[0], &timestamp) == 3 {
 				memboard = new(board_memory)
-				memboard.Name = C.strdup(&poster_name[0])
+				memboard.Name = libc.StrDup(&poster_name[0])
 				memboard.Timestamp = timestamp
 				if get_name_by_id(poster) == nil && temp_board.Version != CURRENT_BOARD_VER {
 					libc.Free(unsafe.Pointer(memboard))
@@ -291,7 +293,7 @@ func load_board(board_vnum obj_vnum) *board_info {
 								return sflag
 							}()
 						}(); bmsg != nil && sflag == 0; bmsg = bmsg.Next {
-							if bmsg.Timestamp == int64(memboard.Timestamp) && mnum == int((bmsg.Timestamp%301+int64(get_id_by_name(bmsg.Name)%301))%301) {
+							if int(bmsg.Timestamp) == memboard.Timestamp && mnum == ((int(bmsg.Timestamp%301)+get_id_by_name(bmsg.Name)%301)%301) {
 								sflag = 1
 							}
 						}
@@ -303,7 +305,7 @@ func load_board(board_vnum obj_vnum) *board_info {
 								return sflag
 							}()
 						}(); bmsg != nil && sflag == 0; bmsg = bmsg.Next {
-							if bmsg.Timestamp == int64(memboard.Timestamp) && mnum == int((bmsg.Timestamp%301+int64(bmsg.Poster%301))%301) {
+							if int(bmsg.Timestamp) == memboard.Timestamp && mnum == ((int(bmsg.Timestamp%301)+bmsg.Poster%301)%301) {
 								sflag = 1
 							}
 						}
@@ -328,7 +330,7 @@ func load_board(board_vnum obj_vnum) *board_info {
 			}
 		}
 	}
-	C.fclose(fl)
+	fl.Close()
 	if msg_num != temp_board.Num_messages {
 		basic_mud_log(libc.CString("Board [vnum: %d] message count (%d) not equal to actual message count (%d). Correcting."), temp_board.Vnum, temp_board.Num_messages, msg_num)
 		temp_board.Num_messages = msg_num
@@ -336,7 +338,7 @@ func load_board(board_vnum obj_vnum) *board_info {
 	save_board(temp_board)
 	return temp_board
 }
-func parse_message(fl *C.FILE, temp_board *board_info) int {
+func parse_message(fl *stdio.File, temp_board *board_info) int {
 	var (
 		tmsg    *board_msg
 		t2msg   *board_msg
@@ -346,21 +348,21 @@ func parse_message(fl *C.FILE, temp_board *board_info) int {
 	)
 	tmsg = new(board_msg)
 	if temp_board.Version != CURRENT_BOARD_VER {
-		if __isoc99_fscanf(fl, libc.CString("%ld\n"), &tmsg.Poster) != 1 || __isoc99_fscanf(fl, libc.CString("%ld\n"), &tmsg.Timestamp) != 1 {
+		if stdio.Fscanf(fl, "%ld\n", &tmsg.Poster) != 1 || stdio.Fscanf(fl, "%ld\n", &tmsg.Timestamp) != 1 {
 			basic_mud_log(libc.CString("Parse error in message for board [vnum: %d].  Skipping."), temp_board.Vnum)
 			libc.Free(unsafe.Pointer(tmsg))
 			return 0
 		}
 	} else {
-		if __isoc99_fscanf(fl, libc.CString("%s\n"), &poster[0]) != 1 || __isoc99_fscanf(fl, libc.CString("%ld\n"), &tmsg.Timestamp) != 1 {
+		if stdio.Fscanf(fl, "%s\n", &poster[0]) != 1 || stdio.Fscanf(fl, "%ld\n", &tmsg.Timestamp) != 1 {
 			basic_mud_log(libc.CString("Parse error in message for board [vnum: %d].  Skipping."), temp_board.Vnum)
 			libc.Free(unsafe.Pointer(tmsg))
 			return 0
 		}
-		tmsg.Name = C.strdup(&poster[0])
+		tmsg.Name = libc.StrDup(&poster[0])
 	}
 	get_line(fl, &subject[0])
-	tmsg.Subject = C.strdup(&subject[0])
+	tmsg.Subject = libc.StrDup(&subject[0])
 	tmsg.Data = fread_string(fl, &buf[0])
 	tmsg.Next = nil
 	tmsg.Next = func() *board_msg {
@@ -479,7 +481,7 @@ func show_board(board_vnum obj_vnum, ch *char_data) {
 			if ch.Clan != nil {
 				stdio.Sprintf(&clan[0], "%s", ch.Clan)
 			}
-			if C.strstr(obj.Action_description, &clan[0]) == nil {
+			if libc.StrStr(obj.Action_description, &clan[0]) == nil {
 				send_to_char(ch, libc.CString("You are incapable of reading this board!\r\n"))
 				return
 			}
@@ -512,8 +514,8 @@ func show_board(board_vnum obj_vnum, ch *char_data) {
 		}
 	}
 	for message != nil {
-		tmstr = C.asctime(C.localtime(&message.Timestamp))
-		*((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(tmstr), C.strlen(tmstr)))), -1))) = '\x00'
+		tmstr = libc.AscTime(libc.LocalTime(&message.Timestamp))
+		*((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(tmstr), libc.StrLen(tmstr)))), -1))) = '\x00'
 		yesno = mesglookup(message, ch, thisboard)
 		if thisboard.Version != CURRENT_BOARD_VER {
 			stdio.Snprintf(&name[0], int(127), "%s", get_name_by_id(message.Poster))
@@ -537,7 +539,7 @@ func show_board(board_vnum obj_vnum, ch *char_data) {
 				return libc.CString("No Subject")
 			}())
 		} else {
-			stdio.Sprintf(&buf[C.strlen(&buf[0])], "@D[%s] (@C%2d@D) : @W%6.10s @D(@G%-10s@D) ::@w %-45s\r\n", func() string {
+			stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "@D[%s] (@C%2d@D) : @W%6.10s @D(@G%-10s@D) ::@w %-45s\r\n", func() string {
 				if yesno != 0 {
 					return "@GX@D"
 				}
@@ -559,20 +561,20 @@ func show_board(board_vnum obj_vnum, ch *char_data) {
 			message = message.Next
 		}
 	}
-	stdio.Sprintf(&buf[C.strlen(&buf[0])], "@rO@b============================================================================@rO@n\n")
-	C.strcpy(&buf2[0], &buf[0])
+	stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "@rO@b============================================================================@rO@n\n")
+	libc.StrCpy(&buf2[0], &buf[0])
 	page_string(ch.Desc, &buf2[0], 1)
 	if bnum == 3092 {
-		ch.Lboard[0] = C.time(nil)
+		ch.Lboard[0] = libc.GetTime(nil)
 	}
 	if bnum == 3099 {
-		ch.Lboard[3] = C.time(nil)
+		ch.Lboard[3] = libc.GetTime(nil)
 	}
 	if bnum == 3098 {
-		ch.Lboard[1] = C.time(nil)
+		ch.Lboard[1] = libc.GetTime(nil)
 	}
 	if bnum == 3090 {
-		ch.Lboard[4] = C.time(nil)
+		ch.Lboard[4] = libc.GetTime(nil)
 	}
 	save_char(ch)
 	return
@@ -623,7 +625,7 @@ func board_display_msg(board_vnum obj_vnum, ch *char_data, arg int) {
 			if ch.Clan != nil {
 				stdio.Sprintf(&clan[0], "%s", ch.Clan)
 			}
-			if C.strstr(obj.Action_description, &clan[0]) == nil {
+			if libc.StrStr(obj.Action_description, &clan[0]) == nil {
 				send_to_char(ch, libc.CString("You are incapable of reading this board!\r\n"))
 				return
 			}
@@ -652,15 +654,15 @@ func board_display_msg(board_vnum obj_vnum, ch *char_data, arg int) {
 		return
 	}
 	if thisboard.Version != CURRENT_BOARD_VER {
-		mem = int((message.Timestamp%301 + int64(message.Poster%301)) % 301)
+		mem = (int(message.Timestamp%301) + message.Poster%301) % 301
 	} else {
-		mem = int((message.Timestamp%301 + int64(get_id_by_name(message.Name)%301)) % 301)
+		mem = (int(message.Timestamp%301) + get_id_by_name(message.Name)%301) % 301
 	}
 	mboard_type = new(board_memory)
 	if thisboard.Version != CURRENT_BOARD_VER {
 		mboard_type.Reader = int(ch.Idnum)
 	} else {
-		mboard_type.Name = C.strdup(GET_NAME(ch))
+		mboard_type.Name = libc.StrDup(GET_NAME(ch))
 	}
 	mboard_type.Timestamp = int(message.Timestamp)
 	mboard_type.Next = nil
@@ -672,7 +674,7 @@ func board_display_msg(board_vnum obj_vnum, ch *char_data, arg int) {
 				sflag = 0
 			}
 		} else {
-			if C.strcmp(list.Name, mboard_type.Name) == 0 && list.Timestamp == mboard_type.Timestamp {
+			if libc.StrCmp(list.Name, mboard_type.Name) == 0 && list.Timestamp == mboard_type.Timestamp {
 				sflag = 0
 			}
 		}
@@ -686,8 +688,8 @@ func board_display_msg(board_vnum obj_vnum, ch *char_data, arg int) {
 		if mboard_type != nil {
 		}
 	}
-	tmstr = C.asctime(C.localtime(&message.Timestamp))
-	*((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(tmstr), C.strlen(tmstr)))), -1))) = '\x00'
+	tmstr = libc.AscTime(libc.LocalTime(&message.Timestamp))
+	*((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(tmstr), libc.StrLen(tmstr)))), -1))) = '\x00'
 	if thisboard.Version != CURRENT_BOARD_VER {
 		stdio.Snprintf(&name[0], int(127), "%s", get_name_by_id(message.Poster))
 	} else {
@@ -706,16 +708,16 @@ func board_display_msg(board_vnum obj_vnum, ch *char_data, arg int) {
 	}())
 	page_string(ch.Desc, &buf[0], 1)
 	if bnum == 3092 {
-		ch.Lboard[0] = C.time(nil)
+		ch.Lboard[0] = libc.GetTime(nil)
 	}
 	if bnum == 3099 {
-		ch.Lboard[3] = C.time(nil)
+		ch.Lboard[3] = libc.GetTime(nil)
 	}
 	if bnum == 3098 {
-		ch.Lboard[1] = C.time(nil)
+		ch.Lboard[1] = libc.GetTime(nil)
 	}
 	if bnum == 3090 {
-		ch.Lboard[4] = C.time(nil)
+		ch.Lboard[4] = libc.GetTime(nil)
 	}
 	if sflag != 0 {
 		save_board(thisboard)
@@ -729,9 +731,9 @@ func mesglookup(message *board_msg, ch *char_data, board *board_info) int {
 		tempname    *byte = nil
 	)
 	if board.Version != CURRENT_BOARD_VER {
-		mem = int((message.Timestamp%301 + int64(message.Poster%301)) % 301)
+		mem = (int(message.Timestamp%301) + message.Poster%301) % 301
 	} else {
-		mem = int((message.Timestamp%301 + int64(get_id_by_name(message.Name)%301)) % 301)
+		mem = (int(message.Timestamp%301) + get_id_by_name(message.Name)%301) % 301
 	}
 	mboard_type = board.Memory[mem]
 	for mboard_type != nil && board.Version != CURRENT_BOARD_VER {
@@ -741,9 +743,9 @@ func mesglookup(message *board_msg, ch *char_data, board *board_info) int {
 			mboard_type = mboard_type.Next
 		}
 	}
-	tempname = C.strdup(GET_NAME(ch))
+	tempname = libc.StrDup(GET_NAME(ch))
 	for mboard_type != nil && board.Version == CURRENT_BOARD_VER {
-		if C.strcmp(mboard_type.Name, tempname) == 0 && mboard_type.Timestamp == int(message.Timestamp) {
+		if libc.StrCmp(mboard_type.Name, tempname) == 0 && mboard_type.Timestamp == int(message.Timestamp) {
 			return 1
 		} else {
 			mboard_type = mboard_type.Next
@@ -774,7 +776,7 @@ func write_board_message(board_vnum obj_vnum, ch *char_data, arg *byte) {
 	if *arg == 0 || arg == nil {
 		stdio.Sprintf(arg, "No Subject")
 	}
-	if C.strlen(arg) > 46 {
+	if libc.StrLen(arg) > 46 {
 		send_to_char(ch, libc.CString("Your subject can only be 45 characters long(including colorcode).\r\n"))
 		return
 	}
@@ -783,9 +785,9 @@ func write_board_message(board_vnum obj_vnum, ch *char_data, arg *byte) {
 	delete_doubledollar(arg)
 	*(*byte)(unsafe.Add(unsafe.Pointer(arg), 81)) = '\x00'
 	message = new(board_msg)
-	message.Name = C.strdup(GET_NAME(ch))
-	message.Timestamp = C.time(nil)
-	message.Subject = C.strdup(arg)
+	message.Name = libc.StrDup(GET_NAME(ch))
+	message.Timestamp = libc.GetTime(nil)
+	message.Subject = libc.StrDup(arg)
 	message.Next = nil
 	message.Prev = nil
 	message.Data = nil
@@ -796,19 +798,19 @@ func write_board_message(board_vnum obj_vnum, ch *char_data, arg *byte) {
 	}
 	thisboard.Messages = message
 	send_to_char(ch, libc.CString("Write your message.  (/s saves /h for help)\r\n"))
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(1 << (int(PLR_WRITING % 32)))
+	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
 	string_write(ch.Desc, &message.Data, MAX_MESSAGE_LENGTH, int(board_vnum+BOARD_MAGIC), nil)
 	if board_vnum == 3092 {
-		BOARDNEWMORT = C.time(nil)
+		BOARDNEWMORT = libc.GetTime(nil)
 	}
 	if board_vnum == 3098 {
-		BOARDNEWIMM = C.time(nil)
+		BOARDNEWIMM = libc.GetTime(nil)
 	}
 	if board_vnum == 3099 {
-		BOARDNEWDUO = C.time(nil)
+		BOARDNEWDUO = libc.GetTime(nil)
 	}
 	if board_vnum == 3090 {
-		BOARDNEWBUI = C.time(nil)
+		BOARDNEWBUI = libc.GetTime(nil)
 	}
 	save_mud_time(&time_info)
 	var d *descriptor_data
@@ -869,10 +871,10 @@ func board_respond(board_vnum int, ch *char_data, mnum int) {
 		other = other.Next
 	}
 	message = new(board_msg)
-	message.Name = C.strdup(GET_NAME(ch))
-	message.Timestamp = C.time(nil)
+	message.Name = libc.StrDup(GET_NAME(ch))
+	message.Timestamp = libc.GetTime(nil)
 	stdio.Sprintf(&buf[0], "Re: %s", other.Subject)
-	message.Subject = C.strdup(&buf[0])
+	message.Subject = libc.StrDup(&buf[0])
 	message.Next = func() *board_msg {
 		p := &message.Prev
 		message.Prev = nil
@@ -888,24 +890,24 @@ func board_respond(board_vnum int, ch *char_data, mnum int) {
 	send_to_char(ch, libc.CString("Write your message.  (/s saves /h for help)\r\n\r\n"))
 	act(libc.CString("@C$n@w starts writing on the board.@n"), TRUE, ch, nil, nil, TO_ROOM)
 	if !IS_NPC(ch) {
-		ch.Act[int(PLR_WRITING/32)] |= bitvector_t(1 << (int(PLR_WRITING % 32)))
+		ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
 	}
 	stdio.Sprintf(&number[0], "\t@D------- @cQuoted message @D-------@w\r\n%s\t@D   ------- @cEnd Quote @D-------@w\r\n", other.Data)
-	message.Data = C.strdup(&number[0])
-	ch.Desc.Backstr = C.strdup(&number[0])
+	message.Data = libc.StrDup(&number[0])
+	ch.Desc.Backstr = libc.StrDup(&number[0])
 	write_to_output(ch.Desc, &number[0])
 	string_write(ch.Desc, &message.Data, MAX_MESSAGE_LENGTH, board_vnum+BOARD_MAGIC, nil)
 	if board_vnum == 3092 {
-		BOARDNEWMORT = C.time(nil)
+		BOARDNEWMORT = libc.GetTime(nil)
 	}
 	if board_vnum == 3098 {
-		BOARDNEWIMM = C.time(nil)
+		BOARDNEWIMM = libc.GetTime(nil)
 	}
 	if board_vnum == 3099 {
-		BOARDNEWDUO = C.time(nil)
+		BOARDNEWDUO = libc.GetTime(nil)
 	}
 	if board_vnum == 3090 {
-		BOARDNEWBUI = C.time(nil)
+		BOARDNEWBUI = libc.GetTime(nil)
 	}
 	save_mud_time(&time_info)
 	var d *descriptor_data
@@ -990,15 +992,15 @@ func remove_board_msg(board_vnum obj_vnum, ch *char_data, arg int) {
 			if ch.Clan != nil {
 				stdio.Sprintf(&clan[0], "%s", ch.Clan)
 			}
-			if clanIsModerator(&clan[0], ch) && C.strstr(obj.Action_description, &clan[0]) != nil {
+			if clanIsModerator(&clan[0], ch) && libc.StrStr(obj.Action_description, &clan[0]) != nil {
 				send_to_char(ch, libc.CString("Exercising your clan leader powers....\r\n"))
-			} else if ch.Admlevel < thisboard.Remove_lvl && C.strcmp(GET_NAME(ch), cur.Name) != 0 {
+			} else if ch.Admlevel < thisboard.Remove_lvl && libc.StrCmp(GET_NAME(ch), cur.Name) != 0 {
 				send_to_char(ch, libc.CString("You can't remove other people's messages.\r\n"))
 				extract_obj(obj)
 				return
 			}
 		} else if !OBJ_FLAGGED(obj, ITEM_CBOARD) {
-			if ch.Admlevel < thisboard.Remove_lvl && C.strcmp(GET_NAME(ch), cur.Name) != 0 {
+			if ch.Admlevel < thisboard.Remove_lvl && libc.StrCmp(GET_NAME(ch), cur.Name) != 0 {
 				send_to_char(ch, libc.CString("You can't remove other people's messages.\r\n"))
 				extract_obj(obj)
 				return

@@ -19,18 +19,18 @@ func affect_update() {
 	for i = affect_list; i != nil; i = i.Next_affect {
 		for af = i.Affected; af != nil; af = next {
 			next = af.Next
-			if af.Duration >= 1 {
+			if int(af.Duration) >= 1 {
 				af.Duration--
-			} else if af.Duration == 0 {
-				if af.Type > 0 {
-					if af.Next == nil || af.Next.Type != af.Type || af.Next.Duration > 0 {
+			} else if int(af.Duration) == 0 {
+				if int(af.Type) > 0 {
+					if af.Next == nil || int(af.Next.Type) != int(af.Type) || int(af.Next.Duration) > 0 {
 						if spell_info[af.Type].Wear_off_msg != nil {
 							send_to_char(i, libc.CString("%s\r\n"), spell_info[af.Type].Wear_off_msg)
 						}
-						if i.Speedboost > 0 && af.Type == SPELL_HAYASA {
+						if i.Speedboost > 0 && int(af.Type) == SPELL_HAYASA {
 							i.Speedboost = 0
 						}
-						if af.Type == SKILL_METAMORPH {
+						if int(af.Type) == SKILL_METAMORPH {
 							if i.Hit > gear_pl(i) {
 								i.Hit = gear_pl(i)
 							}
@@ -199,7 +199,7 @@ func mag_damage(level int, ch *char_data, victim *char_data, spellnum int) int {
 			send_to_char(victim, libc.CString("@g*save*@y You avoid any injury.@n\r\n"))
 			dam = 0
 		} else if (spell_info[spellnum].Save_flags & (1 << 3)) != 0 {
-			if (spell_info[spellnum].Save_flags&(1<<1)) != 0 && (victim.Feats[FEAT_EVASION]) != 0 && ((victim.Equipment[WEAR_BODY]) == nil || (victim.Equipment[WEAR_BODY]).Type_flag != ITEM_ARMOR || ((victim.Equipment[WEAR_BODY]).Value[VAL_ARMOR_SKILL]) < ARMOR_TYPE_MEDIUM) {
+			if (spell_info[spellnum].Save_flags&(1<<1)) != 0 && int(victim.Feats[FEAT_EVASION]) != 0 && ((victim.Equipment[WEAR_BODY]) == nil || int((victim.Equipment[WEAR_BODY]).Type_flag) != ITEM_ARMOR || ((victim.Equipment[WEAR_BODY]).Value[VAL_ARMOR_SKILL]) < ARMOR_TYPE_MEDIUM) {
 				send_to_char(victim, libc.CString("@g*save*@y Your evasion ability allows you to avoid ANY injury.@n\r\n"))
 				dam = 0
 			} else {
@@ -207,7 +207,7 @@ func mag_damage(level int, ch *char_data, victim *char_data, spellnum int) int {
 				dam /= 2
 			}
 		}
-	} else if (spell_info[spellnum].Save_flags&(1<<3)) != 0 && (spell_info[spellnum].Save_flags&(1<<1)) != 0 && (victim.Feats[FEAT_IMPROVED_EVASION]) != 0 && ((victim.Equipment[WEAR_BODY]) == nil || (victim.Equipment[WEAR_BODY]).Type_flag != ITEM_ARMOR || ((victim.Equipment[WEAR_BODY]).Value[VAL_ARMOR_SKILL]) < ARMOR_TYPE_MEDIUM) {
+	} else if (spell_info[spellnum].Save_flags&(1<<3)) != 0 && (spell_info[spellnum].Save_flags&(1<<1)) != 0 && int(victim.Feats[FEAT_IMPROVED_EVASION]) != 0 && ((victim.Equipment[WEAR_BODY]) == nil || int((victim.Equipment[WEAR_BODY]).Type_flag) != ITEM_ARMOR || ((victim.Equipment[WEAR_BODY]).Value[VAL_ARMOR_SKILL]) < ARMOR_TYPE_MEDIUM) {
 		send_to_char(victim, libc.CString("@r*save*@y Your improved evasion prevents full damage even on failure.@n\r\n"))
 		dam /= 2
 	}
@@ -366,7 +366,7 @@ func mag_affects(level int, ch *char_data, victim *char_data, spellnum int) {
 		}
 		af[0].Duration = int16((level / 4) + 4)
 		af[0].Bitvector = AFF_SLEEP
-		if victim.Position > POS_SLEEPING {
+		if int(victim.Position) > POS_SLEEPING {
 			send_to_char(victim, libc.CString("You feel very sleepy...  Zzzz......\r\n"))
 			act(libc.CString("$n goes to sleep."), TRUE, victim, nil, nil, TO_ROOM)
 			victim.Position = POS_SLEEPING
@@ -380,7 +380,7 @@ func mag_affects(level int, ch *char_data, victim *char_data, spellnum int) {
 		}
 		af[0].Duration = int16((level / 4) + 4)
 		af[0].Bitvector = AFF_SLEEP
-		if victim.Position > POS_SLEEPING {
+		if int(victim.Position) > POS_SLEEPING {
 			send_to_char(victim, libc.CString("You feel very sleepy...  Zzzz......\r\n"))
 			act(libc.CString("$n goes to sleep."), TRUE, victim, nil, nil, TO_ROOM)
 			victim.Position = POS_SLEEPING
@@ -786,7 +786,7 @@ func mag_points(level int, ch *char_data, victim *char_data, spellnum int) {
 			send_to_char(ch, libc.CString("Your nerves settle slightly\r\n"))
 		}
 	case SPELL_SENSU:
-		if (victim.Player_specials.Conditions[HUNGER]) > -1 {
+		if int(victim.Player_specials.Conditions[HUNGER]) > -1 {
 			victim.Player_specials.Conditions[HUNGER] = 48
 		}
 		if victim.Kaioken <= 0 {
@@ -812,33 +812,33 @@ func mag_points(level int, ch *char_data, victim *char_data, spellnum int) {
 			act(libc.CString("$n@w's burns are now healed.@n"), TRUE, victim, nil, nil, TO_ROOM)
 			victim.Affected_by[int(AFF_BURNED/32)] &= ^(1 << (int(AFF_BURNED % 32)))
 		}
-		if (victim.Limb_condition[0]) <= 0 {
-			send_to_char(victim, libc.CString("Your right arm grows back!\r\n"))
-			victim.Limb_condition[0] = 100
-		} else if (victim.Limb_condition[0]) < 50 {
-			send_to_char(victim, libc.CString("Your right arm is no longer broken!\r\n"))
-			victim.Limb_condition[0] = 100
-		}
 		if (victim.Limb_condition[1]) <= 0 {
-			send_to_char(victim, libc.CString("Your left arm grows back!\r\n"))
+			send_to_char(victim, libc.CString("Your right arm grows back!\r\n"))
 			victim.Limb_condition[1] = 100
 		} else if (victim.Limb_condition[1]) < 50 {
-			send_to_char(victim, libc.CString("Your left arm is no longer broken!\r\n"))
+			send_to_char(victim, libc.CString("Your right arm is no longer broken!\r\n"))
 			victim.Limb_condition[1] = 100
 		}
 		if (victim.Limb_condition[2]) <= 0 {
-			send_to_char(victim, libc.CString("Your right leg grows back!\r\n"))
+			send_to_char(victim, libc.CString("Your left arm grows back!\r\n"))
 			victim.Limb_condition[2] = 100
 		} else if (victim.Limb_condition[2]) < 50 {
-			send_to_char(victim, libc.CString("Your right leg is no longer broken!\r\n"))
+			send_to_char(victim, libc.CString("Your left arm is no longer broken!\r\n"))
 			victim.Limb_condition[2] = 100
 		}
 		if (victim.Limb_condition[3]) <= 0 {
-			send_to_char(victim, libc.CString("Your left leg grows back!\r\n"))
+			send_to_char(victim, libc.CString("Your right leg grows back!\r\n"))
 			victim.Limb_condition[3] = 100
 		} else if (victim.Limb_condition[3]) < 50 {
-			send_to_char(victim, libc.CString("Your left leg is no longer broken!\r\n"))
+			send_to_char(victim, libc.CString("Your right leg is no longer broken!\r\n"))
 			victim.Limb_condition[3] = 100
+		}
+		if (victim.Limb_condition[4]) <= 0 {
+			send_to_char(victim, libc.CString("Your left leg grows back!\r\n"))
+			victim.Limb_condition[4] = 100
+		} else if (victim.Limb_condition[4]) < 50 {
+			send_to_char(victim, libc.CString("Your left leg is no longer broken!\r\n"))
+			victim.Limb_condition[4] = 100
 		}
 	case ART_WHOLENESS_OF_BODY:
 		healing = int(victim.Max_hit - victim.Hit)
@@ -906,29 +906,29 @@ func mag_alter_objs(level int, ch *char_data, obj *obj_data, spellnum int) {
 	switch spellnum {
 	case SPELL_BLESS:
 		if !OBJ_FLAGGED(obj, ITEM_BLESS) && obj.Weight <= int64(level*5) {
-			obj.Extra_flags[int(ITEM_BLESS/32)] |= bitvector_t(1 << (int(ITEM_BLESS % 32)))
+			obj.Extra_flags[int(ITEM_BLESS/32)] |= bitvector_t(int32(1 << (int(ITEM_BLESS % 32))))
 			to_char = libc.CString("$p glows briefly.")
 		}
 	case SPELL_INVISIBLE:
-		if !OBJ_FLAGGED(obj, bitvector_t(int(ITEM_NOINVIS|ITEM_INVISIBLE))) {
-			obj.Extra_flags[int(ITEM_INVISIBLE/32)] |= bitvector_t(1 << (int(ITEM_INVISIBLE % 32)))
+		if !OBJ_FLAGGED(obj, bitvector_t(int32(int(ITEM_NOINVIS|ITEM_INVISIBLE)))) {
+			obj.Extra_flags[int(ITEM_INVISIBLE/32)] |= bitvector_t(int32(1 << (int(ITEM_INVISIBLE % 32))))
 			to_char = libc.CString("$p vanishes.")
 		}
 	case SPELL_POISON:
-		if (obj.Type_flag == ITEM_DRINKCON || obj.Type_flag == ITEM_FOUNTAIN || obj.Type_flag == ITEM_FOOD) && (obj.Value[VAL_FOOD_POISON]) == 0 {
+		if (int(obj.Type_flag) == ITEM_DRINKCON || int(obj.Type_flag) == ITEM_FOUNTAIN || int(obj.Type_flag) == ITEM_FOOD) && (obj.Value[VAL_FOOD_POISON]) == 0 {
 			obj.Value[VAL_FOOD_POISON] = 1
 			to_char = libc.CString("$p steams briefly.")
 		}
 	case SPELL_REMOVE_CURSE:
 		if OBJ_FLAGGED(obj, ITEM_NODROP) {
-			obj.Extra_flags[int(ITEM_NODROP/32)] &= bitvector_t(^(1 << (int(ITEM_NODROP % 32))))
-			if obj.Type_flag == ITEM_WEAPON {
+			obj.Extra_flags[int(ITEM_NODROP/32)] &= bitvector_t(int32(^(1 << (int(ITEM_NODROP % 32)))))
+			if int(obj.Type_flag) == ITEM_WEAPON {
 				(obj.Value[VAL_WEAPON_DAMSIZE])++
 			}
 			to_char = libc.CString("$p briefly glows blue.")
 		}
 	case SPELL_NEUTRALIZE_POISON:
-		if (obj.Type_flag == ITEM_DRINKCON || obj.Type_flag == ITEM_FOUNTAIN || obj.Type_flag == ITEM_FOOD) && (obj.Value[VAL_FOOD_POISON]) != 0 {
+		if (int(obj.Type_flag) == ITEM_DRINKCON || int(obj.Type_flag) == ITEM_FOUNTAIN || int(obj.Type_flag) == ITEM_FOOD) && (obj.Value[VAL_FOOD_POISON]) != 0 {
 			obj.Value[VAL_FOOD_POISON] = 0
 			to_char = libc.CString("$p steams briefly.")
 		}
@@ -984,7 +984,7 @@ func affect_update_violence() {
 	for i = affectv_list; i != nil; i = i.Next_affectv {
 		for af = i.Affectedv; af != nil; af = next {
 			next = af.Next
-			if af.Duration >= 1 {
+			if int(af.Duration) >= 1 {
 				af.Duration--
 				switch af.Type {
 				case ART_EMPTY_BODY:
@@ -994,12 +994,12 @@ func affect_update_violence() {
 						af.Duration = 0
 					}
 				}
-			} else if af.Duration == -1 {
+			} else if int(af.Duration) == -1 {
 				continue
 			}
-			if af.Duration == 0 {
-				if af.Type > 0 && af.Type < SKILL_TABLE_SIZE {
-					if af.Next == nil || af.Next.Type != af.Type || af.Next.Duration > 0 {
+			if int(af.Duration) == 0 {
+				if int(af.Type) > 0 && int(af.Type) < SKILL_TABLE_SIZE {
+					if af.Next == nil || int(af.Next.Type) != int(af.Type) || int(af.Next.Duration) > 0 {
 						if spell_info[af.Type].Wear_off_msg != nil {
 							send_to_char(i, libc.CString("%s\r\n"), spell_info[af.Type].Wear_off_msg)
 						}
@@ -1011,7 +1011,7 @@ func affect_update_violence() {
 						extract_char(i)
 					}
 				}
-				if af.Type == ART_QUIVERING_PALM {
+				if int(af.Type) == ART_QUIVERING_PALM {
 					maxdam = int(i.Hit + 8)
 					dam = int(i.Max_hit * 3 / 4)
 					dam = MIN(dam, maxdam)

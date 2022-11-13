@@ -4,6 +4,7 @@ import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
 	"math"
+	"unicode"
 	"unsafe"
 )
 
@@ -22,8 +23,8 @@ func do_oasis_medit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if buf1[0] == 0 {
 		send_to_char(ch, libc.CString("Specify a mobile VNUM to edit.\r\n"))
 		return
-	} else if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(buf1[0]))))) & int(uint16(int16(_ISdigit)))) == 0 {
-		if C.strcasecmp(libc.CString("save"), &buf1[0]) != 0 {
+	} else if !unicode.IsDigit(rune(buf1[0])) {
+		if libc.StrCaseCmp(libc.CString("save"), &buf1[0]) != 0 {
 			send_to_char(ch, libc.CString("Yikes!  Stop that, someone will get hurt!\r\n"))
 			return
 		}
@@ -100,7 +101,7 @@ func do_oasis_medit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	medit_disp_menu(d)
 	d.Connected = CON_MEDIT
 	act(libc.CString("$n starts using OLC."), TRUE, d.Character, nil, nil, TO_ROOM)
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(1 << (int(PLR_WRITING % 32)))
+	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
 	mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing zone %d allowed zone %d"), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number, ch.Player_specials.Olc_zone)
 }
 func medit_save_to_disk(foo zone_vnum) {
@@ -111,10 +112,10 @@ func medit_setup_new(d *descriptor_data) {
 	mob = new(char_data)
 	init_mobile(mob)
 	mob.Nr = -1
-	mob.Name = C.strdup(libc.CString("mob unfinished"))
-	mob.Short_descr = C.strdup(libc.CString("the unfinished mob"))
-	mob.Long_descr = C.strdup(libc.CString("An unfinished mob stands here.\r\n"))
-	mob.Description = C.strdup(libc.CString("It looks unfinished.\r\n"))
+	mob.Name = libc.CString("mob unfinished")
+	mob.Short_descr = libc.CString("the unfinished mob")
+	mob.Long_descr = libc.CString("An unfinished mob stands here.\r\n")
+	mob.Description = libc.CString("It looks unfinished.\r\n")
 	mob.Script = nil
 	mob.Proto_script = func() *trig_proto_list {
 		p := &d.Olc.Script
@@ -164,7 +165,7 @@ func init_mobile(mob *char_data) {
 		return *p
 	}()
 	mob.Aff_abils = mob.Real_abils
-	mob.Act[int(MOB_ISNPC/32)] |= bitvector_t(1 << (int(MOB_ISNPC % 32)))
+	mob.Act[int(MOB_ISNPC/32)] |= bitvector_t(int32(1 << (int(MOB_ISNPC % 32))))
 	mob.Player_specials = &dummy_mob
 }
 func medit_save_internally(d *descriptor_data) {
@@ -375,7 +376,7 @@ func medit_parse(d *descriptor_data, arg *byte) {
 	)
 	if d.Olc.Mode > MEDIT_NUMERICAL_RESPONSE {
 		i = libc.Atoi(libc.GoString(arg))
-		if *arg == 0 || (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg)))))&int(uint16(int16(_ISdigit)))) == 0 && (*arg == '-' && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*(*byte)(unsafe.Add(unsafe.Pointer(arg), 1)))))))&int(uint16(int16(_ISdigit)))) == 0) {
+		if *arg == 0 || !unicode.IsDigit(rune(*arg)) && (*arg == '-' && !unicode.IsDigit(rune(*(*byte)(unsafe.Add(unsafe.Pointer(arg), 1))))) {
 			write_to_output(d, libc.CString("Field must be numerical, try again : "))
 			return
 		}
@@ -386,7 +387,7 @@ func medit_parse(d *descriptor_data, arg *byte) {
 	}
 	switch d.Olc.Mode {
 	case MEDIT_CONFIRM_SAVESTRING:
-		d.Olc.Mob.Act[int(MOB_ISNPC/32)] |= bitvector_t(1 << (int(MOB_ISNPC % 32)))
+		d.Olc.Mob.Act[int(MOB_ISNPC/32)] |= bitvector_t(int32(1 << (int(MOB_ISNPC % 32))))
 		switch *arg {
 		case 'y':
 			fallthrough
@@ -444,7 +445,7 @@ func medit_parse(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("Enter mob description:\r\n\r\n"))
 			if d.Olc.Mob.Description != nil {
 				write_to_output(d, libc.CString("%s"), d.Olc.Mob.Description)
-				oldtext = C.strdup(d.Olc.Mob.Description)
+				oldtext = libc.StrDup(d.Olc.Mob.Description)
 			}
 			string_write(d, &d.Olc.Mob.Description, MAX_MOB_DESC, 0, unsafe.Pointer(oldtext))
 			d.Olc.Value = 1
@@ -610,9 +611,9 @@ func medit_parse(d *descriptor_data, arg *byte) {
 		if arg != nil && *arg != 0 {
 			var buf [2048]byte
 			stdio.Snprintf(&buf[0], int(2048), "%s\r\n", arg)
-			d.Olc.Mob.Long_descr = C.strdup(&buf[0])
+			d.Olc.Mob.Long_descr = libc.StrDup(&buf[0])
 		} else {
-			d.Olc.Mob.Long_descr = C.strdup(libc.CString("undefined"))
+			d.Olc.Mob.Long_descr = libc.CString("undefined")
 		}
 	case MEDIT_D_DESC:
 		cleanup_olc(d, CLEANUP_ALL)
@@ -625,7 +626,7 @@ func medit_parse(d *descriptor_data, arg *byte) {
 		}()) <= 0 {
 			break
 		} else if i <= NUM_MOB_FLAGS {
-			d.Olc.Mob.Act[(i-1)/32] = d.Olc.Mob.Act[(i-1)/32] ^ bitvector_t(1<<((i-1)%32))
+			d.Olc.Mob.Act[(i-1)/32] = bitvector_t(int32(int(d.Olc.Mob.Act[(i-1)/32]) ^ 1<<((i-1)%32)))
 		}
 		medit_disp_mob_flags(d)
 		return
@@ -657,47 +658,47 @@ func medit_parse(d *descriptor_data, arg *byte) {
 	case MEDIT_ACCURACY:
 		d.Olc.Mob.Accuracy_mod = MIN(50, MAX(i, 0))
 		if MOB_FLAGGED(d.Olc.Mob, MOB_AUTOBALANCE) {
-			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] ^ bitvector_t(1<<(int(MOB_AUTOBALANCE%32)))
+			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = bitvector_t(int32(int(d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)]) ^ 1<<(int(MOB_AUTOBALANCE%32))))
 		}
 	case MEDIT_DAMAGE:
 		d.Olc.Mob.Damage_mod = MIN(50, MAX(i, 0))
 		if MOB_FLAGGED(d.Olc.Mob, MOB_AUTOBALANCE) {
-			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] ^ bitvector_t(1<<(int(MOB_AUTOBALANCE%32)))
+			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = bitvector_t(int32(int(d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)]) ^ 1<<(int(MOB_AUTOBALANCE%32))))
 		}
 	case MEDIT_NDD:
 		d.Olc.Mob.Mob_specials.Damnodice = int8(MIN(30, MAX(i, 0)))
 		if MOB_FLAGGED(d.Olc.Mob, MOB_AUTOBALANCE) {
-			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] ^ bitvector_t(1<<(int(MOB_AUTOBALANCE%32)))
+			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = bitvector_t(int32(int(d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)]) ^ 1<<(int(MOB_AUTOBALANCE%32))))
 		}
 	case MEDIT_SDD:
 		d.Olc.Mob.Mob_specials.Damsizedice = int8(MIN(math.MaxInt8, MAX(i, 0)))
 		if MOB_FLAGGED(d.Olc.Mob, MOB_AUTOBALANCE) {
-			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] ^ bitvector_t(1<<(int(MOB_AUTOBALANCE%32)))
+			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = bitvector_t(int32(int(d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)]) ^ 1<<(int(MOB_AUTOBALANCE%32))))
 		}
 	case MEDIT_NUM_HP_DICE:
 		d.Olc.Mob.Hit = int64(MIN(config_info.Play.Level_cap, MAX(i, 0)))
 		if MOB_FLAGGED(d.Olc.Mob, MOB_AUTOBALANCE) {
-			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] ^ bitvector_t(1<<(int(MOB_AUTOBALANCE%32)))
+			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = bitvector_t(int32(int(d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)]) ^ 1<<(int(MOB_AUTOBALANCE%32))))
 		}
 	case MEDIT_SIZE_HP_DICE:
 		d.Olc.Mob.Mana = int64(MIN(1000, MAX(i, 0)))
 		if MOB_FLAGGED(d.Olc.Mob, MOB_AUTOBALANCE) {
-			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] ^ bitvector_t(1<<(int(MOB_AUTOBALANCE%32)))
+			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = bitvector_t(int32(int(d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)]) ^ 1<<(int(MOB_AUTOBALANCE%32))))
 		}
 	case MEDIT_ADD_HP:
 		d.Olc.Mob.Move = int64(MIN(30000, MAX(i, 0)))
 		if MOB_FLAGGED(d.Olc.Mob, MOB_AUTOBALANCE) {
-			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] ^ bitvector_t(1<<(int(MOB_AUTOBALANCE%32)))
+			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = bitvector_t(int32(int(d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)]) ^ 1<<(int(MOB_AUTOBALANCE%32))))
 		}
 	case MEDIT_AC:
 		d.Olc.Mob.Armor = MIN(200000, MAX(i, 10))
 		if MOB_FLAGGED(d.Olc.Mob, MOB_AUTOBALANCE) {
-			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] ^ bitvector_t(1<<(int(MOB_AUTOBALANCE%32)))
+			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = bitvector_t(int32(int(d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)]) ^ 1<<(int(MOB_AUTOBALANCE%32))))
 		}
 	case MEDIT_EXP:
 		d.Olc.Mob.Exp = int64(MIN(MAX_MOB_EXP, MAX(i, 0)))
 		if MOB_FLAGGED(d.Olc.Mob, MOB_AUTOBALANCE) {
-			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] ^ bitvector_t(1<<(int(MOB_AUTOBALANCE%32)))
+			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = bitvector_t(int32(int(d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)]) ^ 1<<(int(MOB_AUTOBALANCE%32))))
 		}
 	case MEDIT_GOLD:
 		d.Olc.Mob.Gold = MIN(MAX_MOB_GOLD, MAX(i, 0))

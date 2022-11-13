@@ -9,9 +9,9 @@ import (
 const _OASISOLC = 518
 const AEDIT_PERMISSION = 999
 const HEDIT_PERMISSION = 888
-
+const NUM_ZONE_FLAGS = 36
 const NUM_GENDERS = 3
-
+const NUM_SHOP_FLAGS = 3
 const MAX_ROOM_NAME = 100
 const MAX_MOB_NAME = 50
 const MAX_OBJ_NAME = 50
@@ -38,8 +38,7 @@ const OASIS_OBJ = 2
 const OASIS_ZON = 3
 const OASIS_EXI = 4
 const OASIS_CFG = 5
-const NO = 0
-const YES = 1
+
 const CLEANUP_ALL = 1
 const CLEANUP_STRUCTS = 2
 const CLEANUP_CONFIG = 3
@@ -522,7 +521,6 @@ type oasis_olc_data struct {
 	Guild            *guild_data
 	Help             *help_index_element
 }
-
 type olc_scmd_info_t struct {
 	Text     *byte
 	Con_type int
@@ -662,9 +660,9 @@ func cleanup_olc(d *descriptor_data, cleanup_type int8) {
 		d.Olc.Trig = nil
 	}
 	if d.Character != nil {
-		d.Character.Act[int(PLR_WRITING/32)] &= bitvector_t(^(1 << (int(PLR_WRITING % 32))))
+		d.Character.Act[int(PLR_WRITING/32)] &= bitvector_t(int32(^(1 << (int(PLR_WRITING % 32)))))
 		act(libc.CString("$n stops using OLC."), TRUE, d.Character, nil, nil, TO_ROOM)
-		if cleanup_type == CLEANUP_CONFIG {
+		if int(cleanup_type) == CLEANUP_CONFIG {
 			mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s stops editing the game configuration"), GET_NAME(d.Character))
 		} else if d.Connected == CON_TEDIT {
 			mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s stops editing text files."), GET_NAME(d.Character))

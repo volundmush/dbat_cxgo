@@ -36,25 +36,25 @@ func do_dg_cast(gohere unsafe.Pointer, sc *script_data, trig *trig_data, type_ i
 		script_log(libc.CString("dg_do_cast: unknown trigger type!"))
 		return
 	}
-	C.strcpy(&orig_cmd[0], cmd)
-	s = strtok(cmd, libc.CString("'"))
+	libc.StrCpy(&orig_cmd[0], cmd)
+	s = libc.StrTok(cmd, libc.CString("'"))
 	if s == nil {
 		script_log(libc.CString("Trigger: %s, VNum %d. dg_cast needs spell name."), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
 		return
 	}
-	s = strtok(nil, libc.CString("'"))
+	s = libc.StrTok(nil, libc.CString("'"))
 	if s == nil {
 		script_log(libc.CString("Trigger: %s, VNum %d. dg_cast needs spell name in `'s."), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
 		return
 	}
-	t = strtok(nil, libc.CString("\x00"))
+	t = libc.StrTok(nil, libc.CString("\x00"))
 	spellnum = find_skill_num(s, 1<<0)
 	if spellnum < 1 || (spellnum >= SKILL_TABLE_SIZE || (skill_type(spellnum)&(1<<0)) == 0) {
 		script_log(libc.CString("Trigger: %s, VNum %d. dg_cast: invalid spell name (%s)"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, &orig_cmd[0])
 		return
 	}
 	if t != nil {
-		one_argument(C.strcpy(&buf2[0], t), t)
+		one_argument(libc.StrCpy(&buf2[0], t), t)
 		skip_spaces(&t)
 	}
 	if (spell_info[spellnum].Targets & (1 << 0)) != 0 {
@@ -92,9 +92,9 @@ func do_dg_cast(gohere unsafe.Pointer, sc *script_data, trig *trig_data, type_ i
 			return
 		}
 		if type_ == OBJ_TRIGGER {
-			caster.Short_descr = C.strdup(((*obj_data)(gohere)).Short_description)
+			caster.Short_descr = libc.StrDup(((*obj_data)(gohere)).Short_description)
 		} else if type_ == WLD_TRIGGER {
-			caster.Short_descr = C.strdup(libc.CString("The gods"))
+			caster.Short_descr = libc.CString("The gods")
 		}
 		caster.Next_in_room = caster_room.People
 		caster_room.People = caster
@@ -135,8 +135,8 @@ func do_dg_affect(gohere unsafe.Pointer, sc *script_data, trig *trig_data, scrip
 		return
 	}
 	i = 0
-	for C.strcasecmp(apply_types[i], libc.CString("\n")) != 0 {
-		if C.strcasecmp(apply_types[i], &property[0]) == 0 {
+	for libc.StrCaseCmp(apply_types[i], libc.CString("\n")) != 0 {
+		if libc.StrCaseCmp(apply_types[i], &property[0]) == 0 {
 			type_ = APPLY_TYPE
 			break
 		}
@@ -144,8 +144,8 @@ func do_dg_affect(gohere unsafe.Pointer, sc *script_data, trig *trig_data, scrip
 	}
 	if type_ == 0 {
 		i = 0
-		for C.strcasecmp(affected_bits[i], libc.CString("\n")) != 0 {
-			if C.strcasecmp(affected_bits[i], &property[0]) == 0 {
+		for libc.StrCaseCmp(affected_bits[i], libc.CString("\n")) != 0 {
+			if libc.StrCaseCmp(affected_bits[i], &property[0]) == 0 {
 				type_ = AFFECT_TYPE
 				break
 			}
@@ -161,7 +161,7 @@ func do_dg_affect(gohere unsafe.Pointer, sc *script_data, trig *trig_data, scrip
 		script_log(libc.CString("Trigger: %s, VNum %d. dg_affect: cannot locate target!"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
 		return
 	}
-	if C.strcasecmp(&value_p[0], libc.CString("off")) == 0 {
+	if libc.StrCaseCmp(&value_p[0], libc.CString("off")) == 0 {
 		affect_from_char(ch, SPELL_DG_AFFECT)
 		return
 	}
@@ -173,7 +173,7 @@ func do_dg_affect(gohere unsafe.Pointer, sc *script_data, trig *trig_data, scrip
 		af.Bitvector = 0
 	} else {
 		af.Location = 0
-		af.Bitvector = bitvector_t(i)
+		af.Bitvector = bitvector_t(int32(i))
 	}
 	affect_to_char(ch, &af)
 }
@@ -230,7 +230,7 @@ func script_damage(vict *char_data, dam int) {
 	}
 	update_pos(vict)
 	send_char_pos(vict, dam)
-	if vict.Position == POS_DEAD {
+	if int(vict.Position) == POS_DEAD {
 		if !IS_NPC(vict) {
 			mudlog(BRF, 0, TRUE, libc.CString("%s killed by script at %s"), GET_NAME(vict), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Name)
 		}

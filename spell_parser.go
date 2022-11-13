@@ -91,9 +91,9 @@ func say_spell(ch *char_data, spellnum int, tch *char_data, tobj *obj_data) {
 	strlcpy(&lbuf[0], skill_name(spellnum), uint64(256))
 	for lbuf[ofs] != 0 {
 		for j = 0; *syls[j].Org != 0; j++ {
-			if C.strncmp(syls[j].Org, &lbuf[ofs], uint64(C.strlen(syls[j].Org))) == 0 {
-				C.strcat(&buf[0], syls[j].News)
-				ofs += int(C.strlen(syls[j].Org))
+			if libc.StrNCmp(syls[j].Org, &lbuf[ofs], libc.StrLen(syls[j].Org)) == 0 {
+				libc.StrCat(&buf[0], syls[j].News)
+				ofs += libc.StrLen(syls[j].Org)
 				break
 			}
 		}
@@ -188,7 +188,7 @@ func call_magic(caster *char_data, cvict *char_data, ovict *obj_data, spellnum i
 	if cast_mtrigger(caster, cvict, spellnum) == 0 {
 		return 0
 	}
-	if ROOM_FLAGGED(caster.In_room, ROOM_PEACEFUL) && caster.Admlevel < ADMLVL_IMPL && (spell_info[spellnum].Violent != 0 || (spell_info[spellnum].Routines&(1<<0)) != 0) {
+	if ROOM_FLAGGED(caster.In_room, ROOM_PEACEFUL) && caster.Admlevel < ADMLVL_IMPL && (int(spell_info[spellnum].Violent) != 0 || (spell_info[spellnum].Routines&(1<<0)) != 0) {
 		send_to_char(caster, libc.CString("A flash of white light fills the room, dispelling your violent magic!\r\n"))
 		act(libc.CString("White light from no particular source suddenly fills the room, then vanishes."), FALSE, caster, nil, nil, TO_ROOM)
 		return 0
@@ -419,7 +419,7 @@ func cast_spell(ch *char_data, tch *char_data, tobj *obj_data, spellnum int, arg
 		basic_mud_log(libc.CString("SYSERR: cast_spell trying to call nonspell spellnum %d/%d."), spellnum, SKILL_TABLE_SIZE)
 		return 0
 	}
-	if ch.Position < spell_info[spellnum].Min_position {
+	if int(ch.Position) < int(spell_info[spellnum].Min_position) {
 		switch ch.Position {
 		case POS_SLEEPING:
 			send_to_char(ch, libc.CString("You dream about great magical powers.\r\n"))
@@ -484,7 +484,7 @@ func do_cast(ch *char_data, argument *byte, cmd int, subcmd int) {
 		innate   int = FALSE
 	)
 	_ = innate
-	s = strtok(argument, libc.CString("'"))
+	s = libc.StrTok(argument, libc.CString("'"))
 	if s == nil {
 		if subcmd == SCMD_ART {
 			send_to_char(ch, libc.CString("Use what ability?\r\n"))
@@ -493,7 +493,7 @@ func do_cast(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		return
 	}
-	s = strtok(nil, libc.CString("'"))
+	s = libc.StrTok(nil, libc.CString("'"))
 	if s == nil {
 		if subcmd == SCMD_ART {
 			send_to_char(ch, libc.CString("You must enclose the ability name in quotes: '\r\n"))
@@ -502,11 +502,11 @@ func do_cast(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		return
 	}
-	t = strtok(nil, libc.CString("\x00"))
+	t = libc.StrTok(nil, libc.CString("\x00"))
 	spellnum = find_skill_num(s, (1<<0)|1<<4)
 	stdio.Sprintf(&buffer[0], "%d", spellnum)
 	if subcmd == SCMD_ART {
-		if ch.Chclass != CLASS_KABITO && ch.Admlevel < ADMLVL_IMMORT {
+		if int(ch.Chclass) != CLASS_KABITO && ch.Admlevel < ADMLVL_IMMORT {
 			send_to_char(ch, libc.CString("You are not trained in that.\r\n"))
 			return
 		}
@@ -605,7 +605,7 @@ func do_cast(ch *char_data, argument *byte, cmd int, subcmd int) {
 				target = TRUE
 			}
 		}
-		if target == 0 && (spell_info[spellnum].Targets&(1<<1)) != 0 && spell_info[spellnum].Violent == 0 {
+		if target == 0 && (spell_info[spellnum].Targets&(1<<1)) != 0 && int(spell_info[spellnum].Violent) == 0 {
 			tch = ch
 			target = TRUE
 		}
@@ -619,7 +619,7 @@ func do_cast(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	}
-	if target != 0 && tch == ch && spell_info[spellnum].Violent != 0 {
+	if target != 0 && tch == ch && int(spell_info[spellnum].Violent) != 0 {
 		send_to_char(ch, libc.CString("You shouldn't cast that on yourself -- could be bad for your health!\r\n"))
 		return
 	}
@@ -630,7 +630,7 @@ func do_cast(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if is_innate(ch, spellnum) != 0 {
 		innate = TRUE
 	}
-	if spell_info[spellnum].Violent != 0 && tch != nil && IS_NPC(tch) {
+	if int(spell_info[spellnum].Violent) != 0 && tch != nil && IS_NPC(tch) {
 		if tch.Fighting == nil {
 			set_fighting(tch, ch)
 		}

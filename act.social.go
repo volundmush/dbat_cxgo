@@ -1,9 +1,9 @@
 package main
 
-import "C"
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"os"
 	"unsafe"
 )
 
@@ -102,14 +102,14 @@ func do_insult(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_char(ch, libc.CString("You insult %s.\r\n"), GET_NAME(victim))
 				switch rand_number(0, 2) {
 				case 0:
-					if ch.Sex == SEX_MALE {
-						if victim.Sex == SEX_MALE {
+					if int(ch.Sex) == SEX_MALE {
+						if int(victim.Sex) == SEX_MALE {
 							act(libc.CString("$n accuses you of fighting like a woman!"), FALSE, ch, nil, unsafe.Pointer(victim), TO_VICT)
 						} else {
 							act(libc.CString("$n says that women can't fight."), FALSE, ch, nil, unsafe.Pointer(victim), TO_VICT)
 						}
 					} else {
-						if victim.Sex == SEX_MALE {
+						if int(victim.Sex) == SEX_MALE {
 							act(libc.CString("$n accuses you of having the smallest... (brain?)"), FALSE, ch, nil, unsafe.Pointer(victim), TO_VICT)
 						} else {
 							act(libc.CString("$n tells you that you'd lose a beauty contest against a troll."), FALSE, ch, nil, unsafe.Pointer(victim), TO_VICT)
@@ -131,7 +131,7 @@ func do_insult(ch *char_data, argument *byte, cmd int, subcmd int) {
 }
 func boot_social_messages() {
 	var (
-		fl           *C.FILE
+		fl           *stdio.File
 		nr           int = 0
 		hide         int
 		min_char_pos int
@@ -142,63 +142,63 @@ func boot_social_messages() {
 		sorted       [2048]byte
 	)
 	if config_info.Operation.Use_new_socials == TRUE {
-		if (func() *C.FILE {
-			fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(LIB_MISC, "r")))
+		if (func() *stdio.File {
+			fl = stdio.FOpen(LIB_MISC, "r")
 			return fl
 		}()) == nil {
-			basic_mud_log(libc.CString("SYSERR: can't open socials file '%s': %s"), LIB_MISC, C.strerror(*__errno_location()))
-			C.exit(1)
+			basic_mud_log(libc.CString("SYSERR: can't open socials file '%s': %s"), LIB_MISC, libc.StrError(libc.Errno))
+			os.Exit(1)
 		}
 		next_soc[0] = '\x00'
-		for C.feof(fl) == 0 {
-			C.fgets(&next_soc[0], MAX_STRING_LENGTH, fl)
+		for int(fl.IsEOF()) == 0 {
+			fl.GetS(&next_soc[0], MAX_STRING_LENGTH)
 			if next_soc[0] == '~' {
 				top_of_socialt++
 			}
 		}
 	} else {
-		if (func() *C.FILE {
-			fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(LIB_MISC, "r")))
+		if (func() *stdio.File {
+			fl = stdio.FOpen(LIB_MISC, "r")
 			return fl
 		}()) == nil {
-			basic_mud_log(libc.CString("SYSERR: can't open socials file '%s': %s"), LIB_MISC, C.strerror(*__errno_location()))
-			C.exit(1)
+			basic_mud_log(libc.CString("SYSERR: can't open socials file '%s': %s"), LIB_MISC, libc.StrError(libc.Errno))
+			os.Exit(1)
 		}
-		for C.feof(fl) == 0 {
-			C.fgets(&next_soc[0], MAX_STRING_LENGTH, fl)
+		for int(fl.IsEOF()) == 0 {
+			fl.GetS(&next_soc[0], MAX_STRING_LENGTH)
 			if next_soc[0] == '\n' || next_soc[0] == '\r' {
 				top_of_socialt++
 			}
 		}
 	}
 	basic_mud_log(libc.CString("Social table contains %d socials."), top_of_socialt)
-	C.rewind(fl)
+	rewind(fl)
 	soc_mess_list = &make([]social_messg, top_of_socialt+1)[0]
 	for {
-		__isoc99_fscanf(fl, libc.CString(" %s "), &next_soc[0])
+		stdio.Fscanf(fl, " %s ", &next_soc[0])
 		if next_soc[0] == '$' {
 			break
 		}
 		if config_info.Operation.Use_new_socials == TRUE {
-			if __isoc99_fscanf(fl, libc.CString(" %s %d %d %d %d \n"), &sorted[0], &hide, &min_char_pos, &min_pos, &min_lvl) != 5 {
+			if stdio.Fscanf(fl, " %s %d %d %d %d \n", &sorted[0], &hide, &min_char_pos, &min_pos, &min_lvl) != 5 {
 				basic_mud_log(libc.CString("SYSERR: format error in social file near social '%s'"), &next_soc[0])
-				C.exit(1)
+				os.Exit(1)
 			}
 			curr_soc++
-			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Command = C.strdup(&next_soc[1])
-			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Sort_as = C.strdup(&sorted[0])
+			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Command = libc.StrDup(&next_soc[1])
+			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Sort_as = libc.StrDup(&sorted[0])
 			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Hide = hide
 			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Min_char_position = min_char_pos
 			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Min_victim_position = min_pos
 			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Min_level_char = min_lvl
 		} else {
-			if __isoc99_fscanf(fl, libc.CString(" %d %d \n"), &hide, &min_pos) != 2 {
+			if stdio.Fscanf(fl, " %d %d \n", &hide, &min_pos) != 2 {
 				basic_mud_log(libc.CString("SYSERR: format error in social file near social '%s'"), &next_soc[0])
-				C.exit(1)
+				os.Exit(1)
 			}
 			curr_soc++
-			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Command = C.strdup(&next_soc[0])
-			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Sort_as = C.strdup(&next_soc[0])
+			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Command = libc.StrDup(&next_soc[0])
+			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Sort_as = libc.StrDup(&next_soc[0])
 			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Hide = hide
 			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Min_char_position = POS_RESTING
 			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Min_victim_position = min_pos
@@ -224,10 +224,9 @@ func boot_social_messages() {
 		(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Char_obj_found = fread_action(fl, nr)
 		(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Others_obj_found = fread_action(fl, nr)
 	}
-	C.fclose(fl)
-	if curr_soc <= top_of_socialt {
-	} else {
-		__assert_fail(libc.CString("curr_soc <= top_of_socialt"), libc.CString(__FILE__), __LINE__, (*byte)(nil))
+	fl.Close()
+	if curr_soc > top_of_socialt {
+		panic("assert failed")
 	}
 	top_of_socialt = curr_soc
 }
@@ -244,7 +243,7 @@ func create_command_list() {
 	for j = 0; j < top_of_socialt; j++ {
 		k = j
 		for i = j + 1; i <= top_of_socialt; i++ {
-			if C.strcasecmp((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Sort_as, (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(k)))).Sort_as) < 0 {
+			if libc.StrCaseCmp((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Sort_as, (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(k)))).Sort_as) < 0 {
 				k = i
 			}
 		}
@@ -296,8 +295,8 @@ func create_command_list() {
 			return x
 		}())))).Subcmd = 0
 	}
-	(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(k)))).Command = C.strdup(libc.CString("\n"))
-	(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(k)))).Sort_as = C.strdup(libc.CString("zzzzzzz"))
+	(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(k)))).Command = libc.CString("\n")
+	(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(k)))).Sort_as = libc.CString("zzzzzzz")
 	(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(k)))).Minimum_position = 0
 	(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(k)))).Command_pointer = nil
 	(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(k)))).Minimum_level = 0
@@ -309,18 +308,18 @@ func free_command_list() {
 	libc.Free(unsafe.Pointer(complete_cmd_info))
 	complete_cmd_info = nil
 }
-func fread_action(fl *C.FILE, nr int) *byte {
+func fread_action(fl *stdio.File, nr int) *byte {
 	var buf [64936]byte
-	C.fgets(&buf[0], MAX_STRING_LENGTH, fl)
-	if C.feof(fl) != 0 {
+	fl.GetS(&buf[0], MAX_STRING_LENGTH)
+	if int(fl.IsEOF()) != 0 {
 		basic_mud_log(libc.CString("SYSERR: fread_action: unexpected EOF near action #%d"), nr)
-		C.exit(1)
+		os.Exit(1)
 	}
 	if buf[0] == '#' {
 		return nil
 	}
-	buf[C.strlen(&buf[0])-1] = '\x00'
-	return C.strdup(&buf[0])
+	buf[libc.StrLen(&buf[0])-1] = '\x00'
+	return libc.StrDup(&buf[0])
 }
 func free_social_messages() {
 	var (
@@ -446,13 +445,13 @@ func do_gmote(ch *char_data, argument *byte, cmd int, subcmd int) {
 	half_chop(argument, &buf[0], &arg[0])
 	if subcmd != 0 {
 		for func() int {
-			length = int(C.strlen(&buf[0]))
+			length = libc.StrLen(&buf[0])
 			return func() int {
 				cmd = 0
 				return cmd
 			}()
 		}(); *(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command != '\n'; cmd++ {
-			if C.strncmp((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, &buf[0], uint64(length)) == 0 {
+			if libc.StrNCmp((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, &buf[0], length) == 0 {
 				break
 			}
 		}

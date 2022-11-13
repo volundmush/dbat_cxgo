@@ -38,31 +38,31 @@ func group_bonus(ch *char_data, type_ int) int {
 					send_to_char(k.Follower, libc.CString("@CIncensed by the death of your comrade your life force swells!@n"))
 					return TRUE
 				} else if type_ == 2 {
-					if ch.Chclass == CLASS_ROSHI {
+					if int(ch.Chclass) == CLASS_ROSHI {
 						return 2
-					} else if ch.Chclass == CLASS_KRANE {
+					} else if int(ch.Chclass) == CLASS_KRANE {
 						return 3
-					} else if ch.Chclass == CLASS_BARDOCK {
+					} else if int(ch.Chclass) == CLASS_BARDOCK {
 						return 4
-					} else if ch.Chclass == CLASS_NAIL {
+					} else if int(ch.Chclass) == CLASS_NAIL {
 						return 5
-					} else if ch.Chclass == CLASS_KABITO {
+					} else if int(ch.Chclass) == CLASS_KABITO {
 						return 6
-					} else if ch.Chclass == CLASS_ANDSIX {
+					} else if int(ch.Chclass) == CLASS_ANDSIX {
 						return 7
-					} else if ch.Chclass == CLASS_TAPION {
+					} else if int(ch.Chclass) == CLASS_TAPION {
 						return 8
-					} else if ch.Chclass == CLASS_FRIEZA {
+					} else if int(ch.Chclass) == CLASS_FRIEZA {
 						return 9
-					} else if ch.Chclass == CLASS_TSUNA {
+					} else if int(ch.Chclass) == CLASS_TSUNA {
 						return 10
-					} else if ch.Chclass == CLASS_PICCOLO {
+					} else if int(ch.Chclass) == CLASS_PICCOLO {
 						return 11
-					} else if ch.Chclass == CLASS_KURZAK {
+					} else if int(ch.Chclass) == CLASS_KURZAK {
 						return 12
-					} else if ch.Chclass == CLASS_JINTO {
+					} else if int(ch.Chclass) == CLASS_JINTO {
 						return 13
-					} else if ch.Chclass == CLASS_DABURA {
+					} else if int(ch.Chclass) == CLASS_DABURA {
 						return 14
 					}
 				}
@@ -76,31 +76,31 @@ func group_bonus(ch *char_data, type_ int) int {
 			if type_ == 0 {
 				group_bonus(ch.Master, 0)
 			} else if type_ == 2 {
-				if ch.Master.Chclass == CLASS_ROSHI {
+				if int(ch.Master.Chclass) == CLASS_ROSHI {
 					return 2
-				} else if ch.Master.Chclass == CLASS_KRANE {
+				} else if int(ch.Master.Chclass) == CLASS_KRANE {
 					return 3
-				} else if ch.Master.Chclass == CLASS_BARDOCK {
+				} else if int(ch.Master.Chclass) == CLASS_BARDOCK {
 					return 4
-				} else if ch.Master.Chclass == CLASS_NAIL {
+				} else if int(ch.Master.Chclass) == CLASS_NAIL {
 					return 5
-				} else if ch.Master.Chclass == CLASS_KABITO {
+				} else if int(ch.Master.Chclass) == CLASS_KABITO {
 					return 6
-				} else if ch.Master.Chclass == CLASS_ANDSIX {
+				} else if int(ch.Master.Chclass) == CLASS_ANDSIX {
 					return 7
-				} else if ch.Master.Chclass == CLASS_TAPION {
+				} else if int(ch.Master.Chclass) == CLASS_TAPION {
 					return 8
-				} else if ch.Master.Chclass == CLASS_FRIEZA {
+				} else if int(ch.Master.Chclass) == CLASS_FRIEZA {
 					return 9
-				} else if ch.Master.Chclass == CLASS_TSUNA {
+				} else if int(ch.Master.Chclass) == CLASS_TSUNA {
 					return 10
-				} else if ch.Master.Chclass == CLASS_PICCOLO {
+				} else if int(ch.Master.Chclass) == CLASS_PICCOLO {
 					return 11
-				} else if ch.Master.Chclass == CLASS_KURZAK {
+				} else if int(ch.Master.Chclass) == CLASS_KURZAK {
 					return 12
-				} else if ch.Master.Chclass == CLASS_JINTO {
+				} else if int(ch.Master.Chclass) == CLASS_JINTO {
 					return 13
-				} else if ch.Master.Chclass == CLASS_DABURA {
+				} else if int(ch.Master.Chclass) == CLASS_DABURA {
 					return 14
 				}
 			}
@@ -110,18 +110,9 @@ func group_bonus(ch *char_data, type_ int) int {
 	return FALSE
 }
 func mutant_limb_regen(ch *char_data) {
-	if (ch.Limb_condition[0]) > 0 && (ch.Limb_condition[0]) < 50 {
+	if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 {
 		act(libc.CString("The bones in your right arm have mended them selves."), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("$n starts moving $s right arm gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
-		ch.Limb_condition[0] = 100
-	} else if (ch.Limb_condition[0]) <= 0 {
-		act(libc.CString("Your right arm begins to grow back very quickly. Within moments it is whole again!"), TRUE, ch, nil, nil, TO_CHAR)
-		act(libc.CString("$n's right arm starts to regrow! Within moments the arm is whole again!."), TRUE, ch, nil, nil, TO_ROOM)
-		ch.Limb_condition[0] = 100
-	}
-	if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 {
-		act(libc.CString("The bones in your left arm have mended them selves."), TRUE, ch, nil, nil, TO_CHAR)
-		act(libc.CString("$n starts moving $s left arm gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
 		ch.Limb_condition[1] = 100
 	} else if (ch.Limb_condition[1]) <= 0 {
 		act(libc.CString("Your right arm begins to grow back very quickly. Within moments it is whole again!"), TRUE, ch, nil, nil, TO_CHAR)
@@ -129,8 +120,8 @@ func mutant_limb_regen(ch *char_data) {
 		ch.Limb_condition[1] = 100
 	}
 	if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 {
-		act(libc.CString("The bones in your right leg have mended them selves."), TRUE, ch, nil, nil, TO_CHAR)
-		act(libc.CString("$n starts moving $s right leg gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
+		act(libc.CString("The bones in your left arm have mended them selves."), TRUE, ch, nil, nil, TO_CHAR)
+		act(libc.CString("$n starts moving $s left arm gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
 		ch.Limb_condition[2] = 100
 	} else if (ch.Limb_condition[2]) <= 0 {
 		act(libc.CString("Your right arm begins to grow back very quickly. Within moments it is whole again!"), TRUE, ch, nil, nil, TO_CHAR)
@@ -138,13 +129,22 @@ func mutant_limb_regen(ch *char_data) {
 		ch.Limb_condition[2] = 100
 	}
 	if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 {
-		act(libc.CString("The bones in your left leg have mended them selves."), TRUE, ch, nil, nil, TO_CHAR)
-		act(libc.CString("$n starts moving $s left leg gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
+		act(libc.CString("The bones in your right leg have mended them selves."), TRUE, ch, nil, nil, TO_CHAR)
+		act(libc.CString("$n starts moving $s right leg gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
 		ch.Limb_condition[3] = 100
 	} else if (ch.Limb_condition[3]) <= 0 {
 		act(libc.CString("Your right arm begins to grow back very quickly. Within moments it is whole again!"), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("$n's right arm starts to regrow! Within moments the arm is whole again!."), TRUE, ch, nil, nil, TO_ROOM)
 		ch.Limb_condition[3] = 100
+	}
+	if (ch.Limb_condition[4]) > 0 && (ch.Limb_condition[4]) < 50 {
+		act(libc.CString("The bones in your left leg have mended them selves."), TRUE, ch, nil, nil, TO_CHAR)
+		act(libc.CString("$n starts moving $s left leg gingerly for a moment."), TRUE, ch, nil, nil, TO_ROOM)
+		ch.Limb_condition[4] = 100
+	} else if (ch.Limb_condition[4]) <= 0 {
+		act(libc.CString("Your right arm begins to grow back very quickly. Within moments it is whole again!"), TRUE, ch, nil, nil, TO_CHAR)
+		act(libc.CString("$n's right arm starts to regrow! Within moments the arm is whole again!."), TRUE, ch, nil, nil, TO_ROOM)
+		ch.Limb_condition[4] = 100
 	}
 }
 func pick_n_throw(ch *char_data, buf *byte) int {
@@ -181,11 +181,11 @@ func mob_attack(ch *char_data, buf *byte) {
 	if power > 20 {
 		power = 20
 	}
-	if ch.Chclass == CLASS_NPC_COMMONER {
+	if int(ch.Chclass) == CLASS_NPC_COMMONER {
 		special = 0
 	}
 	var dragonpass int = TRUE
-	if ch.Race == RACE_LIZARDFOLK {
+	if int(ch.Race) == RACE_LIZARDFOLK {
 		if GET_MOB_VNUM(ch) == 81 || GET_MOB_VNUM(ch) == 82 || GET_MOB_VNUM(ch) == 83 || GET_MOB_VNUM(ch) == 84 || GET_MOB_VNUM(ch) == 85 || GET_MOB_VNUM(ch) == 86 || GET_MOB_VNUM(ch) == 87 {
 			dragonpass = TRUE
 			special = rand_number(40, 100)
@@ -197,7 +197,7 @@ func mob_attack(ch *char_data, buf *byte) {
 		do_powerup(ch, nil, 0, 0)
 		return
 	}
-	if float64(ch.Mana) >= float64(ch.Max_mana)*0.05 && IS_HUMANOID(ch) && (ch.Race != RACE_LIZARDFOLK || dragonpass == TRUE) {
+	if float64(ch.Mana) >= float64(ch.Max_mana)*0.05 && IS_HUMANOID(ch) && (int(ch.Race) != RACE_LIZARDFOLK || dragonpass == TRUE) {
 		if ch.Mobcharge <= 0 && rand_number(1, 10) >= 8 {
 			act(libc.CString("@wAn aura flares up around @R$n@w!@n"), TRUE, ch, nil, nil, TO_ROOM)
 			ch.Mobcharge += 1
@@ -222,16 +222,16 @@ func mob_attack(ch *char_data, buf *byte) {
 		} else if AFF_FLAGGED(ch, AFF_ENSNARED) {
 			return
 		} else if special < 100 {
-			if ch.Chclass == CLASS_SHADOWDANCER && rand_number(1, 3) == 3 {
+			if int(ch.Chclass) == CLASS_SHADOWDANCER && rand_number(1, 3) == 3 {
 				stdio.Sprintf(&buf2[0], "ass %s", buf)
 				do_throw(ch, &buf2[0], 0, 0)
-			} else if ch.Race == RACE_ANDROID && MOB_FLAGGED(ch, MOB_REPAIR) && float64(ch.Hit) <= float64(gear_pl(ch))*0.5 && rand_number(1, 20) >= 16 {
+			} else if int(ch.Race) == RACE_ANDROID && MOB_FLAGGED(ch, MOB_REPAIR) && float64(ch.Hit) <= float64(gear_pl(ch))*0.5 && rand_number(1, 20) >= 16 {
 				do_srepair(ch, nil, 0, 0)
-			} else if ch.Race == RACE_ANDROID && MOB_FLAGGED(ch, MOB_ABSORB) && rand_number(1, 20) >= 19 {
+			} else if int(ch.Race) == RACE_ANDROID && MOB_FLAGGED(ch, MOB_ABSORB) && rand_number(1, 20) >= 19 {
 				do_absorb(ch, &buf2[0], 0, 0)
-			} else if (ch.Race == RACE_BIO || ch.Race == RACE_MAJIN) && float64(ch.Hit) <= float64(gear_pl(ch))*0.5 && rand_number(1, 20) >= 17 {
+			} else if (int(ch.Race) == RACE_BIO || int(ch.Race) == RACE_MAJIN) && float64(ch.Hit) <= float64(gear_pl(ch))*0.5 && rand_number(1, 20) >= 17 {
 				do_regenerate(ch, libc.CString("25"), 0, 0)
-			} else if ch.Race == RACE_NAMEK && float64(ch.Hit) <= float64(gear_pl(ch))*0.5 && rand_number(1, 20) == 20 {
+			} else if int(ch.Race) == RACE_NAMEK && float64(ch.Hit) <= float64(gear_pl(ch))*0.5 && rand_number(1, 20) == 20 {
 				do_regenerate(ch, libc.CString("25"), 0, 0)
 			} else if pick_n_throw(ch, buf) != 0 {
 			} else if MOB_FLAGGED(ch, MOB_KNOWKAIO) && rand_number(1, 50) >= 46 {
@@ -301,9 +301,9 @@ func mob_attack(ch *char_data, buf *byte) {
 				case 13:
 					fallthrough
 				case 14:
-					if (ch.Chclass == CLASS_BARDOCK || ch.Chclass == CLASS_KURZAK) && rand_number(1, 2) == 2 {
+					if (int(ch.Chclass) == CLASS_BARDOCK || int(ch.Chclass) == CLASS_KURZAK) && rand_number(1, 2) == 2 {
 						do_head(ch, buf, 0, 0)
-					} else if (ch.Race == RACE_ICER || ch.Race == RACE_BIO) && rand_number(1, 2) == 2 {
+					} else if (int(ch.Race) == RACE_ICER || int(ch.Race) == RACE_BIO) && rand_number(1, 2) == 2 {
 						do_tailwhip(ch, buf, 0, 0)
 					} else if rand_number(1, 8) == 8 {
 						do_trip(ch, buf, 0, 0)
@@ -313,9 +313,9 @@ func mob_attack(ch *char_data, buf *byte) {
 				case 15:
 					fallthrough
 				case 16:
-					if (ch.Chclass == CLASS_BARDOCK || ch.Chclass == CLASS_KURZAK) && rand_number(1, 2) == 2 {
+					if (int(ch.Chclass) == CLASS_BARDOCK || int(ch.Chclass) == CLASS_KURZAK) && rand_number(1, 2) == 2 {
 						do_head(ch, buf, 0, 0)
-					} else if (ch.Race == RACE_ICER || ch.Race == RACE_BIO) && rand_number(1, 2) == 2 {
+					} else if (int(ch.Race) == RACE_ICER || int(ch.Race) == RACE_BIO) && rand_number(1, 2) == 2 {
 						do_tailwhip(ch, buf, 0, 0)
 					} else if rand_number(1, 8) >= 7 {
 						do_trip(ch, buf, 0, 0)
@@ -371,7 +371,7 @@ func mob_attack(ch *char_data, buf *byte) {
 				if special > 80 {
 					do_zanzoken(ch, buf, 0, 0)
 				}
-				if ch.Race == RACE_LIZARDFOLK && rand_number(1, 4) == 4 {
+				if int(ch.Race) == RACE_LIZARDFOLK && rand_number(1, 4) == 4 {
 					do_breath(ch, buf, 0, 0)
 				} else {
 					if ch.Mobcharge == 7 {
@@ -387,7 +387,7 @@ func mob_attack(ch *char_data, buf *byte) {
 				if special > 80 {
 					do_zanzoken(ch, buf, 0, 0)
 				}
-				if ch.Race == RACE_LIZARDFOLK && rand_number(1, 4) == 4 {
+				if int(ch.Race) == RACE_LIZARDFOLK && rand_number(1, 4) == 4 {
 					do_breath(ch, buf, 0, 0)
 				} else {
 					if ch.Mobcharge == 7 {
@@ -398,7 +398,7 @@ func mob_attack(ch *char_data, buf *byte) {
 			case 15:
 				fallthrough
 			case 16:
-				if ch.Race == RACE_LIZARDFOLK && rand_number(1, 4) == 4 {
+				if int(ch.Race) == RACE_LIZARDFOLK && rand_number(1, 4) == 4 {
 					do_breath(ch, buf, 0, 0)
 				} else {
 					if ch.Mobcharge == 7 {
@@ -409,7 +409,7 @@ func mob_attack(ch *char_data, buf *byte) {
 			case 17:
 				fallthrough
 			case 18:
-				if ch.Race == RACE_LIZARDFOLK && rand_number(1, 4) == 4 {
+				if int(ch.Race) == RACE_LIZARDFOLK && rand_number(1, 4) == 4 {
 					do_breath(ch, buf, 0, 0)
 				} else {
 					if ch.Mobcharge == 7 {
@@ -420,7 +420,7 @@ func mob_attack(ch *char_data, buf *byte) {
 			case 19:
 				fallthrough
 			case 20:
-				if ch.Race == RACE_LIZARDFOLK {
+				if int(ch.Race) == RACE_LIZARDFOLK {
 					do_breath(ch, buf, 0, 0)
 				}
 				if ch.Mobcharge == 7 {
@@ -587,9 +587,9 @@ func mob_attack(ch *char_data, buf *byte) {
 			}
 		}
 	} else if !IS_HUMANOID(ch) || dragonpass == FALSE {
-		if ch.Race == RACE_SNAKE && rand_number(1, 5) == 5 {
+		if int(ch.Race) == RACE_SNAKE && rand_number(1, 5) == 5 {
 			do_strike(ch, buf, 0, 0)
-		} else if ch.Race == RACE_LIZARDFOLK && rand_number(1, 12) >= 10 && GET_MOB_VNUM(ch) != 0x45FD {
+		} else if int(ch.Race) == RACE_LIZARDFOLK && rand_number(1, 12) >= 10 && GET_MOB_VNUM(ch) != 0x45FD {
 			do_breath(ch, buf, 0, 0)
 		} else {
 			if rand_number(1, 10) >= 7 && GET_LEVEL(ch) >= 10 {
@@ -609,7 +609,7 @@ func cleanup_arena_watch(ch *char_data) {
 		}
 		if PRF_FLAGGED(d.Character, PRF_ARENAWATCH) {
 			if d.Character.Arenawatch == int(ch.Idnum) {
-				d.Character.Player_specials.Pref[int(PRF_ARENAWATCH/32)] &= bitvector_t(^(1 << (int(PRF_ARENAWATCH % 32))))
+				d.Character.Player_specials.Pref[int(PRF_ARENAWATCH/32)] &= bitvector_t(int32(^(1 << (int(PRF_ARENAWATCH % 32)))))
 				d.Character.Arenawatch = -1
 			}
 		}
@@ -651,25 +651,25 @@ func remove_limb(vict *char_data, num int) {
 		stdio.Snprintf(&part[0], int(1000), "@w%s right arm@n", pc_race_types[int(vict.Race)])
 		stdio.Snprintf(&buf[0], int(1000), "right arm")
 		if PLR_FLAGGED(vict, PLR_CRARM) {
-			vict.Act[int(PLR_CRARM/32)] &= bitvector_t(^(1 << (int(PLR_CRARM % 32))))
+			vict.Act[int(PLR_CRARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRARM % 32)))))
 		}
 	case 2:
 		stdio.Snprintf(&part[0], int(1000), "@w%s left arm@n", pc_race_types[int(vict.Race)])
 		stdio.Snprintf(&buf[0], int(1000), "left arm")
 		if PLR_FLAGGED(vict, PLR_CLARM) {
-			vict.Act[int(PLR_CLARM/32)] &= bitvector_t(^(1 << (int(PLR_CLARM % 32))))
+			vict.Act[int(PLR_CLARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLARM % 32)))))
 		}
 	case 3:
 		stdio.Snprintf(&part[0], int(1000), "@w%s right leg@n", pc_race_types[int(vict.Race)])
 		stdio.Snprintf(&buf[0], int(1000), "right leg")
 		if PLR_FLAGGED(vict, PLR_CRLEG) {
-			vict.Act[int(PLR_CRLEG/32)] &= bitvector_t(^(1 << (int(PLR_CRLEG % 32))))
+			vict.Act[int(PLR_CRLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRLEG % 32)))))
 		}
 	case 4:
 		stdio.Snprintf(&part[0], int(1000), "@w%s left leg@n", pc_race_types[int(vict.Race)])
 		stdio.Snprintf(&buf[0], int(1000), "left leg")
 		if PLR_FLAGGED(vict, PLR_CLLEG) {
-			vict.Act[int(PLR_CLLEG/32)] &= bitvector_t(^(1 << (int(PLR_CLLEG % 32))))
+			vict.Act[int(PLR_CLLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLLEG % 32)))))
 		}
 	case 5:
 		stdio.Snprintf(&part[0], int(1000), "@wA %s tail@n", pc_race_types[int(vict.Race)])
@@ -680,17 +680,17 @@ func remove_limb(vict *char_data, num int) {
 		stdio.Snprintf(&part[0], int(1000), "@w%s body part@n", pc_race_types[int(vict.Race)])
 		stdio.Snprintf(&buf[0], int(1000), "body part")
 	}
-	body_part.Name = C.strdup(&buf[0])
+	body_part.Name = libc.StrDup(&buf[0])
 	if num > 0 {
 		stdio.Snprintf(&buf2[0], int(1000), "@wA %s is lying here@n", &part[0])
 	} else {
 		stdio.Snprintf(&buf2[0], int(1000), "%s@w is lying here@n", &part[0])
 	}
-	body_part.Description = C.strdup(&buf2[0])
-	body_part.Short_description = C.strdup(&part[0])
+	body_part.Description = libc.StrDup(&buf2[0])
+	body_part.Short_description = libc.StrDup(&part[0])
 	body_part.Type_flag = ITEM_OTHER
 	body_part.Wear_flags[int(ITEM_WEAR_TAKE/32)] |= 1 << (int(ITEM_WEAR_TAKE % 32))
-	body_part.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(1 << (int(ITEM_UNIQUE_SAVE % 32)))
+	body_part.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(int32(1 << (int(ITEM_UNIQUE_SAVE % 32))))
 	body_part.Value[0] = 0
 	body_part.Value[1] = 0
 	body_part.Value[2] = 0
@@ -714,7 +714,7 @@ func fight_stack() {
 	)
 	for tch = character_list; tch != nil; tch = tch.Next {
 		ch = tch
-		if ch.Position == POS_FIGHTING {
+		if int(ch.Position) == POS_FIGHTING {
 			ch.Position = POS_STANDING
 		}
 		if PLR_FLAGGED(ch, PLR_SPIRAL) {
@@ -733,7 +733,7 @@ func fight_stack() {
 			if ch.Hit >= ch.Max_hit {
 				act(libc.CString("@g$n@ finishes powering up as $s aura flashes brightly filling the entire area briefly with its light!@n"), TRUE, ch, nil, nil, TO_ROOM)
 				ch.Hit = ch.Max_hit
-				ch.Act[int(MOB_POWERUP/32)] &= bitvector_t(^(1 << (int(MOB_POWERUP % 32))))
+				ch.Act[int(MOB_POWERUP/32)] &= bitvector_t(int32(^(1 << (int(MOB_POWERUP % 32)))))
 			} else if ch.Hit >= ch.Max_hit/2 {
 				act(libc.CString("@g$n@G continues powering up as torrents of energy crackle within $s aura.@n"), TRUE, ch, nil, nil, TO_ROOM)
 				ch.Hit += ch.Max_hit / 10
@@ -762,20 +762,20 @@ func fight_stack() {
 			ch.Drag.Dragged = nil
 			ch.Drag = nil
 		}
-		if float64(ch.Hit) <= (float64(gear_pl(ch))*0.01)*float64(ch.Lifeperc) && ch.Lifeforce > 0 && ch.Race != RACE_ANDROID {
+		if float64(ch.Hit) <= (float64(gear_pl(ch))*0.01)*float64(ch.Lifeperc) && ch.Lifeforce > 0 && int(ch.Race) != RACE_ANDROID {
 			if rand_number(1, 15) >= 14 {
-				if float64(ch.Lifeforce) >= float64(GET_LIFEMAX(ch))*0.05 || AFF_FLAGGED(ch, AFF_HEALGLOW) || ch.Race == RACE_KANASSAN && float64(ch.Lifeforce) >= float64(GET_LIFEMAX(ch))*0.03 {
+				if float64(ch.Lifeforce) >= float64(GET_LIFEMAX(ch))*0.05 || AFF_FLAGGED(ch, AFF_HEALGLOW) || int(ch.Race) == RACE_KANASSAN && float64(ch.Lifeforce) >= float64(GET_LIFEMAX(ch))*0.03 {
 					var (
 						refill int64 = 0
 						lfcost int64 = int64(float64(GET_LIFEMAX(ch)) * 0.05)
 					)
-					if (ch.Bonuses[BONUS_DIEHARD]) > 0 && (ch.Race != RACE_MUTANT || (ch.Genome[0]) != 2 && (ch.Genome[1]) != 2) {
+					if (ch.Bonuses[BONUS_DIEHARD]) > 0 && (int(ch.Race) != RACE_MUTANT || (ch.Genome[0]) != 2 && (ch.Genome[1]) != 2) {
 						refill = int64(float64(GET_LIFEMAX(ch)) * 0.1)
-					} else if (ch.Bonuses[BONUS_DIEHARD]) > 0 && ch.Race == RACE_MUTANT && ((ch.Genome[0]) == 2 || (ch.Genome[1]) == 2) {
+					} else if (ch.Bonuses[BONUS_DIEHARD]) > 0 && int(ch.Race) == RACE_MUTANT && ((ch.Genome[0]) == 2 || (ch.Genome[1]) == 2) {
 						refill = int64(float64(GET_LIFEMAX(ch)) * 0.17)
-					} else if ch.Race == RACE_MUTANT && ((ch.Genome[0]) == 2 || (ch.Genome[1]) == 2) {
+					} else if int(ch.Race) == RACE_MUTANT && ((ch.Genome[0]) == 2 || (ch.Genome[1]) == 2) {
 						refill = int64(float64(GET_LIFEMAX(ch)) * 0.12)
-					} else if ch.Race == RACE_KANASSAN {
+					} else if int(ch.Race) == RACE_KANASSAN {
 						lfcost = int64(float64(GET_LIFEMAX(ch)) * 0.03)
 						refill = int64(float64(GET_LIFEMAX(ch)) * 0.03)
 					} else {
@@ -817,7 +817,7 @@ func fight_stack() {
 				}
 			}
 		} else {
-			if roll_balance(ch) < axion_dice(-30) || ch.Position < POS_STANDING {
+			if roll_balance(ch) < axion_dice(-30) || int(ch.Position) < POS_STANDING {
 				act(libc.CString("@YYou are moved out of your position!@n"), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("@y$n@Y is moved out of $s position!@n"), TRUE, ch, nil, nil, TO_ROOM)
 				ch.Affected_by[int(AFF_POSITION/32)] &= ^(1 << (int(AFF_POSITION % 32)))
@@ -850,7 +850,7 @@ func fight_stack() {
 		if ch.Grappled != nil && rand_number(1, 2) == 2 {
 			send_to_char(ch, libc.CString("@CTry 'escape' to break free from the hold!@n\r\n"))
 		}
-		if ch.Race == RACE_HALFBREED && PLR_FLAGGED(ch, PLR_FURY) {
+		if int(ch.Race) == RACE_HALFBREED && PLR_FLAGGED(ch, PLR_FURY) {
 			ch.Rage_meter += 1
 			if ch.Rage_meter >= 1000 {
 				ch.Hit += int64(float64(gear_pl(ch)) * 0.15)
@@ -869,7 +869,7 @@ func fight_stack() {
 			}
 		}
 		if !IS_NPC(ch) && IS_TRANSFORMED(ch) {
-			if IS_NONPTRANS(ch) && ch.Race != RACE_ICER && ch.Move < ch.Max_move/60 {
+			if IS_NONPTRANS(ch) && int(ch.Race) != RACE_ICER && ch.Move < ch.Max_move/60 {
 				act(libc.CString("@mExhausted of stamina, your body forcibly reverts from its form.@n"), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("@C$n @wbreathing heavily, reverts from $s form, returning to normal.@n"), TRUE, ch, nil, nil, TO_ROOM)
 				if ch.Kaioken < 1 {
@@ -878,38 +878,38 @@ func fight_stack() {
 					do_kaioken(ch, libc.CString("0"), 0, 0)
 					do_transform(ch, libc.CString("revert"), 0, 0)
 				}
-			} else if IS_NONPTRANS(ch) && ch.Race != RACE_ICER && ch.Move >= ch.Max_move/900 && PLR_FLAGGED(ch, PLR_TRANS1) && ch.Race != RACE_KONATSU && ch.Race != RACE_KAI && ch.Race != RACE_NAMEK {
-				if ch.Race == RACE_SAIYAN && float64(ch.Lifeforce) >= float64(GET_LIFEMAX(ch))*0.7 {
+			} else if IS_NONPTRANS(ch) && int(ch.Race) != RACE_ICER && ch.Move >= ch.Max_move/900 && PLR_FLAGGED(ch, PLR_TRANS1) && int(ch.Race) != RACE_KONATSU && int(ch.Race) != RACE_KAI && int(ch.Race) != RACE_NAMEK {
+				if int(ch.Race) == RACE_SAIYAN && float64(ch.Lifeforce) >= float64(GET_LIFEMAX(ch))*0.7 {
 					ch.Move -= ch.Max_move / 1000
 				} else {
 					ch.Move -= ch.Max_move / 900
 				}
-			} else if IS_NONPTRANS(ch) && ch.Race != RACE_ICER && ch.Move >= ch.Max_move/800 && PLR_FLAGGED(ch, PLR_TRANS1) {
-				if ch.Race == RACE_SAIYAN && float64(ch.Lifeforce) >= float64(GET_LIFEMAX(ch))*0.7 {
+			} else if IS_NONPTRANS(ch) && int(ch.Race) != RACE_ICER && ch.Move >= ch.Max_move/800 && PLR_FLAGGED(ch, PLR_TRANS1) {
+				if int(ch.Race) == RACE_SAIYAN && float64(ch.Lifeforce) >= float64(GET_LIFEMAX(ch))*0.7 {
 					ch.Move -= ch.Max_move / 900
 				} else {
 					ch.Move -= ch.Max_move / 800
 				}
-			} else if IS_NONPTRANS(ch) && ch.Race != RACE_ICER && ch.Move >= ch.Max_move/600 && PLR_FLAGGED(ch, PLR_TRANS2) && ch.Race != RACE_KONATSU && ch.Race != RACE_KAI && ch.Race != RACE_NAMEK {
-				if ch.Race == RACE_SAIYAN && float64(ch.Lifeforce) >= float64(GET_LIFEMAX(ch))*0.7 {
+			} else if IS_NONPTRANS(ch) && int(ch.Race) != RACE_ICER && ch.Move >= ch.Max_move/600 && PLR_FLAGGED(ch, PLR_TRANS2) && int(ch.Race) != RACE_KONATSU && int(ch.Race) != RACE_KAI && int(ch.Race) != RACE_NAMEK {
+				if int(ch.Race) == RACE_SAIYAN && float64(ch.Lifeforce) >= float64(GET_LIFEMAX(ch))*0.7 {
 					ch.Move -= ch.Max_move / 700
 				} else {
 					ch.Move -= ch.Max_move / 600
 				}
-			} else if IS_NONPTRANS(ch) && ch.Race != RACE_ICER && ch.Move >= ch.Max_move/500 && PLR_FLAGGED(ch, PLR_TRANS2) {
+			} else if IS_NONPTRANS(ch) && int(ch.Race) != RACE_ICER && ch.Move >= ch.Max_move/500 && PLR_FLAGGED(ch, PLR_TRANS2) {
 				ch.Move -= ch.Max_move / 500
-			} else if IS_NONPTRANS(ch) && ch.Race != RACE_ICER && ch.Move >= ch.Max_move/400 && PLR_FLAGGED(ch, PLR_TRANS3) && ch.Race != RACE_SAIYAN {
+			} else if IS_NONPTRANS(ch) && int(ch.Race) != RACE_ICER && ch.Move >= ch.Max_move/400 && PLR_FLAGGED(ch, PLR_TRANS3) && int(ch.Race) != RACE_SAIYAN {
 				ch.Move -= ch.Max_move / 400
-			} else if IS_NONPTRANS(ch) && ch.Race != RACE_ICER && ch.Move >= ch.Max_move/250 && PLR_FLAGGED(ch, PLR_TRANS3) {
-				if ch.Race == RACE_SAIYAN && float64(ch.Lifeforce) >= float64(GET_LIFEMAX(ch))*0.7 {
+			} else if IS_NONPTRANS(ch) && int(ch.Race) != RACE_ICER && ch.Move >= ch.Max_move/250 && PLR_FLAGGED(ch, PLR_TRANS3) {
+				if int(ch.Race) == RACE_SAIYAN && float64(ch.Lifeforce) >= float64(GET_LIFEMAX(ch))*0.7 {
 					ch.Move -= ch.Max_move / 300
 				} else {
 					ch.Move -= ch.Max_move / 250
 				}
-			} else if IS_NONPTRANS(ch) && ch.Race != RACE_ICER && ch.Move >= ch.Max_move/200 && PLR_FLAGGED(ch, PLR_TRANS4) && ch.Race != RACE_SAIYAN {
+			} else if IS_NONPTRANS(ch) && int(ch.Race) != RACE_ICER && ch.Move >= ch.Max_move/200 && PLR_FLAGGED(ch, PLR_TRANS4) && int(ch.Race) != RACE_SAIYAN {
 				ch.Move -= ch.Max_move / 200
-			} else if IS_NONPTRANS(ch) && ch.Race != RACE_ICER && ch.Move >= ch.Max_move/170 && PLR_FLAGGED(ch, PLR_TRANS4) {
-				if ch.Race == RACE_SAIYAN && float64(ch.Lifeforce) >= float64(GET_LIFEMAX(ch))*0.7 {
+			} else if IS_NONPTRANS(ch) && int(ch.Race) != RACE_ICER && ch.Move >= ch.Max_move/170 && PLR_FLAGGED(ch, PLR_TRANS4) {
+				if int(ch.Race) == RACE_SAIYAN && float64(ch.Lifeforce) >= float64(GET_LIFEMAX(ch))*0.7 {
 					ch.Move -= ch.Max_move / 240
 				} else {
 					ch.Move -= ch.Max_move / 170
@@ -921,16 +921,16 @@ func fight_stack() {
 			do_flee(ch, nil, 0, 0)
 		}
 		if IS_NPC(ch) && ch.Hit < ch.Max_hit/10 && ch.Hit > 0 && ch.Fighting != nil && !MOB_FLAGGED(ch, MOB_SENTINEL) {
-			if rand_number(1, 30) >= 25 && ch.Position > POS_SITTING {
+			if rand_number(1, 30) >= 25 && int(ch.Position) > POS_SITTING {
 				do_flee(ch, nil, 0, 0)
 			}
 		}
-		if ch.Race == RACE_MUTANT && ((ch.Genome[0]) == 6 || (ch.Genome[1]) == 6) && rand_number(1, 200) >= 175 {
+		if int(ch.Race) == RACE_MUTANT && ((ch.Genome[0]) == 6 || (ch.Genome[1]) == 6) && rand_number(1, 200) >= 175 {
 			mutant_limb_regen(ch)
 		}
 		if !IS_NPC(ch) && PLR_FLAGGED(ch, PLR_DISGUISED) && GET_SKILL(ch, SKILL_DISGUISE) < rand_number(1, 125) {
 			send_to_char(ch, libc.CString("Your disguise comes off because of your swift movements!\r\n"))
-			ch.Act[int(PLR_DISGUISED/32)] &= bitvector_t(^(1 << (int(PLR_DISGUISED % 32))))
+			ch.Act[int(PLR_DISGUISED/32)] &= bitvector_t(int32(^(1 << (int(PLR_DISGUISED % 32)))))
 			act(libc.CString("@W$n's@W disguise comes off because of $s swift movements!@n"), FALSE, ch, nil, nil, TO_ROOM)
 		}
 		if IS_NPC(ch) && AFF_FLAGGED(ch, AFF_BLIND) && rand_number(1, 200) >= 190 {
@@ -947,7 +947,7 @@ func fight_stack() {
 				ch.Position = POS_STANDING
 			}
 		}
-		if !IS_NPC(ch) && ch.Desc == nil && ch.Position > POS_STUNNED && !AFF_FLAGGED(ch, AFF_FROZEN) {
+		if !IS_NPC(ch) && ch.Desc == nil && int(ch.Position) > POS_STUNNED && !AFF_FLAGGED(ch, AFF_FROZEN) {
 			if ch.Fighting != nil {
 				do_flee(ch, nil, 0, 0)
 			}
@@ -969,7 +969,7 @@ func fight_stack() {
 				do_fly(ch, libc.CString("high"), 0, 0)
 				continue
 			}
-			if AFF_FLAGGED(ch.Fighting, AFF_FLYING) && !IS_HUMANOID(ch) && !AFF_FLAGGED(ch, AFF_FLYING) && ch.Position > POS_RESTING {
+			if AFF_FLAGGED(ch.Fighting, AFF_FLYING) && !IS_HUMANOID(ch) && !AFF_FLAGGED(ch, AFF_FLYING) && int(ch.Position) > POS_RESTING {
 				if rand_number(1, 30) >= 22 && block_calc(ch) == 0 {
 					act(libc.CString("$n@G flees in terror and you lose sight of $m!"), TRUE, ch, nil, nil, TO_ROOM)
 					for ch.Carrying != nil {
@@ -989,20 +989,20 @@ func fight_stack() {
 					continue
 				}
 			}
-			if ch.Position == POS_SITTING && sec_roll_check(ch) == 1 {
+			if int(ch.Position) == POS_SITTING && sec_roll_check(ch) == 1 {
 				do_stand(ch, nil, 0, 0)
 				continue
 			}
-			if ch.Position == POS_RESTING && sec_roll_check(ch) == 1 {
+			if int(ch.Position) == POS_RESTING && sec_roll_check(ch) == 1 {
 				do_stand(ch, nil, 0, 0)
 				continue
 			}
-			if AFF_FLAGGED(ch, AFF_PARA) && IS_NPC(ch) && int(ch.Aff_abils.Intel+10) < rand_number(1, 60) {
+			if AFF_FLAGGED(ch, AFF_PARA) && IS_NPC(ch) && int(ch.Aff_abils.Intel)+10 < rand_number(1, 60) {
 				act(libc.CString("@yYou fail to overcome your paralysis!@n"), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("@Y$n @ystruggles with $s paralysis!@n"), TRUE, ch, nil, nil, TO_ROOM)
 				continue
 			}
-			if ch.Position == POS_SLEEPING && !AFF_FLAGGED(ch, AFF_KNOCKED) && sec_roll_check(ch) == 1 {
+			if int(ch.Position) == POS_SLEEPING && !AFF_FLAGGED(ch, AFF_KNOCKED) && sec_roll_check(ch) == 1 {
 				do_wake(ch, nil, 0, 0)
 				do_stand(ch, nil, 0, 0)
 				continue
@@ -1011,7 +1011,7 @@ func fight_stack() {
 			var buf [100]byte
 			vict = ch.Fighting
 			stdio.Sprintf(&buf[0], "%s", GET_NAME(vict))
-			if ch.In_room == vict.In_room && !MOB_FLAGGED(ch, MOB_DUMMY) && !AFF_FLAGGED(ch, AFF_KNOCKED) && ch.Position != POS_SITTING && ch.Position != POS_RESTING && ch.Position != POS_SLEEPING {
+			if ch.In_room == vict.In_room && !MOB_FLAGGED(ch, MOB_DUMMY) && !AFF_FLAGGED(ch, AFF_KNOCKED) && int(ch.Position) != POS_SITTING && int(ch.Position) != POS_RESTING && int(ch.Position) != POS_SLEEPING {
 				if IS_NPC(ch) && rand_number(1, 30) <= 12 {
 					continue
 				}
@@ -1020,8 +1020,8 @@ func fight_stack() {
 				continue
 			}
 		}
-		if ch.Position <= POS_RESTING && PLR_FLAGGED(ch, PLR_POWERUP) {
-			ch.Act[int(PLR_POWERUP/32)] &= bitvector_t(^(1 << (int(PLR_POWERUP % 32))))
+		if int(ch.Position) <= POS_RESTING && PLR_FLAGGED(ch, PLR_POWERUP) {
+			ch.Act[int(PLR_POWERUP/32)] &= bitvector_t(int32(^(1 << (int(PLR_POWERUP % 32)))))
 		}
 		if PLR_FLAGGED(ch, PLR_POWERUP) && rand_number(1, 3) == 3 {
 			var buf3 [64936]byte
@@ -1042,7 +1042,7 @@ func fight_stack() {
 				send_to_sense(0, libc.CString("You sense someone stop powering up"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Rising Powerlevel Final@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
-				ch.Act[int(PLR_POWERUP/32)] &= bitvector_t(^(1 << (int(PLR_POWERUP % 32))))
+				ch.Act[int(PLR_POWERUP/32)] &= bitvector_t(int32(^(1 << (int(PLR_POWERUP % 32)))))
 			} else if ch.Hit >= gear_pl(ch) && float64(ch.Mana) >= (float64(ch.Max_mana)*0.0375)+1 && ch.Preference == PREFERENCE_KI {
 				if float64(ch.Mana) >= (float64(ch.Max_mana)*0.0375)+1 {
 					var raise int64 = int64(float64(ch.Max_move) * 0.02)
@@ -1060,7 +1060,7 @@ func fight_stack() {
 				send_to_sense(0, libc.CString("You sense someone stop powering up"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Rising Powerlevel Final@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
-				ch.Act[int(PLR_POWERUP/32)] &= bitvector_t(^(1 << (int(PLR_POWERUP % 32))))
+				ch.Act[int(PLR_POWERUP/32)] &= bitvector_t(int32(^(1 << (int(PLR_POWERUP % 32)))))
 			}
 			if ch.Mana < ch.Max_mana/20 && ch.Preference != PREFERENCE_KI {
 				ch.Mana = 0
@@ -1069,7 +1069,7 @@ func fight_stack() {
 				send_to_sense(0, libc.CString("You sense someone stop powering up"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Rising Powerlevel Final@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
-				ch.Act[int(PLR_POWERUP/32)] &= bitvector_t(^(1 << (int(PLR_POWERUP % 32))))
+				ch.Act[int(PLR_POWERUP/32)] &= bitvector_t(int32(^(1 << (int(PLR_POWERUP % 32)))))
 			} else if float64(ch.Mana) < (float64(ch.Max_mana)*0.0375)+1 && ch.Preference == PREFERENCE_KI {
 				ch.Mana = 0
 				act(libc.CString("@RYou have run out of ki.@n"), TRUE, ch, nil, nil, TO_CHAR)
@@ -1077,7 +1077,7 @@ func fight_stack() {
 				send_to_sense(0, libc.CString("You sense someone stop powering up"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Rising Powerlevel Final@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
-				ch.Act[int(PLR_POWERUP/32)] &= bitvector_t(^(1 << (int(PLR_POWERUP % 32))))
+				ch.Act[int(PLR_POWERUP/32)] &= bitvector_t(int32(^(1 << (int(PLR_POWERUP % 32)))))
 			}
 			if ch.Hit < gear_pl(ch) && (ch.Preference != PREFERENCE_KI && ch.Mana >= ch.Max_mana/20 || ch.Preference == PREFERENCE_KI && float64(ch.Mana) >= (float64(ch.Max_mana)*0.0375)+1) {
 				ch.Hit += gear_pl(ch) / 10
@@ -1123,7 +1123,7 @@ func fight_stack() {
 				dispel_ash(ch)
 			}
 		}
-		if (ch.Position == POS_SLEEPING || ch.Position == POS_RESTING) && (PLR_FLAGGED(ch, PLR_CHARGE) || ch.Charge >= 1) {
+		if (int(ch.Position) == POS_SLEEPING || int(ch.Position) == POS_RESTING) && (PLR_FLAGGED(ch, PLR_CHARGE) || ch.Charge >= 1) {
 			send_to_char(ch, libc.CString("You stop charging and release all your pent up energy!\r\n"))
 			switch rand_number(1, 3) {
 			case 1:
@@ -1135,7 +1135,7 @@ func fight_stack() {
 			default:
 				act(libc.CString("$n@w's aura disappears.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			}
-			ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(^(1 << (int(PLR_CHARGE % 32))))
+			ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(int32(^(1 << (int(PLR_CHARGE % 32)))))
 			ch.Mana += ch.Charge
 			if ch.Mana > ch.Max_mana {
 				ch.Mana = ch.Max_mana
@@ -1155,7 +1155,7 @@ func fight_stack() {
 			default:
 				act(libc.CString("$n@w's aura disappears.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			}
-			ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(^(1 << (int(PLR_CHARGE % 32))))
+			ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(int32(^(1 << (int(PLR_CHARGE % 32)))))
 			ch.Mana += ch.Charge
 			if ch.Mana > ch.Max_mana {
 				ch.Mana = ch.Max_mana
@@ -1195,16 +1195,16 @@ func fight_stack() {
 			} else {
 				perc = 1
 			}
-			if ch.Race == RACE_TRUFFLE && perc == 10 {
+			if int(ch.Race) == RACE_TRUFFLE && perc == 10 {
 				perc += 10
 			}
-			if ch.Race == RACE_TRUFFLE && perc == 5 {
+			if int(ch.Race) == RACE_TRUFFLE && perc == 5 {
 				perc += 5
 			}
-			if ch.Race == RACE_TRUFFLE && perc == 2 {
+			if int(ch.Race) == RACE_TRUFFLE && perc == 2 {
 				perc += 3
 			}
-			if ch.Race == RACE_TRUFFLE && perc == 1 {
+			if int(ch.Race) == RACE_TRUFFLE && perc == 1 {
 				perc += 1
 			}
 			if perc > 1 && ch.Preference == PREFERENCE_H2H {
@@ -1221,13 +1221,13 @@ func fight_stack() {
 			} else {
 				perc = 1
 			}
-			if ch.Race == RACE_MUTANT && perc == 10 {
+			if int(ch.Race) == RACE_MUTANT && perc == 10 {
 				perc -= 1
 			}
-			if ch.Race == RACE_MUTANT && perc == 5 {
+			if int(ch.Race) == RACE_MUTANT && perc == 5 {
 				perc -= 1
 			}
-			if ch.Race == RACE_MUTANT && perc == 2 {
+			if int(ch.Race) == RACE_MUTANT && perc == 2 {
 				perc -= 1
 			}
 			if perc > 1 && ch.Preference == PREFERENCE_H2H {
@@ -1236,27 +1236,27 @@ func fight_stack() {
 			if ch.Mana <= 0 {
 				send_to_char(ch, libc.CString("You can not charge anymore, you have charged all your energy!\r\n"))
 				act(libc.CString("$n@w's aura grows calm.@n"), TRUE, ch, nil, nil, TO_ROOM)
-				ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(^(1 << (int(PLR_CHARGE % 32))))
+				ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(int32(^(1 << (int(PLR_CHARGE % 32)))))
 			} else if ((float64(ch.Max_mana) * 0.01) * float64(perc)) >= float64(ch.Mana) {
 				send_to_char(ch, libc.CString("You have charged the last that you can.\r\n"))
 				act(libc.CString("$n@w's aura @Yflashes@w spectacularly, rushing upwards in torrents!@n"), TRUE, ch, nil, nil, TO_ROOM)
 				ch.Charge += ch.Mana
 				ch.Mana = 0
 				ch.Chargeto = 0
-				ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(^(1 << (int(PLR_CHARGE % 32))))
+				ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(int32(^(1 << (int(PLR_CHARGE % 32)))))
 			} else {
 				if ch.Charge >= ch.Chargeto {
 					send_to_char(ch, libc.CString("You have already reached the maximum that you wished to charge.\r\n"))
 					act(libc.CString("$n@w's aura burns steadily.@n"), TRUE, ch, nil, nil, TO_ROOM)
 					ch.Chargeto = 0
-					ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(^(1 << (int(PLR_CHARGE % 32))))
+					ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(int32(^(1 << (int(PLR_CHARGE % 32)))))
 				} else if float64(ch.Charge)+(((float64(ch.Max_mana)*0.01)*float64(perc))+1) >= float64(ch.Chargeto) {
 					ch.Mana -= ch.Chargeto - ch.Charge
 					ch.Charge = ch.Chargeto
 					send_to_char(ch, libc.CString("You stop charging as you reach the maximum that you wished to charge.\r\n"))
 					act(libc.CString("$n@w's aura flares up brightly and then burns steadily.@n"), TRUE, ch, nil, nil, TO_ROOM)
 					ch.Chargeto = 0
-					ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(^(1 << (int(PLR_CHARGE % 32))))
+					ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(int32(^(1 << (int(PLR_CHARGE % 32)))))
 				} else {
 					ch.Mana -= int64(((float64(ch.Max_mana) * 0.01) * float64(perc)) + 1)
 					ch.Charge += int64(((float64(ch.Max_mana) * 0.01) * float64(perc)) + 1)
@@ -1277,7 +1277,7 @@ func fight_stack() {
 						ch.Charge += int64(GET_LEVEL(ch))
 						send_to_char(ch, libc.CString("You have finished charging!\r\n"))
 						act(libc.CString("$n@w's aura burns brightly and then evens out.@n"), TRUE, ch, nil, nil, TO_ROOM)
-						ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(^(1 << (int(PLR_CHARGE % 32))))
+						ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(int32(^(1 << (int(PLR_CHARGE % 32)))))
 						ch.Chargeto = 0
 					}
 				}
@@ -1304,11 +1304,11 @@ func update_pos(victim *char_data) {
 	if AFF_FLAGGED(victim, AFF_KNOCKED) {
 		return
 	}
-	if victim.Hit > 0 && victim.Position > POS_STUNNED {
+	if victim.Hit > 0 && int(victim.Position) > POS_STUNNED {
 		return
-	} else if victim.Position == POS_SITTING && victim.Fighting != nil {
+	} else if int(victim.Position) == POS_SITTING && victim.Fighting != nil {
 		return
-	} else if victim.Position == POS_SITTING && victim.Fighting != nil {
+	} else if int(victim.Position) == POS_SITTING && victim.Fighting != nil {
 		return
 	} else if victim.Hit > 0 {
 		victim.Position = POS_STANDING
@@ -1341,9 +1341,9 @@ func set_fighting(ch *char_data, vict *char_data) {
 	ch.Next_fighting = combat_list
 	combat_list = ch
 	ch.Fighting = vict
-	if ch.Position == POS_SITTING {
+	if int(ch.Position) == POS_SITTING {
 		ch.Position = POS_SITTING
-	} else if ch.Position == POS_SLEEPING {
+	} else if int(ch.Position) == POS_SLEEPING {
 		ch.Position = POS_SLEEPING
 	}
 	if config_info.Play.Pk_allowed == 0 {
@@ -1430,14 +1430,14 @@ func make_pcorpse(ch *char_data) {
 		}
 	}
 	corpse.Wear_flags[int(ITEM_WEAR_TAKE/32)] |= 1 << (int(ITEM_WEAR_TAKE % 32))
-	corpse.Extra_flags[int(ITEM_NODONATE/32)] |= bitvector_t(1 << (int(ITEM_NODONATE % 32)))
+	corpse.Extra_flags[int(ITEM_NODONATE/32)] |= bitvector_t(int32(1 << (int(ITEM_NODONATE % 32))))
 	corpse.Value[VAL_CONTAINER_CAPACITY] = 0
 	corpse.Value[VAL_CONTAINER_CORPSE] = 1
 	corpse.Value[VAL_CONTAINER_OWNER] = ch.Pfilepos
 	corpse.Weight = int64(GET_PC_WEIGHT(ch) + ch.Carry_weight)
 	corpse.Cost_per_day = 100000
 	corpse.Timer = config_info.Play.Max_pc_corpse_time
-	corpse.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(1 << (int(ITEM_UNIQUE_SAVE % 32)))
+	corpse.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(int32(1 << (int(ITEM_UNIQUE_SAVE % 32))))
 	var obj *obj_data
 	var next_obj *obj_data
 	for obj = ch.Carrying; obj != nil; obj = next_obj {
@@ -1477,73 +1477,73 @@ func handle_corpse_condition(corpse *obj_data, ch *char_data) {
 	case DTYPE_HEAD:
 		buf2[0] = '\x00'
 		stdio.Snprintf(&buf2[0], int(148), "headless corpse %s", GET_NAME(ch))
-		corpse.Name = C.strdup(&buf2[0])
+		corpse.Name = libc.StrDup(&buf2[0])
 		descBuf[0] = '\x00'
 		stdio.Snprintf(&descBuf[0], int(512), "The headless corpse of %s is lying here", GET_NAME(ch))
-		corpse.Description = C.strdup(&descBuf[0])
+		corpse.Description = libc.StrDup(&descBuf[0])
 		descBuf[0] = '\x00'
 		stdio.Snprintf(&descBuf[0], int(512), "The headless remains of %s's corpse", GET_NAME(ch))
-		corpse.Short_description = C.strdup(&descBuf[0])
+		corpse.Short_description = libc.StrDup(&descBuf[0])
 		corpse.Value[VAL_CORPSE_HEAD] = 0
 	case DTYPE_HALF:
 		buf2[0] = '\x00'
 		stdio.Snprintf(&buf2[0], int(148), "half corpse %s", GET_NAME(ch))
-		corpse.Name = C.strdup(&buf2[0])
+		corpse.Name = libc.StrDup(&buf2[0])
 		descBuf[0] = '\x00'
 		stdio.Snprintf(&descBuf[0], int(512), "Half of %s's corpse is lying here", GET_NAME(ch))
-		corpse.Description = C.strdup(&descBuf[0])
+		corpse.Description = libc.StrDup(&descBuf[0])
 		descBuf[0] = '\x00'
 		stdio.Snprintf(&descBuf[0], int(512), "Half of %s's corpse", GET_NAME(ch))
-		corpse.Short_description = C.strdup(&descBuf[0])
+		corpse.Short_description = libc.StrDup(&descBuf[0])
 	case DTYPE_VAPOR:
 		buf2[0] = '\x00'
 		stdio.Snprintf(&buf2[0], int(148), "burnt chunks corpse %s", GET_NAME(ch))
-		corpse.Name = C.strdup(&buf2[0])
+		corpse.Name = libc.StrDup(&buf2[0])
 		descBuf[0] = '\x00'
 		stdio.Snprintf(&descBuf[0], int(512), "The burnt chunks of %s's corpse are scattered here", GET_NAME(ch))
-		corpse.Description = C.strdup(&descBuf[0])
+		corpse.Description = libc.StrDup(&descBuf[0])
 		descBuf[0] = '\x00'
 		stdio.Snprintf(&descBuf[0], int(512), "The burnt chunks of %s's corpse", GET_NAME(ch))
-		corpse.Short_description = C.strdup(&descBuf[0])
+		corpse.Short_description = libc.StrDup(&descBuf[0])
 	case DTYPE_PULP:
 		buf2[0] = '\x00'
 		stdio.Snprintf(&buf2[0], int(148), "beaten bloody corpse %s", GET_NAME(ch))
-		corpse.Name = C.strdup(&buf2[0])
+		corpse.Name = libc.StrDup(&buf2[0])
 		descBuf[0] = '\x00'
 		stdio.Snprintf(&descBuf[0], int(512), "The bloody and beaten corpse of %s is lying here", GET_NAME(ch))
-		corpse.Description = C.strdup(&descBuf[0])
+		corpse.Description = libc.StrDup(&descBuf[0])
 		descBuf[0] = '\x00'
 		stdio.Snprintf(&descBuf[0], int(512), "The bloody and beaten remains of %s's corpse", GET_NAME(ch))
-		corpse.Short_description = C.strdup(&descBuf[0])
+		corpse.Short_description = libc.StrDup(&descBuf[0])
 	default:
 		stdio.Snprintf(&buf2[0], int(148), "corpse %s", GET_NAME(ch))
-		corpse.Name = C.strdup(&buf2[0])
+		corpse.Name = libc.StrDup(&buf2[0])
 		descBuf[0] = '\x00'
 		stdio.Snprintf(&descBuf[0], int(512), "The corpse of %s is lying here", GET_NAME(ch))
-		corpse.Description = C.strdup(&descBuf[0])
+		corpse.Description = libc.StrDup(&descBuf[0])
 		descBuf[0] = '\x00'
 		stdio.Snprintf(&descBuf[0], int(512), "the remains of %s's corpse", GET_NAME(ch))
-		corpse.Short_description = C.strdup(&descBuf[0])
+		corpse.Short_description = libc.StrDup(&descBuf[0])
 	}
 	if !IS_NPC(ch) {
-		if (ch.Limb_condition[0]) <= 0 {
+		if (ch.Limb_condition[1]) <= 0 {
 			corpse.Value[VAL_CORPSE_RARM] = 0
-		} else if (ch.Limb_condition[0]) > 0 && (ch.Limb_condition[0]) < 50 {
+		} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 {
 			corpse.Value[VAL_CORPSE_RARM] = 2
 		}
-		if (ch.Limb_condition[1]) <= 0 {
+		if (ch.Limb_condition[2]) <= 0 {
 			corpse.Value[VAL_CORPSE_LARM] = 0
-		} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 {
+		} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 {
 			corpse.Value[VAL_CORPSE_LARM] = 2
 		}
-		if (ch.Limb_condition[2]) <= 0 {
+		if (ch.Limb_condition[3]) <= 0 {
 			corpse.Value[VAL_CORPSE_RLEG] = 0
-		} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 {
+		} else if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 {
 			corpse.Value[VAL_CORPSE_RLEG] = 2
 		}
-		if (ch.Limb_condition[3]) <= 0 {
+		if (ch.Limb_condition[4]) <= 0 {
 			corpse.Value[VAL_CORPSE_LLEG] = 0
-		} else if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 {
+		} else if (ch.Limb_condition[4]) > 0 && (ch.Limb_condition[4]) < 50 {
 			corpse.Value[VAL_CORPSE_LLEG] = 2
 		}
 		return
@@ -1600,9 +1600,9 @@ func make_corpse(ch *char_data, tch *char_data) {
 				stdio.Sprintf(&nick[0], "@RRaw %s@R Steak@n", GET_NAME(ch))
 				stdio.Sprintf(&nick2[0], "Raw %s Steak", ch.Name)
 				stdio.Sprintf(&nick3[0], "@wA @Rraw %s@R steak@w is lying here@n", GET_NAME(ch))
-				meat.Short_description = C.strdup(&nick[0])
-				meat.Name = C.strdup(&nick2[0])
-				meat.Description = C.strdup(&nick3[0])
+				meat.Short_description = libc.StrDup(&nick[0])
+				meat.Name = libc.StrDup(&nick2[0])
+				meat.Description = libc.StrDup(&nick3[0])
 				meat.Value[VAL_ALL_MATERIAL] = 14
 			}
 		}
@@ -1629,7 +1629,7 @@ func make_corpse(ch *char_data, tch *char_data) {
 		}
 	}
 	corpse.Wear_flags[int(ITEM_WEAR_TAKE/32)] |= 1 << (int(ITEM_WEAR_TAKE % 32))
-	corpse.Extra_flags[int(ITEM_NODONATE/32)] |= bitvector_t(1 << (int(ITEM_NODONATE % 32)))
+	corpse.Extra_flags[int(ITEM_NODONATE/32)] |= bitvector_t(int32(1 << (int(ITEM_NODONATE % 32))))
 	corpse.Value[VAL_CONTAINER_CAPACITY] = 0
 	corpse.Value[VAL_CONTAINER_CORPSE] = 1
 	corpse.Value[VAL_CONTAINER_OWNER] = ch.Pfilepos
@@ -1640,7 +1640,7 @@ func make_corpse(ch *char_data, tch *char_data) {
 	} else {
 		corpse.Timer = rand_number(config_info.Play.Max_pc_corpse_time/2, config_info.Play.Max_pc_corpse_time)
 	}
-	corpse.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(1 << (int(ITEM_UNIQUE_SAVE % 32)))
+	corpse.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(int32(1 << (int(ITEM_UNIQUE_SAVE % 32))))
 	if MOB_FLAGGED(ch, MOB_HUSK) {
 		for obj = ch.Carrying; obj != nil; obj = next_obj {
 			next_obj = obj.Next_content
@@ -1774,7 +1774,7 @@ func raw_kill(ch *char_data, killer *char_data) {
 	for ch.Affectedv != nil {
 		affectv_remove(ch, ch.Affectedv)
 	}
-	if ch.Position != POS_SITTING && ch.Position != POS_SLEEPING && ch.Position != POS_RESTING {
+	if int(ch.Position) != POS_SITTING && int(ch.Position) != POS_SLEEPING && int(ch.Position) != POS_RESTING {
 		ch.Position = POS_STANDING
 	}
 	if killer != nil && !IS_NPC(killer) {
@@ -1786,7 +1786,7 @@ func raw_kill(ch *char_data, killer *char_data) {
 				return -1
 			}())
 		}
-		if killer.Race == RACE_SAIYAN && rand_number(1, 2) == 2 || killer.Race != RACE_SAIYAN {
+		if int(killer.Race) == RACE_SAIYAN && rand_number(1, 2) == 2 || int(killer.Race) != RACE_SAIYAN {
 			if rand_number(1, 6) >= 5 && (level_exp(killer, GET_LEVEL(killer)+1)-int(killer.Exp) > 0 || GET_LEVEL(killer) == 100) {
 				var psreward int = int(float64(killer.Aff_abils.Wis) * 0.35)
 				if GET_LEVEL(killer) > GET_LEVEL(ch)+5 {
@@ -1794,13 +1794,13 @@ func raw_kill(ch *char_data, killer *char_data) {
 				} else if GET_LEVEL(killer) > GET_LEVEL(ch)+2 {
 					psreward *= int(0.5)
 				}
-				if killer.Race == RACE_HUMAN || killer.Race == RACE_BIO && ((killer.Genome[0]) == 1 || (killer.Genome[1]) == 1) {
+				if int(killer.Race) == RACE_HUMAN || int(killer.Race) == RACE_BIO && ((killer.Genome[0]) == 1 || (killer.Genome[1]) == 1) {
 					psreward *= int(1.25)
 				}
-				if ch.Race == RACE_HALFBREED {
+				if int(ch.Race) == RACE_HALFBREED {
 					psreward -= int(float64(psreward) * 0.4)
 				}
-				if IS_NPC(ch) && MOB_FLAGGED(ch, MOB_HUSK) && (killer.Player_specials.Class_skill_points[killer.Chclass]) > 50 && ch.Race == RACE_BIO {
+				if IS_NPC(ch) && MOB_FLAGGED(ch, MOB_HUSK) && (killer.Player_specials.Class_skill_points[killer.Chclass]) > 50 && int(ch.Race) == RACE_BIO {
 					psreward = 0
 					send_to_char(killer, libc.CString("@D[@G+0 @BPS @cCapped at 50 for Absorb@D]@n\r\n"))
 				} else {
@@ -1809,7 +1809,7 @@ func raw_kill(ch *char_data, killer *char_data) {
 				}
 			}
 		}
-		if killer.Race == RACE_ANDROID && !IS_NPC(killer) && !PLR_FLAGGED(killer, PLR_ABSORB) {
+		if int(killer.Race) == RACE_ANDROID && !IS_NPC(killer) && !PLR_FLAGGED(killer, PLR_ABSORB) {
 			if PLR_FLAGGED(killer, PLR_REPAIR) {
 				if GET_LEVEL(killer) > GET_LEVEL(ch)+15 {
 					send_to_char(killer, libc.CString("@D[@G+0 @mUpgrade Point @r-WEAK-@D]@n\r\n"))
@@ -1935,7 +1935,7 @@ func raw_kill(ch *char_data, killer *char_data) {
 				make_pcorpse(ch)
 				loadmap(ch)
 			} else {
-				ch.Act[int(PLR_ABSORBED/32)] &= bitvector_t(^(1 << (int(PLR_ABSORBED % 32))))
+				ch.Act[int(PLR_ABSORBED/32)] &= bitvector_t(int32(^(1 << (int(PLR_ABSORBED % 32)))))
 			}
 		}
 		final_combat_resolve(ch)
@@ -1961,23 +1961,23 @@ func raw_kill(ch *char_data, killer *char_data) {
 		}()) > 0x464F) {
 			ch.Affected_by[int(AFF_SPIRIT/32)] |= 1 << (int(AFF_SPIRIT % 32))
 			ch.Affected_by[int(AFF_ETHEREAL/32)] |= 1 << (int(AFF_ETHEREAL % 32))
-			ch.Limb_condition[0] = 100
 			ch.Limb_condition[1] = 100
 			ch.Limb_condition[2] = 100
 			ch.Limb_condition[3] = 100
-			ch.Act[int(PLR_HEAD/32)] |= bitvector_t(1 << (int(PLR_HEAD % 32)))
+			ch.Limb_condition[4] = 100
+			ch.Act[int(PLR_HEAD/32)] |= bitvector_t(int32(1 << (int(PLR_HEAD % 32))))
 			if !PRF_FLAGGED(ch, PRF_LKEEP) {
 				if PLR_FLAGGED(ch, PLR_CLLEG) {
-					ch.Act[int(PLR_CLLEG/32)] &= bitvector_t(^(1 << (int(PLR_CLLEG % 32))))
+					ch.Act[int(PLR_CLLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLLEG % 32)))))
 				}
 				if PLR_FLAGGED(ch, PLR_CRLEG) {
-					ch.Act[int(PLR_CRLEG/32)] &= bitvector_t(^(1 << (int(PLR_CRLEG % 32))))
+					ch.Act[int(PLR_CRLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRLEG % 32)))))
 				}
 				if PLR_FLAGGED(ch, PLR_CRARM) {
-					ch.Act[int(PLR_CRARM/32)] &= bitvector_t(^(1 << (int(PLR_CRARM % 32))))
+					ch.Act[int(PLR_CRARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRARM % 32)))))
 				}
 				if PLR_FLAGGED(ch, PLR_CLARM) {
-					ch.Act[int(PLR_CLARM/32)] &= bitvector_t(^(1 << (int(PLR_CLARM % 32))))
+					ch.Act[int(PLR_CLARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLARM % 32)))))
 				}
 			}
 			if AFF_FLAGGED(ch, AFF_FROZEN) {
@@ -2037,60 +2037,60 @@ func raw_kill(ch *char_data, killer *char_data) {
 			ch.Mana = ch.Max_mana / 10
 			ch.Move = ch.Max_move / 10
 			char_from_room(ch)
-			if ch.Chclass == CLASS_ROSHI {
+			if int(ch.Chclass) == CLASS_ROSHI {
 				char_to_room(ch, real_room(1130))
 			}
-			if ch.Chclass == CLASS_KABITO {
+			if int(ch.Chclass) == CLASS_KABITO {
 				char_to_room(ch, real_room(0x2F42))
 			}
-			if ch.Chclass == CLASS_NAIL {
+			if int(ch.Chclass) == CLASS_NAIL {
 				char_to_room(ch, real_room(0x2DA3))
 			}
-			if ch.Chclass == CLASS_BARDOCK {
+			if int(ch.Chclass) == CLASS_BARDOCK {
 				char_to_room(ch, real_room(2268))
 			}
-			if ch.Chclass == CLASS_KRANE {
+			if int(ch.Chclass) == CLASS_KRANE {
 				char_to_room(ch, real_room(0x32D1))
 			}
-			if ch.Chclass == CLASS_TAPION {
+			if int(ch.Chclass) == CLASS_TAPION {
 				char_to_room(ch, real_room(8231))
 			}
-			if ch.Chclass == CLASS_PICCOLO {
+			if int(ch.Chclass) == CLASS_PICCOLO {
 				char_to_room(ch, real_room(1659))
 			}
-			if ch.Chclass == CLASS_ANDSIX {
+			if int(ch.Chclass) == CLASS_ANDSIX {
 				char_to_room(ch, real_room(1713))
 			}
-			if ch.Chclass == CLASS_DABURA {
+			if int(ch.Chclass) == CLASS_DABURA {
 				char_to_room(ch, real_room(6486))
 			}
-			if ch.Chclass == CLASS_FRIEZA {
+			if int(ch.Chclass) == CLASS_FRIEZA {
 				char_to_room(ch, real_room(4282))
 			}
-			if ch.Chclass == CLASS_GINYU {
+			if int(ch.Chclass) == CLASS_GINYU {
 				char_to_room(ch, real_room(4289))
 			}
-			if ch.Chclass == CLASS_JINTO {
+			if int(ch.Chclass) == CLASS_JINTO {
 				char_to_room(ch, real_room(3499))
 			}
-			if ch.Chclass == CLASS_TSUNA {
+			if int(ch.Chclass) == CLASS_TSUNA {
 				char_to_room(ch, real_room(15000))
 			}
-			if ch.Chclass == CLASS_KURZAK {
+			if int(ch.Chclass) == CLASS_KURZAK {
 				char_to_room(ch, real_room(16100))
 			}
 			look_at_room(ch.In_room, ch, 0)
-			ch.Limb_condition[0] = 100
 			ch.Limb_condition[1] = 100
 			ch.Limb_condition[2] = 100
 			ch.Limb_condition[3] = 100
-			ch.Act[int(PLR_HEAD/32)] |= bitvector_t(1 << (int(PLR_HEAD % 32)))
+			ch.Limb_condition[4] = 100
+			ch.Act[int(PLR_HEAD/32)] |= bitvector_t(int32(1 << (int(PLR_HEAD % 32))))
 			Crash_delete_crashfile(ch)
 			update_pos(ch)
 			save_char(ch)
 			send_to_char(ch, libc.CString("\r\n@RYou should beware, when you reach level 9, you will actually die. So you\r\nshould learn to be more careful. Since when you die past that point and\r\nactually reach the afterlife you need to realise that being revived will\r\nnot be very easy. So treat your character's dying with as much care as\r\npossible.@n\r\n"))
 		}
-		if ch.Race == RACE_ANDROID && !PLR_FLAGGED(ch, PLR_ABSORB) && !AFF_FLAGGED(ch, AFF_SPIRIT) && !ROOM_FLAGGED(ch.In_room, ROOM_PAST) && ((func() room_vnum {
+		if int(ch.Race) == RACE_ANDROID && !PLR_FLAGGED(ch, PLR_ABSORB) && !AFF_FLAGGED(ch, AFF_SPIRIT) && !ROOM_FLAGGED(ch.In_room, ROOM_PAST) && ((func() room_vnum {
 			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
 				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
 			}
@@ -2111,12 +2111,12 @@ func raw_kill(ch *char_data, killer *char_data) {
 func die(ch *char_data, killer *char_data) {
 	if !IS_NPC(ch) {
 		if PLR_FLAGGED(ch, PLR_HEALT) {
-			ch.Act[int(PLR_HEALT/32)] &= bitvector_t(^(1 << (int(PLR_HEALT % 32))))
+			ch.Act[int(PLR_HEALT/32)] &= bitvector_t(int32(^(1 << (int(PLR_HEALT % 32)))))
 		}
-		if (ch.Race == RACE_MAJIN || ch.Race == RACE_BIO) && (float64(ch.Lifeforce) >= float64(GET_LIFEMAX(ch))*0.75 || PLR_FLAGGED(ch, PLR_SELFD2) && float64(ch.Lifeforce) >= float64(GET_LIFEMAX(ch))*0.5) {
+		if (int(ch.Race) == RACE_MAJIN || int(ch.Race) == RACE_BIO) && (float64(ch.Lifeforce) >= float64(GET_LIFEMAX(ch))*0.75 || PLR_FLAGGED(ch, PLR_SELFD2) && float64(ch.Lifeforce) >= float64(GET_LIFEMAX(ch))*0.5) {
 			ch.Lifeforce = -1
 			ch.Hit = 1
-			ch.Act[int(PLR_GOOP/32)] |= bitvector_t(1 << (int(PLR_GOOP % 32)))
+			ch.Act[int(PLR_GOOP/32)] |= bitvector_t(int32(1 << (int(PLR_GOOP % 32))))
 			ch.Gooptime = 32
 			return
 		}
@@ -2127,10 +2127,10 @@ func die(ch *char_data, killer *char_data) {
 			ch.Mana = 1
 			ch.Move = 1
 			null_affect(ch, AFF_POISON)
-			if (ch.Player_specials.Conditions[HUNGER]) >= 0 {
+			if int(ch.Player_specials.Conditions[HUNGER]) >= 0 {
 				ch.Player_specials.Conditions[HUNGER] = 48
 			}
-			if (ch.Player_specials.Conditions[THIRST]) >= 0 {
+			if int(ch.Player_specials.Conditions[THIRST]) >= 0 {
 				ch.Player_specials.Conditions[THIRST] = 48
 			}
 			if ch.Fighting != nil {
@@ -2138,49 +2138,49 @@ func die(ch *char_data, killer *char_data) {
 			}
 			ch.Position = POS_SITTING
 			char_from_room(ch)
-			if ch.Chclass == CLASS_ROSHI {
+			if int(ch.Chclass) == CLASS_ROSHI {
 				char_to_room(ch, real_room(1130))
 			}
-			if ch.Chclass == CLASS_KABITO {
+			if int(ch.Chclass) == CLASS_KABITO {
 				char_to_room(ch, real_room(0x2F42))
 			}
-			if ch.Chclass == CLASS_NAIL {
+			if int(ch.Chclass) == CLASS_NAIL {
 				char_to_room(ch, real_room(0x2DA3))
 			}
-			if ch.Chclass == CLASS_BARDOCK {
+			if int(ch.Chclass) == CLASS_BARDOCK {
 				char_to_room(ch, real_room(2268))
 			}
-			if ch.Chclass == CLASS_KRANE {
+			if int(ch.Chclass) == CLASS_KRANE {
 				char_to_room(ch, real_room(0x32D1))
 			}
-			if ch.Chclass == CLASS_TAPION {
+			if int(ch.Chclass) == CLASS_TAPION {
 				char_to_room(ch, real_room(8231))
 			}
-			if ch.Chclass == CLASS_PICCOLO {
+			if int(ch.Chclass) == CLASS_PICCOLO {
 				char_to_room(ch, real_room(1659))
 			}
-			if ch.Chclass == CLASS_ANDSIX {
+			if int(ch.Chclass) == CLASS_ANDSIX {
 				char_to_room(ch, real_room(1713))
 			}
-			if ch.Chclass == CLASS_DABURA {
+			if int(ch.Chclass) == CLASS_DABURA {
 				char_to_room(ch, real_room(6486))
 			}
-			if ch.Chclass == CLASS_FRIEZA {
+			if int(ch.Chclass) == CLASS_FRIEZA {
 				char_to_room(ch, real_room(4282))
 			}
-			if ch.Chclass == CLASS_GINYU {
+			if int(ch.Chclass) == CLASS_GINYU {
 				char_to_room(ch, real_room(4289))
 			}
-			if ch.Chclass == CLASS_JINTO {
+			if int(ch.Chclass) == CLASS_JINTO {
 				char_to_room(ch, real_room(3499))
 			}
-			if ch.Chclass == CLASS_KURZAK {
+			if int(ch.Chclass) == CLASS_KURZAK {
 				char_to_room(ch, real_room(16100))
 			}
 			return
 		}
-		ch.Act[int(PLR_KILLER/32)] &= bitvector_t(^(1 << (int(PLR_KILLER % 32))))
-		ch.Act[int(PLR_THIEF/32)] &= bitvector_t(^(1 << (int(PLR_THIEF % 32))))
+		ch.Act[int(PLR_KILLER/32)] &= bitvector_t(int32(^(1 << (int(PLR_KILLER % 32)))))
+		ch.Act[int(PLR_THIEF/32)] &= bitvector_t(int32(^(1 << (int(PLR_THIEF % 32)))))
 		ch.Affected_by[int(AFF_KNOCKED/32)] &= ^(1 << (int(AFF_KNOCKED % 32)))
 		ch.Affected_by[int(AFF_SLEEP/32)] &= ^(1 << (int(AFF_SLEEP % 32)))
 		ch.Affected_by[int(AFF_PARALYZE/32)] &= ^(1 << (int(AFF_PARALYZE % 32)))
@@ -2196,7 +2196,7 @@ func die(ch *char_data, killer *char_data) {
 				}
 				return -1
 			}()) <= 2011 {
-				ch.Deathtime = C.time(nil)
+				ch.Deathtime = libc.GetTime(nil)
 			} else if ROOM_FLAGGED(ch.In_room, ROOM_AL) || ROOM_FLAGGED(ch.In_room, ROOM_HELL) {
 				send_to_char(ch, libc.CString("Your soul is saved from destruction by King Yemma. Why? Who knows.\r\n"))
 			} else if IN_ARENA(ch) {
@@ -2220,31 +2220,31 @@ func die(ch *char_data, killer *char_data) {
 				return
 			} else {
 				if killer != nil && IS_NPC(killer) {
-					ch.Deathtime = C.time(nil) + 28800
+					ch.Deathtime = libc.GetTime(nil) + 28800
 					ch.Dcount += 1
 				} else if killer != nil && !IS_NPC(killer) {
-					ch.Deathtime = C.time(nil) + 1123200
-					ch.Act[int(PLR_PDEATH/32)] |= bitvector_t(1 << (int(PLR_PDEATH % 32)))
+					ch.Deathtime = libc.GetTime(nil) + 1123200
+					ch.Act[int(PLR_PDEATH/32)] |= bitvector_t(int32(1 << (int(PLR_PDEATH % 32))))
 					ch.Dcount += 1
 				} else {
 					if ch.Dcount <= 0 {
-						ch.Deathtime = C.time(nil) + 28800
+						ch.Deathtime = libc.GetTime(nil) + 28800
 					} else if ch.Dcount <= 1 {
-						ch.Deathtime = C.time(nil) + 43200
+						ch.Deathtime = libc.GetTime(nil) + 43200
 					} else if ch.Dcount <= 3 {
-						ch.Deathtime = C.time(nil) + 86400
+						ch.Deathtime = libc.GetTime(nil) + 86400
 					} else if ch.Dcount <= 5 {
-						ch.Deathtime = C.time(nil) + 0x2A300
+						ch.Deathtime = libc.GetTime(nil) + 0x2A300
 					} else if ch.Dcount > 5 {
-						ch.Deathtime = C.time(nil) + 604800
+						ch.Deathtime = libc.GetTime(nil) + 604800
 					}
 					ch.Dcount += 1
 				}
 			}
-			if (ch.Player_specials.Conditions[HUNGER]) >= 0 {
+			if int(ch.Player_specials.Conditions[HUNGER]) >= 0 {
 				ch.Player_specials.Conditions[HUNGER] = 48
 			}
-			if (ch.Player_specials.Conditions[THIRST]) >= 0 {
+			if int(ch.Player_specials.Conditions[THIRST]) >= 0 {
 				ch.Player_specials.Conditions[THIRST] = 48
 			}
 		}
@@ -2288,7 +2288,7 @@ func perform_group_gain(ch *char_data, base int, victim *char_data) {
 				checkit = TRUE
 			}
 		}
-		if checkit == FALSE && ch.Master != nil && ch.Master.Idnum == int32(victim.Lasthit) {
+		if checkit == FALSE && ch.Master != nil && int(ch.Master.Idnum) == victim.Lasthit {
 			checkit = TRUE
 		}
 		if checkit == FALSE && ch.Master != nil {
@@ -2312,13 +2312,13 @@ func perform_group_gain(ch *char_data, base int, victim *char_data) {
 	if (ch.Bonuses[BONUS_PRODIGY]) > 0 {
 		share = int64(float64(share) + float64(share)*0.25)
 	}
-	if ch.Race == RACE_SAIYAN {
+	if int(ch.Race) == RACE_SAIYAN {
 		share = int64(float64(share) + float64(share)*0.5)
 	}
-	if ch.Race == RACE_HALFBREED {
+	if int(ch.Race) == RACE_HALFBREED {
 		share = int64(float64(share) + float64(share)*0.4)
 	}
-	if ch.Race == RACE_ICER {
+	if int(ch.Race) == RACE_ICER {
 		share = int64(float64(share) - float64(share)*0.2)
 	}
 	if (ch.Bonuses[BONUS_LOYAL]) > 0 && ch.Master != nil {
@@ -2360,7 +2360,7 @@ func perform_group_gain(ch *char_data, base int, victim *char_data) {
 			ch.Move = ch.Max_move
 		}
 		send_to_char(ch, libc.CString("You receive a bonus from your group's leader! @D[@G2%s PL/ST/Ki Regenerated!@D]@n\r\n"), "%")
-	} else if group_bonus(ch, 2) == 7 && ch.Race == RACE_ANDROID {
+	} else if group_bonus(ch, 2) == 7 && int(ch.Race) == RACE_ANDROID {
 		if PLR_FLAGGED(ch.Master, PLR_ABSORB) {
 			ch.Mana += int64(float64(ch.Max_mana) * 0.02)
 			ch.Move += int64(float64(ch.Max_move) * 0.02)
@@ -2514,13 +2514,13 @@ func solo_gain(ch *char_data, victim *char_data) {
 	if (ch.Bonuses[BONUS_PRODIGY]) > 0 {
 		exp = int64(float64(exp) + float64(exp)*0.25)
 	}
-	if ch.Race == RACE_SAIYAN {
+	if int(ch.Race) == RACE_SAIYAN {
 		exp = int64(float64(exp) + float64(exp)*0.5)
 	}
-	if ch.Race == RACE_HALFBREED {
+	if int(ch.Race) == RACE_HALFBREED {
 		exp = int64(float64(exp) + float64(exp)*0.4)
 	}
-	if ch.Race == RACE_ICER {
+	if int(ch.Race) == RACE_ICER {
 		exp = int64(float64(exp) - float64(exp)*0.2)
 	}
 	if MOB_FLAGGED(victim, MOB_KNOWKAIO) {

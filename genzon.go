@@ -39,7 +39,7 @@ func real_zone_by_thing(vznum room_vnum) zone_rnum {
 }
 func create_new_zone(vzone_num zone_vnum, bottom room_vnum, top room_vnum, error **byte) zone_rnum {
 	var (
-		fp    *C.FILE
+		fp    *stdio.File
 		zone  *zone_data
 		i     int
 		rznum zone_rnum
@@ -59,82 +59,82 @@ func create_new_zone(vzone_num zone_vnum, bottom room_vnum, top room_vnum, error
 		}
 	}
 	stdio.Snprintf(&buf[0], int(64936), "%s%d.zon", LIB_WORLD, vzone_num)
-	if (func() *C.FILE {
-		fp = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&buf[0]), "w")))
+	if (func() *stdio.File {
+		fp = stdio.FOpen(libc.GoString(&buf[0]), "w")
 		return fp
 	}()) == nil {
 		mudlog(BRF, ADMLVL_IMPL, TRUE, libc.CString("SYSERR: OLC: Can't write new zone file."))
 		*error = libc.CString("Could not write zone file.\r\n")
 		return -1
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "#%d\nNone~\nNew Zone~\n%d %d 30 2\nS\n$\n", vzone_num, bottom, top)
-	C.fclose(fp)
+	stdio.Fprintf(fp, "#%d\nNone~\nNew Zone~\n%d %d 30 2\nS\n$\n", vzone_num, bottom, top)
+	fp.Close()
 	stdio.Snprintf(&buf[0], int(64936), "%s%d.wld", LIB_WORLD, vzone_num)
-	if (func() *C.FILE {
-		fp = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&buf[0]), "w")))
+	if (func() *stdio.File {
+		fp = stdio.FOpen(libc.GoString(&buf[0]), "w")
 		return fp
 	}()) == nil {
 		mudlog(BRF, ADMLVL_IMPL, TRUE, libc.CString("SYSERR: OLC: Can't write new world file."))
 		*error = libc.CString("Could not write world file.\r\n")
 		return -1
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "#%d\nThe Beginning~\nNot much here.\n~\n%d 0 0\nS\n$\n", bottom, vzone_num)
-	C.fclose(fp)
+	stdio.Fprintf(fp, "#%d\nThe Beginning~\nNot much here.\n~\n%d 0 0\nS\n$\n", bottom, vzone_num)
+	fp.Close()
 	stdio.Snprintf(&buf[0], int(64936), "%s%d.mob", LIB_WORLD, vzone_num)
-	if (func() *C.FILE {
-		fp = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&buf[0]), "w")))
+	if (func() *stdio.File {
+		fp = stdio.FOpen(libc.GoString(&buf[0]), "w")
 		return fp
 	}()) == nil {
 		mudlog(BRF, ADMLVL_IMPL, TRUE, libc.CString("SYSERR: OLC: Can't write new mob file."))
 		*error = libc.CString("Could not write mobile file.\r\n")
 		return -1
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "$\n")
-	C.fclose(fp)
+	stdio.Fprintf(fp, "$\n")
+	fp.Close()
 	stdio.Snprintf(&buf[0], int(64936), "%s%d.obj", LIB_WORLD, vzone_num)
-	if (func() *C.FILE {
-		fp = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&buf[0]), "w")))
+	if (func() *stdio.File {
+		fp = stdio.FOpen(libc.GoString(&buf[0]), "w")
 		return fp
 	}()) == nil {
 		mudlog(BRF, ADMLVL_IMPL, TRUE, libc.CString("SYSERR: OLC: Can't write new obj file."))
 		*error = libc.CString("Could not write object file.\r\n")
 		return -1
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "$\n")
-	C.fclose(fp)
+	stdio.Fprintf(fp, "$\n")
+	fp.Close()
 	stdio.Snprintf(&buf[0], int(64936), "%s%d.shp", LIB_WORLD, vzone_num)
-	if (func() *C.FILE {
-		fp = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&buf[0]), "w")))
+	if (func() *stdio.File {
+		fp = stdio.FOpen(libc.GoString(&buf[0]), "w")
 		return fp
 	}()) == nil {
 		mudlog(BRF, ADMLVL_IMPL, TRUE, libc.CString("SYSERR: OLC: Can't write new shop file."))
 		*error = libc.CString("Could not write shop file.\r\n")
 		return -1
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "$~\n")
-	C.fclose(fp)
+	stdio.Fprintf(fp, "$~\n")
+	fp.Close()
 	stdio.Snprintf(&buf[0], int(64936), "%s%d.trg", LIB_WORLD, vzone_num)
-	if (func() *C.FILE {
-		fp = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&buf[0]), "w")))
+	if (func() *stdio.File {
+		fp = stdio.FOpen(libc.GoString(&buf[0]), "w")
 		return fp
 	}()) == nil {
 		mudlog(BRF, ADMLVL_IMPL, TRUE, libc.CString("SYSERR: OLC: Can't write new trigger file"))
 		*error = libc.CString("Could not write trigger file.\r\n")
 		return -1
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "$~\n")
-	C.fclose(fp)
+	stdio.Fprintf(fp, "$~\n")
+	fp.Close()
 	stdio.Snprintf(&buf[0], int(64936), "%s/%i.gld", LIB_WORLD, vzone_num)
-	if (func() *C.FILE {
-		fp = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&buf[0]), "w")))
+	if (func() *stdio.File {
+		fp = stdio.FOpen(libc.GoString(&buf[0]), "w")
 		return fp
 	}()) == nil {
 		mudlog(BRF, ADMLVL_IMPL, TRUE, libc.CString("SYSERR: OLC: Can't write new guild file"))
 		*error = libc.CString("Could not write guild file.\r\n")
 		return -1
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "$~\n")
-	C.fclose(fp)
+	stdio.Fprintf(fp, "$~\n")
+	fp.Close()
 	create_world_index(int(vzone_num), libc.CString("zon"))
 	create_world_index(int(vzone_num), libc.CString("wld"))
 	create_world_index(int(vzone_num), libc.CString("mob"))
@@ -165,9 +165,9 @@ func create_new_zone(vzone_num zone_vnum, bottom room_vnum, top room_vnum, error
 		rznum = zone_rnum(i)
 	}
 	zone = (*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(rznum)))
-	zone.Name = C.strdup(libc.CString("New Zone"))
+	zone.Name = libc.CString("New Zone")
 	zone.Number = vzone_num
-	zone.Builders = C.strdup(libc.CString("None"))
+	zone.Builders = libc.CString("None")
 	zone.Bot = bottom
 	zone.Top = top
 	zone.Lifespan = 30
@@ -199,8 +199,8 @@ func create_new_zone(vzone_num zone_vnum, bottom room_vnum, top room_vnum, error
 }
 func create_world_index(znum int, type_ *byte) {
 	var (
-		newfile  *C.FILE
-		oldfile  *C.FILE
+		newfile  *stdio.File
+		oldfile  *stdio.File
 		new_name [32]byte
 		old_name [32]byte
 		prefix   *byte
@@ -229,43 +229,43 @@ func create_world_index(znum int, type_ *byte) {
 	}
 	stdio.Snprintf(&old_name[0], int(32), "%s/index", prefix)
 	stdio.Snprintf(&new_name[0], int(32), "%s/newindex", prefix)
-	if (func() *C.FILE {
-		oldfile = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&old_name[0]), "r")))
+	if (func() *stdio.File {
+		oldfile = stdio.FOpen(libc.GoString(&old_name[0]), "r")
 		return oldfile
 	}()) == nil {
 		mudlog(BRF, ADMLVL_IMPL, TRUE, libc.CString("SYSERR: OLC: Failed to open %s."), &old_name[0])
 		return
-	} else if (func() *C.FILE {
-		newfile = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&new_name[0]), "w")))
+	} else if (func() *stdio.File {
+		newfile = stdio.FOpen(libc.GoString(&new_name[0]), "w")
 		return newfile
 	}()) == nil {
 		mudlog(BRF, ADMLVL_IMPL, TRUE, libc.CString("SYSERR: OLC: Failed to open %s."), &new_name[0])
-		C.fclose(oldfile)
+		oldfile.Close()
 		return
 	}
 	stdio.Snprintf(&buf1[0], int(64936), "%d.%s", znum, type_)
 	for get_line(oldfile, &buf[0]) != 0 {
 		if buf[0] == '$' {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(newfile)), "%s", func() *byte {
+			stdio.Fprintf(newfile, "%s", func() *byte {
 				if found == 0 {
-					return C.strncat(&buf1[0], libc.CString("\n$\n"), uint64(64936-1))
+					return libc.StrNCat(&buf1[0], libc.CString("\n$\n"), int(64936-1))
 				}
 				return libc.CString("$\n")
 			}())
 			break
 		} else if found == 0 {
-			__isoc99_sscanf(&buf[0], libc.CString("%d"), &num)
+			stdio.Sscanf(&buf[0], "%d", &num)
 			if num == znum {
 				found = TRUE
 			} else if num > znum {
 				found = TRUE
-				stdio.Fprintf((*stdio.File)(unsafe.Pointer(newfile)), "%s\n", &buf1[0])
+				stdio.Fprintf(newfile, "%s\n", &buf1[0])
 			}
 		}
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(newfile)), "%s\n", &buf[0])
+		stdio.Fprintf(newfile, "%s\n", &buf[0])
 	}
-	C.fclose(newfile)
-	C.fclose(oldfile)
+	newfile.Close()
+	oldfile.Close()
 	stdio.Remove(libc.GoString(&old_name[0]))
 	stdio.Rename(libc.GoString(&new_name[0]), libc.GoString(&old_name[0]))
 }
@@ -308,7 +308,7 @@ func save_zone(zone_num zone_rnum) int {
 		fname   [128]byte
 		oldname [128]byte
 		comment *byte = nil
-		zfile   *C.FILE
+		zfile   *stdio.File
 		zbuf1   [64936]byte
 		zbuf2   [64936]byte
 		zbuf3   [64936]byte
@@ -319,19 +319,19 @@ func save_zone(zone_num zone_rnum) int {
 		return FALSE
 	}
 	stdio.Snprintf(&fname[0], int(128), "%s%d.new", LIB_WORLD, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number)
-	if (func() *C.FILE {
-		zfile = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "w")))
+	if (func() *stdio.File {
+		zfile = stdio.FOpen(libc.GoString(&fname[0]), "w")
 		return zfile
 	}()) == nil {
 		mudlog(BRF, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: OLC: save_zones:  Can't write zone %d."), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number)
 		return FALSE
 	}
-	sprintascii(&zbuf1[0], bitvector_t((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Zone_flags[0]))
-	sprintascii(&zbuf2[0], bitvector_t((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Zone_flags[1]))
-	sprintascii(&zbuf3[0], bitvector_t((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Zone_flags[2]))
-	sprintascii(&zbuf4[0], bitvector_t((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Zone_flags[3]))
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(zfile)), "@Version: %d\n", CUR_ZONE_VERSION)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(zfile)), "#%d\n%s~\n%s~\n%d %d %d %d %s %s %s %s %d %d\n", (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number, func() *byte {
+	sprintascii(&zbuf1[0], bitvector_t(int32((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Zone_flags[0])))
+	sprintascii(&zbuf2[0], bitvector_t(int32((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Zone_flags[1])))
+	sprintascii(&zbuf3[0], bitvector_t(int32((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Zone_flags[2])))
+	sprintascii(&zbuf4[0], bitvector_t(int32((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Zone_flags[3])))
+	stdio.Fprintf(zfile, "@Version: %d\n", CUR_ZONE_VERSION)
+	stdio.Fprintf(zfile, "#%d\n%s~\n%s~\n%d %d %d %d %s %s %s %s %d %d\n", (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number, func() *byte {
 		if (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Builders != nil && *(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Builders != 0 {
 			return (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Builders
 		}
@@ -409,13 +409,13 @@ func save_zone(zone_num zone_rnum) int {
 			continue
 		}
 		if int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command) != 'V' {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(zfile)), "%c %d %d %d %d %d %d \t(%s)\n", (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag, arg1, arg2, arg3, arg4, arg5, comment)
+			stdio.Fprintf(zfile, "%c %d %d %d %d %d %d \t(%s)\n", (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag, arg1, arg2, arg3, arg4, arg5, comment)
 		} else {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(zfile)), "%c %d %d %d %d %d %d %s %s\n", (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag, arg1, arg2, arg3, arg4, arg5, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Sarg1, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Sarg2)
+			stdio.Fprintf(zfile, "%c %d %d %d %d %d %d %s %s\n", (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag, arg1, arg2, arg3, arg4, arg5, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Sarg1, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Sarg2)
 		}
 	}
-	fputs(libc.CString("S\n$\n"), zfile)
-	C.fclose(zfile)
+	zfile.PutS(libc.CString("S\n$\n"))
+	zfile.Close()
 	stdio.Snprintf(&oldname[0], int(128), "%s%d.zon", LIB_WORLD, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number)
 	stdio.Remove(libc.GoString(&oldname[0]))
 	stdio.Rename(libc.GoString(&fname[0]), libc.GoString(&oldname[0]))

@@ -1,6 +1,5 @@
 package main
 
-import "C"
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
@@ -39,9 +38,9 @@ func do_galikgun(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Direct it at who?\r\n"))
 		return
 	}
-	if (ch.Skillperfs[SKILL_GALIKGUN]) == 1 {
+	if int(ch.Skillperfs[SKILL_GALIKGUN]) == 1 {
 		attperc += 0.05
-	} else if (ch.Skillperfs[SKILL_GALIKGUN]) == 3 {
+	} else if int(ch.Skillperfs[SKILL_GALIKGUN]) == 3 {
 		minimum -= 0.05
 		if minimum <= 0.0 {
 			minimum = 0.01
@@ -93,7 +92,7 @@ func do_galikgun(ch *char_data, argument *byte, cmd int, subcmd int) {
 		improve_skill(ch, SKILL_GALIKGUN, 0)
 		index = check_def(vict)
 		prob = roll_accuracy(ch, skill, TRUE != 0)
-		if (ch.Skillperfs[SKILL_GALIKGUN]) == 2 {
+		if int(ch.Skillperfs[SKILL_GALIKGUN]) == 2 {
 			prob += 5
 		}
 		perc = chance_to_hit(ch)
@@ -101,23 +100,23 @@ func do_galikgun(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
-		} else if vict.Position == POS_RESTING {
+		} else if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
-		} else if vict.Position == POS_SITTING {
+		} else if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Galik Gun before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Galik Gun before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -126,7 +125,7 @@ func do_galikgun(ch *char_data, argument *byte, cmd int, subcmd int) {
 					ch.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
 				}
 				vict.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
-				if (ch.Skillperfs[SKILL_GALIKGUN]) == 3 && attperc > minimum {
+				if int(ch.Skillperfs[SKILL_GALIKGUN]) == 3 && attperc > minimum {
 					pcost(ch, attperc-0.05, 0)
 				} else {
 					pcost(ch, attperc, 0)
@@ -143,7 +142,7 @@ func do_galikgun(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		if prob < perc-20 {
 			if vict.Move > 0 {
-				if vict.Race == RACE_ANDROID && HAS_ARMS(vict) && GET_SKILL(vict, SKILL_ABSORB) > rand_number(1, 140) {
+				if int(vict.Race) == RACE_ANDROID && HAS_ARMS(vict) && GET_SKILL(vict, SKILL_ABSORB) > rand_number(1, 140) {
 					act(libc.CString("@C$N@W absorbs your ki attack and all your charged ki with $S hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@WYou absorb @C$n's@W ki attack and all $s charged ki with your hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@C$N@W absorbs @c$n's@W ki attack and all $s charged ki with $S hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -163,7 +162,7 @@ func do_galikgun(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@C$N@W moves quickly and blocks your Galik Gun!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@WYou move quickly and block @C$n's@W Galik Gun!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@C$N@W moves quickly and blocks @c$n's@W Galik Gun!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-					if (ch.Skillperfs[SKILL_GALIKGUN]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_GALIKGUN]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -184,7 +183,7 @@ func do_galikgun(ch *char_data, argument *byte, cmd int, subcmd int) {
 						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dmg += 5
 					}
 					improve_skill(vict, SKILL_DODGE, 0)
-					if (ch.Skillperfs[SKILL_GALIKGUN]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_GALIKGUN]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -195,7 +194,7 @@ func do_galikgun(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@WYou can't believe it but your Galik Gun misses, flying through the air harmlessly!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@C$n@W fires a Galik Gun at you, but misses!@n "), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@c$n@W fires a Galik Gun at @C$N@W, but somehow misses!@n "), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-					if (ch.Skillperfs[SKILL_GALIKGUN]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_GALIKGUN]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -207,7 +206,7 @@ func do_galikgun(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou can't believe it but your Galik Gun misses, flying through the air harmlessly!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n@W fires a Galik Gun at you, but misses!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$n@W fires a Galik Gun at @C$N@W, but somehow misses!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				if (ch.Skillperfs[SKILL_GALIKGUN]) == 3 && attperc > minimum {
+				if int(ch.Skillperfs[SKILL_GALIKGUN]) == 3 && attperc > minimum {
 					pcost(ch, attperc-0.05, 0)
 				} else {
 					pcost(ch, attperc, 0)
@@ -260,7 +259,7 @@ func do_galikgun(ch *char_data, argument *byte, cmd int, subcmd int) {
 				hurt(1, 190, ch, vict, nil, dmg, 1)
 				dam_eq_loc(vict, 2)
 			}
-			if (ch.Skillperfs[SKILL_GALIKGUN]) == 3 && attperc > minimum {
+			if int(ch.Skillperfs[SKILL_GALIKGUN]) == 3 && attperc > minimum {
 				pcost(ch, attperc-0.05, 0)
 			} else {
 				pcost(ch, attperc, 0)
@@ -316,9 +315,9 @@ func do_honoo(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Direct it at who?\r\n"))
 		return
 	}
-	if (ch.Skillperfs[SKILL_HONOO]) == 1 {
+	if int(ch.Skillperfs[SKILL_HONOO]) == 1 {
 		attperc += 0.05
-	} else if (ch.Skillperfs[SKILL_HONOO]) == 3 {
+	} else if int(ch.Skillperfs[SKILL_HONOO]) == 3 {
 		minimum -= 0.05
 		if minimum <= 0.0 {
 			minimum = 0.01
@@ -370,7 +369,7 @@ func do_honoo(ch *char_data, argument *byte, cmd int, subcmd int) {
 		improve_skill(ch, SKILL_HONOO, 0)
 		index = check_def(vict)
 		prob = roll_accuracy(ch, skill, TRUE != 0)
-		if (ch.Skillperfs[SKILL_HONOO]) == 2 {
+		if int(ch.Skillperfs[SKILL_HONOO]) == 2 {
 			prob += 5
 		}
 		perc = chance_to_hit(ch)
@@ -378,25 +377,25 @@ func do_honoo(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Honoo before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Honoo before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -405,7 +404,7 @@ func do_honoo(ch *char_data, argument *byte, cmd int, subcmd int) {
 					ch.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
 				}
 				vict.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
-				if (ch.Skillperfs[SKILL_HONOO]) == 3 && attperc > minimum {
+				if int(ch.Skillperfs[SKILL_HONOO]) == 3 && attperc > minimum {
 					pcost(ch, attperc-0.05, 0)
 				} else {
 					pcost(ch, attperc, 0)
@@ -429,7 +428,7 @@ func do_honoo(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		if prob < perc-20 {
 			if vict.Move > 0 {
-				if vict.Race == RACE_ANDROID && HAS_ARMS(vict) && GET_SKILL(vict, SKILL_ABSORB) > rand_number(1, 140) {
+				if int(vict.Race) == RACE_ANDROID && HAS_ARMS(vict) && GET_SKILL(vict, SKILL_ABSORB) > rand_number(1, 140) {
 					act(libc.CString("@C$N@W absorbs your ki attack and all your charged ki with $S hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@WYou absorb @C$n's@W ki attack and all $s charged ki with your hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@C$N@W absorbs @c$n's@W ki attack and all $s charged ki with $S hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -449,7 +448,7 @@ func do_honoo(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@C$N@W moves quickly and blocks your honoo!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@WYou move quickly and block @C$n's@W honoo!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@C$N@W moves quickly and blocks @c$n's@W honoo!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-					if (ch.Skillperfs[SKILL_HONOO]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_HONOO]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -476,7 +475,7 @@ func do_honoo(ch *char_data, argument *byte, cmd int, subcmd int) {
 						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dmg += 5
 					}
 					improve_skill(vict, SKILL_DODGE, 0)
-					if (ch.Skillperfs[SKILL_HONOO]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_HONOO]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -494,7 +493,7 @@ func do_honoo(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@WYou can't believe it but your honoo misses, flying through the air harmlessly!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@C$n@W fires a honoo at you, but misses!@n "), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@c$n@W fires a honoo at @C$N@W, but somehow misses!@n "), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-					if (ch.Skillperfs[SKILL_HONOO]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_HONOO]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -513,7 +512,7 @@ func do_honoo(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou can't believe it but your honoo misses, flying through the air harmlessly!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n@W fires a honoo at you, but misses!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$n@W fires a honoo at @C$N@W, but somehow misses!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				if (ch.Skillperfs[SKILL_HONOO]) == 3 && attperc > minimum {
+				if int(ch.Skillperfs[SKILL_HONOO]) == 3 && attperc > minimum {
 					pcost(ch, attperc-0.05, 0)
 				} else {
 					pcost(ch, attperc, 0)
@@ -582,18 +581,18 @@ func do_honoo(ch *char_data, argument *byte, cmd int, subcmd int) {
 				hurt(1, 190, ch, vict, nil, dmg, 1)
 				dam_eq_loc(vict, 2)
 			}
-			if !AFF_FLAGGED(vict, AFF_BURNED) && rand_number(1, 4) == 3 && vict.Race != RACE_DEMON && (vict.Bonuses[BONUS_FIREPROOF]) == 0 {
+			if !AFF_FLAGGED(vict, AFF_BURNED) && rand_number(1, 4) == 3 && int(vict.Race) != RACE_DEMON && (vict.Bonuses[BONUS_FIREPROOF]) == 0 {
 				send_to_char(vict, libc.CString("@RYou are burned by the attack!@n\r\n"))
 				send_to_char(ch, libc.CString("@RThey are burned by the attack!@n\r\n"))
 				vict.Affected_by[int(AFF_BURNED/32)] |= 1 << (int(AFF_BURNED % 32))
-			} else if (vict.Bonuses[BONUS_FIREPROOF]) != 0 || vict.Race == RACE_DEMON {
+			} else if (vict.Bonuses[BONUS_FIREPROOF]) != 0 || int(vict.Race) == RACE_DEMON {
 				send_to_char(ch, libc.CString("@RThey appear to be fireproof!@n\r\n"))
 			} else if (vict.Bonuses[BONUS_FIREPRONE]) != 0 {
 				send_to_char(vict, libc.CString("@RYou are extremely flammable and are burned by the attack!@n\r\n"))
 				send_to_char(ch, libc.CString("@RThey are easily burned!@n\r\n"))
 				vict.Affected_by[int(AFF_BURNED/32)] |= 1 << (int(AFF_BURNED % 32))
 			}
-			if (ch.Skillperfs[SKILL_HONOO]) == 3 && attperc > minimum {
+			if int(ch.Skillperfs[SKILL_HONOO]) == 3 && attperc > minimum {
 				pcost(ch, attperc-0.05, 0)
 			} else {
 				pcost(ch, attperc, 0)
@@ -662,9 +661,9 @@ func do_psyblast(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Direct it at who?\r\n"))
 		return
 	}
-	if (ch.Skillperfs[SKILL_PSYBLAST]) == 1 {
+	if int(ch.Skillperfs[SKILL_PSYBLAST]) == 1 {
 		attperc += 0.05
-	} else if (ch.Skillperfs[SKILL_PSYBLAST]) == 3 {
+	} else if int(ch.Skillperfs[SKILL_PSYBLAST]) == 3 {
 		minimum -= 0.05
 		if minimum <= 0.0 {
 			minimum = 0.01
@@ -716,7 +715,7 @@ func do_psyblast(ch *char_data, argument *byte, cmd int, subcmd int) {
 		improve_skill(ch, SKILL_PSYBLAST, 0)
 		index = check_def(vict)
 		prob = roll_accuracy(ch, skill, TRUE != 0)
-		if (ch.Skillperfs[SKILL_PSYBLAST]) == 2 {
+		if int(ch.Skillperfs[SKILL_PSYBLAST]) == 2 {
 			prob += 5
 		}
 		perc = chance_to_hit(ch)
@@ -724,25 +723,25 @@ func do_psyblast(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Psychic Blast before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Psychic Blast before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -751,7 +750,7 @@ func do_psyblast(ch *char_data, argument *byte, cmd int, subcmd int) {
 					ch.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
 				}
 				vict.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
-				if (ch.Skillperfs[SKILL_PSYBLAST]) == 3 && attperc > minimum {
+				if int(ch.Skillperfs[SKILL_PSYBLAST]) == 3 && attperc > minimum {
 					pcost(ch, attperc-0.05, 0)
 				} else {
 					pcost(ch, attperc, 0)
@@ -768,7 +767,7 @@ func do_psyblast(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		if prob < perc-20 {
 			if vict.Move > 0 {
-				if vict.Race == RACE_ANDROID && HAS_ARMS(vict) && GET_SKILL(vict, SKILL_ABSORB) > rand_number(1, 140) {
+				if int(vict.Race) == RACE_ANDROID && HAS_ARMS(vict) && GET_SKILL(vict, SKILL_ABSORB) > rand_number(1, 140) {
 					act(libc.CString("@C$N@W absorbs your ki attack and all your charged ki with $S hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@WYou absorb @C$n's@W ki attack and all $s charged ki with your hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@C$N@W absorbs @c$n's@W ki attack and all $s charged ki with $S hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -788,7 +787,7 @@ func do_psyblast(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@C$N@W moves quickly and blocks your psychic blast!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@WYou move quickly and block @C$n's@W psychic blast!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@C$N@W moves quickly and blocks @c$n's@W psychic blast!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-					if (ch.Skillperfs[SKILL_PSYBLAST]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_PSYBLAST]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -808,7 +807,7 @@ func do_psyblast(ch *char_data, argument *byte, cmd int, subcmd int) {
 						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dmg += 5
 					}
 					improve_skill(vict, SKILL_DODGE, 0)
-					if (ch.Skillperfs[SKILL_PSYBLAST]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_PSYBLAST]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -819,7 +818,7 @@ func do_psyblast(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@WYou can't believe it but your psychic blast misses, flying through the air harmlessly!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@C$n@W fires a psychic blast at you, but misses!@n "), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@c$n@W fires a psychic blast at @C$N@W, but somehow misses!@n "), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-					if (ch.Skillperfs[SKILL_PSYBLAST]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_PSYBLAST]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -831,7 +830,7 @@ func do_psyblast(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou can't believe it but your psychic blast misses, flying through the air harmlessly!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n@W fires a psychic blast at you, but misses!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$n@W fires a psychic blast at @C$N@W, but somehow misses!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				if (ch.Skillperfs[SKILL_PSYBLAST]) == 3 && attperc > minimum {
+				if int(ch.Skillperfs[SKILL_PSYBLAST]) == 3 && attperc > minimum {
 					pcost(ch, attperc-0.05, 0)
 				} else {
 					pcost(ch, attperc, 0)
@@ -896,7 +895,7 @@ func do_psyblast(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@M$n@m's mind has been shocked!@n"), TRUE, vict, nil, nil, TO_ROOM)
 				vict.Affected_by[int(AFF_SHOCKED/32)] |= 1 << (int(AFF_SHOCKED % 32))
 			}
-			if (ch.Skillperfs[SKILL_PSYBLAST]) == 3 && attperc > minimum {
+			if int(ch.Skillperfs[SKILL_PSYBLAST]) == 3 && attperc > minimum {
 				pcost(ch, attperc-0.05, 0)
 			} else {
 				pcost(ch, attperc, 0)
@@ -950,17 +949,17 @@ func do_tslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if !HAS_ARMS(ch) {
 		send_to_char(ch, libc.CString("You have no available arms!\r\n"))
 		return
-	} else if (ch.Limb_condition[0]) > 0 && (ch.Limb_condition[0]) < 50 && (ch.Limb_condition[1]) < 0 {
+	} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 && (ch.Limb_condition[2]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken right arm has damaged it more!@n\r\n"))
-		ch.Limb_condition[0] -= rand_number(3, 5)
-		if (ch.Limb_condition[0]) < 0 {
+		ch.Limb_condition[1] -= rand_number(3, 5)
+		if (ch.Limb_condition[1]) < 0 {
 			act(libc.CString("@RYour right arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's right arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
-	} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 && (ch.Limb_condition[0]) < 0 {
+	} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 && (ch.Limb_condition[1]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken left arm has damaged it more!@n\r\n"))
-		ch.Limb_condition[1] -= rand_number(3, 5)
-		if (ch.Limb_condition[1]) < 0 {
+		ch.Limb_condition[2] -= rand_number(3, 5)
+		if (ch.Limb_condition[2]) < 0 {
 			act(libc.CString("@RYour left arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's left arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
@@ -990,9 +989,9 @@ func do_tslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 	} else if OBJ_FLAGGED(wobj, ITEM_WEAPLVL5) {
 		wlvl = 5
 	}
-	if (ch.Skillperfs[SKILL_TSLASH]) == 1 {
+	if int(ch.Skillperfs[SKILL_TSLASH]) == 1 {
 		attperc += 0.05
-	} else if (ch.Skillperfs[SKILL_TSLASH]) == 3 {
+	} else if int(ch.Skillperfs[SKILL_TSLASH]) == 3 {
 		minimum -= 0.05
 		if minimum <= 0.0 {
 			minimum = 0.01
@@ -1044,7 +1043,7 @@ func do_tslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 		improve_skill(ch, SKILL_TSLASH, 0)
 		index = check_def(vict)
 		prob = roll_accuracy(ch, skill, TRUE != 0)
-		if (ch.Skillperfs[SKILL_TSLASH]) == 2 {
+		if int(ch.Skillperfs[SKILL_TSLASH]) == 2 {
 			prob += 5
 		}
 		perc = chance_to_hit(ch)
@@ -1052,25 +1051,25 @@ func do_tslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Twin Slash before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Twin Slash before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -1079,7 +1078,7 @@ func do_tslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 					ch.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
 				}
 				vict.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
-				if (ch.Skillperfs[SKILL_TSLASH]) == 3 && attperc > minimum {
+				if int(ch.Skillperfs[SKILL_TSLASH]) == 3 && attperc > minimum {
 					pcost(ch, attperc-0.05, 0)
 				} else {
 					pcost(ch, attperc, 0)
@@ -1100,7 +1099,7 @@ func do_tslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@C$N@W moves quickly and blocks your twin slash!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@WYou move quickly and block @C$n's@W twin slash!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@C$N@W moves quickly and blocks @c$n's@W twin slash!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-					if (ch.Skillperfs[SKILL_TSLASH]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_TSLASH]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -1120,7 +1119,7 @@ func do_tslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dmg += 5
 					}
 					improve_skill(vict, SKILL_DODGE, 0)
-					if (ch.Skillperfs[SKILL_TSLASH]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_TSLASH]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -1131,7 +1130,7 @@ func do_tslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@WYou can't believe it but your twin slash misses, flying through the air harmlessly!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@C$n@W fires a twin slash at you, but misses!@n "), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@c$n@W fires a twin slash at @C$N@W, but somehow misses!@n "), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-					if (ch.Skillperfs[SKILL_TSLASH]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_TSLASH]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -1143,7 +1142,7 @@ func do_tslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou can't believe it but your twin slash misses, flying through the air harmlessly!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n@W fires a twin slash at you, but misses!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$n@W fires a twin slash at @C$N@W, but somehow misses!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				if (ch.Skillperfs[SKILL_TSLASH]) == 3 && attperc > minimum {
+				if int(ch.Skillperfs[SKILL_TSLASH]) == 3 && attperc > minimum {
 					pcost(ch, attperc-0.05, 0)
 				} else {
 					pcost(ch, attperc, 0)
@@ -1172,23 +1171,23 @@ func do_tslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 				}
 				hurt(0, 0, ch, vict, nil, dmg, 1)
 				dam_eq_loc(vict, 4)
-				if (vict.Race == RACE_ICER || vict.Race == RACE_BIO) && PLR_FLAGGED(vict, PLR_TAIL) {
+				if (int(vict.Race) == RACE_ICER || int(vict.Race) == RACE_BIO) && PLR_FLAGGED(vict, PLR_TAIL) {
 					act(libc.CString("@rYou cut off $S tail!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@rYour tail is cut off!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@R$N@r's tail is cut off!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-					vict.Act[int(PLR_TAIL/32)] &= bitvector_t(^(1 << (int(PLR_TAIL % 32))))
+					vict.Act[int(PLR_TAIL/32)] &= bitvector_t(int32(^(1 << (int(PLR_TAIL % 32)))))
 					remove_limb(vict, 6)
 				}
-				if (vict.Race == RACE_SAIYAN || vict.Race == RACE_HALFBREED) && PLR_FLAGGED(vict, PLR_STAIL) {
+				if (int(vict.Race) == RACE_SAIYAN || int(vict.Race) == RACE_HALFBREED) && PLR_FLAGGED(vict, PLR_STAIL) {
 					act(libc.CString("@rYou cut off $S tail!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@rYour tail is cut off!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@R$N@r's tail is cut off!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-					vict.Act[int(PLR_STAIL/32)] &= bitvector_t(^(1 << (int(PLR_STAIL % 32))))
+					vict.Act[int(PLR_STAIL/32)] &= bitvector_t(int32(^(1 << (int(PLR_STAIL % 32)))))
 					remove_limb(vict, 5)
 					if PLR_FLAGGED(vict, PLR_OOZARU) {
 						act(libc.CString("@CYour body begins to shrink back to its normal form as the power of the Oozaru leaves you. You fall asleep shortly after returning to normal!@n"), TRUE, vict, nil, nil, TO_CHAR)
 						act(libc.CString("@c$n@C's body begins to shrink and return to normal. Their giant ape features fading back into humanoid features until $e is left normal and asleep.@n"), TRUE, vict, nil, nil, TO_ROOM)
-						vict.Act[int(PLR_OOZARU/32)] &= bitvector_t(^(1 << (int(PLR_OOZARU % 32))))
+						vict.Act[int(PLR_OOZARU/32)] &= bitvector_t(int32(^(1 << (int(PLR_OOZARU % 32)))))
 						vict.Hit = (vict.Hit / 2) - 10000
 						vict.Mana = (vict.Mana / 2) - 10000
 						vict.Move = (vict.Move / 2) - 10000
@@ -1211,7 +1210,7 @@ func do_tslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@C$n @Wchannels $s charged ki into the blade of $s sword. @rF@Rl@Ya@rm@Ri@Yn@rg @gg@Gre@wen@W energy burns around the blade as $e draws it up to attack. Two blindingly quick slashes connect with YOUR face as $e flies past, leaving a green after-image behind!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@C$n @Wchannels $s charged ki into the blade of $s sword. @rF@Rl@Ya@rm@Ri@Yn@rg @gg@Gre@wen@W energy burns around the blade as $e draws it up to attack. Two blindingly quick slashes connect with @c$N@W's face as $e flies past, leaving a green after-image behind!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				dmg *= int64(calc_critical(ch, 0))
-				if dmg > vict.Max_hit/5 && (vict.Race != RACE_MAJIN && vict.Race != RACE_BIO) {
+				if dmg > vict.Max_hit/5 && (int(vict.Race) != RACE_MAJIN && int(vict.Race) != RACE_BIO) {
 					act(libc.CString("@R$N@r has $S head cut off by the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@rYou have your head cut off by the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@R$N@r has $S head cut off by the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -1229,7 +1228,7 @@ func do_tslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 					if !IS_NPC(ch) && ch != vict && PRF_FLAGGED(ch, PRF_AUTOLOOT) {
 						do_get(ch, libc.CString("all corpse"), 0, 0)
 					}
-				} else if dmg > vict.Max_hit/5 && (vict.Race == RACE_MAJIN || vict.Race == RACE_BIO) {
+				} else if dmg > vict.Max_hit/5 && (int(vict.Race) == RACE_MAJIN || int(vict.Race) == RACE_BIO) {
 					if GET_SKILL(vict, SKILL_REGENERATE) > rand_number(1, 101) && vict.Mana >= vict.Max_mana/40 {
 						act(libc.CString("@R$N@r has $S head cut off by the attack but regenerates a moment later!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@rYou have your head cut off by the attack but regenerate a moment later!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -1274,17 +1273,17 @@ func do_tslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@C$n @Wchannels $s charged ki into the blade of $s sword. @rF@Rl@Ya@rm@Ri@Yn@rg @gg@Gre@wen@W energy burns around the blade as $e draws it up to attack. Two blindingly quick slashes connect with @c$N@W's arm as $e flies past, leaving a green after-image behind!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				dmg *= int64(calc_critical(ch, 1))
 				if rand_number(1, 100) >= 70 && !IS_NPC(vict) && !AFF_FLAGGED(vict, AFF_SANCTUARY) {
-					if (vict.Limb_condition[1]) > 0 && !is_sparring(ch) && rand_number(1, 2) == 2 {
+					if (vict.Limb_condition[2]) > 0 && !is_sparring(ch) && rand_number(1, 2) == 2 {
 						act(libc.CString("@RYour attack severs $N's left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@R$n's attack severs your left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						act(libc.CString("@R$N's left arm is severered in the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
-						vict.Limb_condition[1] = 0
+						vict.Limb_condition[2] = 0
 						remove_limb(vict, 2)
-					} else if (vict.Limb_condition[0]) > 0 && !is_sparring(ch) {
+					} else if (vict.Limb_condition[1]) > 0 && !is_sparring(ch) {
 						act(libc.CString("@RYour attack severs $N's right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@R$n's attack severs your right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						act(libc.CString("@R$N's right arm is severered in the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
-						vict.Limb_condition[0] = 0
+						vict.Limb_condition[1] = 0
 						remove_limb(vict, 1)
 					}
 				}
@@ -1296,24 +1295,24 @@ func do_tslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@C$n @Wchannels $s charged ki into the blade of $s sword. @rF@Rl@Ya@rm@Ri@Yn@rg @gg@Gre@wen@W energy burns around the blade as $e draws it up to attack. Two blindingly quick slashes connect with @c$N@W's leg as $e flies past, leaving a green after-image behind!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				dmg *= int64(calc_critical(ch, 1))
 				if rand_number(1, 100) >= 70 && !IS_NPC(vict) && !AFF_FLAGGED(vict, AFF_SANCTUARY) {
-					if (vict.Limb_condition[3]) > 0 && !is_sparring(ch) && rand_number(1, 2) == 2 {
+					if (vict.Limb_condition[4]) > 0 && !is_sparring(ch) && rand_number(1, 2) == 2 {
 						act(libc.CString("@RYour attack severs $N's left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@R$n's attack severs your left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						act(libc.CString("@R$N's left leg is severered in the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
-						vict.Limb_condition[3] = 0
+						vict.Limb_condition[4] = 0
 						remove_limb(vict, 4)
-					} else if (vict.Limb_condition[2]) > 0 && !is_sparring(ch) {
+					} else if (vict.Limb_condition[3]) > 0 && !is_sparring(ch) {
 						act(libc.CString("@RYour attack severs $N's right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@R$n's attack severs your right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						act(libc.CString("@R$N's right leg is severered in the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
-						vict.Limb_condition[2] = 0
+						vict.Limb_condition[3] = 0
 						remove_limb(vict, 3)
 					}
 				}
 				hurt(0, 0, ch, vict, nil, dmg, 1)
 				dam_eq_loc(vict, 2)
 			}
-			if (ch.Skillperfs[SKILL_TSLASH]) == 3 && attperc > minimum {
+			if int(ch.Skillperfs[SKILL_TSLASH]) == 3 && attperc > minimum {
 				pcost(ch, attperc-0.05, 0)
 			} else {
 				pcost(ch, attperc, 0)
@@ -1419,25 +1418,25 @@ func do_eraser(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Eraser Cannon before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Eraser Cannon before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -1466,7 +1465,7 @@ func do_eraser(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		if prob < perc-20 {
 			if vict.Move > 0 {
-				if vict.Race == RACE_ANDROID && HAS_ARMS(vict) && GET_SKILL(vict, SKILL_ABSORB) > rand_number(1, 140) {
+				if int(vict.Race) == RACE_ANDROID && HAS_ARMS(vict) && GET_SKILL(vict, SKILL_ABSORB) > rand_number(1, 140) {
 					act(libc.CString("@C$N@W absorbs your ki attack and all your charged ki with $S hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@WYou absorb @C$n's@W ki attack and all $s charged ki with your hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@C$N@W absorbs @c$n's@W ki attack and all $s charged ki with $S hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -1706,25 +1705,25 @@ func do_pbarrage(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Psychic Barrage before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Psychic Barrage before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -2143,25 +2142,25 @@ func do_spiritball(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Spirit Ball before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Spirit Ball before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -2384,26 +2383,26 @@ func do_deathball(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
 		prob -= rand_number(8, 10)
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Deathball before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Deathball before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -2549,17 +2548,17 @@ func do_pslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if !HAS_ARMS(ch) {
 		send_to_char(ch, libc.CString("You have no available arms!\r\n"))
 		return
-	} else if (ch.Limb_condition[0]) > 0 && (ch.Limb_condition[0]) < 50 && (ch.Limb_condition[1]) < 0 {
+	} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 && (ch.Limb_condition[2]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken right arm has damaged it more!@n\r\n"))
-		ch.Limb_condition[0] -= rand_number(3, 5)
-		if (ch.Limb_condition[0]) < 0 {
+		ch.Limb_condition[1] -= rand_number(3, 5)
+		if (ch.Limb_condition[1]) < 0 {
 			act(libc.CString("@RYour right arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's right arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
-	} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 && (ch.Limb_condition[0]) < 0 {
+	} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 && (ch.Limb_condition[1]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken left arm has damaged it more!@n\r\n"))
-		ch.Limb_condition[1] -= rand_number(3, 5)
-		if (ch.Limb_condition[1]) < 0 {
+		ch.Limb_condition[2] -= rand_number(3, 5)
+		if (ch.Limb_condition[2]) < 0 {
 			act(libc.CString("@RYour left arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's left arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
@@ -2627,25 +2626,25 @@ func do_pslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Phoenix Slash before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Phoenix Slash before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -2754,11 +2753,11 @@ func do_pslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 				hurt(1, 170, ch, vict, nil, dmg, 1)
 				dam_eq_loc(vict, 2)
 			}
-			if !AFF_FLAGGED(vict, AFF_BURNED) && rand_number(1, 4) == 4 && vict.Race != RACE_DEMON && (vict.Bonuses[BONUS_FIREPROOF]) == 0 {
+			if !AFF_FLAGGED(vict, AFF_BURNED) && rand_number(1, 4) == 4 && int(vict.Race) != RACE_DEMON && (vict.Bonuses[BONUS_FIREPROOF]) == 0 {
 				send_to_char(vict, libc.CString("@RYou are burned by the attack!@n\r\n"))
 				send_to_char(ch, libc.CString("@RThey are burned by the attack!@n\r\n"))
 				vict.Affected_by[int(AFF_BURNED/32)] |= 1 << (int(AFF_BURNED % 32))
-			} else if (vict.Bonuses[BONUS_FIREPROOF]) != 0 || vict.Race == RACE_DEMON {
+			} else if (vict.Bonuses[BONUS_FIREPROOF]) != 0 || int(vict.Race) == RACE_DEMON {
 				send_to_char(ch, libc.CString("@RThey appear to be fireproof!@n\r\n"))
 			} else if (vict.Bonuses[BONUS_FIREPRONE]) != 0 {
 				send_to_char(vict, libc.CString("@RYou are extremely flammable and are burned by the attack!@n\r\n"))
@@ -2874,25 +2873,25 @@ func do_bigbang(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Big Bang before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Big Bang before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -3087,12 +3086,12 @@ func do_scatter(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 	}
 	var cool int = 8
-	if ch.Chclass == CLASS_PICCOLO {
-		if (ch.Skills[SKILL_STYLE]) >= 100 {
+	if int(ch.Chclass) == CLASS_PICCOLO {
+		if int(ch.Skills[SKILL_STYLE]) >= 100 {
 			cool -= 3
-		} else if (ch.Skills[SKILL_STYLE]) >= 75 {
+		} else if int(ch.Skills[SKILL_STYLE]) >= 75 {
 			cool -= 2
-		} else if (ch.Skills[SKILL_STYLE]) >= 40 {
+		} else if int(ch.Skills[SKILL_STYLE]) >= 40 {
 			cool -= 1
 		}
 	}
@@ -3116,26 +3115,26 @@ func do_scatter(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
 		prob += rand_number(10, 20)
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Scatter Shot before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Scatter Shot before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -3330,12 +3329,12 @@ func do_balefire(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 	}
 	var cool int = 8
-	if ch.Chclass == CLASS_PICCOLO {
-		if (ch.Skills[SKILL_STYLE]) >= 100 {
+	if int(ch.Chclass) == CLASS_PICCOLO {
+		if int(ch.Skills[SKILL_STYLE]) >= 100 {
 			cool -= 3
-		} else if (ch.Skills[SKILL_STYLE]) >= 75 {
+		} else if int(ch.Skills[SKILL_STYLE]) >= 75 {
 			cool -= 2
-		} else if (ch.Skills[SKILL_STYLE]) >= 40 {
+		} else if int(ch.Skills[SKILL_STYLE]) >= 40 {
 			cool -= 1
 		}
 	}
@@ -3359,26 +3358,26 @@ func do_balefire(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
 		prob += rand_number(10, 20)
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Balefire before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Balefire before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -3622,7 +3621,7 @@ func do_kakusanha(ch *char_data, argument *byte, cmd int, subcmd int) {
 				continue
 			}
 			dge = handle_dodge(vict)
-			if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+			if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 				hits++
 				act(libc.CString("@C$N@c disappears, avoiding the beam chasing $M!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding the beam chasing you!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -3855,7 +3854,7 @@ func do_hellspear(ch *char_data, argument *byte, cmd int, subcmd int) {
 				continue
 			}
 			dge = handle_dodge(vict)
-			if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+			if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 				act(libc.CString("@C$N@c disappears, avoiding the explosion before reappearing elsewhere!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding the explosion before reappearing elsewhere!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@C$N@c disappears, avoiding the explosion before reappearing elsewhere!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -3873,7 +3872,7 @@ func do_hellspear(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@R$N@r is caught by the explosion!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@RYou are caught by the explosion!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@R$N@r is caught by the explosion!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				if !AFF_FLAGGED(vict, AFF_FLYING) && vict.Position == POS_STANDING && rand_number(1, 4) == 4 {
+				if !AFF_FLAGGED(vict, AFF_FLYING) && int(vict.Position) == POS_STANDING && rand_number(1, 4) == 4 {
 					handle_knockdown(vict)
 				}
 				hurt(0, 0, ch, vict, nil, dmg, 1)
@@ -3918,9 +3917,9 @@ func do_hellflash(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Direct it at who?\r\n"))
 		return
 	}
-	if (ch.Skillperfs[SKILL_HELLFLASH]) == 1 {
+	if int(ch.Skillperfs[SKILL_HELLFLASH]) == 1 {
 		attperc += 0.05
-	} else if (ch.Skillperfs[SKILL_HELLFLASH]) == 3 {
+	} else if int(ch.Skillperfs[SKILL_HELLFLASH]) == 3 {
 		minimum -= 0.05
 		if minimum <= 0.0 {
 			minimum = 0.01
@@ -3972,7 +3971,7 @@ func do_hellflash(ch *char_data, argument *byte, cmd int, subcmd int) {
 		improve_skill(ch, SKILL_HELLFLASH, 0)
 		index = check_def(vict)
 		prob = roll_accuracy(ch, skill, TRUE != 0)
-		if (ch.Skillperfs[SKILL_HELLFLASH]) == 2 {
+		if int(ch.Skillperfs[SKILL_HELLFLASH]) == 2 {
 			prob += 5
 		}
 		perc = chance_to_hit(ch)
@@ -3980,25 +3979,25 @@ func do_hellflash(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Hell Flash before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Hell Flash before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -4007,7 +4006,7 @@ func do_hellflash(ch *char_data, argument *byte, cmd int, subcmd int) {
 					ch.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
 				}
 				vict.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
-				if (ch.Skillperfs[SKILL_HELLFLASH]) == 3 && attperc > minimum {
+				if int(ch.Skillperfs[SKILL_HELLFLASH]) == 3 && attperc > minimum {
 					pcost(ch, attperc-0.05, 0)
 				} else {
 					pcost(ch, attperc, 0)
@@ -4028,7 +4027,7 @@ func do_hellflash(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@C$N@W moves quickly and blocks your Hell Flash!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@WYou move quickly and block @C$n's@W Hell Flash!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@C$N@W moves quickly and blocks @c$n's@W Hell Flash!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-					if (ch.Skillperfs[SKILL_HELLFLASH]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_HELLFLASH]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -4048,7 +4047,7 @@ func do_hellflash(ch *char_data, argument *byte, cmd int, subcmd int) {
 						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dmg += 5
 					}
 					improve_skill(vict, SKILL_DODGE, 0)
-					if (ch.Skillperfs[SKILL_HELLFLASH]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_HELLFLASH]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -4059,7 +4058,7 @@ func do_hellflash(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@WYou can't believe it but your Hell Flash misses, flying through the air harmlessly!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@C$n@W fires a Hell Flash at you, but misses!@n "), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@c$n@W fires a Hell Flash at @C$N@W, but somehow misses!@n "), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-					if (ch.Skillperfs[SKILL_HELLFLASH]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_HELLFLASH]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -4071,7 +4070,7 @@ func do_hellflash(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou can't believe it but your Hell Flash misses, flying through the air harmlessly!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n@W fires a Hell Flash at you, but misses!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$n@W fires a Hell Flash at @C$N@W, but somehow misses!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				if (ch.Skillperfs[SKILL_HELLFLASH]) == 3 && attperc > minimum {
+				if int(ch.Skillperfs[SKILL_HELLFLASH]) == 3 && attperc > minimum {
 					pcost(ch, attperc-0.05, 0)
 				} else {
 					pcost(ch, attperc, 0)
@@ -4130,7 +4129,7 @@ func do_hellflash(ch *char_data, argument *byte, cmd int, subcmd int) {
 				hurt(1, 170, ch, vict, nil, dmg, 1)
 				dam_eq_loc(vict, 2)
 			}
-			if (ch.Skillperfs[SKILL_HELLFLASH]) == 3 && attperc > minimum {
+			if int(ch.Skillperfs[SKILL_HELLFLASH]) == 3 && attperc > minimum {
 				pcost(ch, attperc-0.05, 0)
 			} else {
 				pcost(ch, attperc, 0)
@@ -4184,17 +4183,17 @@ func do_ddslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if !HAS_ARMS(ch) {
 		send_to_char(ch, libc.CString("You have no available arms!\r\n"))
 		return
-	} else if (ch.Limb_condition[0]) > 0 && (ch.Limb_condition[0]) < 50 && (ch.Limb_condition[1]) < 0 {
+	} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 && (ch.Limb_condition[2]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken right arm has damaged it more!@n\r\n"))
-		ch.Limb_condition[0] -= rand_number(3, 5)
-		if (ch.Limb_condition[0]) < 0 {
+		ch.Limb_condition[1] -= rand_number(3, 5)
+		if (ch.Limb_condition[1]) < 0 {
 			act(libc.CString("@RYour right arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's right arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
-	} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 && (ch.Limb_condition[0]) < 0 {
+	} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 && (ch.Limb_condition[1]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken left arm has damaged it more!@n\r\n"))
-		ch.Limb_condition[1] -= rand_number(3, 5)
-		if (ch.Limb_condition[1]) < 0 {
+		ch.Limb_condition[2] -= rand_number(3, 5)
+		if (ch.Limb_condition[2]) < 0 {
 			act(libc.CString("@RYour left arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's left arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
@@ -4262,25 +4261,25 @@ func do_ddslash(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Darkness Dragon Slash before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Darkness Dragon Slash before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -4447,9 +4446,9 @@ func do_crusher(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Direct it at who?\r\n"))
 		return
 	}
-	if (ch.Skillperfs[SKILL_CRUSHER]) == 1 {
+	if int(ch.Skillperfs[SKILL_CRUSHER]) == 1 {
 		attperc += 0.05
-	} else if (ch.Skillperfs[SKILL_CRUSHER]) == 3 {
+	} else if int(ch.Skillperfs[SKILL_CRUSHER]) == 3 {
 		minimum -= 0.05
 		if minimum <= 0.0 {
 			minimum = 0.01
@@ -4501,7 +4500,7 @@ func do_crusher(ch *char_data, argument *byte, cmd int, subcmd int) {
 		improve_skill(ch, SKILL_CRUSHER, 0)
 		index = check_def(vict)
 		prob = roll_accuracy(ch, skill, TRUE != 0)
-		if (ch.Skillperfs[SKILL_CRUSHER]) == 2 {
+		if int(ch.Skillperfs[SKILL_CRUSHER]) == 2 {
 			prob += 5
 		}
 		perc = chance_to_hit(ch)
@@ -4509,25 +4508,25 @@ func do_crusher(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Crusher Ball before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Crusher Ball before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -4536,7 +4535,7 @@ func do_crusher(ch *char_data, argument *byte, cmd int, subcmd int) {
 					ch.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
 				}
 				vict.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
-				if (ch.Skillperfs[SKILL_CRUSHER]) == 3 && attperc > minimum {
+				if int(ch.Skillperfs[SKILL_CRUSHER]) == 3 && attperc > minimum {
 					pcost(ch, attperc-0.05, 0)
 				} else {
 					pcost(ch, attperc, 0)
@@ -4557,7 +4556,7 @@ func do_crusher(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@C$N@W moves quickly and blocks your crusher ball!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@WYou move quickly and block @C$n's@W crusher ball!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@C$N@W moves quickly and blocks @c$n's@W crusher ball!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-					if (ch.Skillperfs[SKILL_CRUSHER]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_CRUSHER]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -4577,7 +4576,7 @@ func do_crusher(ch *char_data, argument *byte, cmd int, subcmd int) {
 						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dmg += 10
 					}
 					improve_skill(vict, SKILL_DODGE, 0)
-					if (ch.Skillperfs[SKILL_CRUSHER]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_CRUSHER]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -4588,7 +4587,7 @@ func do_crusher(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@WYou can't believe it but your crusher ball misses, flying through the air harmlessly!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@C$n@W fires a crusher ball at you, but misses!@n "), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@c$n@W fires a crusher ball at @C$N@W, but somehow misses!@n "), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-					if (ch.Skillperfs[SKILL_CRUSHER]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_CRUSHER]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -4600,7 +4599,7 @@ func do_crusher(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou can't believe it but your crusher ball misses, flying through the air harmlessly!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n@W fires a crusher ball at you, but misses!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$n@W fires a crusher ball at @C$N@W, but somehow misses!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				if (ch.Skillperfs[SKILL_CRUSHER]) == 3 && attperc > minimum {
+				if int(ch.Skillperfs[SKILL_CRUSHER]) == 3 && attperc > minimum {
 					pcost(ch, attperc-0.05, 0)
 				} else {
 					pcost(ch, attperc, 0)
@@ -4653,7 +4652,7 @@ func do_crusher(ch *char_data, argument *byte, cmd int, subcmd int) {
 				hurt(1, 180, ch, vict, nil, dmg, 1)
 				dam_eq_loc(vict, 2)
 			}
-			if !AFF_FLAGGED(vict, AFF_FLYING) && vict.Position == POS_STANDING && rand_number(1, 3) == 3 {
+			if !AFF_FLAGGED(vict, AFF_FLYING) && int(vict.Position) == POS_STANDING && rand_number(1, 3) == 3 {
 				handle_knockdown(vict)
 			} else if AFF_FLAGGED(vict, AFF_FLYING) && rand_number(1, 3) == 3 {
 				act(libc.CString("@mYou are knocked out of the air by the attack!"), TRUE, vict, nil, nil, TO_CHAR)
@@ -4661,7 +4660,7 @@ func do_crusher(ch *char_data, argument *byte, cmd int, subcmd int) {
 				vict.Affected_by[int(AFF_FLYING/32)] &= ^(1 << (int(AFF_FLYING % 32)))
 				ch.Altitude = 0
 			}
-			if (ch.Skillperfs[SKILL_CRUSHER]) == 3 && attperc > minimum {
+			if int(ch.Skillperfs[SKILL_CRUSHER]) == 3 && attperc > minimum {
 				pcost(ch, attperc-0.05, 0)
 			} else {
 				pcost(ch, attperc, 0)
@@ -4770,25 +4769,25 @@ func do_final(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Final Flash before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Final Flash before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -5003,25 +5002,25 @@ func do_sbc(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Special Beam Cannon before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Special Beam Cannon before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -5222,25 +5221,25 @@ func do_tribeam(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Tribeam before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Tribeam before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -5461,25 +5460,25 @@ func do_kienzan(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Kienzan before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Kienzan before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -5548,7 +5547,7 @@ func do_kienzan(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou raise your hand above your head and pool your charged ki above your flattened palm. Slowly a golden spinning disk of energy grows from the ki. With the attack complete you shout '@yK@Yi@we@yn@Yz@wa@yn@W!' and throw it! You watch as it slices into @c$N@W's body!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n@W raises $s hand above $s head and pools $s charged ki above $s flattened palm. Slowly a golden spinning disk of energy grows from the ki. With the attack complete $e shouts '@yK@Yi@we@yn@Yz@wa@yn@W!' and throws it! @C$n@W watches as it slices into YOUR body!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@C$n@W raises $s hand above $s head and pools $s charged ki above $s flattened palm. Slowly a golden spinning disk of energy grows from the ki. With the attack complete $e shouts '@yK@Yi@we@yn@Yz@wa@yn@W!' and throws it! @C$n@W watches as it slices into @c$N@W's body!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				if dmg > vict.Max_hit/5 && (vict.Race != RACE_MAJIN && vict.Race != RACE_BIO) {
+				if dmg > vict.Max_hit/5 && (int(vict.Race) != RACE_MAJIN && int(vict.Race) != RACE_BIO) {
 					act(libc.CString("@R$N@r is cut in half by the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@rYou are cut in half by the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@R$N@r is cut in half by the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -5564,7 +5563,7 @@ func do_kienzan(ch *char_data, argument *byte, cmd int, subcmd int) {
 					if !IS_NPC(ch) && ch != vict && PRF_FLAGGED(ch, PRF_AUTOLOOT) {
 						do_get(ch, libc.CString("all corpse"), 0, 0)
 					}
-				} else if dmg > vict.Max_hit/5 && (vict.Race == RACE_MAJIN || vict.Race == RACE_BIO) {
+				} else if dmg > vict.Max_hit/5 && (int(vict.Race) == RACE_MAJIN || int(vict.Race) == RACE_BIO) {
 					if GET_SKILL(vict, SKILL_REGENERATE) > rand_number(1, 101) && vict.Mana >= vict.Max_mana/40 {
 						act(libc.CString("@R$N@r is cut in half by the attack but regenerates a moment later!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@rYou are cut in half by the attack but regenerate a moment later!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -5590,23 +5589,23 @@ func do_kienzan(ch *char_data, argument *byte, cmd int, subcmd int) {
 					}
 				} else {
 					hurt(0, 0, ch, vict, nil, dmg, 1)
-					if (vict.Race == RACE_ICER || vict.Race == RACE_BIO) && PLR_FLAGGED(vict, PLR_TAIL) {
+					if (int(vict.Race) == RACE_ICER || int(vict.Race) == RACE_BIO) && PLR_FLAGGED(vict, PLR_TAIL) {
 						act(libc.CString("@rYou cut off $S tail!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@rYour tail is cut off!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						act(libc.CString("@R$N@r's tail is cut off!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-						vict.Act[int(PLR_TAIL/32)] &= bitvector_t(^(1 << (int(PLR_TAIL % 32))))
+						vict.Act[int(PLR_TAIL/32)] &= bitvector_t(int32(^(1 << (int(PLR_TAIL % 32)))))
 						remove_limb(vict, 6)
 					}
-					if (vict.Race == RACE_SAIYAN || vict.Race == RACE_HALFBREED) && PLR_FLAGGED(vict, PLR_STAIL) {
+					if (int(vict.Race) == RACE_SAIYAN || int(vict.Race) == RACE_HALFBREED) && PLR_FLAGGED(vict, PLR_STAIL) {
 						act(libc.CString("@rYou cut off $S tail!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@rYour tail is cut off!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						act(libc.CString("@R$N@r's tail is cut off!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-						vict.Act[int(PLR_STAIL/32)] &= bitvector_t(^(1 << (int(PLR_STAIL % 32))))
+						vict.Act[int(PLR_STAIL/32)] &= bitvector_t(int32(^(1 << (int(PLR_STAIL % 32)))))
 						remove_limb(vict, 5)
 						if PLR_FLAGGED(vict, PLR_OOZARU) {
 							act(libc.CString("@CYour body begins to shrink back to its normal form as the power of the Oozaru leaves you. You fall asleep shortly after returning to normal!@n"), TRUE, vict, nil, nil, TO_CHAR)
 							act(libc.CString("@c$n@C's body begins to shrink and return to normal. Their giant ape features fading back into humanoid features until $e is left normal and asleep.@n"), TRUE, vict, nil, nil, TO_ROOM)
-							vict.Act[int(PLR_OOZARU/32)] &= bitvector_t(^(1 << (int(PLR_OOZARU % 32))))
+							vict.Act[int(PLR_OOZARU/32)] &= bitvector_t(int32(^(1 << (int(PLR_OOZARU % 32)))))
 							vict.Hit = (vict.Hit / 2) - 10000
 							vict.Mana = (vict.Mana / 2) - 10000
 							vict.Move = (vict.Move / 2) - 10000
@@ -5631,7 +5630,7 @@ func do_kienzan(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@C$n@W raises $s hand above $s head and pools $s charged ki above $s flattened palm. Slowly a golden spinning disk of energy grows from the ki. With the attack complete $e shouts '@yK@Yi@we@yn@Yz@wa@yn@W!' and throws it! @C$n@W watches as it slices into YOUR neck!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@C$n@W raises $s hand above $s head and pools $s charged ki above $s flattened palm. Slowly a golden spinning disk of energy grows from the ki. With the attack complete $e shouts '@yK@Yi@we@yn@Yz@wa@yn@W!' and throws it! @C$n@W watches as it slices into @c$N@W's neck!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				dmg *= int64(calc_critical(ch, 0))
-				if dmg > vict.Max_hit/5 && (vict.Race != RACE_MAJIN && vict.Race != RACE_BIO) {
+				if dmg > vict.Max_hit/5 && (int(vict.Race) != RACE_MAJIN && int(vict.Race) != RACE_BIO) {
 					act(libc.CString("@R$N@r has $S head cut off by the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@rYou have your head cut off by the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@R$N@r has $S head cut off by the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -5649,7 +5648,7 @@ func do_kienzan(ch *char_data, argument *byte, cmd int, subcmd int) {
 					if !IS_NPC(ch) && ch != vict && PRF_FLAGGED(ch, PRF_AUTOLOOT) {
 						do_get(ch, libc.CString("all corpse"), 0, 0)
 					}
-				} else if dmg > vict.Max_hit/5 && (vict.Race == RACE_MAJIN || vict.Race == RACE_BIO) {
+				} else if dmg > vict.Max_hit/5 && (int(vict.Race) == RACE_MAJIN || int(vict.Race) == RACE_BIO) {
 					if GET_SKILL(vict, SKILL_REGENERATE) > rand_number(1, 101) && vict.Mana >= vict.Max_mana/40 {
 						act(libc.CString("@R$N@r has $S head cut off by the attack but regenerates a moment later!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@rYou have your head cut off by the attack but regenerate a moment later!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -5693,17 +5692,17 @@ func do_kienzan(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@C$n@W raises $s hand above $s head and pools $s charged ki above $s flattened palm. Slowly a golden spinning disk of energy grows from the ki. With the attack complete $e shouts '@yK@Yi@we@yn@Yz@wa@yn@W!' and throws it! @C$n@W watches as it slices into @c$N@W's arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				dmg *= int64(calc_critical(ch, 1))
 				if rand_number(1, 100) >= 70 && !IS_NPC(vict) && !AFF_FLAGGED(vict, AFF_SANCTUARY) {
-					if (vict.Limb_condition[1]) > 0 && !is_sparring(ch) && rand_number(1, 2) == 2 {
+					if (vict.Limb_condition[2]) > 0 && !is_sparring(ch) && rand_number(1, 2) == 2 {
 						act(libc.CString("@RYour attack severes $N's left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@R$n's attack severes your left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						act(libc.CString("@R$N's left arm is severed in the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-						vict.Limb_condition[1] = 0
+						vict.Limb_condition[2] = 0
 						remove_limb(vict, 2)
-					} else if (vict.Limb_condition[0]) > 0 && !is_sparring(ch) {
+					} else if (vict.Limb_condition[1]) > 0 && !is_sparring(ch) {
 						act(libc.CString("@RYour attack severes $N's right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@R$n's attack severes your right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						act(libc.CString("@R$N's right arm is severed in the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-						vict.Limb_condition[0] = 0
+						vict.Limb_condition[1] = 0
 						remove_limb(vict, 1)
 					}
 				}
@@ -5715,17 +5714,17 @@ func do_kienzan(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@C$n@W raises $s hand above $s head and pools $s charged ki above $s flattened palm. Slowly a golden spinning disk of energy grows from the ki. With the attack complete $e shouts '@yK@Yi@we@yn@Yz@wa@yn@W!' and throws it! @C$n@W watches as it slices into @c$N@W's leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				dmg *= int64(calc_critical(ch, 1))
 				if rand_number(1, 100) >= 70 && !IS_NPC(vict) && !AFF_FLAGGED(vict, AFF_SANCTUARY) {
-					if (vict.Limb_condition[3]) > 0 && !is_sparring(ch) && rand_number(1, 2) == 2 {
+					if (vict.Limb_condition[4]) > 0 && !is_sparring(ch) && rand_number(1, 2) == 2 {
 						act(libc.CString("@RYour attack severes $N's left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@R$n's attack severes your left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						act(libc.CString("@R$N's left leg is severed in the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-						vict.Limb_condition[3] = 0
+						vict.Limb_condition[4] = 0
 						remove_limb(vict, 4)
-					} else if (vict.Limb_condition[2]) > 0 && !is_sparring(ch) {
+					} else if (vict.Limb_condition[3]) > 0 && !is_sparring(ch) {
 						act(libc.CString("@RYour attack severes $N's right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 						act(libc.CString("@R$n's attack severes your right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						act(libc.CString("@R$N's right leg is severed in the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-						vict.Limb_condition[2] = 0
+						vict.Limb_condition[3] = 0
 						remove_limb(vict, 3)
 					}
 				}
@@ -5870,7 +5869,7 @@ func do_baku(ch *char_data, argument *byte, cmd int, subcmd int) {
 				continue
 			}
 			dge = handle_dodge(vict)
-			if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+			if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 				act(libc.CString("@C$N@c disappears, avoiding the explosion before reappearing elsewhere!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding the explosion before reappearing elsewhere!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@C$N@c disappears, avoiding the explosion before reappearing elsewhere!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -5889,7 +5888,7 @@ func do_baku(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@R$N@r is caught by the explosion!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@RYou are caught by the explosion!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@R$N@r is caught by the explosion!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				if !AFF_FLAGGED(vict, AFF_FLYING) && vict.Position == POS_STANDING {
+				if !AFF_FLAGGED(vict, AFF_FLYING) && int(vict.Position) == POS_STANDING {
 					handle_knockdown(vict)
 				}
 				hurt(0, 0, ch, vict, nil, dmg, 1)
@@ -5984,25 +5983,25 @@ func do_rogafufuken(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Rogafufuken before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Rogafufuken before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -6113,7 +6112,7 @@ func do_rogafufuken(ch *char_data, argument *byte, cmd int, subcmd int) {
 				hurt(1, 170, ch, vict, nil, dmg, 1)
 				dam_eq_loc(vict, 2)
 			}
-			if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && ch.Race != RACE_DEMON {
+			if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && int(ch.Race) != RACE_DEMON {
 				act(libc.CString("@c$N's@W fireshield burns your hands and feet!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n's@W hands and feet are burned by your fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$n's@W hands and feet are burned by @C$N's@W fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -6128,7 +6127,7 @@ func do_rogafufuken(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_char(vict, libc.CString("@RThey are burned!@n\r\n"))
 					ch.Affected_by[int(AFF_BURNED/32)] |= 1 << (int(AFF_BURNED % 32))
 				}
-			} else if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && ((ch.Bonuses[BONUS_FIREPROOF]) != 0 || ch.Race == RACE_DEMON) {
+			} else if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && ((ch.Bonuses[BONUS_FIREPROOF]) != 0 || int(ch.Race) == RACE_DEMON) {
 				send_to_char(vict, libc.CString("@RThey appear to be fireproof!@n\r\n"))
 			}
 			pcost(ch, attperc, 0)
@@ -6236,25 +6235,25 @@ func do_dualbeam(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Dualbeam before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Dualbeam before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -6505,25 +6504,25 @@ func do_blessedhammer(ch *char_data, argument *byte, cmd int, subcmd int) {
 		handle_defense(vict, &pry, &blk, &dge)
 		prob += 15
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your @WB@Dl@We@Ds@Ws@De@Wd @DH@Wa@Dm@Wm@De@Wr@C before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c @WB@Dl@We@Ds@Ws@De@Wd @DH@Wa@Dm@Wm@De@Wr@C before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -6636,7 +6635,7 @@ func do_blessedhammer(ch *char_data, argument *byte, cmd int, subcmd int) {
 				hurt(1, 190, ch, vict, nil, dmg, 1)
 				dam_eq_loc(vict, 2)
 			}
-			if !AFF_FLAGGED(vict, AFF_BURNED) && rand_number(1, 4) == 3 && vict.Race != RACE_DEMON {
+			if !AFF_FLAGGED(vict, AFF_BURNED) && rand_number(1, 4) == 3 && int(vict.Race) != RACE_DEMON {
 				send_to_char(vict, libc.CString("@RYou are burned by the attack!@n\r\n"))
 				send_to_char(ch, libc.CString("@RThey are burned by the attack!@n\r\n"))
 				vict.Affected_by[int(AFF_BURNED/32)] |= 1 << (int(AFF_BURNED % 32))
@@ -6744,25 +6743,25 @@ func do_kousengan(ch *char_data, argument *byte, cmd int, subcmd int) {
 		handle_defense(vict, &pry, &blk, &dge)
 		prob += 15
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your kousengan before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c kousengan before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -6875,7 +6874,7 @@ func do_kousengan(ch *char_data, argument *byte, cmd int, subcmd int) {
 				hurt(1, 190, ch, vict, nil, dmg, 1)
 				dam_eq_loc(vict, 2)
 			}
-			if !AFF_FLAGGED(vict, AFF_BURNED) && rand_number(1, 4) == 3 && vict.Race != RACE_DEMON {
+			if !AFF_FLAGGED(vict, AFF_BURNED) && rand_number(1, 4) == 3 && int(vict.Race) != RACE_DEMON {
 				send_to_char(vict, libc.CString("@RYou are burned by the attack!@n\r\n"))
 				send_to_char(ch, libc.CString("@RThey are burned by the attack!@n\r\n"))
 				vict.Affected_by[int(AFF_BURNED/32)] |= 1 << (int(AFF_BURNED % 32))
@@ -6934,9 +6933,9 @@ func do_deathbeam(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Direct it at who?\r\n"))
 		return
 	}
-	if (ch.Skillperfs[SKILL_DEATHBEAM]) == 1 {
+	if int(ch.Skillperfs[SKILL_DEATHBEAM]) == 1 {
 		attperc += 0.05
-	} else if (ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
+	} else if int(ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
 		minimum -= 0.05
 		if minimum <= 0.0 {
 			minimum = 0.01
@@ -6988,7 +6987,7 @@ func do_deathbeam(ch *char_data, argument *byte, cmd int, subcmd int) {
 		improve_skill(ch, SKILL_DEATHBEAM, 0)
 		index = check_def(vict)
 		prob = roll_accuracy(ch, skill, TRUE != 0)
-		if (ch.Skillperfs[SKILL_DEATHBEAM]) == 2 {
+		if int(ch.Skillperfs[SKILL_DEATHBEAM]) == 2 {
 			prob += 5
 		}
 		perc = chance_to_hit(ch)
@@ -6997,25 +6996,25 @@ func do_deathbeam(ch *char_data, argument *byte, cmd int, subcmd int) {
 		handle_defense(vict, &pry, &blk, &dge)
 		prob += 15
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Deathbeam before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Deathbeam before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -7024,13 +7023,13 @@ func do_deathbeam(ch *char_data, argument *byte, cmd int, subcmd int) {
 					ch.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
 				}
 				vict.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
-				if (ch.Skillperfs[SKILL_DEATHBEAM]) == 3 && attperc > minimum {
+				if int(ch.Skillperfs[SKILL_DEATHBEAM]) == 3 && attperc > minimum {
 					pcost(ch, attperc-0.05, 0)
 				} else {
 					pcost(ch, attperc, 0)
 				}
 				pcost(vict, 0, vict.Max_hit/200)
-				if (ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
+				if int(ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
 					WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 				}
 				return
@@ -7048,7 +7047,7 @@ func do_deathbeam(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@C$N@W moves quickly and blocks your deathbeam!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@WYou move quickly and block @C$n's@W deathbeam!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@C$N@W moves quickly and blocks @c$n's@W deathbeam!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-					if (ch.Skillperfs[SKILL_DEATHBEAM]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_DEATHBEAM]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -7057,7 +7056,7 @@ func do_deathbeam(ch *char_data, argument *byte, cmd int, subcmd int) {
 					dmg = damtype(ch, 17, skill, attperc)
 					dmg /= 4
 					hurt(0, 0, ch, vict, nil, dmg, 1)
-					if (ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
+					if int(ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
 						WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 					}
 					return
@@ -7071,13 +7070,13 @@ func do_deathbeam(ch *char_data, argument *byte, cmd int, subcmd int) {
 						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dmg += 5
 					}
 					improve_skill(vict, SKILL_DODGE, 0)
-					if (ch.Skillperfs[SKILL_DEATHBEAM]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_DEATHBEAM]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
 					}
 					hurt(0, 0, ch, vict, nil, 0, 1)
-					if (ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
+					if int(ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
 						WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 					}
 					return
@@ -7085,13 +7084,13 @@ func do_deathbeam(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@WYou can't believe it but your deathbeam misses, flying through the air harmlessly!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@C$n@W fires a deathbeam at you, but misses!@n "), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@c$n@W fires a deathbeam at @C$N@W, but somehow misses!@n "), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-					if (ch.Skillperfs[SKILL_DEATHBEAM]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_DEATHBEAM]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
 					}
 					hurt(0, 0, ch, vict, nil, 0, 1)
-					if (ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
+					if int(ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
 						WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 					}
 					return
@@ -7100,14 +7099,14 @@ func do_deathbeam(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou can't believe it but your deathbeam misses, flying through the air harmlessly!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n@W fires a deathbeam at you, but misses!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$n@W fires a deathbeam at @C$N@W, but somehow misses!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				if (ch.Skillperfs[SKILL_DEATHBEAM]) == 3 && attperc > minimum {
+				if int(ch.Skillperfs[SKILL_DEATHBEAM]) == 3 && attperc > minimum {
 					pcost(ch, attperc-0.05, 0)
 				} else {
 					pcost(ch, attperc, 0)
 				}
 			}
 			hurt(0, 0, ch, vict, nil, 0, 1)
-			if (ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
+			if int(ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
 				WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 			}
 			return
@@ -7125,7 +7124,7 @@ func do_deathbeam(ch *char_data, argument *byte, cmd int, subcmd int) {
 				}
 				hurt(0, 0, ch, vict, nil, dmg, 1)
 				dam_eq_loc(vict, 4)
-				if (ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
+				if int(ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
 					WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 				}
 			case 2:
@@ -7135,7 +7134,7 @@ func do_deathbeam(ch *char_data, argument *byte, cmd int, subcmd int) {
 				dmg *= int64(calc_critical(ch, 0))
 				hurt(0, 0, ch, vict, nil, dmg, 1)
 				dam_eq_loc(vict, 3)
-				if (ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
+				if int(ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
 					WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 				}
 			case 3:
@@ -7147,7 +7146,7 @@ func do_deathbeam(ch *char_data, argument *byte, cmd int, subcmd int) {
 				}
 				hurt(0, 0, ch, vict, nil, dmg, 1)
 				dam_eq_loc(vict, 4)
-				if (ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
+				if int(ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
 					WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 				}
 			case 4:
@@ -7157,7 +7156,7 @@ func do_deathbeam(ch *char_data, argument *byte, cmd int, subcmd int) {
 				dmg *= int64(calc_critical(ch, 1))
 				hurt(0, 190, ch, vict, nil, dmg, 1)
 				dam_eq_loc(vict, 1)
-				if (ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
+				if int(ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
 					WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 				}
 			case 5:
@@ -7167,7 +7166,7 @@ func do_deathbeam(ch *char_data, argument *byte, cmd int, subcmd int) {
 				dmg *= int64(calc_critical(ch, 1))
 				hurt(1, 190, ch, vict, nil, dmg, 1)
 				dam_eq_loc(vict, 2)
-				if (ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
+				if int(ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
 					WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 				}
 			}
@@ -7187,7 +7186,7 @@ func do_deathbeam(ch *char_data, argument *byte, cmd int, subcmd int) {
 					vict.Lifeforce = -1
 				}
 			}
-			if (ch.Skillperfs[SKILL_DEATHBEAM]) == 3 && attperc > minimum {
+			if int(ch.Skillperfs[SKILL_DEATHBEAM]) == 3 && attperc > minimum {
 				pcost(ch, attperc-0.05, 0)
 			} else {
 				pcost(ch, attperc, 0)
@@ -7208,7 +7207,7 @@ func do_deathbeam(ch *char_data, argument *byte, cmd int, subcmd int) {
 		act(libc.CString("@C$n@W fires a deathbeam at $p@W!@n"), FALSE, ch, obj, nil, TO_ROOM)
 		hurt(0, 0, ch, nil, obj, dmg, 0)
 		pcost(ch, attperc, 0)
-		if (ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
+		if int(ch.Skillperfs[SKILL_DEATHBEAM]) == 3 {
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 		}
 	} else {
@@ -7248,9 +7247,9 @@ func do_dodonpa(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Direct it at who?\r\n"))
 		return
 	}
-	if (ch.Skillperfs[SKILL_DODONPA]) == 1 {
+	if int(ch.Skillperfs[SKILL_DODONPA]) == 1 {
 		attperc += 0.05
-	} else if (ch.Skillperfs[SKILL_DODONPA]) == 3 {
+	} else if int(ch.Skillperfs[SKILL_DODONPA]) == 3 {
 		minimum -= 0.05
 		if minimum <= 0.0 {
 			minimum = 0.01
@@ -7302,7 +7301,7 @@ func do_dodonpa(ch *char_data, argument *byte, cmd int, subcmd int) {
 		improve_skill(ch, SKILL_DODONPA, 0)
 		index = check_def(vict)
 		prob = roll_accuracy(ch, skill, TRUE != 0)
-		if (ch.Skillperfs[SKILL_DODONPA]) == 2 {
+		if int(ch.Skillperfs[SKILL_DODONPA]) == 2 {
 			prob += 5
 		}
 		perc = chance_to_hit(ch)
@@ -7310,28 +7309,28 @@ func do_dodonpa(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (ch.Skillperfs[SKILL_DODONPA]) == 3 {
+		if int(ch.Skillperfs[SKILL_DODONPA]) == 3 {
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Dodonpa before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Dodonpa before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -7340,7 +7339,7 @@ func do_dodonpa(ch *char_data, argument *byte, cmd int, subcmd int) {
 					ch.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
 				}
 				vict.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
-				if (ch.Skillperfs[SKILL_DODONPA]) == 3 && attperc > minimum {
+				if int(ch.Skillperfs[SKILL_DODONPA]) == 3 && attperc > minimum {
 					pcost(ch, attperc-0.05, 0)
 				} else {
 					pcost(ch, attperc, 0)
@@ -7361,7 +7360,7 @@ func do_dodonpa(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@C$N@W moves quickly and blocks your dodonpa!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@WYou move quickly and block @C$n's@W dodonpa!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@C$N@W moves quickly and blocks @c$n's@W dodonpa!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-					if (ch.Skillperfs[SKILL_DODONPA]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_DODONPA]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -7381,7 +7380,7 @@ func do_dodonpa(ch *char_data, argument *byte, cmd int, subcmd int) {
 						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dmg += 5
 					}
 					improve_skill(vict, SKILL_DODGE, 0)
-					if (ch.Skillperfs[SKILL_DODONPA]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_DODONPA]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -7392,7 +7391,7 @@ func do_dodonpa(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@WYou can't believe it but your dodonpa misses, flying through the air harmlessly!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@C$n@W fires a dodonpa at you, but misses!@n "), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@c$n@W fires a dodonpa at @C$N@W, but somehow misses!@n "), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-					if (ch.Skillperfs[SKILL_DODONPA]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_DODONPA]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -7404,7 +7403,7 @@ func do_dodonpa(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou can't believe it but your dodonpa misses, flying through the air harmlessly!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n@W fires a dodonpa at you, but misses!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$n@W fires a dodonpa at @C$N@W, but somehow misses!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				if (ch.Skillperfs[SKILL_DODONPA]) == 3 && attperc > minimum {
+				if int(ch.Skillperfs[SKILL_DODONPA]) == 3 && attperc > minimum {
 					pcost(ch, attperc-0.05, 0)
 				} else {
 					pcost(ch, attperc, 0)
@@ -7464,7 +7463,7 @@ func do_dodonpa(ch *char_data, argument *byte, cmd int, subcmd int) {
 				}
 				send_to_char(vict, libc.CString("@RYou feel some of your ki drained away by the attack!@n\r\n"))
 			}
-			if (ch.Skillperfs[SKILL_DODONPA]) == 3 && attperc > minimum {
+			if int(ch.Skillperfs[SKILL_DODONPA]) == 3 && attperc > minimum {
 				pcost(ch, attperc-0.05, 0)
 			} else {
 				pcost(ch, attperc, 0)
@@ -7522,9 +7521,9 @@ func do_masenko(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Direct it at who?\r\n"))
 		return
 	}
-	if (ch.Skillperfs[SKILL_MASENKO]) == 1 {
+	if int(ch.Skillperfs[SKILL_MASENKO]) == 1 {
 		attperc += 0.05
-	} else if (ch.Skillperfs[SKILL_MASENKO]) == 3 {
+	} else if int(ch.Skillperfs[SKILL_MASENKO]) == 3 {
 		minimum -= 0.05
 		if minimum <= 0.0 {
 			minimum = 0.01
@@ -7576,7 +7575,7 @@ func do_masenko(ch *char_data, argument *byte, cmd int, subcmd int) {
 		improve_skill(ch, SKILL_MASENKO, 0)
 		index = check_def(vict)
 		prob = roll_accuracy(ch, skill, TRUE != 0)
-		if (ch.Skillperfs[SKILL_MASENKO]) == 2 {
+		if int(ch.Skillperfs[SKILL_MASENKO]) == 2 {
 			prob += 5
 		}
 		perc = chance_to_hit(ch)
@@ -7584,25 +7583,25 @@ func do_masenko(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Masenko before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Masenko before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -7611,7 +7610,7 @@ func do_masenko(ch *char_data, argument *byte, cmd int, subcmd int) {
 					ch.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
 				}
 				vict.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
-				if (ch.Skillperfs[SKILL_MASENKO]) == 3 && attperc > minimum {
+				if int(ch.Skillperfs[SKILL_MASENKO]) == 3 && attperc > minimum {
 					pcost(ch, attperc-0.05, 0)
 				} else {
 					pcost(ch, attperc, 0)
@@ -7628,7 +7627,7 @@ func do_masenko(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		if prob < perc-20 {
 			if vict.Move > 0 {
-				if vict.Race == RACE_ANDROID && HAS_ARMS(vict) && GET_SKILL(vict, SKILL_ABSORB) > rand_number(1, 140) {
+				if int(vict.Race) == RACE_ANDROID && HAS_ARMS(vict) && GET_SKILL(vict, SKILL_ABSORB) > rand_number(1, 140) {
 					act(libc.CString("@C$N@W absorbs your ki attack and all your charged ki with $S hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@WYou absorb @C$n's@W ki attack and all $s charged ki with your hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@C$N@W absorbs @c$n's@W ki attack and all $s charged ki with $S hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -7642,7 +7641,7 @@ func do_masenko(ch *char_data, argument *byte, cmd int, subcmd int) {
 					} else {
 						vict.Charge += int64(amot)
 					}
-					if (ch.Skillperfs[SKILL_MASENKO]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_MASENKO]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -7652,7 +7651,7 @@ func do_masenko(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@C$N@W moves quickly and blocks your masenko!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@WYou move quickly and block @C$n's@W masenko!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@C$N@W moves quickly and blocks @c$n's@W masenko!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-					if (ch.Skillperfs[SKILL_MASENKO]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_MASENKO]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -7672,7 +7671,7 @@ func do_masenko(ch *char_data, argument *byte, cmd int, subcmd int) {
 						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dmg += 5
 					}
 					improve_skill(vict, SKILL_DODGE, 0)
-					if (ch.Skillperfs[SKILL_MASENKO]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_MASENKO]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -7683,7 +7682,7 @@ func do_masenko(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@WYou can't believe it but your masenko misses, flying through the air harmlessly!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@C$n@W fires a masenko at you, but misses!@n "), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@c$n@W fires a masenko at @C$N@W, but somehow misses!@n "), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-					if (ch.Skillperfs[SKILL_MASENKO]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_MASENKO]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -7695,7 +7694,7 @@ func do_masenko(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou can't believe it but your masenko misses, flying through the air harmlessly!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n@W fires a masenko at you, but misses!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$n@W fires a masenko at @C$N@W, but somehow misses!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				if (ch.Skillperfs[SKILL_MASENKO]) == 3 && attperc > minimum {
+				if int(ch.Skillperfs[SKILL_MASENKO]) == 3 && attperc > minimum {
 					pcost(ch, attperc-0.05, 0)
 				} else {
 					pcost(ch, attperc, 0)
@@ -7714,12 +7713,12 @@ func do_masenko(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 			var hitspot int = 1
 			hitspot = roll_hitloc(ch, vict, skill)
-			if ch.Chclass == CLASS_PICCOLO {
-				if (ch.Skills[SKILL_STYLE]) >= 100 {
+			if int(ch.Chclass) == CLASS_PICCOLO {
+				if int(ch.Skills[SKILL_STYLE]) >= 100 {
 					dmg += int64(float64(ch.Max_mana) * 0.08)
-				} else if (ch.Skills[SKILL_STYLE]) >= 60 {
+				} else if int(ch.Skills[SKILL_STYLE]) >= 60 {
 					dmg += int64(float64(ch.Max_mana) * 0.05)
-				} else if (ch.Skills[SKILL_STYLE]) >= 40 {
+				} else if int(ch.Skills[SKILL_STYLE]) >= 40 {
 					dmg += int64(float64(ch.Max_mana) * 0.03)
 				}
 			}
@@ -7771,7 +7770,7 @@ func do_masenko(ch *char_data, argument *byte, cmd int, subcmd int) {
 					vict.Move = 0
 				}
 			}
-			if (ch.Skillperfs[SKILL_MASENKO]) == 3 && attperc > minimum {
+			if int(ch.Skillperfs[SKILL_MASENKO]) == 3 && attperc > minimum {
 				pcost(ch, attperc-0.05, 0)
 			} else {
 				pcost(ch, attperc, 0)
@@ -7829,9 +7828,9 @@ func do_kamehameha(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Direct it at who?\r\n"))
 		return
 	}
-	if (ch.Skillperfs[SKILL_KAMEHAMEHA]) == 1 {
+	if int(ch.Skillperfs[SKILL_KAMEHAMEHA]) == 1 {
 		attperc += 0.05
-	} else if (ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
+	} else if int(ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
 		minimum -= 0.05
 		if minimum <= 0.0 {
 			minimum = 0.01
@@ -7883,7 +7882,7 @@ func do_kamehameha(ch *char_data, argument *byte, cmd int, subcmd int) {
 		improve_skill(ch, SKILL_KAMEHAMEHA, 0)
 		index = check_def(vict)
 		prob = roll_accuracy(ch, skill, TRUE != 0)
-		if (ch.Skillperfs[SKILL_KAMEHAMEHA]) == 2 {
+		if int(ch.Skillperfs[SKILL_KAMEHAMEHA]) == 2 {
 			prob += 5
 		}
 		perc = chance_to_hit(ch)
@@ -7891,25 +7890,25 @@ func do_kamehameha(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Kamehameha Wave before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Kamehameha Wave before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -7918,7 +7917,7 @@ func do_kamehameha(ch *char_data, argument *byte, cmd int, subcmd int) {
 					ch.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
 				}
 				vict.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
-				if (ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 && attperc > minimum {
+				if int(ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 && attperc > minimum {
 					pcost(ch, attperc-0.05, 0)
 				} else {
 					pcost(ch, attperc, 0)
@@ -7931,7 +7930,7 @@ func do_kamehameha(ch *char_data, argument *byte, cmd int, subcmd int) {
 				} else if GET_SKILL(ch, SKILL_KAMEHAMEHA) >= 40 {
 					ch.Mana += int64((float64(ch.Max_mana) * attperc) * 0.05)
 				}
-				if (ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
+				if int(ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
 					WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 				}
 				return
@@ -7945,7 +7944,7 @@ func do_kamehameha(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		if prob < perc-20 {
 			if vict.Move > 0 {
-				if vict.Race == RACE_ANDROID && HAS_ARMS(vict) && GET_SKILL(vict, SKILL_ABSORB) > rand_number(1, 140) {
+				if int(vict.Race) == RACE_ANDROID && HAS_ARMS(vict) && GET_SKILL(vict, SKILL_ABSORB) > rand_number(1, 140) {
 					act(libc.CString("@C$N@W absorbs your ki attack and all your charged ki with $S hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@WYou absorb @C$n's@W ki attack and all $s charged ki with your hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@C$N@W absorbs @c$n's@W ki attack and all $s charged ki with $S hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -7959,7 +7958,7 @@ func do_kamehameha(ch *char_data, argument *byte, cmd int, subcmd int) {
 					} else {
 						vict.Charge += int64(amot)
 					}
-					if (ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -7970,12 +7969,12 @@ func do_kamehameha(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@WYou move quickly and block @C$n's@W kamehameha!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@C$N@W moves quickly and blocks @c$n's@W kamehameha!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 					improve_skill(vict, SKILL_BLOCK, 0)
-					if (ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
 					}
-					if (ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
+					if int(ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
 						WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 					}
 					pcost(vict, 0, vict.Max_hit/500)
@@ -7999,7 +7998,7 @@ func do_kamehameha(ch *char_data, argument *byte, cmd int, subcmd int) {
 					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dmg <= 95 {
 						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dmg += 5
 					}
-					if (ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -8012,7 +8011,7 @@ func do_kamehameha(ch *char_data, argument *byte, cmd int, subcmd int) {
 						ch.Mana += int64((float64(ch.Max_mana) * attperc) * 0.05)
 					}
 					improve_skill(vict, SKILL_DODGE, 0)
-					if (ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
+					if int(ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
 						WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 					}
 					hurt(0, 0, ch, vict, nil, 0, 1)
@@ -8021,7 +8020,7 @@ func do_kamehameha(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@WYou can't believe it but your kamehameha misses, flying through the air harmlessly!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@C$n@W fires a kamehameha at you, but misses!@n "), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@c$n@W fires a kamehameha at @C$N@W, but somehow misses!@n "), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-					if (ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 && attperc > minimum {
+					if int(ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 && attperc > minimum {
 						pcost(ch, attperc-0.05, 0)
 					} else {
 						pcost(ch, attperc, 0)
@@ -8033,7 +8032,7 @@ func do_kamehameha(ch *char_data, argument *byte, cmd int, subcmd int) {
 					} else if GET_SKILL(ch, SKILL_KAMEHAMEHA) >= 40 {
 						ch.Mana += int64((float64(ch.Max_mana) * attperc) * 0.05)
 					}
-					if (ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
+					if int(ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
 						WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 					}
 					hurt(0, 0, ch, vict, nil, 0, 1)
@@ -8043,7 +8042,7 @@ func do_kamehameha(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou can't believe it but your kamehameha misses, flying through the air harmlessly!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n@W fires a kamehameha at you, but misses!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$n@W fires a kamehameha at @C$N@W, but somehow misses!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				if (ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 && attperc > minimum {
+				if int(ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 && attperc > minimum {
 					pcost(ch, attperc-0.05, 0)
 				} else {
 					pcost(ch, attperc, 0)
@@ -8056,7 +8055,7 @@ func do_kamehameha(ch *char_data, argument *byte, cmd int, subcmd int) {
 					ch.Mana += int64((float64(ch.Max_mana) * attperc) * 0.05)
 				}
 			}
-			if (ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
+			if int(ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
 				WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 			}
 			hurt(0, 0, ch, vict, nil, 0, 1)
@@ -8073,7 +8072,7 @@ func do_kamehameha(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if (ch.Bonuses[BONUS_SOFT]) != 0 {
 					dmg *= int64(calc_critical(ch, 2))
 				}
-				if (ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
+				if int(ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
 					WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 				}
 				hurt(0, 0, ch, vict, nil, dmg, 1)
@@ -8083,7 +8082,7 @@ func do_kamehameha(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@C$n@W cups $s hands at $s side and begins to pool charged ki there. As the ki pools there $e begins to chant, '@BKaaaaa@bmeeee@Bhaaaaaaa@bmeeeee@W'. Suddenly $e brings $s hands forward facing you and shouts '@BHAAAA!!!@W' while releasing a bright blue kamehameha! It slams into your face and explodes!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@C$n@W cups $s hands at $s side and begins to pool charged ki there. As the ki pools there $e begins to chant, '@BKaaaaa@bmeeee@Bhaaaaaaa@bmeeeee@W'. Suddenly $e brings $s hands forward facing @c$N@W and shouts '@BHAAAA!!!@W' while releasing a bright blue kamehameha! It slams into $S face and explodes!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				dmg *= int64(calc_critical(ch, 0))
-				if (ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
+				if int(ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
 					WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 				}
 				hurt(0, 0, ch, vict, nil, dmg, 1)
@@ -8097,7 +8096,7 @@ func do_kamehameha(ch *char_data, argument *byte, cmd int, subcmd int) {
 				}
 				hurt(0, 0, ch, vict, nil, dmg, 1)
 				dam_eq_loc(vict, 4)
-				if (ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
+				if int(ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
 					WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 				}
 			case 4:
@@ -8105,7 +8104,7 @@ func do_kamehameha(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@C$n@W cups $s hands at $s side and begins to pool charged ki there. As the ki pools there $e begins to chant, '@BKaaaaa@bmeeee@Bhaaaaaaa@bmeeeee@W'. Suddenly $e brings $s hands forward facing you and shouts '@BHAAAA!!!@W' while releasing a bright blue kamehameha! It slams into your arm and explodes!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@C$n@W cups $s hands at $s side and begins to pool charged ki there. As the ki pools there $e begins to chant, '@BKaaaaa@bmeeee@Bhaaaaaaa@bmeeeee@W'. Suddenly $e brings $s hands forward facing @c$N@W and shouts '@BHAAAA!!!@W' while releasing a bright blue kamehameha! It slams into $S arm and explodes!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				dmg *= int64(calc_critical(ch, 1))
-				if (ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
+				if int(ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
 					WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 				}
 				hurt(0, 190, ch, vict, nil, dmg, 1)
@@ -8117,11 +8116,11 @@ func do_kamehameha(ch *char_data, argument *byte, cmd int, subcmd int) {
 				dmg *= int64(calc_critical(ch, 1))
 				hurt(1, 190, ch, vict, nil, dmg, 1)
 				dam_eq_loc(vict, 2)
-				if (ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
+				if int(ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
 					WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 				}
 			}
-			if (ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 && attperc > minimum {
+			if int(ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 && attperc > minimum {
 				pcost(ch, attperc-0.05, 0)
 			} else {
 				pcost(ch, attperc, 0)
@@ -8147,7 +8146,7 @@ func do_kamehameha(ch *char_data, argument *byte, cmd int, subcmd int) {
 		dmg /= 10
 		act(libc.CString("@WYou fire a kamehameha at $p@W!@n"), FALSE, ch, obj, nil, TO_CHAR)
 		act(libc.CString("@C$n@W fires a kamehameha at $p@W!@n"), FALSE, ch, obj, nil, TO_ROOM)
-		if (ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
+		if int(ch.Skillperfs[SKILL_KAMEHAMEHA]) == 3 {
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 		}
 		hurt(0, 0, ch, nil, obj, dmg, 0)
@@ -8247,19 +8246,19 @@ func do_renzo(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
@@ -8289,7 +8288,7 @@ func do_renzo(ch *char_data, argument *byte, cmd int, subcmd int) {
 		} else if master_pass == 2 {
 			send_to_char(ch, libc.CString("@GYour mastery of the technique has made your use of energy as efficient as possible!@n\r\n"))
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Renzokou Energy Dan before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Renzokou Energy Dan before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -8330,7 +8329,7 @@ func do_renzo(ch *char_data, argument *byte, cmd int, subcmd int) {
 			count = 100
 		}
 		if count > 0 {
-			if ch.Chclass == CLASS_NAIL {
+			if int(ch.Chclass) == CLASS_NAIL {
 				if GET_SKILL(ch, SKILL_RENZO) >= 100 {
 					count += 200
 				} else if GET_SKILL(ch, SKILL_RENZO) >= 60 {
@@ -8345,7 +8344,7 @@ func do_renzo(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		if count == 0 {
 			if vict.Move > 0 {
-				if vict.Race == RACE_ANDROID && HAS_ARMS(vict) && GET_SKILL(vict, SKILL_ABSORB) > rand_number(1, 140) {
+				if int(vict.Race) == RACE_ANDROID && HAS_ARMS(vict) && GET_SKILL(vict, SKILL_ABSORB) > rand_number(1, 140) {
 					act(libc.CString("@C$N@W absorbs your ki attack and all your charged ki with $S hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@WYou absorb @C$n's@W ki attack and all $s charged ki with your hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@C$N@W absorbs @c$n's@W ki attack and all $s charged ki with $S hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -8549,8 +8548,8 @@ func do_heeldrop(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	}
-	if ch.Chclass == CLASS_PICCOLO {
-		if (ch.Skills[SKILL_STYLE]) >= 75 {
+	if int(ch.Chclass) == CLASS_PICCOLO {
+		if int(ch.Skills[SKILL_STYLE]) >= 75 {
 			handle_cooldown(ch, 7)
 		} else {
 			handle_cooldown(ch, 9)
@@ -8570,8 +8569,8 @@ func do_heeldrop(ch *char_data, argument *byte, cmd int, subcmd int) {
 		index = check_def(vict)
 		prob = roll_accuracy(ch, skill, FALSE != 0)
 		perc = chance_to_hit(ch)
-		if ch.Chclass == CLASS_KABITO && !IS_NPC(ch) {
-			if (ch.Skills[SKILL_STYLE]) >= 75 {
+		if int(ch.Chclass) == CLASS_KABITO && !IS_NPC(ch) {
+			if int(ch.Skills[SKILL_STYLE]) >= 75 {
 				perc -= int(float64(perc) * 0.2)
 			}
 		}
@@ -8644,25 +8643,25 @@ func do_heeldrop(ch *char_data, argument *byte, cmd int, subcmd int) {
 			dge = rand_number(70, 100)
 		}
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Heeldrop before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Heeldrop before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -8797,7 +8796,7 @@ func do_heeldrop(ch *char_data, argument *byte, cmd int, subcmd int) {
 				hurt(1, 180, ch, vict, nil, dmg, 0)
 				dam_eq_loc(vict, 2)
 			}
-			if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && ch.Race != RACE_DEMON {
+			if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && int(ch.Race) != RACE_DEMON {
 				act(libc.CString("@c$N's@W fireshield burns your leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n's@W leg is burned by your fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$n's@W leg is burned by @C$N's@W fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -8813,7 +8812,7 @@ func do_heeldrop(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_char(vict, libc.CString("@RThey are burned!@n\r\n"))
 					ch.Affected_by[int(AFF_BURNED/32)] |= 1 << (int(AFF_BURNED % 32))
 				}
-			} else if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && ((ch.Bonuses[BONUS_FIREPROOF]) != 0 || ch.Race == RACE_DEMON) {
+			} else if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && ((ch.Bonuses[BONUS_FIREPROOF]) != 0 || int(ch.Race) == RACE_DEMON) {
 				send_to_char(vict, libc.CString("@RThey appear to be fireproof!@n\r\n"))
 			}
 			pcost(ch, 0, stcost)
@@ -8861,8 +8860,8 @@ func do_attack(ch *char_data, argument *byte, cmd int, subcmd int) {
 		arg       [2048]byte
 		attperc   float64 = 0
 	)
-	if ch.Race == RACE_ANDROID {
-		stcost += int64(float64(stcost) * .25)
+	if int(ch.Race) == RACE_ANDROID {
+		stcost *= int64(0.25)
 	}
 	one_argument(argument, &arg[0])
 	if (ch.Equipment[WEAR_WIELD1]) == nil && (ch.Equipment[WEAR_WIELD2]) == nil {
@@ -8877,7 +8876,7 @@ func do_attack(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if (ch.Equipment[WEAR_WIELD1]) != nil {
-		if ch.Race != RACE_ANDROID {
+		if int(ch.Race) != RACE_ANDROID {
 			stcost += (ch.Equipment[WEAR_WIELD1]).Weight
 		} else {
 			stcost += int64(float64((ch.Equipment[WEAR_WIELD1]).Weight) * 0.25)
@@ -8887,7 +8886,7 @@ func do_attack(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		wielded = 1
 	} else if (ch.Equipment[WEAR_WIELD2]) != nil {
-		if ch.Race != RACE_ANDROID {
+		if int(ch.Race) != RACE_ANDROID {
 			stcost += (ch.Equipment[WEAR_WIELD2]).Weight
 		} else {
 			stcost += int64(float64((ch.Equipment[WEAR_WIELD2]).Weight) * 0.25)
@@ -8993,10 +8992,10 @@ func do_attack(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 	}
 	if wielded == 2 && gun == FALSE {
-		if (ch.Skills[SKILL_DUALWIELD]) >= 100 {
+		if int(ch.Skills[SKILL_DUALWIELD]) >= 100 {
 			dualwield = 3
 			stcost -= int64(float64(stcost) * 0.3)
-		} else if (ch.Skills[SKILL_DUALWIELD]) >= 75 {
+		} else if int(ch.Skills[SKILL_DUALWIELD]) >= 75 {
 			dualwield = 2
 			stcost -= int64(float64(stcost) * 0.25)
 		}
@@ -9077,25 +9076,25 @@ func do_attack(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if PLR_FLAGGED(ch, PLR_THANDW) {
 			perc += 15
 		}
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your attack before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c attack before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -9200,7 +9199,7 @@ func do_attack(ch *char_data, argument *byte, cmd int, subcmd int) {
 					wlvl = 3
 				}
 			}
-			if wtype == 0 && ch.Race == RACE_KONATSU {
+			if wtype == 0 && int(ch.Race) == RACE_KONATSU {
 				dmg += int64(float64(dmg) * 0.25)
 			}
 			if PLR_FLAGGED(ch, PLR_THANDW) {
@@ -9208,11 +9207,11 @@ func do_attack(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 			if !IS_NPC(ch) {
 				if PLR_FLAGGED(ch, PLR_THANDW) && gun == FALSE && gun2 == FALSE {
-					if (ch.Skills[SKILL_TWOHAND]) >= 100 {
+					if int(ch.Skills[SKILL_TWOHAND]) >= 100 {
 						dmg += int64(float64(dmg) * 0.5)
-					} else if (ch.Skills[SKILL_TWOHAND]) >= 75 {
+					} else if int(ch.Skills[SKILL_TWOHAND]) >= 75 {
 						dmg += int64(float64(dmg) * 0.25)
-					} else if (ch.Skills[SKILL_TWOHAND]) >= 50 {
+					} else if int(ch.Skills[SKILL_TWOHAND]) >= 50 {
 						dmg += int64(float64(dmg) * 0.1)
 					}
 					if wtype == 3 {
@@ -9296,7 +9295,7 @@ func do_attack(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@c$n@W slashes @C$N@W across the face!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 					if !IS_NPC(ch) {
 						if PLR_FLAGGED(ch, PLR_THANDW) && gun == FALSE && gun2 == FALSE {
-							if (ch.Skills[SKILL_TWOHAND]) >= 100 {
+							if int(ch.Skills[SKILL_TWOHAND]) >= 100 {
 								var mult float64 = calc_critical(ch, 0)
 								mult += 1.0
 								dmg *= int64(mult)
@@ -9520,18 +9519,18 @@ func do_attack(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		if wielded == 2 && gun == FALSE || gun2 == FALSE && gun == FALSE {
 			if (ch.Equipment[WEAR_WIELD1]) != nil {
-				if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && ch.Race != RACE_DEMON {
+				if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && int(ch.Race) != RACE_DEMON {
 					act(libc.CString("@c$N's@W fireshield burns your weapon!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@C$n's@W weapon is burned by your fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@c$n's@W weapon is burned by @C$N's@W fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 					var damdam int = GET_SKILL(vict, SKILL_FIRESHIELD) / 2
 					hurt(0, 0, vict, nil, ch.Equipment[WEAR_WIELD1], int64(damdam), 0)
-				} else if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && ((ch.Bonuses[BONUS_FIREPROOF]) != 0 || ch.Race == RACE_DEMON) {
+				} else if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && ((ch.Bonuses[BONUS_FIREPROOF]) != 0 || int(ch.Race) == RACE_DEMON) {
 					send_to_char(vict, libc.CString("@RThey appear to be fireproof!@n\r\n"))
 				}
 				pcost(ch, 0, stcost)
 			} else {
-				if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && ch.Race != RACE_DEMON {
+				if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && int(ch.Race) != RACE_DEMON {
 					act(libc.CString("@c$N's@W fireshield burns your weapon!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@C$n's@W weapon is burned by your fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@c$n's@W weapon is burned by @C$N's@W fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -9561,7 +9560,7 @@ func do_attack(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 		}
 		if (ch.Equipment[WEAR_WIELD2]) != nil {
-			if GET_SKILL(ch, SKILL_DUALWIELD) == 0 && slot_count(ch)+1 <= ch.Skill_slots && (ch.Equipment[WEAR_WIELD2]).Type_flag != ITEM_LIGHT {
+			if GET_SKILL(ch, SKILL_DUALWIELD) == 0 && slot_count(ch)+1 <= ch.Skill_slots && int((ch.Equipment[WEAR_WIELD2]).Type_flag) != ITEM_LIGHT {
 				var numb int = rand_number(10, 15)
 				for {
 					ch.Skills[SKILL_DUALWIELD] = int8(numb)
@@ -9664,7 +9663,7 @@ func do_shogekiha(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	}
-	if ch.Chclass != CLASS_KABITO {
+	if int(ch.Chclass) != CLASS_KABITO {
 		handle_cooldown(ch, 5)
 	} else {
 		if GET_SKILL(ch, SKILL_SHOGEKIHA) < 100 {
@@ -9687,19 +9686,19 @@ func do_shogekiha(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
@@ -9718,7 +9717,7 @@ func do_shogekiha(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if master_chance >= master_roll {
 			master_pass = TRUE
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Shogekiha before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Shogekiha before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -9775,7 +9774,7 @@ func do_shogekiha(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		} else {
 			dmg = damtype(ch, 10, skill, attperc)
-			if ch.Chclass == CLASS_KABITO {
+			if int(ch.Chclass) == CLASS_KABITO {
 				if GET_SKILL(ch, SKILL_SHOGEKIHA) >= 100 {
 					ch.Mana += int64((float64(ch.Max_mana) * attperc) * 0.15)
 				} else if GET_SKILL(ch, SKILL_SHOGEKIHA) >= 60 {
@@ -9947,19 +9946,19 @@ func do_tsuihidan(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
@@ -9978,7 +9977,7 @@ func do_tsuihidan(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if master_chance >= master_roll {
 			master_pass = TRUE
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Tsuihidan before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Tsuihidan before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -10002,7 +10001,7 @@ func do_tsuihidan(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		if prob < perc-20 {
 			if vict.Move > 0 {
-				if vict.Race == RACE_ANDROID && HAS_ARMS(vict) && GET_SKILL(vict, SKILL_ABSORB) > rand_number(1, 140) {
+				if int(vict.Race) == RACE_ANDROID && HAS_ARMS(vict) && GET_SKILL(vict, SKILL_ABSORB) > rand_number(1, 140) {
 					act(libc.CString("@C$N@W absorbs your ki attack and all your charged ki with $S hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@WYou absorb @C$n's@W ki attack and all $s charged ki with your hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@C$N@W absorbs @c$n's@W ki attack and all $s charged ki with $S hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -10162,11 +10161,11 @@ func do_attack2(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var stcost int64 = ((ch.Max_hit / 150) + (ch.Equipment[WEAR_WIELD2]).Weight)
 	var kicost int64 = ((ch.Max_hit / 150) + (ch.Equipment[WEAR_WIELD2]).Weight)
 	_ = kicost
-	if ch.Race == RACE_ANDROID {
-		stcost += int64(float64(stcost) * .25)
+	if int(ch.Race) == RACE_ANDROID {
+		stcost *= int64(0.25)
 	}
-	if ch.Race == RACE_ANDROID && gun2 == TRUE {
-		kicost += int64(float64(kicost) * .25)
+	if int(ch.Race) == RACE_ANDROID && gun2 == TRUE {
+		kicost *= int64(0.25)
 	}
 	if can_grav(ch) == 0 {
 		return
@@ -10174,17 +10173,17 @@ func do_attack2(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if !HAS_ARMS(ch) {
 		send_to_char(ch, libc.CString("With what arms!?\r\n"))
 		return
-	} else if (ch.Limb_condition[0]) > 0 && (ch.Limb_condition[0]) < 50 && (ch.Limb_condition[1]) < 0 {
+	} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 && (ch.Limb_condition[2]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken right arm has damaged it more!@n\r\n"))
-		ch.Limb_condition[0] -= rand_number(3, 5)
-		if (ch.Limb_condition[0]) < 0 {
+		ch.Limb_condition[1] -= rand_number(3, 5)
+		if (ch.Limb_condition[1]) < 0 {
 			act(libc.CString("@RYour right arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's right arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
-	} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 && (ch.Limb_condition[0]) < 0 {
+	} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 && (ch.Limb_condition[1]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken left arm has damaged it more!@n\r\n"))
-		ch.Limb_condition[1] -= rand_number(3, 5)
-		if (ch.Limb_condition[1]) < 0 {
+		ch.Limb_condition[2] -= rand_number(3, 5)
+		if (ch.Limb_condition[2]) < 0 {
 			act(libc.CString("@RYour left arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's left arm has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
@@ -10235,13 +10234,13 @@ func do_attack2(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 	}
 	if gun2 == FALSE {
-		if (ch.Skills[SKILL_DUALWIELD]) >= 100 {
+		if int(ch.Skills[SKILL_DUALWIELD]) >= 100 {
 			dualwield = 3
 			stcost -= int64(float64(stcost) * 0.3)
-		} else if (ch.Skills[SKILL_DUALWIELD]) >= 75 {
+		} else if int(ch.Skills[SKILL_DUALWIELD]) >= 75 {
 			dualwield = 2
 			stcost -= int64(float64(stcost) * 0.25)
-		} else if (ch.Skills[SKILL_DUALWIELD]) >= 50 {
+		} else if int(ch.Skills[SKILL_DUALWIELD]) >= 50 {
 			dualwield = 1
 			stcost -= int64(float64(stcost) * 0.25)
 		}
@@ -10308,25 +10307,25 @@ func do_attack2(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 		}
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your attack before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c attack before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -10438,7 +10437,7 @@ func do_attack2(ch *char_data, argument *byte, cmd int, subcmd int) {
 					wlvl = 3
 				}
 			}
-			if wtype == 0 && ch.Race == RACE_KONATSU {
+			if wtype == 0 && int(ch.Race) == RACE_KONATSU {
 				dmg += int64(float64(dmg) * 0.25)
 			}
 			var hitspot int = 1
@@ -10705,13 +10704,13 @@ func do_attack2(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 		}
 		if gun2 == FALSE {
-			if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && ch.Race != RACE_DEMON {
+			if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && int(ch.Race) != RACE_DEMON {
 				act(libc.CString("@c$N's@W fireshield burns your weapon!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n's@W weapon is burned by your fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$n's@W weapon is burned by @C$N's@W fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				var damdam int = GET_SKILL(vict, SKILL_FIRESHIELD) / 2
 				hurt(0, 0, vict, nil, ch.Equipment[WEAR_WIELD2], int64(damdam), 0)
-			} else if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && ((ch.Bonuses[BONUS_FIREPROOF]) != 0 || ch.Race == RACE_DEMON) {
+			} else if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && ((ch.Bonuses[BONUS_FIREPROOF]) != 0 || int(ch.Race) == RACE_DEMON) {
 				send_to_char(vict, libc.CString("@RThey appear to be fireproof!@n\r\n"))
 			}
 			pcost(ch, 0, stcost)
@@ -10754,7 +10753,7 @@ func do_bite(ch *char_data, argument *byte, cmd int, subcmd int) {
 		attperc float64 = 0
 	)
 	one_argument(argument, &arg[0])
-	if !IS_NPC(ch) && (ch.Race != RACE_MUTANT || (ch.Genome[0]) != 7 && (ch.Genome[1]) != 7) {
+	if !IS_NPC(ch) && (int(ch.Race) != RACE_MUTANT || (ch.Genome[0]) != 7 && (ch.Genome[1]) != 7) {
 		send_to_char(ch, libc.CString("You don't want to put that in your mouth, you don't know where it has been!\r\n"))
 		return
 	}
@@ -10802,25 +10801,25 @@ func do_bite(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your bite before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c bite before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -10941,7 +10940,7 @@ func do_bite(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@R$N@r was poisoned by your bite!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@rYou were poisoned by the bite!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					vict.Poisonby = ch
-					var duration int = int((ch.Aff_abils.Intel / 50) + 1)
+					var duration int = (int(ch.Aff_abils.Intel) / 50) + 1
 					assign_affect(vict, AFF_POISON, SKILL_POISON, duration, 0, 0, 0, 0, 0, 0)
 				}
 			}
@@ -11065,25 +11064,25 @@ func do_kiball(ch *char_data, argument *byte, cmd int, subcmd int) {
 			mult_count = rand_number(2, 3)
 		}
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your kiball before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c kiball before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -11109,7 +11108,7 @@ func do_kiball(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		if prob < perc-20 {
 			if vict.Move > 0 {
-				if vict.Race == RACE_ANDROID && HAS_ARMS(vict) && GET_SKILL(vict, SKILL_ABSORB) > rand_number(1, 140) {
+				if int(vict.Race) == RACE_ANDROID && HAS_ARMS(vict) && GET_SKILL(vict, SKILL_ABSORB) > rand_number(1, 140) {
 					act(libc.CString("@C$N@W absorbs your ki attack and all your charged ki with $S hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@WYou absorb @C$n's@W ki attack and all $s charged ki with your hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@C$N@W absorbs @c$n's@W ki attack and all $s charged ki with $S hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -11343,25 +11342,25 @@ func do_beam(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your beam before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c beam before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -11383,7 +11382,7 @@ func do_beam(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		if prob < perc-20 {
 			if vict.Move > 0 {
-				if vict.Race == RACE_ANDROID && HAS_ARMS(vict) && GET_SKILL(vict, SKILL_ABSORB) > rand_number(1, 140) {
+				if int(vict.Race) == RACE_ANDROID && HAS_ARMS(vict) && GET_SKILL(vict, SKILL_ABSORB) > rand_number(1, 140) {
 					act(libc.CString("@C$N@W absorbs your ki attack and all your charged ki with $S hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@WYou absorb @C$n's@W ki attack and all $s charged ki with your hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@C$N@W absorbs @c$n's@W ki attack and all $s charged ki with $S hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -11629,7 +11628,7 @@ func do_kiblast(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	}
-	if ch.Race != RACE_ANDROID || GET_SKILL(ch, SKILL_KIBLAST) < 100 {
+	if int(ch.Race) != RACE_ANDROID || GET_SKILL(ch, SKILL_KIBLAST) < 100 {
 		handle_cooldown(ch, 5)
 	}
 	if vict != nil {
@@ -11648,19 +11647,19 @@ func do_kiblast(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
@@ -11679,7 +11678,7 @@ func do_kiblast(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if mastery <= chance {
 			master_pass = TRUE
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your kiblast before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c kiblast before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -11701,7 +11700,7 @@ func do_kiblast(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		if prob < perc-20 {
 			if vict.Move > 0 {
-				if vict.Race == RACE_ANDROID && HAS_ARMS(vict) && GET_SKILL(vict, SKILL_ABSORB) > rand_number(1, 140) {
+				if int(vict.Race) == RACE_ANDROID && HAS_ARMS(vict) && GET_SKILL(vict, SKILL_ABSORB) > rand_number(1, 140) {
 					act(libc.CString("@C$N@W absorbs your ki attack and all your charged ki with $S hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@WYou absorb @C$n's@W ki attack and all $s charged ki with your hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@C$N@W absorbs @c$n's@W ki attack and all $s charged ki with $S hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -11773,7 +11772,7 @@ func do_kiblast(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		} else {
 			dmg = damtype(ch, 9, skill, attperc)
-			if ch.Race == RACE_ANDROID {
+			if int(ch.Race) == RACE_ANDROID {
 				if GET_SKILL(ch, SKILL_KIBLAST) >= 100 {
 					dmg += int64(float64(dmg) * 0.15)
 				} else if GET_SKILL(ch, SKILL_KIBLAST) >= 60 {
@@ -11916,8 +11915,8 @@ func do_slam(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	}
-	if ch.Chclass == CLASS_BARDOCK {
-		if (ch.Skills[SKILL_STYLE]) >= 75 {
+	if int(ch.Chclass) == CLASS_BARDOCK {
+		if int(ch.Skills[SKILL_STYLE]) >= 75 {
 			handle_cooldown(ch, 7)
 		} else {
 			handle_cooldown(ch, 9)
@@ -11937,8 +11936,8 @@ func do_slam(ch *char_data, argument *byte, cmd int, subcmd int) {
 		index = check_def(vict)
 		prob = roll_accuracy(ch, skill, FALSE != 0)
 		perc = chance_to_hit(ch)
-		if ch.Chclass == CLASS_KABITO && !IS_NPC(ch) {
-			if (ch.Skills[SKILL_STYLE]) >= 75 {
+		if int(ch.Chclass) == CLASS_KABITO && !IS_NPC(ch) {
+			if int(ch.Skills[SKILL_STYLE]) >= 75 {
 				perc -= int(float64(perc) * 0.2)
 			}
 		}
@@ -11946,25 +11945,25 @@ func do_slam(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your slam before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c slam before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -12063,7 +12062,7 @@ func do_slam(ch *char_data, argument *byte, cmd int, subcmd int) {
 						vict.Altitude = 0
 					}
 					vict.Position = POS_SLEEPING
-				} else if (vict.Position == POS_STANDING || vict.Position == POS_FIGHTING) && !AFF_FLAGGED(vict, AFF_KNOCKED) {
+				} else if (int(vict.Position) == POS_STANDING || int(vict.Position) == POS_FIGHTING) && !AFF_FLAGGED(vict, AFF_KNOCKED) {
 					vict.Position = POS_SITTING
 				}
 				if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Dmg <= 95 && !ROOM_FLAGGED(vict.In_room, ROOM_SPACE) {
@@ -12213,7 +12212,7 @@ func do_slam(ch *char_data, argument *byte, cmd int, subcmd int) {
 				hurt(1, 195, ch, vict, nil, dmg, 0)
 				dam_eq_loc(vict, 2)
 			}
-			if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && ch.Race != RACE_DEMON {
+			if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && int(ch.Race) != RACE_DEMON {
 				act(libc.CString("@c$N's@W fireshield burns your hands!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n's@W hands are burned by your fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$n's@W hands are burned by @C$N's@W fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -12229,7 +12228,7 @@ func do_slam(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_char(vict, libc.CString("@RThey are burned!@n\r\n"))
 					ch.Affected_by[int(AFF_BURNED/32)] |= 1 << (int(AFF_BURNED % 32))
 				}
-			} else if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && ((ch.Bonuses[BONUS_FIREPROOF]) != 0 || ch.Race == RACE_DEMON) {
+			} else if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && ((ch.Bonuses[BONUS_FIREPROOF]) != 0 || int(ch.Race) == RACE_DEMON) {
 				send_to_char(vict, libc.CString("@RThey appear to be fireproof!@n\r\n"))
 			}
 			pcost(ch, 0, stcost)
@@ -12309,8 +12308,8 @@ func do_uppercut(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	}
-	if ch.Chclass == CLASS_FRIEZA {
-		if (ch.Skills[SKILL_STYLE]) >= 75 {
+	if int(ch.Chclass) == CLASS_FRIEZA {
+		if int(ch.Skills[SKILL_STYLE]) >= 75 {
 			handle_cooldown(ch, 5)
 		} else {
 			handle_cooldown(ch, 7)
@@ -12330,8 +12329,8 @@ func do_uppercut(ch *char_data, argument *byte, cmd int, subcmd int) {
 		index = check_def(vict)
 		prob = roll_accuracy(ch, skill, FALSE != 0)
 		perc = chance_to_hit(ch)
-		if ch.Chclass == CLASS_KABITO && !IS_NPC(ch) {
-			if (ch.Skills[SKILL_STYLE]) >= 75 {
+		if int(ch.Chclass) == CLASS_KABITO && !IS_NPC(ch) {
+			if int(ch.Skills[SKILL_STYLE]) >= 75 {
 				perc -= int(float64(perc) * 0.2)
 			}
 		}
@@ -12339,25 +12338,25 @@ func do_uppercut(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your uppercut before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c uppercut before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -12479,7 +12478,7 @@ func do_uppercut(ch *char_data, argument *byte, cmd int, subcmd int) {
 				hurt(1, 195, ch, vict, nil, dmg, 0)
 				dam_eq_loc(vict, 2)
 			}
-			if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && ch.Race != RACE_DEMON {
+			if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && int(ch.Race) != RACE_DEMON {
 				act(libc.CString("@c$N's@W fireshield burns your hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n's@W hand is burned by your fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$n's@W hand is burned by @C$N's@W fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -12495,7 +12494,7 @@ func do_uppercut(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_char(vict, libc.CString("@RThey are burned!@n\r\n"))
 					ch.Affected_by[int(AFF_BURNED/32)] |= 1 << (int(AFF_BURNED % 32))
 				}
-			} else if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && ((ch.Bonuses[BONUS_FIREPROOF]) != 0 || ch.Race == RACE_DEMON) {
+			} else if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && ((ch.Bonuses[BONUS_FIREPROOF]) != 0 || int(ch.Race) == RACE_DEMON) {
 				send_to_char(vict, libc.CString("@RThey appear to be fireproof!@n\r\n"))
 			}
 			pcost(ch, 0, stcost)
@@ -12585,8 +12584,8 @@ func do_tailwhip(ch *char_data, argument *byte, cmd int, subcmd int) {
 		index = check_def(vict)
 		prob = roll_accuracy(ch, skill, FALSE != 0)
 		perc = chance_to_hit(ch)
-		if ch.Chclass == CLASS_KABITO && !IS_NPC(ch) {
-			if (ch.Skills[SKILL_STYLE]) >= 75 {
+		if int(ch.Chclass) == CLASS_KABITO && !IS_NPC(ch) {
+			if int(ch.Skills[SKILL_STYLE]) >= 75 {
 				perc -= int(float64(perc) * 0.2)
 			}
 		}
@@ -12594,25 +12593,25 @@ func do_tailwhip(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				ch.Combo -= 1
 				ch.Combhits = 0
@@ -12691,7 +12690,7 @@ func do_tailwhip(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou spin to swing your tail and slam it into @c$N@W's body!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n@W spins to swing $s tail and slams it into YOUR body!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@C$n@W spins to swing $s tail and slams it into @c$N@W's body!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				if !AFF_FLAGGED(vict, AFF_FLYING) && vict.Position == POS_STANDING && rand_number(1, 8) >= 7 {
+				if !AFF_FLAGGED(vict, AFF_FLYING) && int(vict.Position) == POS_STANDING && rand_number(1, 8) >= 7 {
 					handle_knockdown(vict)
 				}
 				if (ch.Bonuses[BONUS_SOFT]) != 0 {
@@ -12703,7 +12702,7 @@ func do_tailwhip(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou flip forward and slam your tail into the top of @c$N@W's head brutally!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n@W flips forward and slams $s tail into the top of YOUR head brutally!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@C$n@W flips forward and slams $s tail into the top of @c$N@W's head brutally!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				if !AFF_FLAGGED(vict, AFF_FLYING) && vict.Position == POS_STANDING && rand_number(1, 8) >= 6 {
+				if !AFF_FLAGGED(vict, AFF_FLYING) && int(vict.Position) == POS_STANDING && rand_number(1, 8) >= 6 {
 					handle_knockdown(vict)
 				}
 				dmg *= int64(calc_critical(ch, 0))
@@ -12713,7 +12712,7 @@ func do_tailwhip(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou swing your tail and manage to slam it into @c$N@W's gut!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n@W swings $s tail and manages to slam it into YOUR gut!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@C$n@W swings $s tail and manages to slam it into @c$N@W's gut!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				if !AFF_FLAGGED(vict, AFF_FLYING) && vict.Position == POS_STANDING && rand_number(1, 8) >= 7 {
+				if !AFF_FLAGGED(vict, AFF_FLYING) && int(vict.Position) == POS_STANDING && rand_number(1, 8) >= 7 {
 					handle_knockdown(vict)
 				}
 				if (ch.Bonuses[BONUS_SOFT]) != 0 {
@@ -12784,17 +12783,17 @@ func do_roundhouse(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	if limb_ok(ch, 1) == 0 {
 		return
-	} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 && (ch.Limb_condition[3]) < 0 {
+	} else if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 && (ch.Limb_condition[4]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken right leg has damaged it more!@n\r\n"))
-		ch.Limb_condition[2] -= rand_number(3, 5)
-		if (ch.Limb_condition[2]) < 0 {
+		ch.Limb_condition[3] -= rand_number(3, 5)
+		if (ch.Limb_condition[3]) < 0 {
 			act(libc.CString("@RYour right leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's right leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
-	} else if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 && (ch.Limb_condition[2]) < 0 {
+	} else if (ch.Limb_condition[4]) > 0 && (ch.Limb_condition[4]) < 50 && (ch.Limb_condition[3]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken left leg has damaged it more!@n\r\n"))
-		ch.Limb_condition[3] -= rand_number(3, 5)
-		if (ch.Limb_condition[3]) < 0 {
+		ch.Limb_condition[4] -= rand_number(3, 5)
+		if (ch.Limb_condition[4]) < 0 {
 			act(libc.CString("@RYour left leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's left leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
@@ -12823,8 +12822,8 @@ func do_roundhouse(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	}
-	if ch.Chclass == CLASS_NAIL {
-		if (ch.Skills[SKILL_STYLE]) >= 75 {
+	if int(ch.Chclass) == CLASS_NAIL {
+		if int(ch.Skills[SKILL_STYLE]) >= 75 {
 			handle_cooldown(ch, 5)
 		} else {
 			handle_cooldown(ch, 7)
@@ -12844,8 +12843,8 @@ func do_roundhouse(ch *char_data, argument *byte, cmd int, subcmd int) {
 		index = check_def(vict)
 		prob = roll_accuracy(ch, skill, FALSE != 0)
 		perc = chance_to_hit(ch)
-		if ch.Chclass == CLASS_KABITO && !IS_NPC(ch) {
-			if (ch.Skills[SKILL_STYLE]) >= 75 {
+		if int(ch.Chclass) == CLASS_KABITO && !IS_NPC(ch) {
+			if int(ch.Skills[SKILL_STYLE]) >= 75 {
 				perc -= int(float64(perc) * 0.2)
 			}
 		}
@@ -12853,25 +12852,25 @@ func do_roundhouse(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your roundhouse before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c roundhouse before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -12959,7 +12958,7 @@ func do_roundhouse(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou spin a fierce roundhouse into @C$N's@W gut!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n@W spins a fierce roundhouse into your gut!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$n@W spins a fierce roundhouse into @C$N's@W gut!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				if !AFF_FLAGGED(vict, AFF_FLYING) && vict.Position == POS_STANDING && rand_number(1, 8) >= 7 {
+				if !AFF_FLAGGED(vict, AFF_FLYING) && int(vict.Position) == POS_STANDING && rand_number(1, 8) >= 7 {
 					handle_knockdown(vict)
 				}
 				dmg *= int64(calc_critical(ch, 0))
@@ -12989,7 +12988,7 @@ func do_roundhouse(ch *char_data, argument *byte, cmd int, subcmd int) {
 				hurt(1, 195, ch, vict, nil, dmg, 0)
 				dam_eq_loc(vict, 2)
 			}
-			if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && ch.Race != RACE_DEMON {
+			if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && int(ch.Race) != RACE_DEMON {
 				act(libc.CString("@c$N's@W fireshield burns your leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n's@W leg is burned by your fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$n's@W leg is burned by @C$N's@W fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -13005,7 +13004,7 @@ func do_roundhouse(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_char(vict, libc.CString("@RThey are burned!@n\r\n"))
 					ch.Affected_by[int(AFF_BURNED/32)] |= 1 << (int(AFF_BURNED % 32))
 				}
-			} else if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && ((ch.Bonuses[BONUS_FIREPROOF]) != 0 || ch.Race == RACE_DEMON) {
+			} else if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && ((ch.Bonuses[BONUS_FIREPROOF]) != 0 || int(ch.Race) == RACE_DEMON) {
 				send_to_char(vict, libc.CString("@RThey appear to be fireproof!@n\r\n"))
 			}
 			pcost(ch, 0, stcost)
@@ -13098,8 +13097,8 @@ func do_elbow(ch *char_data, argument *byte, cmd int, subcmd int) {
 		index = check_def(vict)
 		prob = roll_accuracy(ch, skill, FALSE != 0)
 		perc = chance_to_hit(ch)
-		if ch.Chclass == CLASS_KABITO && !IS_NPC(ch) {
-			if (ch.Skills[SKILL_STYLE]) >= 75 {
+		if int(ch.Chclass) == CLASS_KABITO && !IS_NPC(ch) {
+			if int(ch.Skills[SKILL_STYLE]) >= 75 {
 				perc -= int(float64(perc) * 0.2)
 			}
 		}
@@ -13107,25 +13106,25 @@ func do_elbow(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your elbow before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c elbow before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -13240,7 +13239,7 @@ func do_elbow(ch *char_data, argument *byte, cmd int, subcmd int) {
 				hurt(0, 0, ch, vict, nil, dmg, 0)
 				dam_eq_loc(vict, 1)
 			}
-			if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && ch.Race != RACE_DEMON {
+			if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && int(ch.Race) != RACE_DEMON {
 				act(libc.CString("@c$N's@W fireshield burns your elbow!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n's@W elbow is burned by your fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$n's@W elbow is burned by @C$N's@W fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -13256,7 +13255,7 @@ func do_elbow(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_char(vict, libc.CString("@RThey are burned!@n\r\n"))
 					ch.Affected_by[int(AFF_BURNED/32)] |= 1 << (int(AFF_BURNED % 32))
 				}
-			} else if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && ((ch.Bonuses[BONUS_FIREPROOF]) != 0 || ch.Race == RACE_DEMON) {
+			} else if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && ((ch.Bonuses[BONUS_FIREPROOF]) != 0 || int(ch.Race) == RACE_DEMON) {
 				send_to_char(vict, libc.CString("@RThey appear to be fireproof!@n\r\n"))
 			}
 			pcost(ch, 0, stcost)
@@ -13304,17 +13303,17 @@ func do_kick(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	if limb_ok(ch, 1) == 0 {
 		return
-	} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 && (ch.Limb_condition[3]) < 0 {
+	} else if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 && (ch.Limb_condition[4]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken right leg has damaged it more!@n\r\n"))
-		ch.Limb_condition[2] -= rand_number(3, 5)
-		if (ch.Limb_condition[2]) < 0 {
+		ch.Limb_condition[3] -= rand_number(3, 5)
+		if (ch.Limb_condition[3]) < 0 {
 			act(libc.CString("@RYour right leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's right leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
-	} else if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 && (ch.Limb_condition[2]) < 0 {
+	} else if (ch.Limb_condition[4]) > 0 && (ch.Limb_condition[4]) < 50 && (ch.Limb_condition[3]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken left leg has damaged it more!@n\r\n"))
-		ch.Limb_condition[3] -= rand_number(3, 5)
-		if (ch.Limb_condition[3]) < 0 {
+		ch.Limb_condition[4] -= rand_number(3, 5)
+		if (ch.Limb_condition[4]) < 0 {
 			act(libc.CString("@RYour left leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's left leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
@@ -13356,8 +13355,8 @@ func do_kick(ch *char_data, argument *byte, cmd int, subcmd int) {
 		index = check_def(vict)
 		prob = roll_accuracy(ch, skill, FALSE != 0)
 		perc = chance_to_hit(ch)
-		if ch.Chclass == CLASS_KABITO && !IS_NPC(ch) {
-			if (ch.Skills[SKILL_STYLE]) >= 75 {
+		if int(ch.Chclass) == CLASS_KABITO && !IS_NPC(ch) {
+			if int(ch.Skills[SKILL_STYLE]) >= 75 {
 				perc -= int(float64(perc) * 0.2)
 			}
 		}
@@ -13365,25 +13364,25 @@ func do_kick(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your kick before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c kick before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -13499,7 +13498,7 @@ func do_kick(ch *char_data, argument *byte, cmd int, subcmd int) {
 				hurt(0, 0, ch, vict, nil, dmg, 0)
 				dam_eq_loc(vict, 1)
 			}
-			if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && ch.Race != RACE_DEMON {
+			if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && int(ch.Race) != RACE_DEMON {
 				act(libc.CString("@c$N's@W fireshield burns your leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n's@W leg is burned by your fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$n's@W leg is burned by @C$N's@W fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -13515,7 +13514,7 @@ func do_kick(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_char(vict, libc.CString("@RThey are burned!@n\r\n"))
 					ch.Affected_by[int(AFF_BURNED/32)] |= 1 << (int(AFF_BURNED % 32))
 				}
-			} else if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && ((ch.Bonuses[BONUS_FIREPROOF]) != 0 || ch.Race == RACE_DEMON) {
+			} else if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && ((ch.Bonuses[BONUS_FIREPROOF]) != 0 || int(ch.Race) == RACE_DEMON) {
 				send_to_char(vict, libc.CString("@RThey appear to be fireproof!@n\r\n"))
 			}
 			pcost(ch, 0, stcost)
@@ -13563,17 +13562,17 @@ func do_knee(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	if limb_ok(ch, 1) == 0 {
 		return
-	} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 && (ch.Limb_condition[3]) < 0 {
+	} else if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 && (ch.Limb_condition[4]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken right leg has damaged it more!@n\r\n"))
-		ch.Limb_condition[2] -= rand_number(3, 5)
-		if (ch.Limb_condition[2]) < 0 {
+		ch.Limb_condition[3] -= rand_number(3, 5)
+		if (ch.Limb_condition[3]) < 0 {
 			act(libc.CString("@RYour right leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's right leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
-	} else if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 && (ch.Limb_condition[2]) < 0 {
+	} else if (ch.Limb_condition[4]) > 0 && (ch.Limb_condition[4]) < 50 && (ch.Limb_condition[3]) < 0 {
 		send_to_char(ch, libc.CString("Using your broken left leg has damaged it more!@n\r\n"))
-		ch.Limb_condition[3] -= rand_number(3, 5)
-		if (ch.Limb_condition[3]) < 0 {
+		ch.Limb_condition[4] -= rand_number(3, 5)
+		if (ch.Limb_condition[4]) < 0 {
 			act(libc.CString("@RYour left leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@R's left leg has fallen apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
@@ -13615,8 +13614,8 @@ func do_knee(ch *char_data, argument *byte, cmd int, subcmd int) {
 		index = check_def(vict)
 		prob = roll_accuracy(ch, skill, FALSE != 0)
 		perc = chance_to_hit(ch)
-		if ch.Chclass == CLASS_KABITO && !IS_NPC(ch) {
-			if (ch.Skills[SKILL_STYLE]) >= 75 {
+		if int(ch.Chclass) == CLASS_KABITO && !IS_NPC(ch) {
+			if int(ch.Skills[SKILL_STYLE]) >= 75 {
 				perc -= int(float64(perc) * 0.2)
 			}
 		}
@@ -13624,25 +13623,25 @@ func do_knee(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your knee strike before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c knee strike before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -13757,7 +13756,7 @@ func do_knee(ch *char_data, argument *byte, cmd int, subcmd int) {
 				hurt(0, 0, ch, vict, nil, dmg, 0)
 				dam_eq_loc(vict, 1)
 			}
-			if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && ch.Race != RACE_DEMON {
+			if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && int(ch.Race) != RACE_DEMON {
 				act(libc.CString("@c$N's@W fireshield burns your knee!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n's@W knee is burned by your fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$n's@W knee is burned by @C$N's@W fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -13773,7 +13772,7 @@ func do_knee(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_char(vict, libc.CString("@RThey are burned!@n\r\n"))
 					ch.Affected_by[int(AFF_BURNED/32)] |= 1 << (int(AFF_BURNED % 32))
 				}
-			} else if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && ((ch.Bonuses[BONUS_FIREPROOF]) != 0 || ch.Race == RACE_DEMON) {
+			} else if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && ((ch.Bonuses[BONUS_FIREPROOF]) != 0 || int(ch.Race) == RACE_DEMON) {
 				send_to_char(vict, libc.CString("@RThey appear to be fireproof!@n\r\n"))
 			}
 			pcost(ch, 0, stcost)
@@ -13863,8 +13862,8 @@ func do_punch(ch *char_data, argument *byte, cmd int, subcmd int) {
 		index = check_def(vict)
 		prob = roll_accuracy(ch, skill, FALSE != 0)
 		perc = chance_to_hit(ch)
-		if ch.Chclass == CLASS_KABITO && !IS_NPC(ch) {
-			if (ch.Skills[SKILL_STYLE]) >= 75 {
+		if int(ch.Chclass) == CLASS_KABITO && !IS_NPC(ch) {
+			if int(ch.Skills[SKILL_STYLE]) >= 75 {
 				perc -= int(float64(perc) * 0.2)
 			}
 		}
@@ -13872,25 +13871,25 @@ func do_punch(ch *char_data, argument *byte, cmd int, subcmd int) {
 		avo = index / 4
 		handle_defense(vict, &pry, &blk, &dge)
 		prob -= avo
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your punch before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c punch before reappearing!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -14005,7 +14004,7 @@ func do_punch(ch *char_data, argument *byte, cmd int, subcmd int) {
 				hurt(0, 0, ch, vict, nil, dmg, 0)
 				dam_eq_loc(vict, 2)
 			}
-			if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && ch.Race != RACE_DEMON {
+			if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && (ch.Bonuses[BONUS_FIREPROOF]) == 0 && int(ch.Race) != RACE_DEMON {
 				act(libc.CString("@c$N's@W fireshield burns your hand!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n's@W hand is burned by your fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$n's@W hand is burned by @C$N's@W fireshield!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -14021,7 +14020,7 @@ func do_punch(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_char(vict, libc.CString("@RThey are burned!@n\r\n"))
 					ch.Affected_by[int(AFF_BURNED/32)] |= 1 << (int(AFF_BURNED % 32))
 				}
-			} else if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && ((ch.Bonuses[BONUS_FIREPROOF]) != 0 || ch.Race == RACE_DEMON) {
+			} else if vict.Hit > 0 && !AFF_FLAGGED(vict, AFF_SPIRIT) && AFF_FLAGGED(vict, AFF_FIRESHIELD) && ((ch.Bonuses[BONUS_FIREPROOF]) != 0 || int(ch.Race) == RACE_DEMON) {
 				send_to_char(vict, libc.CString("@RThey appear to be fireproof!@n\r\n"))
 			}
 			pcost(ch, 0, stcost)
@@ -14072,10 +14071,10 @@ func do_charge(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Charge, yes. How much percent though?\r\n"))
 		send_to_char(ch, libc.CString("[ 1 - 100 | cancel | release]\r\n"))
 		return
-	} else if C.strcasecmp(libc.CString("release"), &arg[0]) == 0 && (PLR_FLAGGED(ch, PLR_CHARGE) && ch.Charge <= 0) {
+	} else if libc.StrCaseCmp(libc.CString("release"), &arg[0]) == 0 && (PLR_FLAGGED(ch, PLR_CHARGE) && ch.Charge <= 0) {
 		send_to_char(ch, libc.CString("Try cancel instead, you have nothing charged up yet!\r\n"))
 		return
-	} else if C.strcasecmp(libc.CString("release"), &arg[0]) == 0 && (PLR_FLAGGED(ch, PLR_CHARGE) && ch.Charge > 0) {
+	} else if libc.StrCaseCmp(libc.CString("release"), &arg[0]) == 0 && (PLR_FLAGGED(ch, PLR_CHARGE) && ch.Charge > 0) {
 		send_to_char(ch, libc.CString("You stop charging and release your pent up energy.\r\n"))
 		switch rand_number(1, 3) {
 		case 1:
@@ -14093,9 +14092,9 @@ func do_charge(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		ch.Charge = 0
 		ch.Chargeto = 0
-		ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(^(1 << (int(PLR_CHARGE % 32))))
+		ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(int32(^(1 << (int(PLR_CHARGE % 32)))))
 		return
-	} else if C.strcasecmp(libc.CString("release"), &arg[0]) == 0 && ch.Charge > 0 {
+	} else if libc.StrCaseCmp(libc.CString("release"), &arg[0]) == 0 && ch.Charge > 0 {
 		send_to_char(ch, libc.CString("You release your pent up energy.\r\n"))
 		switch rand_number(1, 3) {
 		case 1:
@@ -14114,7 +14113,7 @@ func do_charge(ch *char_data, argument *byte, cmd int, subcmd int) {
 		ch.Charge = 0
 		ch.Chargeto = 0
 		return
-	} else if C.strcasecmp(libc.CString("cancel"), &arg[0]) == 0 && PLR_FLAGGED(ch, PLR_CHARGE) {
+	} else if libc.StrCaseCmp(libc.CString("cancel"), &arg[0]) == 0 && PLR_FLAGGED(ch, PLR_CHARGE) {
 		send_to_char(ch, libc.CString("You stop charging.\r\n"))
 		switch rand_number(1, 3) {
 		case 1:
@@ -14126,10 +14125,10 @@ func do_charge(ch *char_data, argument *byte, cmd int, subcmd int) {
 		default:
 			act(libc.CString("$n@w's aura disappears.@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
-		ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(^(1 << (int(PLR_CHARGE % 32))))
+		ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(int32(^(1 << (int(PLR_CHARGE % 32)))))
 		ch.Chargeto = 0
 		return
-	} else if C.strcasecmp(libc.CString("cancel"), &arg[0]) == 0 && !PLR_FLAGGED(ch, PLR_CHARGE) {
+	} else if libc.StrCaseCmp(libc.CString("cancel"), &arg[0]) == 0 && !PLR_FLAGGED(ch, PLR_CHARGE) {
 		send_to_char(ch, libc.CString("You are not even charging!\r\n"))
 		return
 	} else if ch.Mana < ch.Max_mana/100 {
@@ -14184,7 +14183,7 @@ func do_charge(ch *char_data, argument *byte, cmd int, subcmd int) {
 			act(&bloom[0], TRUE, ch, nil, nil, TO_ROOM)
 			ch.Chargeto = int64(((float64(ch.Max_mana) * 0.01) * float64(amt)) + 1)
 			ch.Charge += 1
-			ch.Act[int(PLR_CHARGE/32)] |= bitvector_t(1 << (int(PLR_CHARGE % 32)))
+			ch.Act[int(PLR_CHARGE/32)] |= bitvector_t(int32(1 << (int(PLR_CHARGE % 32))))
 		}
 	} else if amt < 1 && (func() room_vnum {
 		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
@@ -14200,7 +14199,7 @@ func do_charge(ch *char_data, argument *byte, cmd int, subcmd int) {
 }
 func do_powerup(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if IS_NPC(ch) {
-		ch.Act[int(MOB_POWERUP/32)] |= bitvector_t(1 << (int(MOB_POWERUP % 32)))
+		ch.Act[int(MOB_POWERUP/32)] |= bitvector_t(int32(1 << (int(MOB_POWERUP % 32))))
 		if ch.Max_hit < 50000 {
 			act(libc.CString("@RYou begin to powerup, and air billows outward around you!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@R$n begins to powerup, and air billows outward around $m!@n"), TRUE, ch, nil, nil, TO_ROOM)
@@ -14229,7 +14228,7 @@ func do_powerup(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("@WYou are concentrating too much on your aura to be able to power up."))
 		return
 	}
-	if ch.Race == RACE_ANDROID {
+	if int(ch.Race) == RACE_ANDROID {
 		send_to_char(ch, libc.CString("@WYou are an android, you do not powerup.@n"))
 		return
 	}
@@ -14239,7 +14238,7 @@ func do_powerup(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	if PLR_FLAGGED(ch, PLR_POWERUP) {
 		send_to_char(ch, libc.CString("@WYou stop powering up.@n"))
-		ch.Act[int(PLR_POWERUP/32)] &= bitvector_t(^(1 << (int(PLR_POWERUP % 32))))
+		ch.Act[int(PLR_POWERUP/32)] &= bitvector_t(int32(^(1 << (int(PLR_POWERUP % 32)))))
 		return
 	}
 	if ch.Hit >= ch.Max_hit {
@@ -14273,7 +14272,7 @@ func do_powerup(ch *char_data, argument *byte, cmd int, subcmd int) {
 			act(libc.CString("@RYou begin to powerup, and the very air around you begins to burn!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@R$n begins to powerup, and the very air around $m begins to burn!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		}
-		ch.Act[int(PLR_POWERUP/32)] |= bitvector_t(1 << (int(PLR_POWERUP % 32)))
+		ch.Act[int(PLR_POWERUP/32)] |= bitvector_t(int32(1 << (int(PLR_POWERUP % 32))))
 		return
 	}
 }
@@ -14399,7 +14398,7 @@ func do_flee(ch *char_data, argument *byte, cmd int, subcmd int) {
 	_ = was_fighting
 	var arg [2048]byte
 	one_argument(argument, &arg[0])
-	if ch.Position < POS_RESTING {
+	if int(ch.Position) < POS_RESTING {
 		send_to_char(ch, libc.CString("You are in pretty bad shape, unable to flee!\r\n"))
 		return
 	}

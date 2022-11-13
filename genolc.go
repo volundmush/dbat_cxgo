@@ -52,7 +52,7 @@ func genolc_checkstring(d *descriptor_data, arg *byte) int {
 	return TRUE
 }
 func str_udup(txt *byte) *byte {
-	return C.strdup(func() *byte {
+	return libc.StrDup(func() *byte {
 		if txt != nil && *txt != 0 {
 			return txt
 		}
@@ -238,7 +238,7 @@ func sprintascii(out *byte, bits bitvector_t) int {
 		flags *byte = libc.CString("abcdefghijklmnopqrstuvwxyzABCDEF")
 	)
 	for i = 0; *(*byte)(unsafe.Add(unsafe.Pointer(flags), i)) != '\x00'; i++ {
-		if bits&bitvector_t(1<<i) != 0 {
+		if int(bits)&(1<<i) != 0 {
 			*(*byte)(unsafe.Add(unsafe.Pointer(out), func() int {
 				p := &j
 				x := *p

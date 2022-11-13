@@ -329,42 +329,42 @@ func feat_is_available(ch *char_data, featnum int, iarg int, sarg *byte) int {
 	if featnum > NUM_FEATS_DEFINED {
 		return FALSE
 	}
-	if (ch.Feats[featnum]) != 0 && feat_list[featnum].Can_stack == 0 {
+	if int(ch.Feats[featnum]) != 0 && feat_list[featnum].Can_stack == 0 {
 		return FALSE
 	}
 	switch featnum {
 	case FEAT_ARMOR_PROFICIENCY_HEAVY:
-		if (ch.Feats[FEAT_ARMOR_PROFICIENCY_MEDIUM]) != 0 {
+		if int(ch.Feats[FEAT_ARMOR_PROFICIENCY_MEDIUM]) != 0 {
 			return TRUE
 		}
 		return FALSE
 	case FEAT_ARMOR_PROFICIENCY_MEDIUM:
-		if (ch.Feats[FEAT_ARMOR_PROFICIENCY_LIGHT]) != 0 {
+		if int(ch.Feats[FEAT_ARMOR_PROFICIENCY_LIGHT]) != 0 {
 			return TRUE
 		}
 		return FALSE
 	case FEAT_AUGMENT_SUMMONING:
-		if (ch.Feats[FEAT_SPELL_FOCUS]) != 0 {
+		if int(ch.Feats[FEAT_SPELL_FOCUS]) != 0 {
 			return TRUE
 		}
 		return FALSE
 	case FEAT_IMPROVED_SHIELD_BASH:
-		if (ch.Feats[FEAT_ARMOR_PROFICIENCY_SHIELD]) != 0 {
+		if int(ch.Feats[FEAT_ARMOR_PROFICIENCY_SHIELD]) != 0 {
 			return TRUE
 		}
 		return FALSE
 	case FEAT_DODGE:
-		if ch.Aff_abils.Dex >= 13 {
+		if int(ch.Aff_abils.Dex) >= 13 {
 			return TRUE
 		}
 		return FALSE
 	case FEAT_COMBAT_EXPERTISE:
-		if ch.Aff_abils.Intel >= 13 {
+		if int(ch.Aff_abils.Intel) >= 13 {
 			return TRUE
 		}
 		return FALSE
 	case FEAT_DIEHARD:
-		if (ch.Feats[FEAT_ENDURANCE]) != 0 {
+		if int(ch.Feats[FEAT_ENDURANCE]) != 0 {
 			return TRUE
 		}
 		return FALSE
@@ -373,12 +373,12 @@ func feat_is_available(ch *char_data, featnum int, iarg int, sarg *byte) int {
 	case FEAT_IMPROVED_OVERRUN:
 		fallthrough
 	case FEAT_IMPROVED_BULL_RUSH:
-		if (ch.Feats[FEAT_POWER_ATTACK]) != 0 {
+		if int(ch.Feats[FEAT_POWER_ATTACK]) != 0 {
 			return TRUE
 		}
 		return FALSE
 	case FEAT_MOBILITY:
-		if (ch.Feats[FEAT_DODGE]) != 0 {
+		if int(ch.Feats[FEAT_DODGE]) != 0 {
 			return TRUE
 		}
 		return FALSE
@@ -397,23 +397,23 @@ func feat_is_available(ch *char_data, featnum int, iarg int, sarg *byte) int {
 	case FEAT_IMPROVED_DISARM:
 		fallthrough
 	case FEAT_IMPROVED_TRIP:
-		if (ch.Feats[FEAT_COMBAT_EXPERTISE]) != 0 {
+		if int(ch.Feats[FEAT_COMBAT_EXPERTISE]) != 0 {
 			return TRUE
 		}
 		return FALSE
 	case FEAT_IMPROVED_GRAPPLE:
 		fallthrough
 	case FEAT_DEFLECT_ARROWS:
-		if (ch.Feats[FEAT_IMPROVED_UNARMED_STRIKE]) != 0 {
-			if ch.Aff_abils.Dex >= 13 {
+		if int(ch.Feats[FEAT_IMPROVED_UNARMED_STRIKE]) != 0 {
+			if int(ch.Aff_abils.Dex) >= 13 {
 				return TRUE
 			}
 		}
 		return FALSE
 	case FEAT_STUNNING_FIST:
-		if ch.Aff_abils.Dex >= 13 {
-			if ch.Aff_abils.Wis >= 13 {
-				if (ch.Feats[FEAT_IMPROVED_UNARMED_STRIKE]) != 0 {
+		if int(ch.Aff_abils.Dex) >= 13 {
+			if int(ch.Aff_abils.Wis) >= 13 {
+				if int(ch.Feats[FEAT_IMPROVED_UNARMED_STRIKE]) != 0 {
 					if ch.Accuracy >= 8 {
 						return TRUE
 					}
@@ -422,13 +422,13 @@ func feat_is_available(ch *char_data, featnum int, iarg int, sarg *byte) int {
 		}
 		return FALSE
 	case FEAT_POWER_ATTACK:
-		if ch.Aff_abils.Str >= 13 {
+		if int(ch.Aff_abils.Str) >= 13 {
 			return TRUE
 		}
 		return FALSE
 	case FEAT_IMPROVED_PRECISE_SHOT:
-		if ch.Aff_abils.Dex >= 19 {
-			if (ch.Feats[FEAT_POINT_BLANK_SHOT]) != 0 {
+		if int(ch.Aff_abils.Dex) >= 19 {
+			if int(ch.Feats[FEAT_POINT_BLANK_SHOT]) != 0 {
 				if ch.Accuracy >= 11 {
 					return TRUE
 				}
@@ -436,17 +436,17 @@ func feat_is_available(ch *char_data, featnum int, iarg int, sarg *byte) int {
 		}
 		return FALSE
 	case FEAT_CLEAVE:
-		if (ch.Feats[FEAT_POWER_ATTACK]) != 0 {
+		if int(ch.Feats[FEAT_POWER_ATTACK]) != 0 {
 			return TRUE
 		}
 		return FALSE
 	case FEAT_TWO_WEAPON_FIGHTING:
-		if ch.Aff_abils.Dex >= 15 {
+		if int(ch.Aff_abils.Dex) >= 15 {
 			return TRUE
 		}
 		return FALSE
 	case FEAT_IMPROVED_TWO_WEAPON_FIGHTING:
-		if ch.Aff_abils.Dex >= 17 && (ch.Feats[FEAT_TWO_WEAPON_FIGHTING]) != 0 && ch.Accuracy >= 6 {
+		if int(ch.Aff_abils.Dex) >= 17 && int(ch.Feats[FEAT_TWO_WEAPON_FIGHTING]) != 0 && ch.Accuracy >= 6 {
 			return TRUE
 		}
 		return FALSE
@@ -459,7 +459,7 @@ func feat_is_available(ch *char_data, featnum int, iarg int, sarg *byte) int {
 		}
 		return FALSE
 	case FEAT_FAR_SHOT:
-		if (ch.Feats[FEAT_POINT_BLANK_SHOT]) != 0 {
+		if int(ch.Feats[FEAT_POINT_BLANK_SHOT]) != 0 {
 			return TRUE
 		}
 		return FALSE
@@ -488,15 +488,15 @@ func feat_is_available(ch *char_data, featnum int, iarg int, sarg *byte) int {
 		if iarg == 0 {
 			return TRUE
 		}
-		if is_proficient_with_weapon(ch, iarg) != 0 && IS_SET_AR(ch.Combat_feats[CFEAT_WEAPON_FOCUS][:], bitvector_t(iarg)) {
+		if is_proficient_with_weapon(ch, iarg) != 0 && IS_SET_AR(ch.Combat_feats[CFEAT_WEAPON_FOCUS][:], bitvector_t(int32(iarg))) {
 			return TRUE
 		}
 		return FALSE
 	case FEAT_WHIRLWIND_ATTACK:
-		if (ch.Feats[FEAT_COMBAT_EXPERTISE]) != 0 {
-			if (ch.Feats[FEAT_DODGE]) != 0 {
-				if (ch.Feats[FEAT_MOBILITY]) != 0 {
-					if (ch.Feats[FEAT_SPRING_ATTACK]) != 0 {
+		if int(ch.Feats[FEAT_COMBAT_EXPERTISE]) != 0 {
+			if int(ch.Feats[FEAT_DODGE]) != 0 {
+				if int(ch.Feats[FEAT_MOBILITY]) != 0 {
+					if int(ch.Feats[FEAT_SPRING_ATTACK]) != 0 {
 						if ch.Accuracy >= 4 {
 							return TRUE
 						}
@@ -512,7 +512,7 @@ func feat_is_available(ch *char_data, featnum int, iarg int, sarg *byte) int {
 		if iarg == 0 {
 			return TRUE
 		}
-		if is_proficient_with_weapon(ch, iarg) != 0 && IS_SET_AR(ch.Combat_feats[CFEAT_GREATER_WEAPON_FOCUS][:], bitvector_t(iarg)) && IS_SET_AR(ch.Combat_feats[CFEAT_WEAPON_SPECIALIZATION][:], bitvector_t(iarg)) && IS_SET_AR(ch.Combat_feats[CFEAT_WEAPON_FOCUS][:], bitvector_t(iarg)) {
+		if is_proficient_with_weapon(ch, iarg) != 0 && IS_SET_AR(ch.Combat_feats[CFEAT_GREATER_WEAPON_FOCUS][:], bitvector_t(int32(iarg))) && IS_SET_AR(ch.Combat_feats[CFEAT_WEAPON_SPECIALIZATION][:], bitvector_t(int32(iarg))) && IS_SET_AR(ch.Combat_feats[CFEAT_WEAPON_FOCUS][:], bitvector_t(int32(iarg))) {
 			return TRUE
 		}
 		return FALSE
@@ -613,19 +613,19 @@ func feat_is_available(ch *char_data, featnum int, iarg int, sarg *byte) int {
 func is_proficient_with_armor(ch *char_data, cmarmor_type int) int {
 	switch cmarmor_type {
 	case ARMOR_TYPE_LIGHT:
-		if (ch.Feats[FEAT_ARMOR_PROFICIENCY_LIGHT]) != 0 {
+		if int(ch.Feats[FEAT_ARMOR_PROFICIENCY_LIGHT]) != 0 {
 			return TRUE
 		}
 	case ARMOR_TYPE_MEDIUM:
-		if (ch.Feats[FEAT_ARMOR_PROFICIENCY_MEDIUM]) != 0 {
+		if int(ch.Feats[FEAT_ARMOR_PROFICIENCY_MEDIUM]) != 0 {
 			return TRUE
 		}
 	case ARMOR_TYPE_HEAVY:
-		if (ch.Feats[FEAT_ARMOR_PROFICIENCY_HEAVY]) != 0 {
+		if int(ch.Feats[FEAT_ARMOR_PROFICIENCY_HEAVY]) != 0 {
 			return TRUE
 		}
 	case ARMOR_TYPE_SHIELD:
-		if (ch.Feats[FEAT_ARMOR_PROFICIENCY_SHIELD]) != 0 {
+		if int(ch.Feats[FEAT_ARMOR_PROFICIENCY_SHIELD]) != 0 {
 			return TRUE
 		}
 	}
@@ -652,7 +652,7 @@ func is_proficient_with_weapon(ch *char_data, cmweapon_type int) int {
 	case WEAPON_TYPE_THROWN:
 		fallthrough
 	case WEAPON_TYPE_CLUB:
-		if (ch.Feats[FEAT_SIMPLE_WEAPON_PROFICIENCY]) != 0 {
+		if int(ch.Feats[FEAT_SIMPLE_WEAPON_PROFICIENCY]) != 0 {
 			return TRUE
 		}
 	case WEAPON_TYPE_SHORTBOW:
@@ -680,7 +680,7 @@ func is_proficient_with_weapon(ch *char_data, cmweapon_type int) int {
 	case WEAPON_TYPE_BASTARD_SWORD:
 		fallthrough
 	case WEAPON_TYPE_AXE:
-		if (ch.Feats[FEAT_MARTIAL_WEAPON_PROFICIENCY]) != 0 {
+		if int(ch.Feats[FEAT_MARTIAL_WEAPON_PROFICIENCY]) != 0 {
 			return TRUE
 		}
 	default:
@@ -693,7 +693,7 @@ func compare_feats(x unsafe.Pointer, y unsafe.Pointer) int {
 		a int = *(*int)(x)
 		b int = *(*int)(y)
 	)
-	return C.strcmp(feat_list[a].Name, feat_list[b].Name)
+	return libc.StrCmp(feat_list[a].Name, feat_list[b].Name)
 }
 func sort_feats() {
 	var a int
@@ -716,7 +716,7 @@ func list_feats_known(ch *char_data) {
 		buf2       [64936]byte
 	)
 	if ch.Player_specials.Feat_points == 0 {
-		C.strcpy(&buf[0], libc.CString("\r\nYou cannot learn any feats right now.\r\n"))
+		libc.StrCpy(&buf[0], libc.CString("\r\nYou cannot learn any feats right now.\r\n"))
 	} else {
 		stdio.Sprintf(&buf[0], "\r\nYou can learn %d feat%s right now.\r\n", ch.Player_specials.Feat_points, func() string {
 			if ch.Player_specials.Feat_points == 1 {
@@ -725,27 +725,27 @@ func list_feats_known(ch *char_data) {
 			return "s"
 		}())
 	}
-	stdio.Sprintf(&buf[C.strlen(&buf[0])], "\r\n")
-	stdio.Sprintf(&buf[C.strlen(&buf[0])], "@WFeats Known@n\r\n")
-	stdio.Sprintf(&buf[C.strlen(&buf[0])], "@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@n\r\n")
-	stdio.Sprintf(&buf[C.strlen(&buf[0])], "\r\n")
-	C.strcpy(&buf2[0], &buf[0])
+	stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "\r\n")
+	stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "@WFeats Known@n\r\n")
+	stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@n\r\n")
+	stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "\r\n")
+	libc.StrCpy(&buf2[0], &buf[0])
 	for sortpos = 1; sortpos <= NUM_FEATS_DEFINED; sortpos++ {
-		if C.strlen(&buf2[0]) > int64(int(MAX_STRING_LENGTH-32)) {
+		if libc.StrLen(&buf2[0]) > int(MAX_STRING_LENGTH-32) {
 			break
 		}
 		i = feat_sort_info[sortpos]
-		if (ch.Feats[i]) != 0 && feat_list[i].In_game != 0 {
+		if int(ch.Feats[i]) != 0 && feat_list[i].In_game != 0 {
 			switch i {
 			case FEAT_SKILL_FOCUS:
-				stdio.Sprintf(&buf[0], "%-20s (+%d points overall)\r\n", feat_list[i].Name, (ch.Feats[i])*2)
-				C.strcat(&buf2[0], &buf[0])
+				stdio.Sprintf(&buf[0], "%-20s (+%d points overall)\r\n", feat_list[i].Name, int(ch.Feats[i])*2)
+				libc.StrCat(&buf2[0], &buf[0])
 				none_shown = FALSE
 			case FEAT_TOUGHNESS:
 				temp_value = int(ch.Feats[FEAT_TOUGHNESS])
 				added_hp = temp_value * 3
 				stdio.Sprintf(&buf[0], "%-20s (+%d hp)\r\n", feat_list[i].Name, added_hp)
-				C.strcat(&buf2[0], &buf[0])
+				libc.StrCat(&buf2[0], &buf[0])
 				none_shown = FALSE
 			case FEAT_IMPROVED_CRITICAL:
 				fallthrough
@@ -759,22 +759,22 @@ func list_feats_known(ch *char_data) {
 				fallthrough
 			case FEAT_GREATER_WEAPON_SPECIALIZATION:
 				for j = 0; j <= MAX_WEAPON_TYPES; j++ {
-					if IS_SET_AR(ch.Combat_feats[feat_to_subfeat(i)][:], bitvector_t(j)) {
+					if IS_SET_AR(ch.Combat_feats[feat_to_subfeat(i)][:], bitvector_t(int32(j))) {
 						stdio.Sprintf(&buf[0], "%-20s (%s)\r\n", feat_list[i].Name, weapon_type[j])
-						C.strcat(&buf2[0], &buf[0])
+						libc.StrCat(&buf2[0], &buf[0])
 						none_shown = FALSE
 					}
 				}
 			default:
 				stdio.Sprintf(&buf[0], "%-20s\r\n", feat_list[i].Name)
-				C.strcat(&buf2[0], &buf[0])
+				libc.StrCat(&buf2[0], &buf[0])
 				none_shown = FALSE
 			}
 		}
 	}
 	if none_shown != 0 {
 		stdio.Sprintf(&buf[0], "You do not know any feats at this time.\r\n")
-		C.strcat(&buf2[0], &buf[0])
+		libc.StrCat(&buf2[0], &buf[0])
 	}
 	page_string(ch.Desc, &buf2[0], 1)
 }
@@ -787,7 +787,7 @@ func list_feats_available(ch *char_data) {
 		none_shown int = TRUE
 	)
 	if ch.Player_specials.Feat_points == 0 {
-		C.strcpy(&buf[0], libc.CString("\r\nYou cannot learn any feats right now.\r\n"))
+		libc.StrCpy(&buf[0], libc.CString("\r\nYou cannot learn any feats right now.\r\n"))
 	} else {
 		stdio.Sprintf(&buf[0], "\r\nYou can learn %d feat%s right now.\r\n", ch.Player_specials.Feat_points, func() string {
 			if ch.Player_specials.Feat_points == 1 {
@@ -796,26 +796,26 @@ func list_feats_available(ch *char_data) {
 			return "s"
 		}())
 	}
-	stdio.Sprintf(&buf[C.strlen(&buf[0])], "\r\n")
-	stdio.Sprintf(&buf[C.strlen(&buf[0])], "@WFeats Available to Learn@n\r\n")
-	stdio.Sprintf(&buf[C.strlen(&buf[0])], "@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@n\r\n")
-	stdio.Sprintf(&buf[C.strlen(&buf[0])], "\r\n")
-	C.strcpy(&buf2[0], &buf[0])
+	stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "\r\n")
+	stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "@WFeats Available to Learn@n\r\n")
+	stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@n\r\n")
+	stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "\r\n")
+	libc.StrCpy(&buf2[0], &buf[0])
 	for sortpos = 1; sortpos <= NUM_FEATS_DEFINED; sortpos++ {
 		i = feat_sort_info[sortpos]
-		if C.strlen(&buf2[0]) >= int64(int(MAX_STRING_LENGTH-32)) {
-			C.strcat(&buf2[0], libc.CString("**OVERFLOW**\r\n"))
+		if libc.StrLen(&buf2[0]) >= int(MAX_STRING_LENGTH-32) {
+			libc.StrCat(&buf2[0], libc.CString("**OVERFLOW**\r\n"))
 			break
 		}
 		if feat_is_available(ch, i, 0, nil) != 0 && feat_list[i].In_game != 0 && feat_list[i].Can_learn != 0 {
 			stdio.Sprintf(&buf[0], "%-20s\r\n", feat_list[i].Name)
-			C.strcat(&buf2[0], &buf[0])
+			libc.StrCat(&buf2[0], &buf[0])
 			none_shown = FALSE
 		}
 	}
 	if none_shown != 0 {
 		stdio.Sprintf(&buf[0], "There are no feats available for you to learn at this point.\r\n")
-		C.strcat(&buf2[0], &buf[0])
+		libc.StrCat(&buf2[0], &buf[0])
 	}
 	page_string(ch.Desc, &buf2[0], 1)
 }
@@ -828,7 +828,7 @@ func list_feats_complete(ch *char_data) {
 		none_shown int = TRUE
 	)
 	if ch.Player_specials.Feat_points == 0 {
-		C.strcpy(&buf[0], libc.CString("\r\nYou cannot learn any feats right now.\r\n"))
+		libc.StrCpy(&buf[0], libc.CString("\r\nYou cannot learn any feats right now.\r\n"))
 	} else {
 		stdio.Sprintf(&buf[0], "\r\nYou can learn %d feat%s right now.\r\n", ch.Player_specials.Feat_points, func() string {
 			if ch.Player_specials.Feat_points == 1 {
@@ -837,26 +837,26 @@ func list_feats_complete(ch *char_data) {
 			return "s"
 		}())
 	}
-	stdio.Sprintf(&buf[C.strlen(&buf[0])], "\r\n")
-	stdio.Sprintf(&buf[C.strlen(&buf[0])], "@WComplete Feat List@n\r\n")
-	stdio.Sprintf(&buf[C.strlen(&buf[0])], "@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@n\r\n")
-	stdio.Sprintf(&buf[C.strlen(&buf[0])], "\r\n")
-	C.strcpy(&buf2[0], &buf[0])
+	stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "\r\n")
+	stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "@WComplete Feat List@n\r\n")
+	stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@B~@R~@n\r\n")
+	stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "\r\n")
+	libc.StrCpy(&buf2[0], &buf[0])
 	for sortpos = 1; sortpos <= NUM_FEATS_DEFINED; sortpos++ {
 		i = feat_sort_info[sortpos]
-		if C.strlen(&buf2[0]) >= int64(int(MAX_STRING_LENGTH-32)) {
-			C.strcat(&buf2[0], libc.CString("**OVERFLOW**\r\n"))
+		if libc.StrLen(&buf2[0]) >= int(MAX_STRING_LENGTH-32) {
+			libc.StrCat(&buf2[0], libc.CString("**OVERFLOW**\r\n"))
 			break
 		}
 		if feat_list[i].In_game != 0 {
 			stdio.Sprintf(&buf[0], "%-20s\r\n", feat_list[i].Name)
-			C.strcat(&buf2[0], &buf[0])
+			libc.StrCat(&buf2[0], &buf[0])
 			none_shown = FALSE
 		}
 	}
 	if none_shown != 0 {
 		stdio.Sprintf(&buf[0], "There are currently no feats in the game.\r\n")
-		C.strcat(&buf2[0], &buf[0])
+		libc.StrCat(&buf2[0], &buf[0])
 	}
 	page_string(ch.Desc, &buf2[0], 1)
 }

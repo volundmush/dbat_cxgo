@@ -18,7 +18,7 @@ type header_data_type struct {
 	Next_block int
 	From       int
 	To         int
-	Mail_time  int64
+	Mail_time  libc.Time
 }
 type header_block_type_d struct {
 	Block_type  int
@@ -121,45 +121,45 @@ func find_char_in_index(searchee int) *mail_index_type {
 	return tmp
 }
 func write_to_file(buf unsafe.Pointer, size int, filepos int) {
-	var mail_file *C.FILE
+	var mail_file *stdio.File
 	if filepos%BLOCK_SIZE != 0 {
 		basic_mud_log(libc.CString("SYSERR: Mail system -- fatal error #2!!! (invalid file position %ld)"), filepos)
 		no_mail = TRUE
 		return
 	}
-	if (func() *C.FILE {
-		mail_file = (*C.FILE)(unsafe.Pointer(stdio.FOpen(LIB_ETC, "r+b")))
+	if (func() *stdio.File {
+		mail_file = stdio.FOpen(LIB_ETC, "r+b")
 		return mail_file
 	}()) == nil {
 		basic_mud_log(libc.CString("SYSERR: Unable to open mail file '%s'."), LIB_ETC)
 		no_mail = TRUE
 		return
 	}
-	fseek(mail_file, filepos, int(stdio.SEEK_SET))
-	fwrite(buf, uint64(size), 1, mail_file)
-	fseek(mail_file, 0, int(stdio.SEEK_END))
-	file_end_pos = ftell(mail_file)
-	C.fclose(mail_file)
+	mail_file.Seek(int64(filepos), stdio.SEEK_SET)
+	mail_file.WriteN((*byte)(buf), size, 1)
+	mail_file.Seek(0, stdio.SEEK_END)
+	file_end_pos = int(mail_file.Tell())
+	mail_file.Close()
 	return
 }
 func read_from_file(buf unsafe.Pointer, size int, filepos int) {
-	var mail_file *C.FILE
+	var mail_file *stdio.File
 	if filepos%BLOCK_SIZE != 0 {
 		basic_mud_log(libc.CString("SYSERR: Mail system -- fatal error #3!!! (invalid filepos read %ld)"), filepos)
 		no_mail = TRUE
 		return
 	}
-	if (func() *C.FILE {
-		mail_file = (*C.FILE)(unsafe.Pointer(stdio.FOpen(LIB_ETC, "r+b")))
+	if (func() *stdio.File {
+		mail_file = stdio.FOpen(LIB_ETC, "r+b")
 		return mail_file
 	}()) == nil {
 		basic_mud_log(libc.CString("SYSERR: Unable to open mail file '%s'."), LIB_ETC)
 		no_mail = TRUE
 		return
 	}
-	fseek(mail_file, filepos, int(stdio.SEEK_SET))
-	fread(buf, uint64(size), 1, mail_file)
-	C.fclose(mail_file)
+	mail_file.Seek(int64(filepos), stdio.SEEK_SET)
+	mail_file.ReadN((*byte)(buf), size, 1)
+	mail_file.Close()
 	return
 }
 func index_mail(id_to_index int, pos int) {
@@ -188,20 +188,20 @@ func index_mail(id_to_index int, pos int) {
 }
 func scan_file() int {
 	var (
-		mail_file      *C.FILE
+		mail_file      *stdio.File
 		next_block     header_block_type
 		total_messages int = 0
 		block_num      int = 0
 	)
-	if (func() *C.FILE {
-		mail_file = (*C.FILE)(unsafe.Pointer(stdio.FOpen(LIB_ETC, "rb")))
+	if (func() *stdio.File {
+		mail_file = stdio.FOpen(LIB_ETC, "rb")
 		return mail_file
 	}()) == nil {
 		basic_mud_log(libc.CString("   Mail file non-existant... creating new file."))
 		touch(libc.CString(LIB_ETC))
 		return 1
 	}
-	for fread(unsafe.Pointer(&next_block), uint64(unsafe.Sizeof(header_block_type{})), 1, mail_file) != 0 {
+	for int(mail_file.ReadN((*byte)(unsafe.Pointer(&next_block)), int(unsafe.Sizeof(header_block_type{})), 1)) != 0 {
 		if next_block.Block_type == int(-1) {
 			index_mail(next_block.Header_data.To, block_num*BLOCK_SIZE)
 			total_messages++
@@ -212,8 +212,8 @@ func scan_file() int {
 		}
 		block_num++
 	}
-	file_end_pos = ftell(mail_file)
-	C.fclose(mail_file)
+	file_end_pos = int(mail_file.Tell())
+	mail_file.Close()
 	basic_mud_log(libc.CString("   %ld bytes read."), file_end_pos)
 	if file_end_pos%BLOCK_SIZE != 0 {
 		basic_mud_log(libc.CString("SYSERR: Error booting mail system -- Mail file corrupt!"))
@@ -234,7 +234,7 @@ func store_mail(to int, from int, message_pointer *byte) {
 		target_address int
 		msg_txt        *byte = message_pointer
 		bytes_written  int
-		total_length   int = int(C.strlen(message_pointer))
+		total_length   int = libc.StrLen(message_pointer)
 	)
 	if unsafe.Sizeof(header_block_type{}) != unsafe.Sizeof(data_block_type{}) || BLOCK_SIZE != unsafe.Sizeof(header_block_type{}) {
 		core_dump_real(libc.CString(__FILE__), __LINE__)
@@ -249,13 +249,13 @@ func store_mail(to int, from int, message_pointer *byte) {
 	header.Header_data.Next_block = -2
 	header.Header_data.From = from
 	header.Header_data.To = to
-	header.Header_data.Mail_time = C.time(nil)
-	C.strncpy(&header.Txt[0], msg_txt, uint64(BLOCK_SIZE-unsafe.Sizeof(int(0))-unsafe.Sizeof(header_data_type{})-unsafe.Sizeof(int8(0))))
+	header.Header_data.Mail_time = libc.GetTime(nil)
+	libc.StrNCpy(&header.Txt[0], msg_txt, int(BLOCK_SIZE-unsafe.Sizeof(int(0))-unsafe.Sizeof(header_data_type{})-unsafe.Sizeof(int8(0))))
 	header.Txt[BLOCK_SIZE-unsafe.Sizeof(int(0))-unsafe.Sizeof(header_data_type{})-unsafe.Sizeof(int8(0))] = '\x00'
 	target_address = pop_free_list()
 	index_mail(to, target_address)
 	write_to_file(unsafe.Pointer(&header), BLOCK_SIZE, target_address)
-	if C.strlen(msg_txt) <= int64(BLOCK_SIZE-unsafe.Sizeof(int(0))-unsafe.Sizeof(header_data_type{})-unsafe.Sizeof(int8(0))) {
+	if libc.StrLen(msg_txt) <= int(BLOCK_SIZE-unsafe.Sizeof(int(0))-unsafe.Sizeof(header_data_type{})-unsafe.Sizeof(int8(0))) {
 		return
 	}
 	bytes_written = int(BLOCK_SIZE - unsafe.Sizeof(int(0)) - unsafe.Sizeof(header_data_type{}) - unsafe.Sizeof(int8(0)))
@@ -266,22 +266,22 @@ func store_mail(to int, from int, message_pointer *byte) {
 	write_to_file(unsafe.Pointer(&header), BLOCK_SIZE, last_address)
 	*(*data_block_type)(unsafe.Pointer((*byte)(unsafe.Pointer(&data)))) = data_block_type{}
 	data.Block_type = -2
-	C.strncpy(&data.Txt[0], msg_txt, uint64(BLOCK_SIZE-unsafe.Sizeof(int(0))-unsafe.Sizeof(int8(0))))
+	libc.StrNCpy(&data.Txt[0], msg_txt, int(BLOCK_SIZE-unsafe.Sizeof(int(0))-unsafe.Sizeof(int8(0))))
 	data.Txt[BLOCK_SIZE-unsafe.Sizeof(int(0))-unsafe.Sizeof(int8(0))] = '\x00'
 	write_to_file(unsafe.Pointer(&data), BLOCK_SIZE, target_address)
-	bytes_written += int(C.strlen(&data.Txt[0]))
-	msg_txt = (*byte)(unsafe.Add(unsafe.Pointer(msg_txt), C.strlen(&data.Txt[0])))
+	bytes_written += libc.StrLen(&data.Txt[0])
+	msg_txt = (*byte)(unsafe.Add(unsafe.Pointer(msg_txt), libc.StrLen(&data.Txt[0])))
 	for bytes_written < total_length {
 		last_address = target_address
 		target_address = pop_free_list()
 		data.Block_type = target_address
 		write_to_file(unsafe.Pointer(&data), BLOCK_SIZE, last_address)
 		data.Block_type = -2
-		C.strncpy(&data.Txt[0], msg_txt, uint64(BLOCK_SIZE-unsafe.Sizeof(int(0))-unsafe.Sizeof(int8(0))))
+		libc.StrNCpy(&data.Txt[0], msg_txt, int(BLOCK_SIZE-unsafe.Sizeof(int(0))-unsafe.Sizeof(int8(0))))
 		data.Txt[BLOCK_SIZE-unsafe.Sizeof(int(0))-unsafe.Sizeof(int8(0))] = '\x00'
 		write_to_file(unsafe.Pointer(&data), BLOCK_SIZE, target_address)
-		bytes_written += int(C.strlen(&data.Txt[0]))
-		msg_txt = (*byte)(unsafe.Add(unsafe.Pointer(msg_txt), C.strlen(&data.Txt[0])))
+		bytes_written += libc.StrLen(&data.Txt[0])
+		msg_txt = (*byte)(unsafe.Add(unsafe.Pointer(msg_txt), libc.StrLen(&data.Txt[0])))
 	}
 }
 func read_delete(recipient int, from **byte) *byte {
@@ -342,16 +342,16 @@ func read_delete(recipient int, from **byte) *byte {
 		basic_mud_log(libc.CString("SYSERR: Mail system disabled!  -- Error #9. (Invalid header block.)"))
 		return nil
 	}
-	tmstr = C.asctime(C.localtime(&header.Header_data.Mail_time))
-	*((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(tmstr), C.strlen(tmstr)))), -1))) = '\x00'
+	tmstr = libc.AscTime(libc.LocalTime(&header.Header_data.Mail_time))
+	*((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(tmstr), libc.StrLen(tmstr)))), -1))) = '\x00'
 	if header.Header_data.From != -1337 {
 		*from = get_name_by_id(header.Header_data.From)
 	} else {
-		*from = C.strdup(libc.CString("Auctioneer"))
+		*from = libc.CString("Auctioneer")
 	}
 	to = get_name_by_id(recipient)
 	if *from == nil {
-		*from = C.strdup(libc.CString("Unknown"))
+		*from = libc.CString("Unknown")
 	}
 	stdio.Snprintf(&buf[0], int(4352), " @D* * * * @CGalactic Mail System @D* * * *\r\n@cDate@D:@w %s\r\n  @cTo@D:@G %s\r\n@cFrom@D:@R %s\r\n\r\n@w%s@n", tmstr, func() *byte {
 		if to != nil {
@@ -370,33 +370,33 @@ func read_delete(recipient int, from **byte) *byte {
 	push_free_list(mail_address)
 	for following_block != int(-2) {
 		read_from_file(unsafe.Pointer(&data), BLOCK_SIZE, following_block)
-		C.strcat(&buf[0], &data.Txt[0])
+		libc.StrCat(&buf[0], &data.Txt[0])
 		mail_address = following_block
 		following_block = data.Block_type
 		data.Block_type = -3
 		write_to_file(unsafe.Pointer(&data), BLOCK_SIZE, mail_address)
 		push_free_list(mail_address)
 	}
-	return C.strdup(&buf[0])
+	return libc.StrDup(&buf[0])
 }
 func postmaster(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 	if ch.Desc == nil || IS_NPC(ch) {
 		return 0
 	}
-	if C.strcmp(libc.CString("mail"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) != 0 && C.strcmp(libc.CString("check"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) != 0 && C.strcmp(libc.CString("receive"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) != 0 {
+	if libc.StrCmp(libc.CString("mail"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) != 0 && libc.StrCmp(libc.CString("check"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) != 0 && libc.StrCmp(libc.CString("receive"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) != 0 {
 		return 0
 	}
 	if no_mail != 0 {
 		send_to_char(ch, libc.CString("Sorry, the mail system is having technical difficulties.\r\n"))
 		return 0
 	}
-	if C.strcmp(libc.CString("mail"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	if libc.StrCmp(libc.CString("mail"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		postmaster_send_mail(ch, (*char_data)(me), cmd, argument)
 		return 1
-	} else if C.strcmp(libc.CString("check"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	} else if libc.StrCmp(libc.CString("check"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		postmaster_check_mail(ch, (*char_data)(me), cmd, argument)
 		return 1
-	} else if C.strcmp(libc.CString("receive"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	} else if libc.StrCmp(libc.CString("receive"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		postmaster_receive_mail(ch, (*char_data)(me), cmd, argument)
 		return 1
 	} else {
@@ -436,7 +436,7 @@ func postmaster_send_mail(ch *char_data, mailman *char_data, cmd int, arg *byte)
 	act(&buf[0], FALSE, mailman, nil, unsafe.Pointer(ch), TO_VICT)
 	act(libc.CString("@C$n@w starts writing a letter.@n"), TRUE, ch, nil, nil, TO_ROOM)
 	ch.Gold -= STAMP_PRICE
-	ch.Act[int(PLR_MAILING/32)] |= bitvector_t(1 << (int(PLR_MAILING % 32)))
+	ch.Act[int(PLR_MAILING/32)] |= bitvector_t(int32(1 << (int(PLR_MAILING % 32))))
 	mailwrite = new(*byte)
 	string_write(ch.Desc, mailwrite, MAX_MAIL_SIZE, recipient, nil)
 }
@@ -476,21 +476,21 @@ func postmaster_receive_mail(ch *char_data, mailman *char_data, cmd int, arg *by
 		var blm [256]byte
 		stdio.Sprintf(&bla[0], "@WA piece of mail@n")
 		stdio.Sprintf(&blm[0], "@WSomeone has left a piece of mail here@n")
-		obj.Short_description = C.strdup(&bla[0])
-		obj.Description = C.strdup(&blm[0])
+		obj.Short_description = libc.StrDup(&bla[0])
+		obj.Description = libc.StrDup(&blm[0])
 		stdio.Sprintf(&bla[0], "mail paper letter")
-		obj.Name = C.strdup(&bla[0])
+		obj.Name = libc.StrDup(&bla[0])
 		bla[0] = '\x00'
 		blm[0] = '\x00'
-		obj.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(1 << (int(ITEM_UNIQUE_SAVE % 32)))
+		obj.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(int32(1 << (int(ITEM_UNIQUE_SAVE % 32))))
 		add_unique_id(obj)
 		obj.Value[VAL_ALL_MATERIAL] = MATERIAL_PAPER
 		obj.Value[VAL_NOTE_HEALTH] = 100
 		obj.Value[VAL_NOTE_MAXHEALTH] = 100
 		if obj.Action_description == nil {
-			obj.Action_description = C.strdup(libc.CString("Mail system error - please report.  Error #11.\r\n"))
+			obj.Action_description = libc.CString("Mail system error - please report.  Error #11.\r\n")
 		}
-		obj.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(1 << (int(ITEM_UNIQUE_SAVE % 32)))
+		obj.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(int32(1 << (int(ITEM_UNIQUE_SAVE % 32))))
 		if IS_PLAYING(ch.Desc) && mailman != nil {
 			obj_to_char(obj, ch)
 			act(libc.CString("$n gives you a piece of mail."), FALSE, mailman, nil, unsafe.Pointer(ch), TO_VICT)
@@ -503,7 +503,7 @@ func postmaster_receive_mail(ch *char_data, mailman *char_data, cmd int, arg *by
 func notify_if_playing(from *char_data, recipient_id int) {
 	var d *descriptor_data
 	for d = descriptor_list; d != nil; d = d.Next {
-		if IS_PLAYING(d) && d.Character.Idnum == int32(recipient_id) && has_mail(int(d.Character.Idnum)) != 0 {
+		if IS_PLAYING(d) && int(d.Character.Idnum) == recipient_id && has_mail(int(d.Character.Idnum)) != 0 {
 			send_to_char(d.Character, libc.CString("\r\n\a\a\a@G@lYou have new mudmail from %s.@n\r\n"), GET_NAME(from))
 		}
 	}

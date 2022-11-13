@@ -34,7 +34,7 @@ func improved_editor_execute(d *descriptor_data, str *byte) int {
 	if *str != '/' {
 		return STRINGADD_OK
 	}
-	C.strncpy(&actions[0], (*byte)(unsafe.Add(unsafe.Pointer(str), 2)), uint64(2048-1))
+	libc.StrNCpy(&actions[0], (*byte)(unsafe.Add(unsafe.Pointer(str), 2)), int(2048-1))
 	actions[2048-1] = '\x00'
 	*str = '\x00'
 	switch *(*byte)(unsafe.Add(unsafe.Pointer(str), 1)) {
@@ -117,7 +117,7 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 			}())
 			return
 		}
-		for (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*(*byte)(unsafe.Add(unsafe.Pointer(string_), j)))))))&int(uint16(int16(_ISalpha)))) != 0 && j < 2 {
+		for libc.IsAlpha(rune(*(*byte)(unsafe.Add(unsafe.Pointer(string_), j)))) && j < 2 {
 			if *(*byte)(unsafe.Add(unsafe.Pointer(string_), func() int {
 				p := &j
 				x := *p
@@ -128,12 +128,12 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 				flags += 1 << 0
 			}
 		}
-		switch __isoc99_sscanf(func() *byte {
+		switch stdio.Sscanf(func() *byte {
 			if indent != 0 {
 				return (*byte)(unsafe.Add(unsafe.Pointer(string_), 1))
 			}
 			return string_
-		}(), libc.CString(" %d - %d "), &line_low, &line_high) {
+		}(), " %d - %d ", &line_low, &line_high) {
 		case -1:
 			fallthrough
 		case 0:
@@ -148,12 +148,12 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 			}
 		}
 		line_low = MAX(1, line_low)
-		switch __isoc99_sscanf(func() *byte {
+		switch stdio.Sscanf(func() *byte {
 			if indent != 0 {
 				return (*byte)(unsafe.Add(unsafe.Pointer(string_), 1))
 			}
 			return string_
-		}(), libc.CString(" %d - %d "), &line_low, &line_high) {
+		}(), " %d - %d ", &line_low, &line_high) {
 		case -1:
 			fallthrough
 		case 0:
@@ -177,7 +177,7 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 			}())
 		}
 	case PARSE_REPLACE:
-		for (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*(*byte)(unsafe.Add(unsafe.Pointer(string_), j)))))))&int(uint16(int16(_ISalpha)))) != 0 && j < 2 {
+		for libc.IsAlpha(rune(*(*byte)(unsafe.Add(unsafe.Pointer(string_), j)))) && j < 2 {
 			if *(*byte)(unsafe.Add(unsafe.Pointer(string_), func() int {
 				p := &j
 				x := *p
@@ -188,25 +188,25 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 			}
 		}
 		if (func() *byte {
-			s = strtok(string_, libc.CString("'"))
+			s = libc.StrTok(string_, libc.CString("'"))
 			return s
 		}()) == nil {
 			write_to_output(d, libc.CString("Invalid format.\r\n"))
 			return
 		} else if (func() *byte {
-			s = strtok(nil, libc.CString("'"))
+			s = libc.StrTok(nil, libc.CString("'"))
 			return s
 		}()) == nil {
 			write_to_output(d, libc.CString("Target string must be enclosed in single quotes.\r\n"))
 			return
 		} else if (func() *byte {
-			t = strtok(nil, libc.CString("'"))
+			t = libc.StrTok(nil, libc.CString("'"))
 			return t
 		}()) == nil {
 			write_to_output(d, libc.CString("No replacement string.\r\n"))
 			return
 		} else if (func() *byte {
-			t = strtok(nil, libc.CString("'"))
+			t = libc.StrTok(nil, libc.CString("'"))
 			return t
 		}()) == nil {
 			write_to_output(d, libc.CString("Replacement string must be enclosed in single quotes.\r\n"))
@@ -214,7 +214,7 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 		} else if *d.Str == nil {
 			return
 		} else if (func() uint {
-			total_len = uint((C.strlen(t) - C.strlen(s)) + C.strlen(*d.Str))
+			total_len = uint((libc.StrLen(t) - libc.StrLen(s)) + libc.StrLen(*d.Str))
 			return total_len
 		}()) <= uint(d.Max_str) {
 			if (func() int {
@@ -236,7 +236,7 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 			write_to_output(d, libc.CString("Not enough space left in buffer.\r\n"))
 		}
 	case PARSE_DELETE:
-		switch __isoc99_sscanf(string_, libc.CString(" %d - %d "), &line_low, &line_high) {
+		switch stdio.Sscanf(string_, " %d - %d ", &line_low, &line_high) {
 		case 0:
 			write_to_output(d, libc.CString("You must specify a line number or range to delete.\r\n"))
 			return
@@ -259,7 +259,7 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 		} else if line_low > 0 {
 			for s != nil && i < line_low {
 				if (func() *byte {
-					s = C.strchr(s, '\n')
+					s = libc.StrChr(s, '\n')
 					return s
 				}()) != nil {
 					i++
@@ -273,7 +273,7 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 			t = s
 			for s != nil && i < line_high {
 				if (func() *byte {
-					s = C.strchr(s, '\n')
+					s = libc.StrChr(s, '\n')
 					return s
 				}()) != nil {
 					i++
@@ -282,7 +282,7 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 				}
 			}
 			if s != nil && (func() *byte {
-				s = C.strchr(s, '\n')
+				s = libc.StrChr(s, '\n')
 				return s
 			}()) != nil {
 				for *(func() *byte {
@@ -301,7 +301,7 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 				total_len--
 			}
 			*t = '\x00'
-			*d.Str = (*byte)(libc.Realloc(unsafe.Pointer(*d.Str), int(C.strlen(*d.Str)*int64(unsafe.Sizeof(int8(0)))+3)))
+			*d.Str = (*byte)(libc.Realloc(unsafe.Pointer(*d.Str), libc.StrLen(*d.Str)*int(unsafe.Sizeof(int8(0)))+3))
 			write_to_output(d, libc.CString("%d line%sdeleted.\r\n"), total_len, func() string {
 				if total_len != 1 {
 					return "s "
@@ -315,7 +315,7 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 	case PARSE_LIST_NORM:
 		buf[0] = '\x00'
 		if *string_ != 0 {
-			switch __isoc99_sscanf(string_, libc.CString(" %d - %d "), &line_low, &line_high) {
+			switch stdio.Sscanf(string_, " %d - %d ", &line_low, &line_high) {
 			case 0:
 				line_low = 1
 				line_high = 0xF423F
@@ -342,7 +342,7 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 		s = *d.Str
 		for s != nil && i < line_low {
 			if (func() *byte {
-				s = C.strchr(s, '\n')
+				s = libc.StrChr(s, '\n')
 				return s
 			}()) != nil {
 				i++
@@ -356,7 +356,7 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 		t = s
 		for s != nil && i <= line_high {
 			if (func() *byte {
-				s = C.strchr(s, '\n')
+				s = libc.StrChr(s, '\n')
 				return s
 			}()) != nil {
 				i++
@@ -367,12 +367,12 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 		if s != nil {
 			temp = int8(*s)
 			*s = '\x00'
-			C.strcat(&buf[0], t)
+			libc.StrCat(&buf[0], t)
 			*s = byte(temp)
 		} else {
-			C.strcat(&buf[0], t)
+			libc.StrCat(&buf[0], t)
 		}
-		stdio.Sprintf(&buf[C.strlen(&buf[0])], "\r\n%d line%sshown.\r\n", total_len, func() string {
+		stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "\r\n%d line%sshown.\r\n", total_len, func() string {
 			if total_len != 1 {
 				return "s "
 			}
@@ -382,7 +382,7 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 	case PARSE_LIST_NUM:
 		buf[0] = '\x00'
 		if *string_ != 0 {
-			switch __isoc99_sscanf(string_, libc.CString(" %d - %d "), &line_low, &line_high) {
+			switch stdio.Sscanf(string_, " %d - %d ", &line_low, &line_high) {
 			case 0:
 				line_low = 1
 				line_high = 0xF423F
@@ -407,7 +407,7 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 		s = *d.Str
 		for s != nil && i < line_low {
 			if (func() *byte {
-				s = C.strchr(s, '\n')
+				s = libc.StrChr(s, '\n')
 				return s
 			}()) != nil {
 				i++
@@ -421,7 +421,7 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 		t = s
 		for s != nil && i <= line_high {
 			if (func() *byte {
-				s = C.strchr(s, '\n')
+				s = libc.StrChr(s, '\n')
 				return s
 			}()) != nil {
 				i++
@@ -430,7 +430,7 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 				temp = int8(*s)
 				*s = '\x00'
 				stdio.Sprintf(&buf[0], "%s%4d: ", &buf[0], i-1)
-				C.strcat(&buf[0], t)
+				libc.StrCat(&buf[0], t)
 				*s = byte(temp)
 				t = s
 			}
@@ -438,10 +438,10 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 		if s != nil && t != nil {
 			temp = int8(*s)
 			*s = '\x00'
-			C.strcat(&buf[0], t)
+			libc.StrCat(&buf[0], t)
 			*s = byte(temp)
 		} else if t != nil {
-			C.strcat(&buf[0], t)
+			libc.StrCat(&buf[0], t)
 		}
 		page_string(d, &buf[0], TRUE)
 	case PARSE_INSERT:
@@ -451,7 +451,7 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 			return
 		}
 		line_low = libc.Atoi(libc.GoString(&buf[0]))
-		C.strcat(&buf2[0], libc.CString("\r\n"))
+		libc.StrCat(&buf2[0], libc.CString("\r\n"))
 		i = 1
 		buf[0] = '\x00'
 		if (func() *byte {
@@ -464,7 +464,7 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 		if line_low > 0 {
 			for s != nil && i < line_low {
 				if (func() *byte {
-					s = C.strchr(s, '\n')
+					s = libc.StrChr(s, '\n')
 					return s
 				}()) != nil {
 					i++
@@ -477,21 +477,21 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 			}
 			temp = int8(*s)
 			*s = '\x00'
-			if uint64(C.strlen(*d.Str)+C.strlen(&buf2[0])+C.strlen((*byte)(unsafe.Add(unsafe.Pointer(s), 1)))+3) > d.Max_str {
+			if (libc.StrLen(*d.Str) + libc.StrLen(&buf2[0]) + libc.StrLen((*byte)(unsafe.Add(unsafe.Pointer(s), 1))) + 3) > int(d.Max_str) {
 				*s = byte(temp)
 				write_to_output(d, libc.CString("Insert text pushes buffer over maximum size, insert aborted.\r\n"))
 				return
 			}
 			if *d.Str != nil && **d.Str != 0 {
-				C.strcat(&buf[0], *d.Str)
+				libc.StrCat(&buf[0], *d.Str)
 			}
 			*s = byte(temp)
-			C.strcat(&buf[0], &buf2[0])
+			libc.StrCat(&buf[0], &buf2[0])
 			if s != nil && *s != 0 {
-				C.strcat(&buf[0], s)
+				libc.StrCat(&buf[0], s)
 			}
-			*d.Str = (*byte)(libc.Realloc(unsafe.Pointer(*d.Str), int(C.strlen(&buf[0])*int64(unsafe.Sizeof(int8(0)))+3)))
-			C.strcpy(*d.Str, &buf[0])
+			*d.Str = (*byte)(libc.Realloc(unsafe.Pointer(*d.Str), libc.StrLen(&buf[0])*int(unsafe.Sizeof(int8(0)))+3))
+			libc.StrCpy(*d.Str, &buf[0])
 			write_to_output(d, libc.CString("Line inserted.\r\n"))
 		} else {
 			write_to_output(d, libc.CString("Line number must be higher than 0.\r\n"))
@@ -504,7 +504,7 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 			return
 		}
 		line_low = libc.Atoi(libc.GoString(&buf[0]))
-		C.strcat(&buf2[0], libc.CString("\r\n"))
+		libc.StrCat(&buf2[0], libc.CString("\r\n"))
 		i = 1
 		buf[0] = '\x00'
 		if (func() *byte {
@@ -517,7 +517,7 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 		if line_low > 0 {
 			for s != nil && i < line_low {
 				if (func() *byte {
-					s = C.strchr(s, '\n')
+					s = libc.StrChr(s, '\n')
 					return s
 				}()) != nil {
 					i++
@@ -531,23 +531,23 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 			if s != *d.Str {
 				temp = int8(*s)
 				*s = '\x00'
-				C.strcat(&buf[0], *d.Str)
+				libc.StrCat(&buf[0], *d.Str)
 				*s = byte(temp)
 			}
-			C.strcat(&buf[0], &buf2[0])
+			libc.StrCat(&buf[0], &buf2[0])
 			if (func() *byte {
-				s = C.strchr(s, '\n')
+				s = libc.StrChr(s, '\n')
 				return s
 			}()) != nil {
 				s = (*byte)(unsafe.Add(unsafe.Pointer(s), 1))
-				C.strcat(&buf[0], s)
+				libc.StrCat(&buf[0], s)
 			}
-			if uint64(C.strlen(&buf[0])) > d.Max_str {
+			if libc.StrLen(&buf[0]) > int(d.Max_str) {
 				write_to_output(d, libc.CString("Change causes new length to exceed buffer maximum size, aborted.\r\n"))
 				return
 			}
-			*d.Str = (*byte)(libc.Realloc(unsafe.Pointer(*d.Str), int(C.strlen(&buf[0])*int64(unsafe.Sizeof(int8(0)))+3)))
-			C.strcpy(*d.Str, &buf[0])
+			*d.Str = (*byte)(libc.Realloc(unsafe.Pointer(*d.Str), libc.StrLen(&buf[0])*int(unsafe.Sizeof(int8(0)))+3))
+			libc.StrCpy(*d.Str, &buf[0])
 			write_to_output(d, libc.CString("Line changed.\r\n"))
 		} else {
 			write_to_output(d, libc.CString("Line number must be higher than 0.\r\n"))
@@ -587,29 +587,29 @@ func format_text(ptr_string **byte, mode int, d *descriptor_data, maxlen uint, l
 		return 0
 	}
 	var str [64936]byte
-	C.strcpy(&str[0], flow)
+	libc.StrCpy(&str[0], flow)
 	for i = 0; i < low-1; i++ {
-		start = strtok(&str[0], libc.CString("\n"))
+		start = libc.StrTok(&str[0], libc.CString("\n"))
 		if start == nil {
 			write_to_output(d, libc.CString("There aren't that many lines!\r\n"))
 			return 0
 		}
-		C.strcat(&formatted[0], C.strcat(start, libc.CString("\n")))
-		flow = C.strstr(flow, libc.CString("\n"))
-		C.strcpy(&str[0], func() *byte {
+		libc.StrCat(&formatted[0], libc.StrCat(start, libc.CString("\n")))
+		flow = libc.StrStr(flow, libc.CString("\n"))
+		libc.StrCpy(&str[0], func() *byte {
 			p := &flow
 			*p = (*byte)(unsafe.Add(unsafe.Pointer(*p), 1))
 			return *p
 		}())
 	}
 	if (mode & (1 << 0)) != 0 {
-		C.strcat(&formatted[0], libc.CString("   "))
+		libc.StrCat(&formatted[0], libc.CString("   "))
 		line_chars = 3
 	} else {
 		line_chars = 0
 	}
 	for *flow != 0 && i < high {
-		for *flow != 0 && C.strchr(libc.CString("\n\r\f\t\v "), int(*flow)) != nil {
+		for *flow != 0 && libc.StrChr(libc.CString("\n\r\f\t\v "), *flow) != nil {
 			if *flow == '\n' && pass_line == 0 {
 				if func() int {
 					p := &i
@@ -625,7 +625,7 @@ func format_text(ptr_string **byte, mode int, d *descriptor_data, maxlen uint, l
 		}
 		if *flow != 0 {
 			start = flow
-			for *flow != 0 && C.strchr(libc.CString("\n\r\f\t\v .?!"), int(*flow)) == nil {
+			for *flow != 0 && libc.StrChr(libc.CString("\n\r\f\t\v .?!"), *flow) == nil {
 				if *flow == '@' {
 					if *((*byte)(unsafe.Add(unsafe.Pointer(flow), 1))) == '@' {
 						color_chars++
@@ -640,11 +640,11 @@ func format_text(ptr_string **byte, mode int, d *descriptor_data, maxlen uint, l
 				cap_next_next = FALSE
 				cap_next = TRUE
 			}
-			for C.strchr(libc.CString(".!?"), int(*flow)) != nil {
+			for libc.StrChr(libc.CString(".!?"), *flow) != nil {
 				cap_next_next = TRUE
 				flow = (*byte)(unsafe.Add(unsafe.Pointer(flow), 1))
 			}
-			if C.strchr(libc.CString("\n\r"), int(*flow)) != nil {
+			if libc.StrChr(libc.CString("\n\r"), *flow) != nil {
 				*flow = '\x00'
 				flow = (*byte)(unsafe.Add(unsafe.Pointer(flow), 1))
 				if *flow == '\n' && func() int {
@@ -655,7 +655,7 @@ func format_text(ptr_string **byte, mode int, d *descriptor_data, maxlen uint, l
 				}() >= high {
 					pass_line = 1
 				}
-				for *flow != 0 && C.strchr(libc.CString("\n\r"), int(*flow)) != nil && pass_line == 0 {
+				for *flow != 0 && libc.StrChr(libc.CString("\n\r"), *flow) != nil && pass_line == 0 {
 					flow = (*byte)(unsafe.Add(unsafe.Pointer(flow), 1))
 					if *flow == '\n' && func() int {
 						p := &i
@@ -671,53 +671,53 @@ func format_text(ptr_string **byte, mode int, d *descriptor_data, maxlen uint, l
 				temp = int8(*flow)
 				*flow = '\x00'
 			}
-			if line_chars+int(C.strlen(start))+1-color_chars > PAGE_WIDTH {
-				C.strcat(&formatted[0], libc.CString("\r\n"))
+			if line_chars+libc.StrLen(start)+1-color_chars > PAGE_WIDTH {
+				libc.StrCat(&formatted[0], libc.CString("\r\n"))
 				line_chars = 0
 				color_chars = count_color_chars(start)
 			}
 			if cap_next == 0 {
 				if line_chars > 0 {
-					C.strcat(&formatted[0], libc.CString(" "))
+					libc.StrCat(&formatted[0], libc.CString(" "))
 					line_chars++
 				}
 			} else {
 				cap_next = FALSE
 				CAP(start)
 			}
-			line_chars += int(C.strlen(start))
-			C.strcat(&formatted[0], start)
+			line_chars += libc.StrLen(start)
+			libc.StrCat(&formatted[0], start)
 			*flow = byte(temp)
 		}
 		if cap_next_next != 0 && *flow != 0 {
 			if line_chars+3-color_chars > PAGE_WIDTH {
-				C.strcat(&formatted[0], libc.CString("\r\n"))
+				libc.StrCat(&formatted[0], libc.CString("\r\n"))
 				line_chars = 0
 				color_chars = count_color_chars(start)
 			} else if *flow == '"' || *flow == '\'' {
 				var buf [64936]byte
 				stdio.Sprintf(&buf[0], "%c ", *flow)
-				C.strcat(&formatted[0], &buf[0])
+				libc.StrCat(&formatted[0], &buf[0])
 				flow = (*byte)(unsafe.Add(unsafe.Pointer(flow), 1))
 				line_chars++
 			} else {
-				C.strcat(&formatted[0], libc.CString(" "))
+				libc.StrCat(&formatted[0], libc.CString(" "))
 				line_chars += 2
 			}
 		}
 	}
 	if *flow != 0 {
-		C.strcat(&formatted[0], libc.CString("\r\n"))
+		libc.StrCat(&formatted[0], libc.CString("\r\n"))
 	}
-	C.strcat(&formatted[0], flow)
+	libc.StrCat(&formatted[0], flow)
 	if *flow == 0 {
-		C.strcat(&formatted[0], libc.CString("\r\n"))
+		libc.StrCat(&formatted[0], libc.CString("\r\n"))
 	}
-	if C.strlen(&formatted[0])+1 > int64(maxlen) {
+	if libc.StrLen(&formatted[0])+1 > int(maxlen) {
 		formatted[maxlen-1] = '\x00'
 	}
-	*ptr_string = (*byte)(libc.Realloc(unsafe.Pointer(*ptr_string), MIN(int(maxlen), int(C.strlen(&formatted[0])+1))*int(unsafe.Sizeof(int8(0)))))
-	C.strcpy(*ptr_string, &formatted[0])
+	*ptr_string = (*byte)(libc.Realloc(unsafe.Pointer(*ptr_string), MIN(int(maxlen), libc.StrLen(&formatted[0])+1)*int(unsafe.Sizeof(int8(0)))))
+	libc.StrCpy(*ptr_string, &formatted[0])
 	return 1
 }
 func replace_str(string_ **byte, pattern *byte, replacement *byte, rep_all int, max_size uint) int {
@@ -729,7 +729,7 @@ func replace_str(string_ **byte, pattern *byte, replacement *byte, rep_all int, 
 		len_           int
 		i              int
 	)
-	if (C.strlen(*string_)-C.strlen(pattern))+C.strlen(replacement) > int64(max_size) {
+	if (libc.StrLen(*string_)-libc.StrLen(pattern))+libc.StrLen(replacement) > int(max_size) {
 		return -1
 	}
 	replace_buffer = (*byte)(unsafe.Pointer(&make([]int8, int(max_size))[0]))
@@ -739,41 +739,41 @@ func replace_str(string_ **byte, pattern *byte, replacement *byte, rep_all int, 
 	*replace_buffer = '\x00'
 	if rep_all != 0 {
 		for (func() *byte {
-			flow = C.strstr(flow, pattern)
+			flow = libc.StrStr(flow, pattern)
 			return flow
 		}()) != nil {
 			i++
 			temp = int8(*flow)
 			*flow = '\x00'
-			if (C.strlen(replace_buffer) + C.strlen(jetsam) + C.strlen(replacement)) > int64(max_size) {
+			if (libc.StrLen(replace_buffer) + libc.StrLen(jetsam) + libc.StrLen(replacement)) > int(max_size) {
 				i = -1
 				break
 			}
-			C.strcat(replace_buffer, jetsam)
-			C.strcat(replace_buffer, replacement)
+			libc.StrCat(replace_buffer, jetsam)
+			libc.StrCat(replace_buffer, replacement)
 			*flow = byte(temp)
-			flow = (*byte)(unsafe.Add(unsafe.Pointer(flow), C.strlen(pattern)))
+			flow = (*byte)(unsafe.Add(unsafe.Pointer(flow), libc.StrLen(pattern)))
 			jetsam = flow
 		}
-		C.strcat(replace_buffer, jetsam)
+		libc.StrCat(replace_buffer, jetsam)
 	} else {
 		if (func() *byte {
-			flow = C.strstr(*string_, pattern)
+			flow = libc.StrStr(*string_, pattern)
 			return flow
 		}()) != nil {
 			i++
-			flow = (*byte)(unsafe.Add(unsafe.Pointer(flow), C.strlen(pattern)))
-			len_ = int((int64(uintptr(unsafe.Pointer(flow)) - uintptr(unsafe.Pointer(*string_)))) - C.strlen(pattern))
-			C.strncpy(replace_buffer, *string_, uint64(len_))
-			C.strcat(replace_buffer, replacement)
-			C.strcat(replace_buffer, flow)
+			flow = (*byte)(unsafe.Add(unsafe.Pointer(flow), libc.StrLen(pattern)))
+			len_ = int((int64(uintptr(unsafe.Pointer(flow)) - uintptr(unsafe.Pointer(*string_)))) - int64(libc.StrLen(pattern)))
+			libc.StrNCpy(replace_buffer, *string_, len_)
+			libc.StrCat(replace_buffer, replacement)
+			libc.StrCat(replace_buffer, flow)
 		}
 	}
 	if i <= 0 {
 		return 0
 	} else {
-		*string_ = (*byte)(libc.Realloc(unsafe.Pointer(*string_), int(C.strlen(replace_buffer)*int64(unsafe.Sizeof(int8(0)))+3)))
-		C.strcpy(*string_, replace_buffer)
+		*string_ = (*byte)(libc.Realloc(unsafe.Pointer(*string_), libc.StrLen(replace_buffer)*int(unsafe.Sizeof(int8(0)))+3))
+		libc.StrCpy(*string_, replace_buffer)
 	}
 	libc.Free(unsafe.Pointer(replace_buffer))
 	return i

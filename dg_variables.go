@@ -3,30 +3,31 @@ package main
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"unicode"
 	"unsafe"
 )
 
 func add_var(var_list **trig_var_data, name *byte, value *byte, id int) {
 	var vd *trig_var_data
-	if C.strchr(name, '.') != nil {
+	if libc.StrChr(name, '.') != nil {
 		basic_mud_log(libc.CString("add_var() : Attempt to add illegal var: %s"), name)
 		return
 	}
-	for vd = *var_list; vd != nil && C.strcasecmp(vd.Name, name) != 0; vd = vd.Next {
+	for vd = *var_list; vd != nil && libc.StrCaseCmp(vd.Name, name) != 0; vd = vd.Next {
 	}
 	if vd != nil && (vd.Context == 0 || vd.Context == id) {
 		libc.Free(unsafe.Pointer(vd.Value))
-		vd.Value = (*byte)(unsafe.Pointer(&make([]int8, int(C.strlen(value)+1))[0]))
+		vd.Value = (*byte)(unsafe.Pointer(&make([]int8, libc.StrLen(value)+1)[0]))
 	} else {
 		vd = new(trig_var_data)
-		vd.Name = (*byte)(unsafe.Pointer(&make([]int8, int(C.strlen(name)+1))[0]))
-		C.strcpy(vd.Name, name)
-		vd.Value = (*byte)(unsafe.Pointer(&make([]int8, int(C.strlen(value)+1))[0]))
+		vd.Name = (*byte)(unsafe.Pointer(&make([]int8, libc.StrLen(name)+1)[0]))
+		libc.StrCpy(vd.Name, name)
+		vd.Value = (*byte)(unsafe.Pointer(&make([]int8, libc.StrLen(value)+1)[0]))
 		vd.Next = *var_list
 		vd.Context = id
 		*var_list = vd
 	}
-	C.strcpy(vd.Value, value)
+	libc.StrCpy(vd.Value, value)
 }
 func skill_percent(ch *char_data, skill *byte) *byte {
 	var (
@@ -54,7 +55,7 @@ func item_in_list(item *byte, list *obj_data) int {
 			if id == int(i.Id) {
 				count++
 			}
-			if i.Type_flag == ITEM_CONTAINER {
+			if int(i.Type_flag) == ITEM_CONTAINER {
 				count += item_in_list(item, i.Contains)
 			}
 		}
@@ -64,7 +65,7 @@ func item_in_list(item *byte, list *obj_data) int {
 			if GET_OBJ_VNUM(i) == ovnum {
 				count++
 			}
-			if i.Type_flag == ITEM_CONTAINER {
+			if int(i.Type_flag) == ITEM_CONTAINER {
 				count += item_in_list(item, i.Contains)
 			}
 		}
@@ -73,7 +74,7 @@ func item_in_list(item *byte, list *obj_data) int {
 			if isname(item, i.Name) != 0 {
 				count++
 			}
-			if i.Type_flag == ITEM_CONTAINER {
+			if int(i.Type_flag) == ITEM_CONTAINER {
 				count += item_in_list(item, i.Contains)
 			}
 		}
@@ -96,19 +97,19 @@ func text_processed(field *byte, subfield *byte, vd *trig_var_data, str *byte, s
 		p2     *byte
 		tmpvar [64936]byte
 	)
-	if C.strcasecmp(field, libc.CString("C.strlen")) == 0 {
+	if libc.StrCaseCmp(field, libc.CString("strlen")) == 0 {
 		var limit [200]byte
-		stdio.Sprintf(&limit[0], "%lld", C.strlen(vd.Value))
+		stdio.Sprintf(&limit[0], "%lld", libc.StrLen(vd.Value))
 		stdio.Snprintf(str, int(slen), "%d", libc.Atoi(libc.GoString(&limit[0])))
 		return TRUE
-	} else if C.strcasecmp(field, libc.CString("trim")) == 0 {
+	} else if libc.StrCaseCmp(field, libc.CString("trim")) == 0 {
 		stdio.Snprintf(&tmpvar[0], int(64936-1), "%s", vd.Value)
 		p = &tmpvar[0]
-		p2 = (*byte)(unsafe.Add(unsafe.Pointer(&tmpvar[C.strlen(&tmpvar[0])]), -1))
-		for *p != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p)))))&int(uint16(int16(_ISspace)))) != 0 {
+		p2 = (*byte)(unsafe.Add(unsafe.Pointer(&tmpvar[libc.StrLen(&tmpvar[0])]), -1))
+		for *p != 0 && unicode.IsSpace(rune(*p)) {
 			p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1))
 		}
-		for uintptr(unsafe.Pointer(p)) <= uintptr(unsafe.Pointer(p2)) && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p2)))))&int(uint16(int16(_ISspace)))) != 0 {
+		for uintptr(unsafe.Pointer(p)) <= uintptr(unsafe.Pointer(p2)) && unicode.IsSpace(rune(*p2)) {
 			p2 = (*byte)(unsafe.Add(unsafe.Pointer(p2), -1))
 		}
 		if uintptr(unsafe.Pointer(p)) > uintptr(unsafe.Pointer(p2)) {
@@ -122,16 +123,16 @@ func text_processed(field *byte, subfield *byte, vd *trig_var_data, str *byte, s
 		}()) = '\x00'
 		stdio.Snprintf(str, int(slen), "%s", p)
 		return TRUE
-	} else if C.strcasecmp(field, libc.CString("contains")) == 0 {
+	} else if libc.StrCaseCmp(field, libc.CString("contains")) == 0 {
 		if str_str(vd.Value, subfield) != nil {
-			C.strcpy(str, libc.CString("1"))
+			libc.StrCpy(str, libc.CString("1"))
 		} else {
-			C.strcpy(str, libc.CString("0"))
+			libc.StrCpy(str, libc.CString("0"))
 		}
 		return TRUE
-	} else if C.strcasecmp(field, libc.CString("car")) == 0 {
+	} else if libc.StrCaseCmp(field, libc.CString("car")) == 0 {
 		var car *byte = vd.Value
-		for *car != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*car)))))&int(uint16(int16(_ISspace)))) == 0 {
+		for *car != 0 && !unicode.IsSpace(rune(*car)) {
 			*func() *byte {
 				p := &str
 				x := *p
@@ -146,40 +147,40 @@ func text_processed(field *byte, subfield *byte, vd *trig_var_data, str *byte, s
 		}
 		*str = '\x00'
 		return TRUE
-	} else if C.strcasecmp(field, libc.CString("cdr")) == 0 {
+	} else if libc.StrCaseCmp(field, libc.CString("cdr")) == 0 {
 		var cdr *byte = vd.Value
-		for *cdr != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*cdr)))))&int(uint16(int16(_ISspace)))) == 0 {
+		for *cdr != 0 && !unicode.IsSpace(rune(*cdr)) {
 			cdr = (*byte)(unsafe.Add(unsafe.Pointer(cdr), 1))
 		}
-		for *cdr != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*cdr)))))&int(uint16(int16(_ISspace)))) != 0 {
+		for *cdr != 0 && unicode.IsSpace(rune(*cdr)) {
 			cdr = (*byte)(unsafe.Add(unsafe.Pointer(cdr), 1))
 		}
 		stdio.Snprintf(str, int(slen), "%s", cdr)
 		return TRUE
-	} else if C.strcasecmp(field, libc.CString("charat")) == 0 {
+	} else if libc.StrCaseCmp(field, libc.CString("charat")) == 0 {
 		var (
-			len_    uint64 = uint64(C.strlen(vd.Value))
+			len_    uint64 = uint64(libc.StrLen(vd.Value))
 			dgindex uint64 = uint64(libc.Atoi(libc.GoString(subfield)))
 		)
 		if dgindex > len_ || dgindex < 1 {
-			C.strcpy(str, libc.CString(""))
+			libc.StrCpy(str, libc.CString(""))
 		} else {
 			stdio.Snprintf(str, int(slen), "%c", *(*byte)(unsafe.Add(unsafe.Pointer(vd.Value), dgindex-1)))
 		}
 		return TRUE
-	} else if C.strcasecmp(field, libc.CString("mudcommand")) == 0 {
+	} else if libc.StrCaseCmp(field, libc.CString("mudcommand")) == 0 {
 		var (
 			length int
 			cmd    int
 		)
 		for func() int {
-			length = int(C.strlen(vd.Value))
+			length = libc.StrLen(vd.Value)
 			return func() int {
 				cmd = 0
 				return cmd
 			}()
 		}(); *cmd_info[cmd].Command != '\n'; cmd++ {
-			if C.strncmp(cmd_info[cmd].Command, vd.Value, uint64(length)) == 0 {
+			if libc.StrNCmp(cmd_info[cmd].Command, vd.Value, length) == 0 {
 				break
 			}
 		}
@@ -226,14 +227,14 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 	*str = '\x00'
 	if trig != nil {
 		for vd = trig.Var_list; vd != nil; vd = vd.Next {
-			if C.strcasecmp(vd.Name, var_) == 0 {
+			if libc.StrCaseCmp(vd.Name, var_) == 0 {
 				break
 			}
 		}
 	}
 	if vd == nil && sc != nil {
 		for vd = sc.Global_vars; vd != nil; vd = vd.Next {
-			if C.strcasecmp(vd.Name, var_) == 0 && (vd.Context == 0 || vd.Context == sc.Context) {
+			if libc.StrCaseCmp(vd.Name, var_) == 0 && (vd.Context == 0 || vd.Context == sc.Context) {
 				break
 			}
 		}
@@ -242,7 +243,7 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 		if vd != nil {
 			stdio.Snprintf(str, int(slen), "%s", vd.Value)
 		} else {
-			if C.strcasecmp(var_, libc.CString("self")) == 0 {
+			if libc.StrCaseCmp(var_, libc.CString("self")) == 0 {
 				switch type_ {
 				case MOB_TRIGGER:
 					stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, ((*char_data)(gohere)).Id)
@@ -251,38 +252,38 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 				case WLD_TRIGGER:
 					stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, ((*room_data)(gohere)).Number+ROOM_ID_BASE)
 				}
-			} else if C.strcasecmp(var_, libc.CString("global")) == 0 {
+			} else if libc.StrCaseCmp(var_, libc.CString("global")) == 0 {
 				stdio.Snprintf(str, int(slen), "%d", ROOM_ID_BASE)
 				return
-			} else if C.strcasecmp(var_, libc.CString("ctime")) == 0 {
-				stdio.Snprintf(str, int(slen), "%ld", C.time(nil))
-			} else if C.strcasecmp(var_, libc.CString("door")) == 0 {
+			} else if libc.StrCaseCmp(var_, libc.CString("ctime")) == 0 {
+				stdio.Snprintf(str, int(slen), "%ld", libc.GetTime(nil))
+			} else if libc.StrCaseCmp(var_, libc.CString("door")) == 0 {
 				stdio.Snprintf(str, int(slen), "%s", door[type_])
-			} else if C.strcasecmp(var_, libc.CString("force")) == 0 {
+			} else if libc.StrCaseCmp(var_, libc.CString("force")) == 0 {
 				stdio.Snprintf(str, int(slen), "%s", force[type_])
-			} else if C.strcasecmp(var_, libc.CString("load")) == 0 {
+			} else if libc.StrCaseCmp(var_, libc.CString("load")) == 0 {
 				stdio.Snprintf(str, int(slen), "%s", load[type_])
-			} else if C.strcasecmp(var_, libc.CString("purge")) == 0 {
+			} else if libc.StrCaseCmp(var_, libc.CString("purge")) == 0 {
 				stdio.Snprintf(str, int(slen), "%s", purge[type_])
-			} else if C.strcasecmp(var_, libc.CString("teleport")) == 0 {
+			} else if libc.StrCaseCmp(var_, libc.CString("teleport")) == 0 {
 				stdio.Snprintf(str, int(slen), "%s", teleport[type_])
-			} else if C.strcasecmp(var_, libc.CString("damage")) == 0 {
+			} else if libc.StrCaseCmp(var_, libc.CString("damage")) == 0 {
 				stdio.Snprintf(str, int(slen), "%s", xdamage[type_])
-			} else if C.strcasecmp(var_, libc.CString("send")) == 0 {
+			} else if libc.StrCaseCmp(var_, libc.CString("send")) == 0 {
 				stdio.Snprintf(str, int(slen), "%s", send_cmd[type_])
-			} else if C.strcasecmp(var_, libc.CString("echo")) == 0 {
+			} else if libc.StrCaseCmp(var_, libc.CString("echo")) == 0 {
 				stdio.Snprintf(str, int(slen), "%s", echo_cmd[type_])
-			} else if C.strcasecmp(var_, libc.CString("echoaround")) == 0 {
+			} else if libc.StrCaseCmp(var_, libc.CString("echoaround")) == 0 {
 				stdio.Snprintf(str, int(slen), "%s", echoaround_cmd[type_])
-			} else if C.strcasecmp(var_, libc.CString("zoneecho")) == 0 {
+			} else if libc.StrCaseCmp(var_, libc.CString("zoneecho")) == 0 {
 				stdio.Snprintf(str, int(slen), "%s", zoneecho[type_])
-			} else if C.strcasecmp(var_, libc.CString("asound")) == 0 {
+			} else if libc.StrCaseCmp(var_, libc.CString("asound")) == 0 {
 				stdio.Snprintf(str, int(slen), "%s", asound[type_])
-			} else if C.strcasecmp(var_, libc.CString("at")) == 0 {
+			} else if libc.StrCaseCmp(var_, libc.CString("at")) == 0 {
 				stdio.Snprintf(str, int(slen), "%s", at[type_])
-			} else if C.strcasecmp(var_, libc.CString("transform")) == 0 {
+			} else if libc.StrCaseCmp(var_, libc.CString("transform")) == 0 {
 				stdio.Snprintf(str, int(slen), "%s", transform[type_])
-			} else if C.strcasecmp(var_, libc.CString("recho")) == 0 {
+			} else if libc.StrCaseCmp(var_, libc.CString("recho")) == 0 {
 				stdio.Snprintf(str, int(slen), "%s", recho[type_])
 			} else {
 				*str = '\x00'
@@ -356,7 +357,7 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 				}
 			}
 		} else {
-			if C.strcasecmp(var_, libc.CString("self")) == 0 {
+			if libc.StrCaseCmp(var_, libc.CString("self")) == 0 {
 				switch type_ {
 				case MOB_TRIGGER:
 					c = (*char_data)(gohere)
@@ -371,7 +372,7 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					c = nil
 					o = nil
 				}
-			} else if C.strcasecmp(var_, libc.CString("global")) == 0 {
+			} else if libc.StrCaseCmp(var_, libc.CString("global")) == 0 {
 				var thescript *script_data = ((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*0))).Script
 				*str = '\x00'
 				if thescript == nil {
@@ -379,7 +380,7 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					return
 				}
 				for vd = thescript.Global_vars; vd != nil; vd = vd.Next {
-					if C.strcasecmp(vd.Name, field) == 0 {
+					if libc.StrCaseCmp(vd.Name, field) == 0 {
 						break
 					}
 				}
@@ -387,7 +388,7 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					stdio.Snprintf(str, int(slen), "%s", vd.Value)
 				}
 				return
-			} else if C.strcasecmp(var_, libc.CString("people")) == 0 {
+			} else if libc.StrCaseCmp(var_, libc.CString("people")) == 0 {
 				stdio.Snprintf(str, int(slen), "%d", func() int {
 					if (func() int {
 						num = libc.Atoi(libc.GoString(field))
@@ -398,23 +399,23 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					return 0
 				}())
 				return
-			} else if C.strcasecmp(var_, libc.CString("time")) == 0 {
-				if C.strcasecmp(field, libc.CString("hour")) == 0 {
+			} else if libc.StrCaseCmp(var_, libc.CString("time")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("hour")) == 0 {
 					stdio.Snprintf(str, int(slen), "%d", time_info.Hours)
-				} else if C.strcasecmp(field, libc.CString("day")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("day")) == 0 {
 					stdio.Snprintf(str, int(slen), "%d", time_info.Day+1)
-				} else if C.strcasecmp(field, libc.CString("month")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("month")) == 0 {
 					stdio.Snprintf(str, int(slen), "%d", time_info.Month+1)
-				} else if C.strcasecmp(field, libc.CString("year")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("year")) == 0 {
 					stdio.Snprintf(str, int(slen), "%d", time_info.Year)
 				} else {
 					*str = '\x00'
 				}
 				return
-			} else if C.strcasecmp(var_, libc.CString("findmob")) == 0 {
+			} else if libc.StrCaseCmp(var_, libc.CString("findmob")) == 0 {
 				if field == nil || *field == 0 || subfield == nil || *subfield == 0 {
 					script_log(libc.CString("findmob.vnum(mvnum) - illegal syntax"))
-					C.strcpy(str, libc.CString("0"))
+					libc.StrCpy(str, libc.CString("0"))
 				} else {
 					var (
 						rrnum room_rnum = real_room(room_vnum(libc.Atoi(libc.GoString(field))))
@@ -422,7 +423,7 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					)
 					if rrnum == room_rnum(-1) {
 						script_log(libc.CString("findmob.vnum(ovnum): No room with vnum %d"), libc.Atoi(libc.GoString(field)))
-						C.strcpy(str, libc.CString("0"))
+						libc.StrCpy(str, libc.CString("0"))
 					} else {
 						for func() *char_data {
 							i = 0
@@ -438,21 +439,21 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 						stdio.Snprintf(str, int(slen), "%d", i)
 					}
 				}
-			} else if C.strcasecmp(var_, libc.CString("findobj")) == 0 {
+			} else if libc.StrCaseCmp(var_, libc.CString("findobj")) == 0 {
 				if field == nil || *field == 0 || subfield == nil || *subfield == 0 {
 					script_log(libc.CString("findobj.vnum(ovnum) - illegal syntax"))
-					C.strcpy(str, libc.CString("0"))
+					libc.StrCpy(str, libc.CString("0"))
 				} else {
 					var rrnum room_rnum = real_room(room_vnum(libc.Atoi(libc.GoString(field))))
 					if rrnum == room_rnum(-1) {
 						script_log(libc.CString("findobj.vnum(ovnum): No room with vnum %d"), libc.Atoi(libc.GoString(field)))
-						C.strcpy(str, libc.CString("0"))
+						libc.StrCpy(str, libc.CString("0"))
 					} else {
 						stdio.Snprintf(str, int(slen), "%d", item_in_list(subfield, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Contents))
 					}
 				}
-			} else if C.strcasecmp(var_, libc.CString("random")) == 0 {
-				if C.strcasecmp(field, libc.CString("char")) == 0 {
+			} else if libc.StrCaseCmp(var_, libc.CString("random")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("char")) == 0 {
 					rndm = nil
 					count = 0
 					if type_ == MOB_TRIGGER {
@@ -489,7 +490,7 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					} else {
 						*str = '\x00'
 					}
-				} else if C.strcasecmp(field, libc.CString("dir")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("dir")) == 0 {
 					var in_room room_rnum = room_rnum(-1)
 					switch type_ {
 					case WLD_TRIGGER:
@@ -538,30 +539,30 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 		if c != nil {
 			if text_processed(field, subfield, vd, str, slen) != 0 {
 				return
-			} else if C.strcasecmp(field, libc.CString("global")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("global")) == 0 {
 				if IS_NPC(c) && c.Script != nil {
 					find_replacement(gohere, c.Script, nil, MOB_TRIGGER, subfield, nil, nil, str, slen)
 				}
 			}
 			*str = '\x01'
-			switch C.tolower(int(*field)) {
+			switch unicode.ToLower(rune(*field)) {
 			case 'a':
-				if C.strcasecmp(field, libc.CString("aaaaa")) == 0 {
-					C.strcpy(str, libc.CString("0"))
-				} else if C.strcasecmp(field, libc.CString("affect")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("aaaaa")) == 0 {
+					libc.StrCpy(str, libc.CString("0"))
+				} else if libc.StrCaseCmp(field, libc.CString("affect")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var affect int = get_flag_by_name(affected_bits[:], subfield)
-						if affect != int(-1) && AFF_FLAGGED(c, bitvector_t(affect)) {
-							C.strcpy(str, libc.CString("1"))
+						if affect != int(-1) && AFF_FLAGGED(c, bitvector_t(int32(affect))) {
+							libc.StrCpy(str, libc.CString("1"))
 						} else {
-							C.strcpy(str, libc.CString("0"))
+							libc.StrCpy(str, libc.CString("0"))
 						}
 					} else {
-						C.strcpy(str, libc.CString("0"))
+						libc.StrCpy(str, libc.CString("0"))
 					}
-				} else if C.strcasecmp(field, libc.CString("alias")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("alias")) == 0 {
 					stdio.Snprintf(str, int(slen), "%s", c.Name)
-				} else if C.strcasecmp(field, libc.CString("align")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("align")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var addition int = libc.Atoi(libc.GoString(subfield))
 						c.Alignment = MAX(-1000, MIN(addition, 1000))
@@ -569,7 +570,7 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					stdio.Snprintf(str, int(slen), "%d", c.Alignment)
 				}
 			case 'b':
-				if C.strcasecmp(field, libc.CString("bank")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("bank")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var addition int = libc.Atoi(libc.GoString(subfield))
 						c.Bank_gold += addition
@@ -577,31 +578,31 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					stdio.Snprintf(str, int(slen), "%d", c.Gold)
 				}
 			case 'c':
-				if C.strcasecmp(field, libc.CString("canbeseen")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("canbeseen")) == 0 {
 					if type_ == MOB_TRIGGER && !CAN_SEE((*char_data)(gohere), c) {
-						C.strcpy(str, libc.CString("0"))
+						libc.StrCpy(str, libc.CString("0"))
 					} else {
-						C.strcpy(str, libc.CString("1"))
+						libc.StrCpy(str, libc.CString("1"))
 					}
-				} else if C.strcasecmp(field, libc.CString("carry")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("carry")) == 0 {
 					if !IS_NPC(c) && c.Player_specials.Carrying != nil {
-						C.strcpy(str, libc.CString("1"))
+						libc.StrCpy(str, libc.CString("1"))
 					} else {
-						C.strcpy(str, libc.CString("0"))
+						libc.StrCpy(str, libc.CString("0"))
 					}
-				} else if C.strcasecmp(field, libc.CString("clan")) == 0 {
-					if c.Clan != nil && C.strstr(c.Clan, subfield) != nil {
-						C.strcpy(str, libc.CString("1"))
+				} else if libc.StrCaseCmp(field, libc.CString("clan")) == 0 {
+					if c.Clan != nil && libc.StrStr(c.Clan, subfield) != nil {
+						libc.StrCpy(str, libc.CString("1"))
 					} else {
-						C.strcpy(str, libc.CString("0"))
+						libc.StrCpy(str, libc.CString("0"))
 					}
-				} else if C.strcasecmp(field, libc.CString("class")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("class")) == 0 {
 					if !IS_NPC(c) {
 						stdio.Snprintf(str, int(slen), "%s", pc_class_types[int(c.Chclass)])
 					} else {
 						stdio.Snprintf(str, int(slen), "blank")
 					}
-				} else if C.strcasecmp(field, libc.CString("con")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("con")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var (
 							addition int = libc.Atoi(libc.GoString(subfield))
@@ -611,12 +612,12 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 						if int(c.Aff_abils.Con) > max {
 							c.Aff_abils.Con = int8(max)
 						}
-						if c.Aff_abils.Con < 3 {
+						if int(c.Aff_abils.Con) < 3 {
 							c.Aff_abils.Con = 3
 						}
 					}
 					stdio.Snprintf(str, int(slen), "%d", c.Aff_abils.Con)
-				} else if C.strcasecmp(field, libc.CString("cha")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("cha")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var (
 							addition int = libc.Atoi(libc.GoString(subfield))
@@ -626,22 +627,22 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 						if int(c.Aff_abils.Cha) > max {
 							c.Aff_abils.Cha = int8(max)
 						}
-						if c.Aff_abils.Cha < 3 {
+						if int(c.Aff_abils.Cha) < 3 {
 							c.Aff_abils.Cha = 3
 						}
 					}
 					stdio.Snprintf(str, int(slen), "%d", c.Aff_abils.Cha)
 				}
 			case 'd':
-				if C.strcasecmp(field, libc.CString("dead")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("dead")) == 0 {
 					if AFF_FLAGGED(c, AFF_SPIRIT) {
-						C.strcpy(str, libc.CString("1"))
+						libc.StrCpy(str, libc.CString("1"))
 					} else {
-						C.strcpy(str, libc.CString("0"))
+						libc.StrCpy(str, libc.CString("0"))
 					}
-				} else if C.strcasecmp(field, libc.CString("death")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("death")) == 0 {
 					stdio.Snprintf(str, int(slen), "%ld", c.Deathtime)
-				} else if C.strcasecmp(field, libc.CString("dex")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("dex")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var (
 							addition int = libc.Atoi(libc.GoString(subfield))
@@ -651,18 +652,18 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 						if int(c.Aff_abils.Dex) > max {
 							c.Aff_abils.Dex = int8(max)
 						}
-						if c.Aff_abils.Dex < 3 {
+						if int(c.Aff_abils.Dex) < 3 {
 							c.Aff_abils.Dex = 3
 						}
 					}
 					stdio.Snprintf(str, int(slen), "%d", c.Aff_abils.Dex)
-				} else if C.strcasecmp(field, libc.CString("drag")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("drag")) == 0 {
 					if !IS_NPC(c) && c.Drag != nil {
-						C.strcpy(str, libc.CString("1"))
+						libc.StrCpy(str, libc.CString("1"))
 					} else {
-						C.strcpy(str, libc.CString("0"))
+						libc.StrCpy(str, libc.CString("0"))
 					}
-				} else if C.strcasecmp(field, libc.CString("drunk")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("drunk")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var addition int = libc.Atoi(libc.GoString(subfield))
 						c.Player_specials.Conditions[DRUNK] = int8(MAX(-1, MIN(addition, 24)))
@@ -670,7 +671,7 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					stdio.Snprintf(str, int(slen), "%d", c.Player_specials.Conditions[DRUNK])
 				}
 			case 'e':
-				if C.strcasecmp(field, libc.CString("eq")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("eq")) == 0 {
 					var pos int
 					if subfield == nil || *subfield == 0 {
 						*str = '\x00'
@@ -688,7 +689,7 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 							}
 						}
 						if j > 0 {
-							C.strcpy(str, libc.CString("1"))
+							libc.StrCpy(str, libc.CString("1"))
 						} else {
 							*str = '\x00'
 						}
@@ -701,7 +702,7 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 						stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, (c.Equipment[pos]).Id)
 					}
 				}
-				if C.strcasecmp(field, libc.CString("exp")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("exp")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var addition int64 = int64(MIN(libc.Atoi(libc.GoString(subfield)), 2100000000))
 						gain_exp(c, addition)
@@ -709,19 +710,19 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					stdio.Snprintf(str, int(slen), "%lld", c.Exp)
 				}
 			case 'f':
-				if C.strcasecmp(field, libc.CString("fighting")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("fighting")) == 0 {
 					if c.Fighting != nil {
 						stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, c.Fighting.Id)
 					} else {
 						*str = '\x00'
 					}
-				} else if C.strcasecmp(field, libc.CString("flying")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("flying")) == 0 {
 					if AFF_FLAGGED(c, AFF_FLYING) {
-						C.strcpy(str, libc.CString("1"))
+						libc.StrCpy(str, libc.CString("1"))
 					} else {
-						C.strcpy(str, libc.CString("0"))
+						libc.StrCpy(str, libc.CString("0"))
 					}
-				} else if C.strcasecmp(field, libc.CString("follower")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("follower")) == 0 {
 					if c.Followers == nil || c.Followers.Follower == nil {
 						*str = '\x00'
 					} else {
@@ -729,7 +730,7 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					}
 				}
 			case 'g':
-				if C.strcasecmp(field, libc.CString("gold")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("gold")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var addition int = libc.Atoi(libc.GoString(subfield))
 						c.Gold += addition
@@ -737,26 +738,26 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					stdio.Snprintf(str, int(slen), "%d", c.Gold)
 				}
 			case 'h':
-				if C.strcasecmp(field, libc.CString("has_item")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("has_item")) == 0 {
 					if subfield == nil || *subfield == 0 {
 						*str = '\x00'
 					} else {
 						stdio.Snprintf(str, int(slen), "%d", char_has_item(subfield, c))
 					}
-				} else if C.strcasecmp(field, libc.CString("hisher")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("hisher")) == 0 {
 					stdio.Snprintf(str, int(slen), "%s", HSHR(c))
-				} else if C.strcasecmp(field, libc.CString("heshe")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("heshe")) == 0 {
 					stdio.Snprintf(str, int(slen), "%s", HSSH(c))
-				} else if C.strcasecmp(field, libc.CString("himher")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("himher")) == 0 {
 					stdio.Snprintf(str, int(slen), "%s", HMHR(c))
-				} else if C.strcasecmp(field, libc.CString("hitp")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("hitp")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var addition int64 = int64(libc.Atoi(libc.GoString(subfield)))
 						c.Hit += addition
 						update_pos(c)
 					}
 					stdio.Snprintf(str, int(slen), "%lld", c.Hit)
-				} else if C.strcasecmp(field, libc.CString("hunger")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("hunger")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var addition int = libc.Atoi(libc.GoString(subfield))
 						c.Player_specials.Conditions[HUNGER] = int8(MAX(-1, MIN(addition, 24)))
@@ -764,15 +765,15 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					stdio.Snprintf(str, int(slen), "%d", c.Player_specials.Conditions[HUNGER])
 				}
 			case 'i':
-				if C.strcasecmp(field, libc.CString("id")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("id")) == 0 {
 					stdio.Snprintf(str, int(slen), "%d", c.Id)
-				} else if C.strcasecmp(field, libc.CString("is_pc")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("is_pc")) == 0 {
 					if IS_NPC(c) {
-						C.strcpy(str, libc.CString("0"))
+						libc.StrCpy(str, libc.CString("0"))
 					} else {
-						C.strcpy(str, libc.CString("1"))
+						libc.StrCpy(str, libc.CString("1"))
 					}
-				} else if C.strcasecmp(field, libc.CString("inventory")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("inventory")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						for obj = c.Carrying; obj != nil; obj = obj.Next_content {
 							if GET_OBJ_VNUM(obj) == obj_vnum(libc.Atoi(libc.GoString(subfield))) {
@@ -790,33 +791,33 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 							*str = '\x00'
 						}
 					}
-				} else if C.strcasecmp(field, libc.CString("is_killer")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("is_killer")) == 0 {
 					if subfield != nil && *subfield != 0 {
-						if C.strcasecmp(libc.CString("on"), subfield) == 0 {
-							c.Act[int(PLR_KILLER/32)] |= bitvector_t(1 << (int(PLR_KILLER % 32)))
-						} else if C.strcasecmp(libc.CString("off"), subfield) == 0 {
-							c.Act[int(PLR_KILLER/32)] &= bitvector_t(^(1 << (int(PLR_KILLER % 32))))
+						if libc.StrCaseCmp(libc.CString("on"), subfield) == 0 {
+							c.Act[int(PLR_KILLER/32)] |= bitvector_t(int32(1 << (int(PLR_KILLER % 32))))
+						} else if libc.StrCaseCmp(libc.CString("off"), subfield) == 0 {
+							c.Act[int(PLR_KILLER/32)] &= bitvector_t(int32(^(1 << (int(PLR_KILLER % 32)))))
 						}
 					}
 					if PLR_FLAGGED(c, PLR_KILLER) {
-						C.strcpy(str, libc.CString("1"))
+						libc.StrCpy(str, libc.CString("1"))
 					} else {
-						C.strcpy(str, libc.CString("0"))
+						libc.StrCpy(str, libc.CString("0"))
 					}
-				} else if C.strcasecmp(field, libc.CString("is_thief")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("is_thief")) == 0 {
 					if subfield != nil && *subfield != 0 {
-						if C.strcasecmp(libc.CString("on"), subfield) == 0 {
-							c.Act[int(PLR_THIEF/32)] |= bitvector_t(1 << (int(PLR_THIEF % 32)))
-						} else if C.strcasecmp(libc.CString("off"), subfield) == 0 {
-							c.Act[int(PLR_THIEF/32)] &= bitvector_t(^(1 << (int(PLR_THIEF % 32))))
+						if libc.StrCaseCmp(libc.CString("on"), subfield) == 0 {
+							c.Act[int(PLR_THIEF/32)] |= bitvector_t(int32(1 << (int(PLR_THIEF % 32))))
+						} else if libc.StrCaseCmp(libc.CString("off"), subfield) == 0 {
+							c.Act[int(PLR_THIEF/32)] &= bitvector_t(int32(^(1 << (int(PLR_THIEF % 32)))))
 						}
 					}
 					if PLR_FLAGGED(c, PLR_THIEF) {
-						C.strcpy(str, libc.CString("1"))
+						libc.StrCpy(str, libc.CString("1"))
 					} else {
-						C.strcpy(str, libc.CString("0"))
+						libc.StrCpy(str, libc.CString("0"))
 					}
-				} else if C.strcasecmp(field, libc.CString("int")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("int")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var (
 							addition int = libc.Atoi(libc.GoString(subfield))
@@ -826,48 +827,48 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 						if int(c.Aff_abils.Intel) > max {
 							c.Aff_abils.Intel = int8(max)
 						}
-						if c.Aff_abils.Intel < 3 {
+						if int(c.Aff_abils.Intel) < 3 {
 							c.Aff_abils.Intel = 3
 						}
 					}
 					stdio.Snprintf(str, int(slen), "%d", c.Aff_abils.Intel)
 				}
 			case 'l':
-				if C.strcasecmp(field, libc.CString("level")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("level")) == 0 {
 					stdio.Snprintf(str, int(slen), "%d", GET_LEVEL(c))
 				}
 			case 'm':
-				if C.strcasecmp(field, libc.CString("maxhitp")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("maxhitp")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var addition int64 = int64(libc.Atoi(libc.GoString(subfield)))
 						c.Max_hit = int64(MAX(int(c.Max_hit+addition), 1))
 					}
 					stdio.Snprintf(str, int(slen), "%lld", c.Max_hit)
-				} else if C.strcasecmp(field, libc.CString("mana")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("mana")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var addition int64 = int64(libc.Atoi(libc.GoString(subfield)))
 						c.Mana += addition
 					}
 					stdio.Snprintf(str, int(slen), "%lld", c.Mana)
-				} else if C.strcasecmp(field, libc.CString("maxmana")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("maxmana")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var addition int64 = int64(libc.Atoi(libc.GoString(subfield)))
 						c.Max_mana = int64(MAX(int(c.Max_mana+addition), 1))
 					}
 					stdio.Snprintf(str, int(slen), "%lld", c.Max_mana)
-				} else if C.strcasecmp(field, libc.CString("move")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("move")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var addition int64 = int64(libc.Atoi(libc.GoString(subfield)))
 						c.Move += addition
 					}
 					stdio.Snprintf(str, int(slen), "%lld", c.Move)
-				} else if C.strcasecmp(field, libc.CString("maxmove")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("maxmove")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var addition int64 = int64(libc.Atoi(libc.GoString(subfield)))
 						c.Max_move = int64(MAX(int(c.Max_move+addition), 1))
 					}
 					stdio.Snprintf(str, int(slen), "%lld", c.Max_move)
-				} else if C.strcasecmp(field, libc.CString("master")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("master")) == 0 {
 					if c.Master == nil {
 						*str = '\x00'
 					} else {
@@ -875,9 +876,9 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					}
 				}
 			case 'n':
-				if C.strcasecmp(field, libc.CString("name")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("name")) == 0 {
 					stdio.Snprintf(str, int(slen), "%s", GET_NAME(c))
-				} else if C.strcasecmp(field, libc.CString("next_in_room")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("next_in_room")) == 0 {
 					if c.Next_in_room != nil {
 						stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, c.Next_in_room.Id)
 					} else {
@@ -885,17 +886,17 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					}
 				}
 			case 'p':
-				if C.strcasecmp(field, libc.CString("pos")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("pos")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						for i = POS_SLEEPING; i <= POS_STANDING; i++ {
-							if C.strncasecmp(subfield, position_types[i], uint64(C.strlen(subfield))) == 0 {
+							if libc.StrNCaseCmp(subfield, position_types[i], libc.StrLen(subfield)) == 0 {
 								c.Position = int8(i)
 								break
 							}
 						}
 					}
 					stdio.Snprintf(str, int(slen), "%s", position_types[c.Position])
-				} else if C.strcasecmp(field, libc.CString("prac")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("prac")) == 0 {
 					if IS_NPC(c) {
 						if c.In_room != room_rnum(-1) {
 							send_to_room(c.In_room, libc.CString("Error!: Report this trigger error to the coding authorities!\r\n"))
@@ -906,44 +907,44 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 						c.Player_specials.Class_skill_points[c.Chclass] = MAX(0, (c.Player_specials.Class_skill_points[c.Chclass])+addition)
 					}
 					stdio.Snprintf(str, int(slen), "%d", c.Player_specials.Class_skill_points[c.Chclass])
-				} else if C.strcasecmp(field, libc.CString("plr")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("plr")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var plr int = get_flag_by_name(player_bits[:], subfield)
-						if plr != int(-1) && PLR_FLAGGED(c, bitvector_t(plr)) {
-							C.strcpy(str, libc.CString("1"))
+						if plr != int(-1) && PLR_FLAGGED(c, bitvector_t(int32(plr))) {
+							libc.StrCpy(str, libc.CString("1"))
 						} else {
-							C.strcpy(str, libc.CString("0"))
+							libc.StrCpy(str, libc.CString("0"))
 						}
 					} else {
-						C.strcpy(str, libc.CString("0"))
+						libc.StrCpy(str, libc.CString("0"))
 					}
-				} else if C.strcasecmp(field, libc.CString("pref")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("pref")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var pref int = get_flag_by_name(preference_bits[:], subfield)
-						if pref != int(-1) && PRF_FLAGGED(c, bitvector_t(pref)) {
-							C.strcpy(str, libc.CString("1"))
+						if pref != int(-1) && PRF_FLAGGED(c, bitvector_t(int32(pref))) {
+							libc.StrCpy(str, libc.CString("1"))
 						} else {
-							C.strcpy(str, libc.CString("0"))
+							libc.StrCpy(str, libc.CString("0"))
 						}
 					} else {
-						C.strcpy(str, libc.CString("0"))
+						libc.StrCpy(str, libc.CString("0"))
 					}
 				}
 			case 'r':
-				if C.strcasecmp(field, libc.CString("room")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("room")) == 0 {
 					stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, func() room_vnum {
 						if c.In_room != room_rnum(-1) {
 							return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(c.In_room)))).Number + ROOM_ID_BASE
 						}
 						return ROOM_ID_BASE
 					}())
-				} else if C.strcasecmp(field, libc.CString("race")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("race")) == 0 {
 					if IS_NPC(c) {
 						sprinttype(int(c.Race), race_names[:], str, slen)
 					} else {
 						sprinttype(int(c.Race), race_names[:], str, slen)
 					}
-				} else if C.strcasecmp(field, libc.CString("rpp")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("rpp")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var addition int = libc.Atoi(libc.GoString(subfield))
 						c.Rp += addition
@@ -951,9 +952,9 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					stdio.Snprintf(str, int(slen), "%d", c.Rp)
 				}
 			case 's':
-				if C.strcasecmp(field, libc.CString("sex")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("sex")) == 0 {
 					stdio.Snprintf(str, int(slen), "%s", genders[int(c.Sex)])
-				} else if C.strcasecmp(field, libc.CString("str")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("str")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var (
 							addition int = libc.Atoi(libc.GoString(subfield))
@@ -963,12 +964,12 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 						if int(c.Aff_abils.Str) > max {
 							c.Aff_abils.Str = int8(max)
 						}
-						if c.Aff_abils.Str < 3 {
+						if int(c.Aff_abils.Str) < 3 {
 							c.Aff_abils.Str = 3
 						}
 					}
 					stdio.Snprintf(str, int(slen), "%d", c.Aff_abils.Str)
-				} else if C.strcasecmp(field, libc.CString("size")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("size")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var ns int
 						if (func() int {
@@ -979,9 +980,9 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 						}
 					}
 					sprinttype(get_size(c), size_names[:], str, slen)
-				} else if C.strcasecmp(field, libc.CString("skill")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("skill")) == 0 {
 					stdio.Snprintf(str, int(slen), "%s", skill_percent(c, subfield))
-				} else if C.strcasecmp(field, libc.CString("skillset")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("skillset")) == 0 {
 					if !IS_NPC(c) && subfield != nil && *subfield != 0 {
 						var (
 							skillname [2048]byte
@@ -1003,19 +1004,19 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 						}
 					}
 					*str = '\x00'
-				} else if C.strcasecmp(field, libc.CString("saving_fortitude")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("saving_fortitude")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var addition int = libc.Atoi(libc.GoString(subfield))
 						c.Apply_saving_throw[SAVING_FORTITUDE] += int16(addition)
 					}
 					stdio.Snprintf(str, int(slen), "%d", c.Apply_saving_throw[SAVING_FORTITUDE])
-				} else if C.strcasecmp(field, libc.CString("saving_reflex")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("saving_reflex")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var addition int = libc.Atoi(libc.GoString(subfield))
 						c.Apply_saving_throw[SAVING_REFLEX] += int16(addition)
 					}
 					stdio.Snprintf(str, int(slen), "%d", c.Apply_saving_throw[SAVING_REFLEX])
-				} else if C.strcasecmp(field, libc.CString("saving_will")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("saving_will")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var addition int = libc.Atoi(libc.GoString(subfield))
 						c.Apply_saving_throw[SAVING_WILL] += int16(addition)
@@ -1023,17 +1024,17 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					stdio.Snprintf(str, int(slen), "%d", c.Apply_saving_throw[SAVING_WILL])
 				}
 			case 't':
-				if C.strcasecmp(field, libc.CString("thirst")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("thirst")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var addition int = libc.Atoi(libc.GoString(subfield))
 						c.Player_specials.Conditions[THIRST] = int8(MAX(-1, MIN(addition, 24)))
 					}
 					stdio.Snprintf(str, int(slen), "%d", c.Player_specials.Conditions[THIRST])
-				} else if C.strcasecmp(field, libc.CString("tnl")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("tnl")) == 0 {
 					stdio.Snprintf(str, int(slen), "%d", level_exp(c, GET_LEVEL(c)+1))
 				}
 			case 'v':
-				if C.strcasecmp(field, libc.CString("vnum")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("vnum")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						stdio.Snprintf(str, int(slen), "%d", func() int {
 							if IS_NPC(c) {
@@ -1045,27 +1046,27 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 						if IS_NPC(c) {
 							stdio.Snprintf(str, int(slen), "%d", GET_MOB_VNUM(c))
 						} else {
-							C.strcpy(str, libc.CString("-1"))
+							libc.StrCpy(str, libc.CString("-1"))
 						}
 					}
-				} else if C.strcasecmp(field, libc.CString("varexists")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("varexists")) == 0 {
 					var remote_vd *trig_var_data
-					C.strcpy(str, libc.CString("0"))
+					libc.StrCpy(str, libc.CString("0"))
 					if c.Script != nil {
 						for remote_vd = c.Script.Global_vars; remote_vd != nil; remote_vd = remote_vd.Next {
-							if C.strcasecmp(remote_vd.Name, subfield) == 0 {
+							if libc.StrCaseCmp(remote_vd.Name, subfield) == 0 {
 								break
 							}
 						}
 						if remote_vd != nil {
-							C.strcpy(str, libc.CString("1"))
+							libc.StrCpy(str, libc.CString("1"))
 						}
 					}
 				}
 			case 'w':
-				if C.strcasecmp(field, libc.CString("weight")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("weight")) == 0 {
 					stdio.Snprintf(str, int(slen), "%d", c.Weight)
-				} else if C.strcasecmp(field, libc.CString("wis")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("wis")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var (
 							addition int = libc.Atoi(libc.GoString(subfield))
@@ -1075,14 +1076,14 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 						if int(c.Aff_abils.Wis) > max {
 							c.Aff_abils.Wis = int8(max)
 						}
-						if c.Aff_abils.Wis < 3 {
+						if int(c.Aff_abils.Wis) < 3 {
 							c.Aff_abils.Wis = 3
 						}
 					}
 					stdio.Snprintf(str, int(slen), "%d", c.Aff_abils.Wis)
 				}
 			case 'z':
-				if C.strcasecmp(field, libc.CString("zenni")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("zenni")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var addition int = libc.Atoi(libc.GoString(subfield))
 						c.Gold += addition
@@ -1093,7 +1094,7 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 			if *str == '\x01' {
 				if c.Script != nil {
 					for vd = c.Script.Global_vars; vd != nil; vd = vd.Next {
-						if C.strcasecmp(vd.Name, field) == 0 {
+						if libc.StrCaseCmp(vd.Name, field) == 0 {
 							break
 						}
 					}
@@ -1113,9 +1114,9 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 				return
 			}
 			*str = '\x01'
-			switch C.tolower(int(*field)) {
+			switch unicode.ToLower(rune(*field)) {
 			case 'a':
-				if C.strcasecmp(field, libc.CString("affects")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("affects")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						if check_flags_by_name_ar((*int)(unsafe.Pointer(&o.Bitvector[0])), NUM_AFF_FLAGS, subfield, affected_bits[:]) > 0 {
 							stdio.Snprintf(str, int(slen), "1")
@@ -1127,39 +1128,39 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					}
 				}
 			case 'c':
-				if C.strcasecmp(field, libc.CString("cost")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("cost")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var addition int = libc.Atoi(libc.GoString(subfield))
 						o.Cost = MAX(0, addition+o.Cost)
 					}
 					stdio.Snprintf(str, int(slen), "%d", o.Cost)
-				} else if C.strcasecmp(field, libc.CString("cost_per_day")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("cost_per_day")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var addition int = libc.Atoi(libc.GoString(subfield))
 						o.Cost_per_day = MAX(0, addition+o.Cost_per_day)
 					}
 					stdio.Snprintf(str, int(slen), "%d", o.Cost_per_day)
-				} else if C.strcasecmp(field, libc.CString("carried_by")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("carried_by")) == 0 {
 					if o.Carried_by != nil {
 						stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, o.Carried_by.Id)
 					} else {
 						*str = '\x00'
 					}
-				} else if C.strcasecmp(field, libc.CString("contents")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("contents")) == 0 {
 					if o.Contains != nil {
 						stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, o.Contains.Id)
 					} else {
 						*str = '\x00'
 					}
-				} else if C.strcasecmp(field, libc.CString("count")) == 0 {
-					if o.Type_flag == ITEM_CONTAINER {
+				} else if libc.StrCaseCmp(field, libc.CString("count")) == 0 {
+					if int(o.Type_flag) == ITEM_CONTAINER {
 						stdio.Snprintf(str, int(slen), "%d", item_in_list(subfield, o.Contains))
 					} else {
-						C.strcpy(str, libc.CString("0"))
+						libc.StrCpy(str, libc.CString("0"))
 					}
 				}
 			case 'e':
-				if C.strcasecmp(field, libc.CString("extra")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("extra")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						if check_flags_by_name_ar((*int)(unsafe.Pointer(&o.Extra_flags[0])), NUM_ITEM_FLAGS, subfield, extra_bits[:]) > 0 {
 							stdio.Snprintf(str, int(slen), "1")
@@ -1173,8 +1174,8 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					sprintbitarray(o.Extra_flags[:], extra_bits[:], EF_ARRAY_MAX, str)
 				}
 			case 'h':
-				if C.strcasecmp(field, libc.CString("has_in")) == 0 {
-					if o.Type_flag == ITEM_CONTAINER {
+				if libc.StrCaseCmp(field, libc.CString("has_in")) == 0 {
+					if int(o.Type_flag) == ITEM_CONTAINER {
 						stdio.Snprintf(str, int(slen), "%s", func() string {
 							if item_in_list(subfield, o.Contains) != 0 {
 								return "1"
@@ -1182,56 +1183,56 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 							return "0"
 						}())
 					} else {
-						C.strcpy(str, libc.CString("0"))
+						libc.StrCpy(str, libc.CString("0"))
 					}
 				}
-				if C.strcasecmp(field, libc.CString("health")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("health")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var addition int = libc.Atoi(libc.GoString(subfield))
 						o.Value[VAL_ALL_HEALTH] = MAX(1, addition+(o.Value[VAL_ALL_HEALTH]))
 						if OBJ_FLAGGED(o, ITEM_BROKEN) && (o.Value[VAL_ALL_HEALTH]) >= 100 {
-							o.Extra_flags[int(ITEM_BROKEN/32)] &= bitvector_t(^(1 << (int(ITEM_BROKEN % 32))))
+							o.Extra_flags[int(ITEM_BROKEN/32)] &= bitvector_t(int32(^(1 << (int(ITEM_BROKEN % 32)))))
 						}
 					}
 					stdio.Snprintf(str, int(slen), "%d", o.Value[VAL_ALL_HEALTH])
 				}
 			case 'i':
-				if C.strcasecmp(field, libc.CString("id")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("id")) == 0 {
 					stdio.Snprintf(str, int(slen), "%d", o.Id)
-				} else if C.strcasecmp(field, libc.CString("is_inroom")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("is_inroom")) == 0 {
 					if o.In_room != room_rnum(-1) {
 						stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(o.In_room)))).Number+ROOM_ID_BASE)
 					} else {
 						*str = '\x00'
 					}
-				} else if C.strcasecmp(field, libc.CString("is_pc")) == 0 {
-					C.strcpy(str, libc.CString("-1"))
-				} else if C.strcasecmp(field, libc.CString("itemflag")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("is_pc")) == 0 {
+					libc.StrCpy(str, libc.CString("-1"))
+				} else if libc.StrCaseCmp(field, libc.CString("itemflag")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var item int = get_flag_by_name(extra_bits[:], subfield)
-						if item != int(-1) && OBJ_FLAGGED(o, bitvector_t(item)) {
-							C.strcpy(str, libc.CString("1"))
+						if item != int(-1) && OBJ_FLAGGED(o, bitvector_t(int32(item))) {
+							libc.StrCpy(str, libc.CString("1"))
 						} else {
-							C.strcpy(str, libc.CString("0"))
+							libc.StrCpy(str, libc.CString("0"))
 						}
 					} else {
-						C.strcpy(str, libc.CString("0"))
+						libc.StrCpy(str, libc.CString("0"))
 					}
 				}
 			case 'l':
-				if C.strcasecmp(field, libc.CString("level")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("level")) == 0 {
 					stdio.Snprintf(str, int(slen), "%d", o.Level)
 				}
 			case 'n':
-				if C.strcasecmp(field, libc.CString("name")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("name")) == 0 {
 					if subfield == nil || *subfield == 0 {
 						stdio.Snprintf(str, int(slen), "%s", o.Name)
 					} else {
 						var blah [500]byte
 						stdio.Sprintf(&blah[0], "%s %s", o.Name, subfield)
-						o.Name = C.strdup(&blah[0])
+						o.Name = libc.StrDup(&blah[0])
 					}
-				} else if C.strcasecmp(field, libc.CString("next_in_list")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("next_in_list")) == 0 {
 					if o.Next_content != nil {
 						stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, o.Next_content.Id)
 					} else {
@@ -1239,7 +1240,7 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					}
 				}
 			case 'r':
-				if C.strcasecmp(field, libc.CString("room")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("room")) == 0 {
 					if obj_room(o) != room_rnum(-1) {
 						stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj_room(o))))).Number+ROOM_ID_BASE)
 					} else {
@@ -1247,37 +1248,37 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					}
 				}
 			case 's':
-				if C.strcasecmp(field, libc.CString("shortdesc")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("shortdesc")) == 0 {
 					if subfield == nil || *subfield == 0 {
 						stdio.Snprintf(str, int(slen), "%s", o.Short_description)
 					} else {
 						var blah [500]byte
 						stdio.Sprintf(&blah[0], "%s @wnicknamed @D(@C%s@D)@n", o.Short_description, subfield)
-						o.Short_description = C.strdup(&blah[0])
+						o.Short_description = libc.StrDup(&blah[0])
 					}
-				} else if C.strcasecmp(field, libc.CString("setaffects")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("setaffects")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var ns int
 						if (func() int {
 							ns = check_flags_by_name_ar((*int)(unsafe.Pointer(&o.Bitvector[0])), NUM_AFF_FLAGS, subfield, affected_bits[:])
 							return ns
 						}()) > 0 {
-							o.Bitvector[ns/32] = o.Bitvector[ns/32] ^ bitvector_t(1<<(ns%32))
+							o.Bitvector[ns/32] = bitvector_t(int32(int(o.Bitvector[ns/32]) ^ 1<<(ns%32)))
 							stdio.Snprintf(str, int(slen), "1")
 						}
 					}
-				} else if C.strcasecmp(field, libc.CString("setextra")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("setextra")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var ns int
 						if (func() int {
 							ns = check_flags_by_name_ar((*int)(unsafe.Pointer(&o.Extra_flags[0])), NUM_ITEM_FLAGS, subfield, extra_bits[:])
 							return ns
 						}()) > 0 {
-							o.Extra_flags[ns/32] = o.Extra_flags[ns/32] ^ bitvector_t(1<<(ns%32))
+							o.Extra_flags[ns/32] = bitvector_t(int32(int(o.Extra_flags[ns/32]) ^ 1<<(ns%32)))
 							stdio.Snprintf(str, int(slen), "1")
 						}
 					}
-				} else if C.strcasecmp(field, libc.CString("size")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("size")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var ns int
 						if (func() int {
@@ -1290,37 +1291,37 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					sprinttype(o.Size, size_names[:], str, slen)
 				}
 			case 't':
-				if C.strcasecmp(field, libc.CString("type")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("type")) == 0 {
 					sprinttype(int(o.Type_flag), item_types[:], str, slen)
-				} else if C.strcasecmp(field, libc.CString("timer")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("timer")) == 0 {
 					stdio.Snprintf(str, int(slen), "%d", o.Timer)
 				}
 			case 'v':
-				if C.strcasecmp(field, libc.CString("vnum")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("vnum")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						stdio.Snprintf(str, int(slen), "%d", int(libc.BoolToInt(GET_OBJ_VNUM(o) == obj_vnum(libc.Atoi(libc.GoString(subfield))))))
 					} else {
 						stdio.Snprintf(str, int(slen), "%d", GET_OBJ_VNUM(o))
 					}
-				} else if C.strcasecmp(field, libc.CString("val0")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("val0")) == 0 {
 					stdio.Snprintf(str, int(slen), "%d", o.Value[0])
-				} else if C.strcasecmp(field, libc.CString("val1")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("val1")) == 0 {
 					stdio.Snprintf(str, int(slen), "%d", o.Value[1])
-				} else if C.strcasecmp(field, libc.CString("val2")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("val2")) == 0 {
 					stdio.Snprintf(str, int(slen), "%d", o.Value[2])
-				} else if C.strcasecmp(field, libc.CString("val3")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("val3")) == 0 {
 					stdio.Snprintf(str, int(slen), "%d", o.Value[3])
-				} else if C.strcasecmp(field, libc.CString("val4")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("val4")) == 0 {
 					stdio.Snprintf(str, int(slen), "%d", o.Value[4])
-				} else if C.strcasecmp(field, libc.CString("val5")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("val5")) == 0 {
 					stdio.Snprintf(str, int(slen), "%d", o.Value[5])
-				} else if C.strcasecmp(field, libc.CString("val6")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("val6")) == 0 {
 					stdio.Snprintf(str, int(slen), "%d", o.Value[6])
-				} else if C.strcasecmp(field, libc.CString("val7")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("val7")) == 0 {
 					stdio.Snprintf(str, int(slen), "%d", o.Value[7])
 				}
 			case 'w':
-				if C.strcasecmp(field, libc.CString("weight")) == 0 {
+				if libc.StrCaseCmp(field, libc.CString("weight")) == 0 {
 					if subfield != nil && *subfield != 0 {
 						var addition int = libc.Atoi(libc.GoString(subfield))
 						if addition < 0 || addition > 0 {
@@ -1330,7 +1331,7 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 						}
 					}
 					stdio.Snprintf(str, int(slen), "%lld", o.Weight)
-				} else if C.strcasecmp(field, libc.CString("worn_by")) == 0 {
+				} else if libc.StrCaseCmp(field, libc.CString("worn_by")) == 0 {
 					if o.Worn_by != nil {
 						stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, o.Worn_by.Id)
 					} else {
@@ -1341,7 +1342,7 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 			if *str == '\x01' {
 				if o.Script != nil {
 					for vd = o.Script.Global_vars; vd != nil; vd = vd.Next {
-						if C.strcasecmp(vd.Name, field) == 0 {
+						if libc.StrCaseCmp(vd.Name, field) == 0 {
 							break
 						}
 					}
@@ -1349,13 +1350,13 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 						stdio.Snprintf(str, int(slen), "%s", vd.Value)
 					} else {
 						*str = '\x00'
-						if C.strcasecmp(trig.Name, libc.CString("Rename Object")) != 0 {
+						if libc.StrCaseCmp(trig.Name, libc.CString("Rename Object")) != 0 {
 							script_log(libc.CString("Trigger: %s, VNum %d, type: %d. unknown object field: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, type_, field)
 						}
 					}
 				} else {
 					*str = '\x00'
-					if C.strcasecmp(trig.Name, libc.CString("Rename Object")) != 0 {
+					if libc.StrCaseCmp(trig.Name, libc.CString("Rename Object")) != 0 {
 						script_log(libc.CString("Trigger: %s, VNum %d, type: %d. unknown object field: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, type_, field)
 					}
 				}
@@ -1370,7 +1371,7 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 					script_log(libc.CString("Trigger: %s, Vnum %d, type %d. Trying to access Global var list of void. Apparently this has not been set up!"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, type_)
 				} else {
 					for vd = r.Script.Global_vars; vd != nil; vd = vd.Next {
-						if C.strcasecmp(vd.Name, field) == 0 {
+						if libc.StrCaseCmp(vd.Name, field) == 0 {
 							break
 						}
 					}
@@ -1380,19 +1381,19 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 						*str = '\x00'
 					}
 				}
-			} else if C.strcasecmp(field, libc.CString("name")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("name")) == 0 {
 				stdio.Snprintf(str, int(slen), "%s", r.Name)
-			} else if C.strcasecmp(field, libc.CString("sector")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("sector")) == 0 {
 				sprinttype(r.Sector_type, sector_types[:], str, slen)
-			} else if C.strcasecmp(field, libc.CString("gravity")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("gravity")) == 0 {
 				stdio.Snprintf(str, int(slen), "%d", r.Gravity)
-			} else if C.strcasecmp(field, libc.CString("vnum")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("vnum")) == 0 {
 				if subfield != nil && *subfield != 0 {
 					stdio.Snprintf(str, int(slen), "%d", int(libc.BoolToInt(r.Number == room_vnum(libc.Atoi(libc.GoString(subfield))))))
 				} else {
 					stdio.Snprintf(str, int(slen), "%d", r.Number)
 				}
-			} else if C.strcasecmp(field, libc.CString("contents")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("contents")) == 0 {
 				if subfield != nil && *subfield != 0 {
 					for obj = r.Contents; obj != nil; obj = obj.Next_content {
 						if GET_OBJ_VNUM(obj) == obj_vnum(libc.Atoi(libc.GoString(subfield))) {
@@ -1410,38 +1411,38 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 						*str = '\x00'
 					}
 				}
-			} else if C.strcasecmp(field, libc.CString("people")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("people")) == 0 {
 				if r.People != nil {
 					stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, r.People.Id)
 				} else {
 					*str = '\x00'
 				}
-			} else if C.strcasecmp(field, libc.CString("id")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("id")) == 0 {
 				var rnum room_rnum = real_room(r.Number)
 				if rnum != room_rnum(-1) {
 					stdio.Snprintf(str, int(slen), "%d", (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Number+ROOM_ID_BASE)
 				} else {
 					*str = '\x00'
 				}
-			} else if C.strcasecmp(field, libc.CString("weather")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("weather")) == 0 {
 				var sky_look [4]*byte = [4]*byte{libc.CString("sunny"), libc.CString("cloudy"), libc.CString("rainy"), libc.CString("lightning")}
 				if !IS_SET_AR(r.Room_flags[:], ROOM_INDOORS) {
 					stdio.Snprintf(str, int(slen), "%s", sky_look[weather_info.Sky])
 				} else {
 					*str = '\x00'
 				}
-			} else if C.strcasecmp(field, libc.CString("fishing")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("fishing")) == 0 {
 				var thisroom room_rnum = real_room(r.Number)
 				if ROOM_FLAGGED(thisroom, ROOM_FISHING) {
 					stdio.Snprintf(str, int(slen), "1")
 				} else {
 					stdio.Snprintf(str, int(slen), "0")
 				}
-			} else if C.strcasecmp(field, libc.CString("zonenumber")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("zonenumber")) == 0 {
 				stdio.Snprintf(str, int(slen), "%d", (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(r.Zone)))).Number)
-			} else if C.strcasecmp(field, libc.CString("zonename")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("zonename")) == 0 {
 				stdio.Snprintf(str, int(slen), "%s", (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(r.Zone)))).Name)
-			} else if C.strcasecmp(field, libc.CString("roomflag")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("roomflag")) == 0 {
 				if subfield != nil && *subfield != 0 {
 					var thisroom room_rnum = real_room(r.Number)
 					if check_flags_by_name_ar((*int)(unsafe.Pointer(&(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(thisroom)))).Room_flags[0])), NUM_ROOM_FLAGS, subfield, room_bits[:]) > 0 {
@@ -1452,21 +1453,21 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 				} else {
 					stdio.Snprintf(str, int(slen), "0")
 				}
-			} else if C.strcasecmp(field, libc.CString("north")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("north")) == 0 {
 				if (r.Dir_option[NORTH]) != nil {
 					if subfield != nil && *subfield != 0 {
-						if C.strcasecmp(subfield, libc.CString("vnum")) == 0 {
+						if libc.StrCaseCmp(subfield, libc.CString("vnum")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", func() room_vnum {
 								if (r.Dir_option[NORTH]).To_room != room_rnum(-1) && (r.Dir_option[NORTH]).To_room <= top_of_world {
 									return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[NORTH]).To_room)))).Number
 								}
 								return -1
 							}())
-						} else if C.strcasecmp(subfield, libc.CString("key")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("key")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", (r.Dir_option[NORTH]).Key)
-						} else if C.strcasecmp(subfield, libc.CString("bits")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("bits")) == 0 {
 							sprintbit((r.Dir_option[NORTH]).Exit_info, exit_bits[:], str, slen)
-						} else if C.strcasecmp(subfield, libc.CString("room")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("room")) == 0 {
 							if (r.Dir_option[NORTH]).To_room != room_rnum(-1) {
 								stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[NORTH]).To_room)))).Number+ROOM_ID_BASE)
 							} else {
@@ -1479,21 +1480,21 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 				} else {
 					*str = '\x00'
 				}
-			} else if C.strcasecmp(field, libc.CString("east")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("east")) == 0 {
 				if (r.Dir_option[EAST]) != nil {
 					if subfield != nil && *subfield != 0 {
-						if C.strcasecmp(subfield, libc.CString("vnum")) == 0 {
+						if libc.StrCaseCmp(subfield, libc.CString("vnum")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", func() room_vnum {
 								if (r.Dir_option[EAST]).To_room != room_rnum(-1) && (r.Dir_option[EAST]).To_room <= top_of_world {
 									return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[EAST]).To_room)))).Number
 								}
 								return -1
 							}())
-						} else if C.strcasecmp(subfield, libc.CString("key")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("key")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", (r.Dir_option[EAST]).Key)
-						} else if C.strcasecmp(subfield, libc.CString("bits")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("bits")) == 0 {
 							sprintbit((r.Dir_option[EAST]).Exit_info, exit_bits[:], str, slen)
-						} else if C.strcasecmp(subfield, libc.CString("room")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("room")) == 0 {
 							if (r.Dir_option[EAST]).To_room != room_rnum(-1) {
 								stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[EAST]).To_room)))).Number+ROOM_ID_BASE)
 							} else {
@@ -1506,21 +1507,21 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 				} else {
 					*str = '\x00'
 				}
-			} else if C.strcasecmp(field, libc.CString("south")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("south")) == 0 {
 				if (r.Dir_option[SOUTH]) != nil {
 					if subfield != nil && *subfield != 0 {
-						if C.strcasecmp(subfield, libc.CString("vnum")) == 0 {
+						if libc.StrCaseCmp(subfield, libc.CString("vnum")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", func() room_vnum {
 								if (r.Dir_option[SOUTH]).To_room != room_rnum(-1) && (r.Dir_option[SOUTH]).To_room <= top_of_world {
 									return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[SOUTH]).To_room)))).Number
 								}
 								return -1
 							}())
-						} else if C.strcasecmp(subfield, libc.CString("key")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("key")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", (r.Dir_option[SOUTH]).Key)
-						} else if C.strcasecmp(subfield, libc.CString("bits")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("bits")) == 0 {
 							sprintbit((r.Dir_option[SOUTH]).Exit_info, exit_bits[:], str, slen)
-						} else if C.strcasecmp(subfield, libc.CString("room")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("room")) == 0 {
 							if (r.Dir_option[SOUTH]).To_room != room_rnum(-1) {
 								stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[SOUTH]).To_room)))).Number+ROOM_ID_BASE)
 							} else {
@@ -1533,21 +1534,21 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 				} else {
 					*str = '\x00'
 				}
-			} else if C.strcasecmp(field, libc.CString("west")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("west")) == 0 {
 				if (r.Dir_option[WEST]) != nil {
 					if subfield != nil && *subfield != 0 {
-						if C.strcasecmp(subfield, libc.CString("vnum")) == 0 {
+						if libc.StrCaseCmp(subfield, libc.CString("vnum")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", func() room_vnum {
 								if (r.Dir_option[WEST]).To_room != room_rnum(-1) && (r.Dir_option[WEST]).To_room <= top_of_world {
 									return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[WEST]).To_room)))).Number
 								}
 								return -1
 							}())
-						} else if C.strcasecmp(subfield, libc.CString("key")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("key")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", (r.Dir_option[WEST]).Key)
-						} else if C.strcasecmp(subfield, libc.CString("bits")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("bits")) == 0 {
 							sprintbit((r.Dir_option[WEST]).Exit_info, exit_bits[:], str, slen)
-						} else if C.strcasecmp(subfield, libc.CString("room")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("room")) == 0 {
 							if (r.Dir_option[WEST]).To_room != room_rnum(-1) {
 								stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[WEST]).To_room)))).Number+ROOM_ID_BASE)
 							} else {
@@ -1560,21 +1561,21 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 				} else {
 					*str = '\x00'
 				}
-			} else if C.strcasecmp(field, libc.CString("up")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("up")) == 0 {
 				if (r.Dir_option[UP]) != nil {
 					if subfield != nil && *subfield != 0 {
-						if C.strcasecmp(subfield, libc.CString("vnum")) == 0 {
+						if libc.StrCaseCmp(subfield, libc.CString("vnum")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", func() room_vnum {
 								if (r.Dir_option[UP]).To_room != room_rnum(-1) && (r.Dir_option[UP]).To_room <= top_of_world {
 									return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[UP]).To_room)))).Number
 								}
 								return -1
 							}())
-						} else if C.strcasecmp(subfield, libc.CString("key")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("key")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", (r.Dir_option[UP]).Key)
-						} else if C.strcasecmp(subfield, libc.CString("bits")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("bits")) == 0 {
 							sprintbit((r.Dir_option[UP]).Exit_info, exit_bits[:], str, slen)
-						} else if C.strcasecmp(subfield, libc.CString("room")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("room")) == 0 {
 							if (r.Dir_option[UP]).To_room != room_rnum(-1) {
 								stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[UP]).To_room)))).Number+ROOM_ID_BASE)
 							} else {
@@ -1587,21 +1588,21 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 				} else {
 					*str = '\x00'
 				}
-			} else if C.strcasecmp(field, libc.CString("down")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("down")) == 0 {
 				if (r.Dir_option[DOWN]) != nil {
 					if subfield != nil && *subfield != 0 {
-						if C.strcasecmp(subfield, libc.CString("vnum")) == 0 {
+						if libc.StrCaseCmp(subfield, libc.CString("vnum")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", func() room_vnum {
 								if (r.Dir_option[DOWN]).To_room != room_rnum(-1) && (r.Dir_option[DOWN]).To_room <= top_of_world {
 									return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[DOWN]).To_room)))).Number
 								}
 								return -1
 							}())
-						} else if C.strcasecmp(subfield, libc.CString("key")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("key")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", (r.Dir_option[DOWN]).Key)
-						} else if C.strcasecmp(subfield, libc.CString("bits")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("bits")) == 0 {
 							sprintbit((r.Dir_option[DOWN]).Exit_info, exit_bits[:], str, slen)
-						} else if C.strcasecmp(subfield, libc.CString("room")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("room")) == 0 {
 							if (r.Dir_option[DOWN]).To_room != room_rnum(-1) {
 								stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[DOWN]).To_room)))).Number+ROOM_ID_BASE)
 							} else {
@@ -1614,21 +1615,21 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 				} else {
 					*str = '\x00'
 				}
-			} else if C.strcasecmp(field, libc.CString("northwest")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("northwest")) == 0 {
 				if (r.Dir_option[NORTHWEST]) != nil {
 					if subfield != nil && *subfield != 0 {
-						if C.strcasecmp(subfield, libc.CString("vnum")) == 0 {
+						if libc.StrCaseCmp(subfield, libc.CString("vnum")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", func() room_vnum {
 								if (r.Dir_option[NORTHWEST]).To_room != room_rnum(-1) && (r.Dir_option[NORTHWEST]).To_room <= top_of_world {
 									return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[NORTHWEST]).To_room)))).Number
 								}
 								return -1
 							}())
-						} else if C.strcasecmp(subfield, libc.CString("key")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("key")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", (r.Dir_option[NORTHWEST]).Key)
-						} else if C.strcasecmp(subfield, libc.CString("bits")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("bits")) == 0 {
 							sprintbit((r.Dir_option[NORTHWEST]).Exit_info, exit_bits[:], str, slen)
-						} else if C.strcasecmp(subfield, libc.CString("room")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("room")) == 0 {
 							if (r.Dir_option[NORTHWEST]).To_room != room_rnum(-1) {
 								stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[NORTHWEST]).To_room)))).Number+ROOM_ID_BASE)
 							} else {
@@ -1641,21 +1642,21 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 				} else {
 					*str = '\x00'
 				}
-			} else if C.strcasecmp(field, libc.CString("northeast")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("northeast")) == 0 {
 				if (r.Dir_option[NORTHEAST]) != nil {
 					if subfield != nil && *subfield != 0 {
-						if C.strcasecmp(subfield, libc.CString("vnum")) == 0 {
+						if libc.StrCaseCmp(subfield, libc.CString("vnum")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", func() room_vnum {
 								if (r.Dir_option[NORTHEAST]).To_room != room_rnum(-1) && (r.Dir_option[NORTHEAST]).To_room <= top_of_world {
 									return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[NORTHEAST]).To_room)))).Number
 								}
 								return -1
 							}())
-						} else if C.strcasecmp(subfield, libc.CString("key")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("key")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", (r.Dir_option[NORTHEAST]).Key)
-						} else if C.strcasecmp(subfield, libc.CString("bits")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("bits")) == 0 {
 							sprintbit((r.Dir_option[NORTHEAST]).Exit_info, exit_bits[:], str, slen)
-						} else if C.strcasecmp(subfield, libc.CString("room")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("room")) == 0 {
 							if (r.Dir_option[NORTHEAST]).To_room != room_rnum(-1) {
 								stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[NORTHEAST]).To_room)))).Number+ROOM_ID_BASE)
 							} else {
@@ -1668,21 +1669,21 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 				} else {
 					*str = '\x00'
 				}
-			} else if C.strcasecmp(field, libc.CString("southwest")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("southwest")) == 0 {
 				if (r.Dir_option[SOUTHWEST]) != nil {
 					if subfield != nil && *subfield != 0 {
-						if C.strcasecmp(subfield, libc.CString("vnum")) == 0 {
+						if libc.StrCaseCmp(subfield, libc.CString("vnum")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", func() room_vnum {
 								if (r.Dir_option[SOUTHWEST]).To_room != room_rnum(-1) && (r.Dir_option[SOUTHWEST]).To_room <= top_of_world {
 									return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[SOUTHWEST]).To_room)))).Number
 								}
 								return -1
 							}())
-						} else if C.strcasecmp(subfield, libc.CString("key")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("key")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", (r.Dir_option[SOUTHWEST]).Key)
-						} else if C.strcasecmp(subfield, libc.CString("bits")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("bits")) == 0 {
 							sprintbit((r.Dir_option[SOUTHWEST]).Exit_info, exit_bits[:], str, slen)
-						} else if C.strcasecmp(subfield, libc.CString("room")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("room")) == 0 {
 							if (r.Dir_option[SOUTHWEST]).To_room != room_rnum(-1) {
 								stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[SOUTHWEST]).To_room)))).Number+ROOM_ID_BASE)
 							} else {
@@ -1695,21 +1696,21 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 				} else {
 					*str = '\x00'
 				}
-			} else if C.strcasecmp(field, libc.CString("southeast")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("southeast")) == 0 {
 				if (r.Dir_option[SOUTHEAST]) != nil {
 					if subfield != nil && *subfield != 0 {
-						if C.strcasecmp(subfield, libc.CString("vnum")) == 0 {
+						if libc.StrCaseCmp(subfield, libc.CString("vnum")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", func() room_vnum {
 								if (r.Dir_option[SOUTHEAST]).To_room != room_rnum(-1) && (r.Dir_option[SOUTHEAST]).To_room <= top_of_world {
 									return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[SOUTHEAST]).To_room)))).Number
 								}
 								return -1
 							}())
-						} else if C.strcasecmp(subfield, libc.CString("key")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("key")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", (r.Dir_option[SOUTHEAST]).Key)
-						} else if C.strcasecmp(subfield, libc.CString("bits")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("bits")) == 0 {
 							sprintbit((r.Dir_option[SOUTHEAST]).Exit_info, exit_bits[:], str, slen)
-						} else if C.strcasecmp(subfield, libc.CString("room")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("room")) == 0 {
 							if (r.Dir_option[SOUTHEAST]).To_room != room_rnum(-1) {
 								stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[SOUTHEAST]).To_room)))).Number+ROOM_ID_BASE)
 							} else {
@@ -1722,21 +1723,21 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 				} else {
 					*str = '\x00'
 				}
-			} else if C.strcasecmp(field, libc.CString("inside")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("inside")) == 0 {
 				if (r.Dir_option[INDIR]) != nil {
 					if subfield != nil && *subfield != 0 {
-						if C.strcasecmp(subfield, libc.CString("vnum")) == 0 {
+						if libc.StrCaseCmp(subfield, libc.CString("vnum")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", func() room_vnum {
 								if (r.Dir_option[INDIR]).To_room != room_rnum(-1) && (r.Dir_option[INDIR]).To_room <= top_of_world {
 									return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[INDIR]).To_room)))).Number
 								}
 								return -1
 							}())
-						} else if C.strcasecmp(subfield, libc.CString("key")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("key")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", (r.Dir_option[INDIR]).Key)
-						} else if C.strcasecmp(subfield, libc.CString("bits")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("bits")) == 0 {
 							sprintbit((r.Dir_option[INDIR]).Exit_info, exit_bits[:], str, slen)
-						} else if C.strcasecmp(subfield, libc.CString("room")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("room")) == 0 {
 							if (r.Dir_option[INDIR]).To_room != room_rnum(-1) {
 								stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[INDIR]).To_room)))).Number+ROOM_ID_BASE)
 							} else {
@@ -1749,21 +1750,21 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 				} else {
 					*str = '\x00'
 				}
-			} else if C.strcasecmp(field, libc.CString("outside")) == 0 {
+			} else if libc.StrCaseCmp(field, libc.CString("outside")) == 0 {
 				if (r.Dir_option[OUTDIR]) != nil {
 					if subfield != nil && *subfield != 0 {
-						if C.strcasecmp(subfield, libc.CString("vnum")) == 0 {
+						if libc.StrCaseCmp(subfield, libc.CString("vnum")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", func() room_vnum {
 								if (r.Dir_option[OUTDIR]).To_room != room_rnum(-1) && (r.Dir_option[OUTDIR]).To_room <= top_of_world {
 									return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[OUTDIR]).To_room)))).Number
 								}
 								return -1
 							}())
-						} else if C.strcasecmp(subfield, libc.CString("key")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("key")) == 0 {
 							stdio.Snprintf(str, int(slen), "%d", (r.Dir_option[OUTDIR]).Key)
-						} else if C.strcasecmp(subfield, libc.CString("bits")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("bits")) == 0 {
 							sprintbit((r.Dir_option[OUTDIR]).Exit_info, exit_bits[:], str, slen)
-						} else if C.strcasecmp(subfield, libc.CString("room")) == 0 {
+						} else if libc.StrCaseCmp(subfield, libc.CString("room")) == 0 {
 							if (r.Dir_option[OUTDIR]).To_room != room_rnum(-1) {
 								stdio.Snprintf(str, int(slen), "%c%d", UID_CHAR, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((r.Dir_option[OUTDIR]).To_room)))).Number+ROOM_ID_BASE)
 							} else {
@@ -1779,7 +1780,7 @@ func find_replacement(gohere unsafe.Pointer, sc *script_data, trig *trig_data, t
 			} else {
 				if r.Script != nil {
 					for vd = r.Script.Global_vars; vd != nil; vd = vd.Next {
-						if C.strcasecmp(vd.Name, field) == 0 {
+						if libc.StrCaseCmp(vd.Name, field) == 0 {
 							break
 						}
 					}
@@ -1812,8 +1813,8 @@ func var_subst(gohere unsafe.Pointer, sc *script_data, trig *trig_data, type_ in
 		paren_count int = 0
 		dots        int = 0
 	)
-	if C.strchr(line, '%') == nil {
-		C.strcpy(buf, line)
+	if libc.StrChr(line, '%') == nil {
+		libc.StrCpy(buf, line)
 		return
 	}
 	repl_str[0] = func() byte {
@@ -1825,7 +1826,7 @@ func var_subst(gohere unsafe.Pointer, sc *script_data, trig *trig_data, type_ in
 		}()
 		return *p
 	}()
-	p = C.strcpy(&tmp[0], line)
+	p = libc.StrCpy(&tmp[0], line)
 	subfield_p = &subfield[0]
 	left = int(MAX_INPUT_LENGTH - 1)
 	for *p != 0 && left > 0 {
@@ -1882,7 +1883,7 @@ func var_subst(gohere unsafe.Pointer, sc *script_data, trig *trig_data, type_ in
 						if repl_str[0] != 0 {
 							stdio.Snprintf(&tmp2[0], int(2048), "eval tmpvr %s", &repl_str[0])
 							process_eval(gohere, sc, trig, type_, &tmp2[0])
-							C.strcpy(var_, libc.CString("tmpvr"))
+							libc.StrCpy(var_, libc.CString("tmpvr"))
 							field = p
 							dots = 0
 							continue
@@ -1916,11 +1917,11 @@ func var_subst(gohere unsafe.Pointer, sc *script_data, trig *trig_data, type_ in
 			*subfield_p = '\x00'
 			if subfield[0] != 0 {
 				var_subst(gohere, sc, trig, type_, &subfield[0], &tmp2[0])
-				C.strcpy(&subfield[0], &tmp2[0])
+				libc.StrCpy(&subfield[0], &tmp2[0])
 			}
 			find_replacement(gohere, sc, trig, type_, var_, field, &subfield[0], &repl_str[0], uint64(2048))
-			C.strncat(buf, &repl_str[0], uint64(left))
-			len_ = int(C.strlen(&repl_str[0]))
+			libc.StrNCat(buf, &repl_str[0], left)
+			len_ = libc.StrLen(&repl_str[0])
 			buf = (*byte)(unsafe.Add(unsafe.Pointer(buf), len_))
 			left -= len_
 		}

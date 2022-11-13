@@ -3,6 +3,8 @@ package main
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"os"
+	"unicode"
 	"unsafe"
 )
 
@@ -188,12 +190,12 @@ func is_ok_char(keeper *char_data, ch *char_data, shop_nr int) int {
 	if IS_NPC(ch) {
 		return TRUE
 	}
-	if ch.Chclass == CLASS_ROSHI && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOWIZARD) || ch.Chclass == CLASS_PICCOLO && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOCLERIC) || ch.Chclass == CLASS_KRANE && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOROGUE) || ch.Chclass == CLASS_BARDOCK && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOMONK) || ch.Chclass == CLASS_GINYU && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOPALADIN) || ch.Chclass == CLASS_NAIL && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOFIGHTER) || ch.Chclass == CLASS_KABITO && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOBARBARIAN) || ch.Chclass == CLASS_FRIEZA && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOSORCERER) || ch.Chclass == CLASS_ANDSIX && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOBARD) || ch.Chclass == CLASS_DABURA && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NORANGER) || ch.Chclass == CLASS_TAPION && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NODRUID) || ch.Chclass == CLASS_NAIL && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOFIGHTER) || ch.Chclass == CLASS_JINTO && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOARCANE_ARCHER) || ch.Chclass == CLASS_TSUNA && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOARCANE_TRICKSTER) || ch.Chclass == CLASS_KURZAK && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOARCHMAGE) || ((ch.Chclasses[CLASS_ASSASSIN])+(ch.Epicclasses[CLASS_ASSASSIN])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOASSASSIN) || ((ch.Chclasses[CLASS_BLACKGUARD])+(ch.Epicclasses[CLASS_BLACKGUARD])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOBLACKGUARD) || ((ch.Chclasses[CLASS_DRAGON_DISCIPLE])+(ch.Epicclasses[CLASS_DRAGON_DISCIPLE])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NODRAGON_DISCIPLE) || ((ch.Chclasses[CLASS_DUELIST])+(ch.Epicclasses[CLASS_DUELIST])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NODUELIST) || ((ch.Chclasses[CLASS_DWARVEN_DEFENDER])+(ch.Epicclasses[CLASS_DWARVEN_DEFENDER])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NODWARVEN_DEFENDER) || ((ch.Chclasses[CLASS_ELDRITCH_KNIGHT])+(ch.Epicclasses[CLASS_ELDRITCH_KNIGHT])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOELDRITCH_KNIGHT) || ((ch.Chclasses[CLASS_HIEROPHANT])+(ch.Epicclasses[CLASS_HIEROPHANT])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOHIEROPHANT) || ((ch.Chclasses[CLASS_HORIZON_WALKER])+(ch.Epicclasses[CLASS_HORIZON_WALKER])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOHORIZON_WALKER) || ((ch.Chclasses[CLASS_LOREMASTER])+(ch.Epicclasses[CLASS_LOREMASTER])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOLOREMASTER) || ((ch.Chclasses[CLASS_MYSTIC_THEURGE])+(ch.Epicclasses[CLASS_MYSTIC_THEURGE])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOMYSTIC_THEURGE) || ((ch.Chclasses[CLASS_SHADOWDANCER])+(ch.Epicclasses[CLASS_SHADOWDANCER])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOSHADOWDANCER) || ((ch.Chclasses[CLASS_THAUMATURGIST])+(ch.Epicclasses[CLASS_THAUMATURGIST])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOTHAUMATURGIST) {
+	if int(ch.Chclass) == CLASS_ROSHI && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOWIZARD) || int(ch.Chclass) == CLASS_PICCOLO && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOCLERIC) || int(ch.Chclass) == CLASS_KRANE && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOROGUE) || int(ch.Chclass) == CLASS_BARDOCK && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOMONK) || int(ch.Chclass) == CLASS_GINYU && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOPALADIN) || int(ch.Chclass) == CLASS_NAIL && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOFIGHTER) || int(ch.Chclass) == CLASS_KABITO && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOBARBARIAN) || int(ch.Chclass) == CLASS_FRIEZA && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOSORCERER) || int(ch.Chclass) == CLASS_ANDSIX && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOBARD) || int(ch.Chclass) == CLASS_DABURA && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NORANGER) || int(ch.Chclass) == CLASS_TAPION && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NODRUID) || int(ch.Chclass) == CLASS_NAIL && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOFIGHTER) || int(ch.Chclass) == CLASS_JINTO && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOARCANE_ARCHER) || int(ch.Chclass) == CLASS_TSUNA && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOARCANE_TRICKSTER) || int(ch.Chclass) == CLASS_KURZAK && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOARCHMAGE) || ((ch.Chclasses[CLASS_ASSASSIN])+(ch.Epicclasses[CLASS_ASSASSIN])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOASSASSIN) || ((ch.Chclasses[CLASS_BLACKGUARD])+(ch.Epicclasses[CLASS_BLACKGUARD])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOBLACKGUARD) || ((ch.Chclasses[CLASS_DRAGON_DISCIPLE])+(ch.Epicclasses[CLASS_DRAGON_DISCIPLE])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NODRAGON_DISCIPLE) || ((ch.Chclasses[CLASS_DUELIST])+(ch.Epicclasses[CLASS_DUELIST])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NODUELIST) || ((ch.Chclasses[CLASS_DWARVEN_DEFENDER])+(ch.Epicclasses[CLASS_DWARVEN_DEFENDER])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NODWARVEN_DEFENDER) || ((ch.Chclasses[CLASS_ELDRITCH_KNIGHT])+(ch.Epicclasses[CLASS_ELDRITCH_KNIGHT])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOELDRITCH_KNIGHT) || ((ch.Chclasses[CLASS_HIEROPHANT])+(ch.Epicclasses[CLASS_HIEROPHANT])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOHIEROPHANT) || ((ch.Chclasses[CLASS_HORIZON_WALKER])+(ch.Epicclasses[CLASS_HORIZON_WALKER])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOHORIZON_WALKER) || ((ch.Chclasses[CLASS_LOREMASTER])+(ch.Epicclasses[CLASS_LOREMASTER])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOLOREMASTER) || ((ch.Chclasses[CLASS_MYSTIC_THEURGE])+(ch.Epicclasses[CLASS_MYSTIC_THEURGE])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOMYSTIC_THEURGE) || ((ch.Chclasses[CLASS_SHADOWDANCER])+(ch.Epicclasses[CLASS_SHADOWDANCER])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOSHADOWDANCER) || ((ch.Chclasses[CLASS_THAUMATURGIST])+(ch.Epicclasses[CLASS_THAUMATURGIST])) > 0 && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOTHAUMATURGIST) {
 		stdio.Snprintf(&buf[0], int(2048), "%s %s", GET_NAME(ch), MSG_NO_SELL_CLASS)
 		do_tell(keeper, &buf[0], cmd_tell, 0)
 		return FALSE
 	}
-	if ch.Race == RACE_HUMAN && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOHUMAN) || ch.Race == RACE_ICER && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOICER) || ch.Race == RACE_SAIYAN && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOSAIYAN) || ch.Race == RACE_KONATSU && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOKONATSU) {
+	if int(ch.Race) == RACE_HUMAN && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOHUMAN) || int(ch.Race) == RACE_ICER && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOICER) || int(ch.Race) == RACE_SAIYAN && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOSAIYAN) || int(ch.Race) == RACE_KONATSU && IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], TRADE_NOKONATSU) {
 		stdio.Snprintf(&buf[0], int(2048), "%s %s", GET_NAME(ch), MSG_NO_SELL_RACE)
 		do_tell(keeper, &buf[0], cmd_tell, 0)
 		return FALSE
@@ -290,7 +292,7 @@ func evaluate_operation(ops *stack_data, vals *stack_data) {
 func find_oper_num(token int8) int {
 	var oindex int
 	for oindex = 0; oindex <= MAX_OPER; oindex++ {
-		if C.strchr(operator_str[oindex], int(token)) != nil {
+		if libc.StrChr(operator_str[oindex], byte(token)) != nil {
 			return oindex
 		}
 	}
@@ -316,7 +318,7 @@ func evaluate_expression(obj *obj_data, expr *byte) int {
 	}()
 	ptr = expr
 	for *ptr != 0 {
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*ptr))))) & int(uint16(int16(_ISspace)))) != 0 {
+		if unicode.IsSpace(rune(*ptr)) {
 			ptr = (*byte)(unsafe.Add(unsafe.Pointer(ptr), 1))
 		} else {
 			if (func() int {
@@ -324,14 +326,14 @@ func evaluate_expression(obj *obj_data, expr *byte) int {
 				return temp
 			}()) == int(-1) {
 				end = ptr
-				for *ptr != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*ptr)))))&int(uint16(int16(_ISspace)))) == 0 && find_oper_num(int8(*ptr)) == int(-1) {
+				for *ptr != 0 && !unicode.IsSpace(rune(*ptr)) && find_oper_num(int8(*ptr)) == int(-1) {
 					ptr = (*byte)(unsafe.Add(unsafe.Pointer(ptr), 1))
 				}
-				C.strncpy(&name[0], end, uint64(int64(uintptr(unsafe.Pointer(ptr))-uintptr(unsafe.Pointer(end)))))
+				libc.StrNCpy(&name[0], end, int(int64(uintptr(unsafe.Pointer(ptr))-uintptr(unsafe.Pointer(end)))))
 				name[int64(uintptr(unsafe.Pointer(ptr))-uintptr(unsafe.Pointer(end)))] = '\x00'
 				for eindex = 0; *extra_bits[eindex] != '\n'; eindex++ {
-					if C.strcasecmp(&name[0], extra_bits[eindex]) == 0 {
-						push(&vals, int(libc.BoolToInt(OBJ_FLAGGED(obj, bitvector_t(eindex)))))
+					if libc.StrCaseCmp(&name[0], extra_bits[eindex]) == 0 {
+						push(&vals, int(libc.BoolToInt(OBJ_FLAGGED(obj, bitvector_t(int32(eindex))))))
 						break
 					}
 				}
@@ -379,7 +381,7 @@ func trade_with(item *obj_data, shop_nr int) int {
 	}
 	for counter = 0; (*(*shop_buy_data)(unsafe.Add(unsafe.Pointer((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).Type), unsafe.Sizeof(shop_buy_data{})*uintptr(counter)))).Type != int(-1); counter++ {
 		if (*(*shop_buy_data)(unsafe.Add(unsafe.Pointer((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).Type), unsafe.Sizeof(shop_buy_data{})*uintptr(counter)))).Type == int(item.Type_flag) {
-			if (item.Value[VAL_WAND_CHARGES]) == 0 && (item.Type_flag == ITEM_WAND || item.Type_flag == ITEM_STAFF) {
+			if (item.Value[VAL_WAND_CHARGES]) == 0 && (int(item.Type_flag) == ITEM_WAND || int(item.Type_flag) == ITEM_STAFF) {
 				return OBJECT_DEAD
 			} else if evaluate_expression(item, (*(*shop_buy_data)(unsafe.Add(unsafe.Pointer((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).Type), unsafe.Sizeof(shop_buy_data{})*uintptr(counter)))).Keywords) != 0 {
 				return OBJECT_OK
@@ -441,7 +443,7 @@ func transaction_amt(arg *byte) int {
 	)
 	buywhat = one_argument(arg, &buf[0])
 	if *buywhat != 0 && buf[0] != 0 && is_number(&buf[0]) != 0 {
-		C.strcpy(arg, (*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(arg), C.strlen(&buf[0])))), 1)))
+		libc.StrCpy(arg, (*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(arg), libc.StrLen(&buf[0])))), 1)))
 		return libc.Atoi(libc.GoString(&buf[0]))
 	}
 	return 1
@@ -456,7 +458,7 @@ func times_message(obj *obj_data, name *byte, num int) *byte {
 		len_ = strlcpy(&buf[0], obj.Short_description, uint64(256))
 	} else {
 		if (func() *byte {
-			ptr = C.strchr(name, '.')
+			ptr = libc.StrChr(name, '.')
 			return ptr
 		}()) == nil {
 			ptr = name
@@ -581,7 +583,7 @@ func buy_price(obj *obj_data, shop_nr int, keeper *char_data, buyer *char_data) 
 	}
 	cost = int(float64(cost) * adjust)
 	if !IS_NPC(buyer) && (buyer.Bonuses[BONUS_THRIFTY]) > 0 {
-		if buyer.Race == RACE_ARLIAN {
+		if int(buyer.Race) == RACE_ARLIAN {
 			cost += int(float64(cost) * 0.2)
 		}
 		cost -= int(float64(cost) * 0.1)
@@ -589,7 +591,7 @@ func buy_price(obj *obj_data, shop_nr int, keeper *char_data, buyer *char_data) 
 	} else if !IS_NPC(buyer) && (buyer.Bonuses[BONUS_IMPULSE]) != 0 {
 		cost += int(float64(cost) * 0.25)
 		return cost
-	} else if !IS_NPC(buyer) && buyer.Race == RACE_ARLIAN {
+	} else if !IS_NPC(buyer) && int(buyer.Race) == RACE_ARLIAN {
 		cost += int(float64(cost) * 0.2)
 		return cost
 	} else {
@@ -616,13 +618,13 @@ func sell_price(obj *obj_data, shop_nr int, keeper *char_data, seller *char_data
 	}
 	if !IS_NPC(seller) && (seller.Bonuses[BONUS_THRIFTY]) > 0 {
 		var haggle int = int(float32(obj.Cost) * (sell_cost_modifier / 2))
-		if seller.Race == RACE_ARLIAN {
+		if int(seller.Race) == RACE_ARLIAN {
 			haggle -= int(float64(haggle) * 0.2)
 		}
 		haggle += int(float64(haggle) * 0.1)
 		haggle = int(float64(haggle) * adjust)
 		return haggle
-	} else if !IS_NPC(seller) && seller.Race == RACE_ARLIAN {
+	} else if !IS_NPC(seller) && int(seller.Race) == RACE_ARLIAN {
 		var haggle int = int(float32(obj.Cost) * (sell_cost_modifier / 2))
 		haggle -= int(float64(haggle) * 0.2)
 		haggle = int(float64(haggle) * adjust)
@@ -670,7 +672,7 @@ func shopping_app(arg *byte, ch *char_data, keeper *char_data, shop_nr int) {
 		return
 	} else {
 		var displevel int = obj.Level
-		if obj.Type_flag == ITEM_WEAPON && OBJ_FLAGGED(obj, ITEM_CUSTOM) {
+		if int(obj.Type_flag) == ITEM_WEAPON && OBJ_FLAGGED(obj, ITEM_CUSTOM) {
 			displevel = 20
 		}
 		send_to_char(ch, libc.CString("@c---------------------------------------------------------------@n\n"))
@@ -703,7 +705,7 @@ func shopping_app(arg *byte, ch *char_data, keeper *char_data, shop_nr int) {
 		sprintbitarray(obj.Wear_flags[:], wear_bits[:], TW_ARRAY_MAX, &bits[0])
 		search_replace(&bits[0], libc.CString("TAKE"), libc.CString(""))
 		send_to_char(ch, libc.CString("@GWear Loc.   @W:@w%s\n"), &bits[0])
-		if obj.Type_flag == ITEM_WEAPON {
+		if int(obj.Type_flag) == ITEM_WEAPON {
 			if OBJ_FLAGGED(obj, ITEM_WEAPLVL1) {
 				send_to_char(ch, libc.CString("@GWeapon Level@W: @D[@C1@D]\n@GDamage Bonus@W: @D[@w5%s@D]@n\r\n"), "%")
 			} else if OBJ_FLAGGED(obj, ITEM_WEAPLVL2) {
@@ -793,16 +795,16 @@ func shopping_buy(arg *byte, ch *char_data, keeper *char_data, shop_nr int) {
 		do_tell(keeper, &actbuf[0], cmd_tell, 0)
 		switch (*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).Temper1 {
 		case 0:
-			do_action(keeper, C.strcpy(&actbuf[0], GET_NAME(ch)), cmd_puke, 0)
+			do_action(keeper, libc.StrCpy(&actbuf[0], GET_NAME(ch)), cmd_puke, 0)
 			return
 		case 1:
-			do_echo(keeper, C.strcpy(&actbuf[0], libc.CString("smokes on his joint.")), cmd_emote, SCMD_EMOTE)
+			do_echo(keeper, libc.StrCpy(&actbuf[0], libc.CString("smokes on his joint.")), cmd_emote, SCMD_EMOTE)
 			return
 		default:
 			return
 		}
 	}
-	if ch.Carry_items+1 > 50 {
+	if int(ch.Carry_items)+1 > 50 {
 		send_to_char(ch, libc.CString("%s: You can't carry any more items.\r\n"), fname(obj.Name))
 		return
 	}
@@ -810,7 +812,7 @@ func shopping_buy(arg *byte, ch *char_data, keeper *char_data, shop_nr int) {
 		send_to_char(ch, libc.CString("%s: You can't carry that much weight.\r\n"), fname(obj.Name))
 		return
 	}
-	for obj != nil && (ch.Gold >= buy_price(obj, shop_nr, keeper, ch) || ADM_FLAGGED(ch, ADM_MONEY)) && ch.Carry_items < 50 && bought < buynum && ch.Carry_weight+int(obj.Weight) <= int(max_carry_weight(ch)) {
+	for obj != nil && (ch.Gold >= buy_price(obj, shop_nr, keeper, ch) || ADM_FLAGGED(ch, ADM_MONEY)) && int(ch.Carry_items) < 50 && bought < buynum && ch.Carry_weight+int(obj.Weight) <= int(max_carry_weight(ch)) {
 		var charged int
 		bought++
 		if shop_producing(obj, shop_nr) != 0 {
@@ -844,7 +846,7 @@ func shopping_buy(arg *byte, ch *char_data, keeper *char_data, shop_nr int) {
 			stdio.Snprintf(&buf[0], int(2048), "%s I only have %d to sell you.", GET_NAME(ch), bought)
 		} else if ch.Gold < buy_price(obj, shop_nr, keeper, ch) {
 			stdio.Snprintf(&buf[0], int(2048), "%s You can only afford %d.", GET_NAME(ch), bought)
-		} else if ch.Carry_items >= 50 {
+		} else if int(ch.Carry_items) >= 50 {
 			stdio.Snprintf(&buf[0], int(2048), "%s You can only hold %d.", GET_NAME(ch), bought)
 		} else if ch.Carry_weight+int(obj.Weight) > int(max_carry_weight(ch)) {
 			stdio.Snprintf(&buf[0], int(2048), "%s You can only carry %d.", GET_NAME(ch), bought)
@@ -994,7 +996,7 @@ func shopping_sell(arg *byte, ch *char_data, keeper *char_data, shop_nr int) {
 	}()) == nil {
 		return
 	}
-	if obj.Type_flag == ITEM_PLANT && (obj.Value[VAL_WATERLEVEL]) <= -10 {
+	if int(obj.Type_flag) == ITEM_PLANT && (obj.Value[VAL_WATERLEVEL]) <= -10 {
 		var buf [2048]byte
 		stdio.Snprintf(&buf[0], int(2048), "%s That thing is dead!", GET_NAME(ch))
 		do_tell(keeper, &buf[0], cmd_tell, 0)
@@ -1083,7 +1085,7 @@ func list_object(obj *obj_data, cnt int, aindex int, shop_nr int, keeper *char_d
 		quantity [16]byte
 	)
 	if shop_producing(obj, shop_nr) != 0 {
-		C.strcpy(&quantity[0], libc.CString("Unlimited"))
+		libc.StrCpy(&quantity[0], libc.CString("Unlimited"))
 	} else {
 		stdio.Sprintf(&quantity[0], "%d", cnt)
 	}
@@ -1113,7 +1115,7 @@ func list_object(obj *obj_data, cnt int, aindex int, shop_nr int, keeper *char_d
 	}
 	CAP(&itemname[0])
 	var displevel int = obj.Level
-	if obj.Type_flag == ITEM_WEAPON && OBJ_FLAGGED(obj, ITEM_CUSTOM) {
+	if int(obj.Type_flag) == ITEM_WEAPON && OBJ_FLAGGED(obj, ITEM_CUSTOM) {
 		displevel = 20
 	}
 	stdio.Snprintf(&result[0], int(256), " %2d)  %9s %-*s %3d %13s\r\n", aindex, &quantity[0], count_color_chars(&itemname[0])+36, &itemname[0], displevel, add_commas(int64(buy_price(obj, shop_nr, keeper, ch))))
@@ -1149,8 +1151,8 @@ func shopping_list(arg *byte, ch *char_data, keeper *char_data, shop_nr int) {
 				} else {
 					lindex++
 					if name[0] == 0 || isname(&name[0], last_obj.Name) != 0 {
-						C.strncat(&buf[0], list_object(last_obj, cnt, lindex, shop_nr, keeper, ch), uint64(259744-uintptr(len_)-1))
-						len_ = uint64(C.strlen(&buf[0]))
+						libc.StrNCat(&buf[0], list_object(last_obj, cnt, lindex, shop_nr, keeper, ch), int(259744-uintptr(len_)-1))
+						len_ = uint64(libc.StrLen(&buf[0]))
 						if len_+1 >= uint64(259744) {
 							break
 						}
@@ -1171,12 +1173,12 @@ func shopping_list(arg *byte, ch *char_data, keeper *char_data, shop_nr int) {
 		var zen [80]byte
 		if name[0] == 0 || isname(&name[0], last_obj.Name) != 0 {
 			if len_ < uint64(259744) {
-				C.strncat(&buf[0], list_object(last_obj, cnt, lindex, shop_nr, keeper, ch), uint64(259744-uintptr(len_)-1))
+				libc.StrNCat(&buf[0], list_object(last_obj, cnt, lindex, shop_nr, keeper, ch), int(259744-uintptr(len_)-1))
 			}
 		}
 		if len_ < uint64(259744) {
 			stdio.Sprintf(&zen[0], "@W[@wYour Zenni@D: @Y%s@W]", add_commas(int64(ch.Gold)))
-			C.strncat(&buf[0], &zen[0], uint64(259744-uintptr(len_)-1))
+			libc.StrNCat(&buf[0], &zen[0], int(259744-uintptr(len_)-1))
 		}
 		page_string(ch.Desc, &buf[0], TRUE)
 	}
@@ -1225,7 +1227,7 @@ func shop_keeper(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int 
 	if !AWAKE(keeper) {
 		return FALSE
 	}
-	if C.strcmp(libc.CString("steal"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	if libc.StrCmp(libc.CString("steal"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		var argm [2048]byte
 		if ((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).Bitvector & (1 << 2)) == 0 {
 			stdio.Snprintf(&argm[0], int(2048), "$N shouts '%s'", MSG_NO_STEAL_HERE)
@@ -1237,19 +1239,19 @@ func shop_keeper(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int 
 			return FALSE
 		}
 	}
-	if C.strcmp(libc.CString("buy"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	if libc.StrCmp(libc.CString("buy"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		shopping_buy(argument, ch, keeper, shop_nr)
 		return TRUE
-	} else if C.strcmp(libc.CString("sell"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	} else if libc.StrCmp(libc.CString("sell"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		shopping_sell(argument, ch, keeper, shop_nr)
 		return TRUE
-	} else if C.strcmp(libc.CString("value"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	} else if libc.StrCmp(libc.CString("value"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		shopping_value(argument, ch, keeper, shop_nr)
 		return TRUE
-	} else if C.strcmp(libc.CString("list"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	} else if libc.StrCmp(libc.CString("list"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		shopping_list(argument, ch, keeper, shop_nr)
 		return TRUE
-	} else if C.strcmp(libc.CString("appraise"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	} else if libc.StrCmp(libc.CString("appraise"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		shopping_app(argument, ch, keeper, shop_nr)
 		return TRUE
 	}
@@ -1311,14 +1313,14 @@ func end_read_list(list *shop_buy_data, len_ int, error int) int {
 	}())))).Type = -1
 	return len_
 }
-func read_line(shop_f *C.FILE, string_ *byte, data unsafe.Pointer) {
+func read_line(shop_f *stdio.File, string_ *byte, data unsafe.Pointer) {
 	var buf [256]byte
-	if get_line(shop_f, &buf[0]) == 0 || __isoc99_sscanf(&buf[0], string_, data) == 0 {
+	if get_line(shop_f, &buf[0]) == 0 || stdio.Sscanf(&buf[0], libc.GoString(string_), data) == 0 {
 		basic_mud_log(libc.CString("SYSERR: Error in shop #%d, near '%s' with '%s'"), (*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(top_shop)))).Vnum, &buf[0], string_)
-		C.exit(1)
+		os.Exit(1)
 	}
 }
-func read_list(shop_f *C.FILE, list *shop_buy_data, new_format int, max int, type_ int) int {
+func read_list(shop_f *stdio.File, list *shop_buy_data, new_format int, max int, type_ int) int {
 	var (
 		count int
 		temp  int
@@ -1341,7 +1343,7 @@ func read_list(shop_f *C.FILE, list *shop_buy_data, new_format int, max int, typ
 	}
 	return end_read_list(list, len_, error)
 }
-func read_type_list(shop_f *C.FILE, list *shop_buy_data, new_format int, max int) int {
+func read_type_list(shop_f *stdio.File, list *shop_buy_data, new_format int, max int) int {
 	var (
 		tindex int
 		num    int
@@ -1354,44 +1356,44 @@ func read_type_list(shop_f *C.FILE, list *shop_buy_data, new_format int, max int
 		return read_list(shop_f, list, 0, max, LIST_TRADE)
 	}
 	for {
-		C.fgets(&buf[0], int(64936), shop_f)
+		shop_f.GetS(&buf[0], int32(uint32(64936)))
 		if (func() *byte {
-			ptr = C.strchr(&buf[0], ';')
+			ptr = libc.StrChr(&buf[0], ';')
 			return ptr
 		}()) != nil {
 			*ptr = '\x00'
 		} else {
-			*((*byte)(unsafe.Add(unsafe.Pointer(&buf[C.strlen(&buf[0])]), -1))) = '\x00'
+			*((*byte)(unsafe.Add(unsafe.Pointer(&buf[libc.StrLen(&buf[0])]), -1))) = '\x00'
 		}
 		num = -1
-		if C.strncmp(&buf[0], libc.CString("-1"), 2) != 0 {
+		if libc.StrNCmp(&buf[0], libc.CString("-1"), 2) != 0 {
 			for tindex = 0; *item_types[tindex] != '\n'; tindex++ {
-				if C.strncasecmp(item_types[tindex], &buf[0], uint64(C.strlen(item_types[tindex]))) == 0 {
+				if libc.StrNCaseCmp(item_types[tindex], &buf[0], libc.StrLen(item_types[tindex])) == 0 {
 					num = tindex
-					C.strcpy(&buf[0], &buf[C.strlen(item_types[tindex])])
+					libc.StrCpy(&buf[0], &buf[libc.StrLen(item_types[tindex])])
 					break
 				}
 			}
 		}
 		ptr = &buf[0]
 		if num == -1 {
-			__isoc99_sscanf(&buf[0], libc.CString("%d"), &num)
-			for (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*ptr))))) & int(uint16(int16(_ISdigit)))) == 0 {
+			stdio.Sscanf(&buf[0], "%d", &num)
+			for !unicode.IsDigit(rune(*ptr)) {
 				ptr = (*byte)(unsafe.Add(unsafe.Pointer(ptr), 1))
 			}
-			for (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*ptr))))) & int(uint16(int16(_ISdigit)))) != 0 {
+			for unicode.IsDigit(rune(*ptr)) {
 				ptr = (*byte)(unsafe.Add(unsafe.Pointer(ptr), 1))
 			}
 		}
-		for (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*ptr))))) & int(uint16(int16(_ISspace)))) != 0 {
+		for unicode.IsSpace(rune(*ptr)) {
 			ptr = (*byte)(unsafe.Add(unsafe.Pointer(ptr), 1))
 		}
-		for (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(ptr), C.strlen(ptr)))), -1)))))))) & int(uint16(int16(_ISspace)))) != 0 {
-			*((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(ptr), C.strlen(ptr)))), -1))) = '\x00'
+		for unicode.IsSpace(rune(*((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(ptr), libc.StrLen(ptr)))), -1))))) {
+			*((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(ptr), libc.StrLen(ptr)))), -1))) = '\x00'
 		}
 		error += add_to_list(list, LIST_TRADE, &len_, &num)
 		if *ptr != 0 {
-			(*(*shop_buy_data)(unsafe.Add(unsafe.Pointer(list), unsafe.Sizeof(shop_buy_data{})*uintptr(len_-1)))).Keywords = C.strdup(ptr)
+			(*(*shop_buy_data)(unsafe.Add(unsafe.Pointer(list), unsafe.Sizeof(shop_buy_data{})*uintptr(len_-1)))).Keywords = libc.StrDup(ptr)
 		}
 		if num < 0 {
 			break
@@ -1399,7 +1401,7 @@ func read_type_list(shop_f *C.FILE, list *shop_buy_data, new_format int, max int
 	}
 	return end_read_list(list, len_, error)
 }
-func read_shop_message(mnum int, shr room_vnum, shop_f *C.FILE, why *byte) *byte {
+func read_shop_message(mnum int, shr room_vnum, shop_f *stdio.File, why *byte) *byte {
 	var (
 		cht  int
 		ss   int = 0
@@ -1440,7 +1442,7 @@ func read_shop_message(mnum int, shr room_vnum, shop_f *C.FILE, why *byte) *byte
 	}
 	return tbuf
 }
-func boot_the_shops(shop_f *C.FILE, filename *byte, rec_count int) {
+func boot_the_shops(shop_f *stdio.File, filename *byte, rec_count int) {
 	var (
 		buf        *byte
 		buf2       [256]byte
@@ -1455,7 +1457,7 @@ func boot_the_shops(shop_f *C.FILE, filename *byte, rec_count int) {
 	for done == 0 {
 		buf = fread_string(shop_f, &buf2[0])
 		if *buf == '#' {
-			__isoc99_sscanf(buf, libc.CString("#%d\n"), &temp)
+			stdio.Sscanf(buf, "#%d\n", &temp)
 			stdio.Snprintf(&buf2[0], int(256), "shop #%d in shop file %s", temp, filename)
 			libc.Free(unsafe.Pointer(buf))
 			top_shop++
@@ -1494,15 +1496,15 @@ func boot_the_shops(shop_f *C.FILE, filename *byte, rec_count int) {
 				if p == nil || *p == 0 {
 					break
 				}
-				if __isoc99_sscanf(p, libc.CString("%d"), &count) != 1 {
+				if stdio.Sscanf(p, "%d", &count) != 1 {
 					basic_mud_log(libc.CString("SYSERR: Can't parse TRADE_WITH line in %s: '%s'"), &buf2[0], buf)
 					break
 				}
 				(*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(top_shop)))).With_who[temp] = count
-				for (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p)))))&int(uint16(int16(_ISdigit)))) != 0 || *p == '-' {
+				for unicode.IsDigit(rune(*p)) || *p == '-' {
 					p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1))
 				}
-				for *p != 0 && ((int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p)))))&int(uint16(int16(_ISdigit)))) == 0 && *p != '-') {
+				for *p != 0 && (!unicode.IsDigit(rune(*p)) && *p != '-') {
 					p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1))
 				}
 			}
@@ -1530,7 +1532,7 @@ func boot_the_shops(shop_f *C.FILE, filename *byte, rec_count int) {
 		} else {
 			if *buf == '$' {
 				done = TRUE
-			} else if C.strstr(buf, libc.CString(VERSION3_TAG)) != nil {
+			} else if libc.StrStr(buf, libc.CString(VERSION3_TAG)) != nil {
 				new_format = TRUE
 			}
 			libc.Free(unsafe.Pointer(buf))
@@ -1564,7 +1566,7 @@ func customer_string(shop_nr int, detailed int) *byte {
 	)
 	for *trade_letters[sindex] != '\n' && len_+1 < uint64(256) {
 		if detailed != 0 {
-			if !IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], bitvector_t(flag)) {
+			if !IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], bitvector_t(int32(flag))) {
 				nlen = stdio.Snprintf(&buf[len_], int(256-uintptr(len_)), ", %s", trade_letters[sindex])
 				if len_+uint64(nlen) >= uint64(256) || nlen < 0 {
 					break
@@ -1578,7 +1580,7 @@ func customer_string(shop_nr int, detailed int) *byte {
 				*p++
 				return x
 			}()] = func() byte {
-				if IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], bitvector_t(flag)) {
+				if IS_SET_AR((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).With_who[:], bitvector_t(int32(flag))) {
 					return '_'
 				}
 				return *trade_letters[sindex]
@@ -1598,7 +1600,7 @@ func list_all_shops(ch *char_data) {
 	var (
 		list_all_shops_header *byte = libc.CString(" ##   Virtual   Where    Keeper    Buy   Sell   Customers\r\n---------------------------------------------------------\r\n")
 		shop_nr               int
-		headerlen             int    = int(C.strlen(list_all_shops_header))
+		headerlen             int    = libc.StrLen(list_all_shops_header)
 		len_                  uint64 = 0
 		buf                   [64936]byte
 		buf1                  [16]byte
@@ -1609,11 +1611,11 @@ func list_all_shops(ch *char_data) {
 			if len_+uint64(headerlen)+1 >= uint64(64936) {
 				break
 			}
-			C.strcpy(&buf[len_], list_all_shops_header)
+			libc.StrCpy(&buf[len_], list_all_shops_header)
 			len_ += uint64(headerlen)
 		}
 		if (*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).Keeper == mob_rnum(-1) {
-			C.strcpy(&buf1[0], libc.CString("<NONE>"))
+			libc.StrCpy(&buf1[0], libc.CString("<NONE>"))
 		} else {
 			stdio.Sprintf(&buf1[0], "%6d", (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop_nr)))).Keeper)))).Vnum)
 		}
@@ -1757,7 +1759,7 @@ func show_shops(ch *char_data, arg *byte) {
 	if *arg == 0 {
 		list_all_shops(ch)
 	} else {
-		if C.strcasecmp(arg, libc.CString(".")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString(".")) == 0 {
 			for shop_nr = 0; shop_nr <= top_shop; shop_nr++ {
 				if ok_shop_room(shop_nr, func() room_vnum {
 					if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
@@ -1786,13 +1788,13 @@ func show_shops(ch *char_data, arg *byte) {
 }
 func destroy_shops() {
 	var (
-		cnt ssize_t
-		itr ssize_t
+		cnt int64
+		itr int64
 	)
 	if shop_index == nil {
 		return
 	}
-	for cnt = 0; cnt <= ssize_t(top_shop); cnt++ {
+	for cnt = 0; cnt <= int64(top_shop); cnt++ {
 		if (*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(cnt)))).No_such_item1 != nil {
 			libc.Free(unsafe.Pointer((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(cnt)))).No_such_item1))
 		}

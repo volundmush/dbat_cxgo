@@ -3,6 +3,8 @@ package main
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"os"
+	"unicode"
 	"unsafe"
 )
 
@@ -13,7 +15,7 @@ var ban_types [5]*byte = [5]*byte{libc.CString("no"), libc.CString("new"), libc.
 
 func load_banned() {
 	var (
-		fl        *C.FILE
+		fl        *stdio.File
 		i         int
 		date      int
 		site_name [51]byte
@@ -22,33 +24,33 @@ func load_banned() {
 		next_node *ban_list_element
 	)
 	ban_list = nil
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(LIB_ETC, "r")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(LIB_ETC, "r")
 		return fl
 	}()) == nil {
-		if (*__errno_location()) != ENOENT {
-			basic_mud_log(libc.CString("SYSERR: Unable to open banfile '%s': %s"), LIB_ETC, C.strerror(*__errno_location()))
+		if libc.Errno != ENOENT {
+			basic_mud_log(libc.CString("SYSERR: Unable to open banfile '%s': %s"), LIB_ETC, libc.StrError(libc.Errno))
 		} else {
 			basic_mud_log(libc.CString("   Ban file '%s' doesn't exist."), LIB_ETC)
 		}
 		return
 	}
-	for __isoc99_fscanf(fl, libc.CString(" %s %s %d %s "), &ban_type[0], &site_name[0], &date, &name[0]) == 4 {
+	for stdio.Fscanf(fl, " %s %s %d %s ", &ban_type[0], &site_name[0], &date, &name[0]) == 4 {
 		next_node = new(ban_list_element)
-		C.strncpy(&next_node.Site[0], &site_name[0], BANNED_SITE_LENGTH)
+		libc.StrNCpy(&next_node.Site[0], &site_name[0], BANNED_SITE_LENGTH)
 		next_node.Site[BANNED_SITE_LENGTH] = '\x00'
-		C.strncpy(&next_node.Name[0], &name[0], MAX_NAME_LENGTH)
+		libc.StrNCpy(&next_node.Name[0], &name[0], MAX_NAME_LENGTH)
 		next_node.Name[MAX_NAME_LENGTH] = '\x00'
-		next_node.Date = int64(date)
+		next_node.Date = libc.Time(date)
 		for i = BAN_NOT; i <= BAN_ALL; i++ {
-			if C.strcmp(&ban_type[0], ban_types[i]) == 0 {
+			if libc.StrCmp(&ban_type[0], ban_types[i]) == 0 {
 				next_node.Type = i
 			}
 		}
 		next_node.Next = ban_list
 		ban_list = next_node
 	}
-	C.fclose(fl)
+	fl.Close()
 }
 func isbanned(hostname *byte) int {
 	var (
@@ -61,32 +63,32 @@ func isbanned(hostname *byte) int {
 	}
 	i = 0
 	for nextchar = hostname; *nextchar != 0; nextchar = (*byte)(unsafe.Add(unsafe.Pointer(nextchar), 1)) {
-		*nextchar = byte(int8(C.tolower(int(*nextchar))))
+		*nextchar = byte(int8(unicode.ToLower(rune(*nextchar))))
 	}
 	for banned_node = ban_list; banned_node != nil; banned_node = banned_node.Next {
-		if C.strstr(hostname, &banned_node.Site[0]) != nil {
+		if libc.StrStr(hostname, &banned_node.Site[0]) != nil {
 			i = MAX(i, banned_node.Type)
 		}
 	}
 	return i
 }
-func _write_one_node(fp *C.FILE, node *ban_list_element) {
+func _write_one_node(fp *stdio.File, node *ban_list_element) {
 	if node != nil {
 		_write_one_node(fp, node.Next)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "%s %s %ld %s\n", ban_types[node.Type], &node.Site[0], int(node.Date), &node.Name[0])
+		stdio.Fprintf(fp, "%s %s %ld %s\n", ban_types[node.Type], &node.Site[0], int(node.Date), &node.Name[0])
 	}
 }
 func write_ban_list() {
-	var fl *C.FILE
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(LIB_ETC, "w")))
+	var fl *stdio.File
+	if (func() *stdio.File {
+		fl = stdio.FOpen(LIB_ETC, "w")
 		return fl
 	}()) == nil {
-		C.perror(libc.CString("SYSERR: Unable to open 'etc/badsites' for writing"))
+		perror(libc.CString("SYSERR: Unable to open 'etc/badsites' for writing"))
 		return
 	}
 	_write_one_node(fl, ban_list)
-	C.fclose(fl)
+	fl.Close()
 	return
 }
 func do_ban(ch *char_data, argument *byte, cmd int, subcmd int) {
@@ -107,10 +109,10 @@ func do_ban(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString(BAN_LIST_FORMAT), "---------------------------------", "---------------------------------", "---------------------------------", "---------------------------------")
 		for ban_node = ban_list; ban_node != nil; ban_node = ban_node.Next {
 			if ban_node.Date != 0 {
-				strlcpy(&timestr[0], C.asctime(C.localtime(&ban_node.Date)), 10)
+				strlcpy(&timestr[0], libc.AscTime(libc.LocalTime(&ban_node.Date)), 10)
 				timestr[10] = '\x00'
 			} else {
-				C.strcpy(&timestr[0], libc.CString("Unknown"))
+				libc.StrCpy(&timestr[0], libc.CString("Unknown"))
 			}
 			send_to_char(ch, libc.CString(BAN_LIST_FORMAT), &ban_node.Site[0], ban_types[ban_node.Type], &timestr[0], &ban_node.Name[0])
 		}
@@ -121,27 +123,27 @@ func do_ban(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Usage: ban {all | select | new} site_name\r\n"))
 		return
 	}
-	if C.strcasecmp(&flag[0], libc.CString("select")) != 0 && C.strcasecmp(&flag[0], libc.CString("all")) != 0 && C.strcasecmp(&flag[0], libc.CString("new")) != 0 {
+	if libc.StrCaseCmp(&flag[0], libc.CString("select")) != 0 && libc.StrCaseCmp(&flag[0], libc.CString("all")) != 0 && libc.StrCaseCmp(&flag[0], libc.CString("new")) != 0 {
 		send_to_char(ch, libc.CString("Flag must be ALL, SELECT, or NEW.\r\n"))
 		return
 	}
 	for ban_node = ban_list; ban_node != nil; ban_node = ban_node.Next {
-		if C.strcasecmp(&ban_node.Site[0], &site[0]) == 0 {
+		if libc.StrCaseCmp(&ban_node.Site[0], &site[0]) == 0 {
 			send_to_char(ch, libc.CString("That site has already been banned -- unban it to change the ban type.\r\n"))
 			return
 		}
 	}
 	ban_node = new(ban_list_element)
-	C.strncpy(&ban_node.Site[0], &site[0], BANNED_SITE_LENGTH)
+	libc.StrNCpy(&ban_node.Site[0], &site[0], BANNED_SITE_LENGTH)
 	for nextchar = &ban_node.Site[0]; *nextchar != 0; nextchar = (*byte)(unsafe.Add(unsafe.Pointer(nextchar), 1)) {
-		*nextchar = byte(int8(C.tolower(int(*nextchar))))
+		*nextchar = byte(int8(unicode.ToLower(rune(*nextchar))))
 	}
 	ban_node.Site[BANNED_SITE_LENGTH] = '\x00'
-	C.strncpy(&ban_node.Name[0], GET_NAME(ch), MAX_NAME_LENGTH)
+	libc.StrNCpy(&ban_node.Name[0], GET_NAME(ch), MAX_NAME_LENGTH)
 	ban_node.Name[MAX_NAME_LENGTH] = '\x00'
-	ban_node.Date = C.time(nil)
+	ban_node.Date = libc.GetTime(nil)
 	for i = BAN_NEW; i <= BAN_ALL; i++ {
-		if C.strcasecmp(&flag[0], ban_types[i]) == 0 {
+		if libc.StrCaseCmp(&flag[0], ban_types[i]) == 0 {
 			ban_node.Type = i
 		}
 	}
@@ -165,7 +167,7 @@ func do_unban(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	ban_node = ban_list
 	for ban_node != nil && found == 0 {
-		if C.strcasecmp(&ban_node.Site[0], &site[0]) == 0 {
+		if libc.StrCaseCmp(&ban_node.Site[0], &site[0]) == 0 {
 			found = 1
 		} else {
 			ban_node = ban_node.Next
@@ -203,14 +205,14 @@ func Valid_Name(newname *byte) int {
 		tempname [2048]byte
 	)
 	for dt = descriptor_list; dt != nil; dt = dt.Next {
-		if dt.Character != nil && GET_NAME(dt.Character) != nil && C.strcasecmp(GET_NAME(dt.Character), newname) == 0 {
-			if dt.Character.Idnum == -1 {
+		if dt.Character != nil && GET_NAME(dt.Character) != nil && libc.StrCaseCmp(GET_NAME(dt.Character), newname) == 0 {
+			if int(dt.Character.Idnum) == -1 {
 				return int(libc.BoolToInt(IS_PLAYING(dt)))
 			}
 		}
 	}
 	for i = 0; *(*byte)(unsafe.Add(unsafe.Pointer(newname), i)) != 0; i++ {
-		if C.strchr(libc.CString("aeiouyAEIOUY"), int(*(*byte)(unsafe.Add(unsafe.Pointer(newname), i)))) != nil {
+		if libc.StrChr(libc.CString("aeiouyAEIOUY"), *(*byte)(unsafe.Add(unsafe.Pointer(newname), i))) != nil {
 			wovels++
 		}
 	}
@@ -222,10 +224,10 @@ func Valid_Name(newname *byte) int {
 	}
 	strlcpy(&tempname[0], newname, uint64(2048))
 	for i = 0; tempname[i] != 0; i++ {
-		tempname[i] = byte(int8(C.tolower(int(tempname[i]))))
+		tempname[i] = byte(int8(unicode.ToLower(rune(tempname[i]))))
 	}
 	for i = 0; i < num_invalid; i++ {
-		if C.strstr(&tempname[0], invalid_list[i]) != nil {
+		if libc.StrStr(&tempname[0], invalid_list[i]) != nil {
 			return 0
 		}
 	}
@@ -240,14 +242,14 @@ func Free_Invalid_List() {
 }
 func Read_Invalid_List() {
 	var (
-		fp   *C.FILE
+		fp   *stdio.File
 		temp [256]byte
 	)
-	if (func() *C.FILE {
-		fp = (*C.FILE)(unsafe.Pointer(stdio.FOpen(LIB_MISC, "r")))
+	if (func() *stdio.File {
+		fp = stdio.FOpen(LIB_MISC, "r")
 		return fp
 	}()) == nil {
-		C.perror(libc.CString("SYSERR: Unable to open 'misc/xnames' for reading"))
+		perror(libc.CString("SYSERR: Unable to open 'misc/xnames' for reading"))
 		return
 	}
 	num_invalid = 0
@@ -257,11 +259,11 @@ func Read_Invalid_List() {
 			x := *p
 			*p++
 			return x
-		}()] = C.strdup(&temp[0])
+		}()] = libc.StrDup(&temp[0])
 	}
 	if num_invalid >= MAX_INVALID_NAMES {
 		basic_mud_log(libc.CString("SYSERR: Too many invalid names; change MAX_INVALID_NAMES in ban.c"))
-		C.exit(1)
+		os.Exit(1)
 	}
-	C.fclose(fp)
+	fp.Close()
 }

@@ -3,30 +3,9 @@ package main
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"unicode"
 	"unsafe"
 )
-
-var do_masound func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_mkill func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_mheal func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_mjunk func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_mechoaround func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_msend func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_mecho func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_mzoneecho func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_mload func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_mpurge func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_mgoto func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_mat func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_mteleport func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_mdamage func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_mforce func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_mremember func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_mforget func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_mtransform func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_mdoor func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_mfollow func(ch *char_data, argument *byte, cmd int, subcmd int)
-var do_mrecho func(ch *char_data, argument *byte, cmd int, subcmd int)
 
 func mob_log(mob *char_data, format *byte, _rest ...interface{}) {
 	var (
@@ -87,17 +66,17 @@ func do_mheal(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var num float64 = float64(libc.Atoi(libc.GoString(&arg2[0])))
 	var perc float64 = num * 0.01
 	amount = int64(float64(ch.Max_hit) * perc)
-	if C.strcasecmp(&arg[0], libc.CString("pl")) == 0 {
+	if libc.StrCaseCmp(&arg[0], libc.CString("pl")) == 0 {
 		ch.Hit += int64(float64(ch.Max_hit) * num)
 		if ch.Hit > ch.Max_hit {
 			ch.Hit = ch.Max_hit
 		}
-	} else if C.strcasecmp(&arg[0], libc.CString("ki")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("ki")) == 0 {
 		ch.Mana += int64(float64(ch.Max_mana) * num)
 		if ch.Mana > ch.Max_mana {
 			ch.Mana = ch.Max_mana
 		}
-	} else if C.strcasecmp(&arg[0], libc.CString("st")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("st")) == 0 {
 		ch.Move += int64(float64(ch.Max_move) * num)
 		if ch.Move > ch.Max_move {
 			ch.Move = ch.Max_move
@@ -189,7 +168,7 @@ func do_mjunk(ch *char_data, argument *byte, cmd int, subcmd int) {
 		mob_log(ch, libc.CString("mjunk called with no argument"))
 		return
 	}
-	if C.strcasecmp(&arg[0], libc.CString("all")) == 0 {
+	if libc.StrCaseCmp(&arg[0], libc.CString("all")) == 0 {
 		junk_all = 1
 	}
 	if find_all_dots(&arg[0]) != FIND_INDIV && junk_all == 0 {
@@ -371,7 +350,7 @@ func do_mload(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if target == nil || *target == 0 {
 			rnum = ch.In_room
 		} else {
-			if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*target)))))&int(uint16(int16(_ISdigit)))) == 0 || (func() room_rnum {
+			if !unicode.IsDigit(rune(*target)) || (func() room_rnum {
 				rnum = real_room(room_vnum(libc.Atoi(libc.GoString(target))))
 				return rnum
 			}()) == room_rnum(-1) {
@@ -441,7 +420,7 @@ func do_mload(ch *char_data, argument *byte, cmd int, subcmd int) {
 		} else {
 			cnt = get_obj_vis(ch, &arg1[0], nil)
 		}
-		if cnt != nil && cnt.Type_flag == ITEM_CONTAINER {
+		if cnt != nil && int(cnt.Type_flag) == ITEM_CONTAINER {
 			obj_to_obj(object, cnt)
 			load_otrigger(object)
 			return
@@ -611,7 +590,7 @@ func do_mteleport(ch *char_data, argument *byte, cmd int, subcmd int) {
 		mob_log(ch, libc.CString("mteleport target is an invalid room"))
 		return
 	}
-	if C.strcasecmp(&arg1[0], libc.CString("all")) == 0 {
+	if libc.StrCaseCmp(&arg1[0], libc.CString("all")) == 0 {
 		if target == ch.In_room {
 			mob_log(ch, libc.CString("mteleport all target is itself"))
 			return
@@ -701,7 +680,7 @@ func do_mforce(ch *char_data, argument *byte, cmd int, subcmd int) {
 		mob_log(ch, libc.CString("mforce: bad syntax"))
 		return
 	}
-	if C.strcasecmp(&arg[0], libc.CString("all")) == 0 {
+	if libc.StrCaseCmp(&arg[0], libc.CString("all")) == 0 {
 		var (
 			i   *descriptor_data
 			vch *char_data
@@ -788,7 +767,7 @@ func do_mremember(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	mem.Id = int(victim.Id)
 	if argument != nil && *argument != 0 {
-		mem.Cmd = C.strdup(argument)
+		mem.Cmd = libc.StrDup(argument)
 	}
 }
 func do_mforget(ch *char_data, argument *byte, cmd int, subcmd int) {
@@ -873,10 +852,10 @@ func do_mtransform(ch *char_data, argument *byte, cmd int, subcmd int) {
 	one_argument(argument, &arg[0])
 	if arg[0] == 0 {
 		mob_log(ch, libc.CString("mtransform: missing argument"))
-	} else if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(arg[0])))))&int(uint16(int16(_ISdigit)))) == 0 && arg[0] != '-' {
+	} else if !unicode.IsDigit(rune(arg[0])) && arg[0] != '-' {
 		mob_log(ch, libc.CString("mtransform: bad argument"))
 	} else {
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(arg[0]))))) & int(uint16(int16(_ISdigit)))) != 0 {
+		if unicode.IsDigit(rune(arg[0])) {
 			m = read_mobile(mob_vnum(libc.Atoi(libc.GoString(&arg[0]))), VIRTUAL)
 		} else {
 			m = read_mobile(mob_vnum(libc.Atoi(libc.GoString(&arg[1]))), VIRTUAL)
@@ -895,19 +874,19 @@ func do_mtransform(ch *char_data, argument *byte, cmd int, subcmd int) {
 		char_to_room(m, ch.In_room)
 		libc.MemCpy(unsafe.Pointer(&tmpmob), unsafe.Pointer(m), int(unsafe.Sizeof(char_data{})))
 		if m.Name != nil {
-			tmpmob.Name = C.strdup(m.Name)
+			tmpmob.Name = libc.StrDup(m.Name)
 		}
 		if m.Title != nil {
-			tmpmob.Title = C.strdup(m.Title)
+			tmpmob.Title = libc.StrDup(m.Title)
 		}
 		if m.Short_descr != nil {
-			tmpmob.Short_descr = C.strdup(m.Short_descr)
+			tmpmob.Short_descr = libc.StrDup(m.Short_descr)
 		}
 		if m.Long_descr != nil {
-			tmpmob.Long_descr = C.strdup(m.Long_descr)
+			tmpmob.Long_descr = libc.StrDup(m.Long_descr)
 		}
 		if m.Description != nil {
-			tmpmob.Description = C.strdup(m.Description)
+			tmpmob.Description = libc.StrDup(m.Description)
 		}
 		tmpmob.Id = ch.Id
 		tmpmob.Affected = ch.Affected
@@ -1006,9 +985,9 @@ func do_mdoor(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if newexit.General_description != nil {
 				libc.Free(unsafe.Pointer(newexit.General_description))
 			}
-			newexit.General_description = (*byte)(unsafe.Pointer(&make([]int8, int(C.strlen(value)+3))[0]))
-			C.strcpy(newexit.General_description, value)
-			C.strcat(newexit.General_description, libc.CString("\r\n"))
+			newexit.General_description = (*byte)(unsafe.Pointer(&make([]int8, libc.StrLen(value)+3)[0]))
+			libc.StrCpy(newexit.General_description, value)
+			libc.StrCat(newexit.General_description, libc.CString("\r\n"))
 		case 2:
 			newexit.Exit_info = bitvector_t(int16(uint16(asciiflag_conv(value))))
 		case 3:
@@ -1017,8 +996,8 @@ func do_mdoor(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if newexit.Keyword != nil {
 				libc.Free(unsafe.Pointer(newexit.Keyword))
 			}
-			newexit.Keyword = (*byte)(unsafe.Pointer(&make([]int8, int(C.strlen(value)+1))[0]))
-			C.strcpy(newexit.Keyword, value)
+			newexit.Keyword = (*byte)(unsafe.Pointer(&make([]int8, libc.StrLen(value)+1)[0]))
+			libc.StrCpy(newexit.Keyword, value)
 		case 5:
 			if (func() int {
 				to_room = int(real_room(room_vnum(libc.Atoi(libc.GoString(value)))))

@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"unicode"
 	"unsafe"
 )
 
@@ -17,7 +18,7 @@ func smash_tilde(str *byte) {
 		}
 	}
 	for (func() *byte {
-		str = C.strchr(str, '~')
+		str = libc.StrChr(str, '~')
 		return str
 	}()) != nil {
 		*str = ' '
@@ -31,7 +32,7 @@ func smash_numb(str *byte) {
 		}
 	}
 	for (func() *byte {
-		str = C.strchr(str, '#')
+		str = libc.StrChr(str, '#')
 		return str
 	}()) != nil {
 		*str = ' '
@@ -39,7 +40,7 @@ func smash_numb(str *byte) {
 }
 func string_write(d *descriptor_data, writeto **byte, len_ uint64, mailto int, data unsafe.Pointer) {
 	if d.Character != nil && !IS_NPC(d.Character) {
-		d.Character.Act[int(PLR_WRITING/32)] |= bitvector_t(1 << (int(PLR_WRITING % 32)))
+		d.Character.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
 	}
 	if CONFIG_IMPROVED_EDITOR != 0 {
 		d.Backstr = (*byte)(data)
@@ -68,20 +69,20 @@ func string_add(d *descriptor_data, str *byte) {
 	}
 	if action != STRINGADD_OK {
 	} else if (*d.Str) == nil {
-		if uint64(C.strlen(str)+3) > d.Max_str {
+		if libc.StrLen(str)+3 > int(d.Max_str) {
 			send_to_char(d.Character, libc.CString("String too long - Truncated.\r\n"))
-			C.strcpy((*byte)(unsafe.Add(unsafe.Pointer(str), d.Max_str-3)), libc.CString("\r\n"))
+			libc.StrCpy((*byte)(unsafe.Add(unsafe.Pointer(str), d.Max_str-3)), libc.CString("\r\n"))
 			*d.Str = (*byte)(unsafe.Pointer(&make([]int8, int(d.Max_str))[0]))
-			C.strcpy(*d.Str, str)
+			libc.StrCpy(*d.Str, str)
 			if CONFIG_IMPROVED_EDITOR == 0 {
 				action = STRINGADD_SAVE
 			}
 		} else {
-			*d.Str = (*byte)(unsafe.Pointer(&make([]int8, int(C.strlen(str)+3))[0]))
-			C.strcpy(*d.Str, str)
+			*d.Str = (*byte)(unsafe.Pointer(&make([]int8, libc.StrLen(str)+3)[0]))
+			libc.StrCpy(*d.Str, str)
 		}
 	} else {
-		if uint64(C.strlen(str)+C.strlen(*d.Str)+3) > d.Max_str {
+		if libc.StrLen(str)+libc.StrLen(*d.Str)+3 > int(d.Max_str) {
 			send_to_char(d.Character, libc.CString("String too long.  Last line skipped.\r\n"))
 			if CONFIG_IMPROVED_EDITOR == 0 {
 				action = STRINGADD_SAVE
@@ -89,8 +90,8 @@ func string_add(d *descriptor_data, str *byte) {
 				action = STRINGADD_ACTION
 			}
 		} else {
-			*d.Str = (*byte)(libc.Realloc(unsafe.Pointer(*d.Str), int(C.strlen(*d.Str)*int64(unsafe.Sizeof(int8(0)))+C.strlen(str)+3)))
-			C.strcat(*d.Str, str)
+			*d.Str = (*byte)(libc.Realloc(unsafe.Pointer(*d.Str), libc.StrLen(*d.Str)*int(unsafe.Sizeof(int8(0)))+libc.StrLen(str)+3))
+			libc.StrCat(*d.Str, str)
 		}
 	}
 	switch action {
@@ -126,7 +127,7 @@ func string_add(d *descriptor_data, str *byte) {
 	case STRINGADD_SAVE:
 		if d.Str != nil && *d.Str != nil && **d.Str == '\x00' {
 			libc.Free(unsafe.Pointer(*d.Str))
-			*d.Str = C.strdup(libc.CString("Nothing.\r\n"))
+			*d.Str = libc.CString("Nothing.\r\n")
 		}
 		if d.Backstr != nil {
 			libc.Free(unsafe.Pointer(d.Backstr))
@@ -154,11 +155,11 @@ func string_add(d *descriptor_data, str *byte) {
 		d.Mail_to = 0
 		d.Max_str = 0
 		if d.Character != nil && !IS_NPC(d.Character) {
-			d.Character.Act[int(PLR_MAILING/32)] &= bitvector_t(^(1 << (int(PLR_MAILING % 32))))
-			d.Character.Act[int(PLR_WRITING/32)] &= bitvector_t(^(1 << (int(PLR_WRITING % 32))))
+			d.Character.Act[int(PLR_MAILING/32)] &= bitvector_t(int32(^(1 << (int(PLR_MAILING % 32)))))
+			d.Character.Act[int(PLR_WRITING/32)] &= bitvector_t(int32(^(1 << (int(PLR_WRITING % 32)))))
 		}
-	} else if action != STRINGADD_ACTION && uint64(C.strlen(*d.Str)+3) <= d.Max_str {
-		C.strcat(*d.Str, libc.CString("\r\n"))
+	} else if action != STRINGADD_ACTION && libc.StrLen(*d.Str)+3 <= int(d.Max_str) {
+		libc.StrCat(*d.Str, libc.CString("\r\n"))
 	}
 }
 func playing_string_cleanup(d *descriptor_data, action int) {
@@ -180,9 +181,9 @@ func playing_string_cleanup(d *descriptor_data, action int) {
 		}
 	}
 	if PLR_FLAGGED(d.Character, PLR_WRITING) {
-		if d.Mail_to >= BOARD_MAGIC {
+		if int(d.Mail_to) >= BOARD_MAGIC {
 			if action == STRINGADD_ABORT {
-				board = locate_board(obj_vnum(d.Mail_to - BOARD_MAGIC))
+				board = locate_board(obj_vnum(int(d.Mail_to) - BOARD_MAGIC))
 				fore = func() *board_msg {
 					cur = func() *board_msg {
 						aft = nil
@@ -218,7 +219,7 @@ func playing_string_cleanup(d *descriptor_data, action int) {
 				write_to_output(d, libc.CString("Unable to find your message to delete it!\r\n"))
 			} else {
 				write_to_output(d, libc.CString("\r\nPost saved.\r\n"))
-				save_board(locate_board(obj_vnum(d.Mail_to - BOARD_MAGIC)))
+				save_board(locate_board(obj_vnum(int(d.Mail_to) - BOARD_MAGIC)))
 			}
 		}
 	}
@@ -287,7 +288,7 @@ func do_skillset(ch *char_data, argument *byte, cmd int, subcmd int) {
 			i += print_skills_by_type(vict, &help[i], int(64936-uintptr(i)), (1<<1)|1<<2, nil)
 		}
 		if i >= int(64936) {
-			C.strcpy((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(&help[64936]), -C.strlen(libc.CString("** OVERFLOW **"))))), -1)), libc.CString("** OVERFLOW **"))
+			libc.StrCpy((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(&help[64936]), -libc.StrLen(libc.CString("** OVERFLOW **"))))), -1)), libc.CString("** OVERFLOW **"))
 		}
 		page_string(ch.Desc, &help[0], TRUE)
 		return
@@ -297,13 +298,13 @@ func do_skillset(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	for qend = 1; *(*byte)(unsafe.Add(unsafe.Pointer(argument), qend)) != 0 && *(*byte)(unsafe.Add(unsafe.Pointer(argument), qend)) != '\''; qend++ {
-		*(*byte)(unsafe.Add(unsafe.Pointer(argument), qend)) = byte(int8(C.tolower(int(*(*byte)(unsafe.Add(unsafe.Pointer(argument), qend))))))
+		*(*byte)(unsafe.Add(unsafe.Pointer(argument), qend)) = byte(int8(unicode.ToLower(rune(*(*byte)(unsafe.Add(unsafe.Pointer(argument), qend))))))
 	}
 	if *(*byte)(unsafe.Add(unsafe.Pointer(argument), qend)) != '\'' {
 		send_to_char(ch, libc.CString("Skill must be enclosed in: ''\r\n"))
 		return
 	}
-	C.strcpy(&help[0], (*byte)(unsafe.Add(unsafe.Pointer(argument), 1)))
+	libc.StrCpy(&help[0], (*byte)(unsafe.Add(unsafe.Pointer(argument), 1)))
 	help[qend-1] = '\x00'
 	if (func() int {
 		skill = find_skill_num(&help[0], 1<<1)
@@ -405,13 +406,13 @@ func page_string(d *descriptor_data, str *byte, keep_internal int) {
 	if str == nil || *str == 0 {
 		return
 	}
-	if d.Character.Player_specials.Page_length < 5 || d.Character.Player_specials.Page_length > 50 {
+	if int(d.Character.Player_specials.Page_length) < 5 || int(d.Character.Player_specials.Page_length) > 50 {
 		d.Character.Player_specials.Page_length = PAGE_LENGTH
 	}
 	d.Showstr_count = count_pages(str, d.Character)
 	d.Showstr_vector = &make([]*byte, d.Showstr_count)[0]
 	if keep_internal != 0 {
-		d.Showstr_head = C.strdup(str)
+		d.Showstr_head = libc.StrDup(str)
 		paginate_string(d.Showstr_head, d)
 	} else {
 		paginate_string(str, d)
@@ -425,7 +426,7 @@ func show_string(d *descriptor_data, input *byte) {
 		diff   int
 	)
 	any_one_arg(input, &buf[0])
-	if C.tolower(int(buf[0])) == 'q' {
+	if unicode.ToLower(rune(buf[0])) == 'q' {
 		libc.Free(unsafe.Pointer(d.Showstr_vector))
 		d.Showstr_vector = nil
 		d.Showstr_count = 0
@@ -434,11 +435,11 @@ func show_string(d *descriptor_data, input *byte) {
 			d.Showstr_head = nil
 		}
 		return
-	} else if C.tolower(int(buf[0])) == 'r' {
+	} else if unicode.ToLower(rune(buf[0])) == 'r' {
 		d.Showstr_page = MAX(0, d.Showstr_page-1)
-	} else if C.tolower(int(buf[0])) == 'b' {
+	} else if unicode.ToLower(rune(buf[0])) == 'b' {
 		d.Showstr_page = MAX(0, d.Showstr_page-2)
-	} else if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(buf[0]))))) & int(uint16(int16(_ISdigit)))) != 0 {
+	} else if unicode.IsDigit(rune(buf[0])) {
 		d.Showstr_page = MAX(0, MIN(libc.Atoi(libc.GoString(&buf[0]))-1, d.Showstr_count-1))
 	} else if buf[0] != 0 {
 		send_to_char(d.Character, libc.CString("Valid commands while paging are RETURN, Q, R, B, or a numeric value.\r\n"))
@@ -458,15 +459,15 @@ func show_string(d *descriptor_data, input *byte) {
 		if diff > int(MAX_STRING_LENGTH-3) {
 			diff = int(MAX_STRING_LENGTH - 3)
 		}
-		C.strncpy(&buffer[0], *(**byte)(unsafe.Add(unsafe.Pointer(d.Showstr_vector), unsafe.Sizeof((*byte)(nil))*uintptr(d.Showstr_page))), uint64(diff))
+		libc.StrNCpy(&buffer[0], *(**byte)(unsafe.Add(unsafe.Pointer(d.Showstr_vector), unsafe.Sizeof((*byte)(nil))*uintptr(d.Showstr_page))), diff)
 		if buffer[diff-2] == '\r' && buffer[diff-1] == '\n' {
 			buffer[diff] = '\x00'
 		} else if buffer[diff-2] == '\n' && buffer[diff-1] == '\r' {
-			C.strcpy((*byte)(unsafe.Add(unsafe.Pointer(&buffer[diff]), -2)), libc.CString("\r\n"))
+			libc.StrCpy((*byte)(unsafe.Add(unsafe.Pointer(&buffer[diff]), -2)), libc.CString("\r\n"))
 		} else if buffer[diff-1] == '\r' || buffer[diff-1] == '\n' {
-			C.strcpy((*byte)(unsafe.Add(unsafe.Pointer(&buffer[diff]), -1)), libc.CString("\r\n"))
+			libc.StrCpy((*byte)(unsafe.Add(unsafe.Pointer(&buffer[diff]), -1)), libc.CString("\r\n"))
 		} else {
-			C.strcpy(&buffer[diff], libc.CString("\r\n"))
+			libc.StrCpy(&buffer[diff], libc.CString("\r\n"))
 		}
 		send_to_char(d.Character, libc.CString("%s"), &buffer[0])
 		d.Showstr_page++

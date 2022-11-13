@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
+	"unicode"
 	"unsafe"
 )
 
@@ -22,8 +23,8 @@ func do_oasis_zedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		} else {
 			number = -1
 		}
-	} else if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(buf1[0]))))) & int(uint16(int16(_ISdigit)))) == 0 {
-		if C.strcasecmp(libc.CString("save"), &buf1[0]) == 0 {
+	} else if !unicode.IsDigit(rune(buf1[0])) {
+		if libc.StrCaseCmp(libc.CString("save"), &buf1[0]) == 0 {
 			save = TRUE
 			if is_number(&buf2[0]) != 0 {
 				number = libc.Atoi(libc.GoString(&buf2[0]))
@@ -43,7 +44,7 @@ func do_oasis_zedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return
 			}
 		} else if ch.Admlevel >= ADMLVL_IMPL {
-			if C.strcasecmp(libc.CString("new"), &buf1[0]) != 0 || buf3 == nil || *buf3 == 0 {
+			if libc.StrCaseCmp(libc.CString("new"), &buf1[0]) != 0 || buf3 == nil || *buf3 == 0 {
 				send_to_char(ch, libc.CString("Format: zedit new <zone number> <bottom-room> <upper-room>\r\n"))
 			} else {
 				var (
@@ -123,7 +124,7 @@ func do_oasis_zedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	zedit_setup(d, real_num)
 	d.Connected = CON_ZEDIT
 	act(libc.CString("$n starts using OLC."), TRUE, d.Character, nil, nil, TO_ROOM)
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(1 << (int(PLR_WRITING % 32)))
+	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
 	mudlog(CMP, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing zone %d allowed zone %d"), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number, ch.Player_specials.Olc_zone)
 }
 func zedit_setup(d *descriptor_data, room_num int) {
@@ -134,9 +135,9 @@ func zedit_setup(d *descriptor_data, room_num int) {
 		cmd_room int = int(-1)
 	)
 	zone = new(zone_data)
-	zone.Name = C.strdup((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Name)
+	zone.Name = libc.StrDup((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Name)
 	if (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Builders != nil {
-		zone.Builders = C.strdup((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Builders)
+		zone.Builders = libc.StrDup((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Builders)
 	}
 	zone.Lifespan = (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Lifespan
 	zone.Bot = (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Bot
@@ -280,8 +281,8 @@ func zedit_save_internally(d *descriptor_data) {
 	if d.Olc.Zone.Number != 0 {
 		libc.Free(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Name))
 		libc.Free(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Builders))
-		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Name = C.strdup(d.Olc.Zone.Name)
-		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Builders = C.strdup(d.Olc.Zone.Builders)
+		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Name = libc.StrDup(d.Olc.Zone.Name)
+		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Builders = libc.StrDup(d.Olc.Zone.Builders)
 		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Bot = d.Olc.Zone.Bot
 		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Top = d.Olc.Zone.Top
 		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Reset_mode = d.Olc.Zone.Reset_mode
@@ -735,7 +736,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 		}
 	case ZEDIT_NEW_ENTRY:
 		pos = libc.Atoi(libc.GoString(arg))
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg)))))&int(uint16(int16(_ISdigit)))) != 0 && new_command(d.Olc.Zone, pos) != 0 {
+		if unicode.IsDigit(rune(*arg)) && new_command(d.Olc.Zone, pos) != 0 {
 			if start_change_command(d, pos) != 0 {
 				zedit_disp_comtype(d)
 				d.Olc.Zone.Age = 1
@@ -745,13 +746,13 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 		}
 	case ZEDIT_DELETE_ENTRY:
 		pos = libc.Atoi(libc.GoString(arg))
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg))))) & int(uint16(int16(_ISdigit)))) != 0 {
+		if unicode.IsDigit(rune(*arg)) {
 			delete_zone_command(d.Olc.Zone, pos)
 			d.Olc.Zone.Age = 1
 		}
 		zedit_disp_menu(d)
 	case ZEDIT_CHANGE_ENTRY:
-		if C.toupper(int(*arg)) == 'A' {
+		if unicode.ToUpper(rune(*arg)) == 'A' {
 			if int((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command) == 'N' {
 				(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command = '*'
 			}
@@ -759,15 +760,15 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 			break
 		}
 		pos = libc.Atoi(libc.GoString(arg))
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg)))))&int(uint16(int16(_ISdigit)))) != 0 && start_change_command(d, pos) != 0 {
+		if unicode.IsDigit(rune(*arg)) && start_change_command(d, pos) != 0 {
 			zedit_disp_comtype(d)
 			d.Olc.Zone.Age = 1
 		} else {
 			zedit_disp_menu(d)
 		}
 	case ZEDIT_COMMAND_TYPE:
-		(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command = int8(C.toupper(int(*arg)))
-		if int((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command) == 0 || C.strchr(libc.CString("MOPEDGRTV"), int((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command)) == nil {
+		(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command = int8(unicode.ToUpper(rune(*arg)))
+		if int((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command) == 0 || libc.StrChr(libc.CString("MOPEDGRTV"), byte((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command)) == nil {
 			write_to_output(d, libc.CString("Invalid choice, try again : "))
 		} else {
 			if d.Olc.Value != 0 {
@@ -799,7 +800,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 		}
 		zedit_disp_arg1(d)
 	case ZEDIT_ARG1:
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg))))) & int(uint16(int16(_ISdigit)))) == 0 {
+		if !unicode.IsDigit(rune(*arg)) {
 			write_to_output(d, libc.CString("Must be a numeric value, try again : "))
 			return
 		}
@@ -849,7 +850,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("Oops...\r\n"))
 		}
 	case ZEDIT_ARG2:
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg))))) & int(uint16(int16(_ISdigit)))) == 0 {
+		if !unicode.IsDigit(rune(*arg)) {
 			write_to_output(d, libc.CString("Must be a numeric value, try again : "))
 			return
 		}
@@ -905,7 +906,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("Oops...\r\n"))
 		}
 	case ZEDIT_ARG3:
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg))))) & int(uint16(int16(_ISdigit)))) == 0 {
+		if !unicode.IsDigit(rune(*arg)) {
 			write_to_output(d, libc.CString("Must be a numeric value, try again : "))
 			return
 		}
@@ -960,7 +961,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 		if *arg == 0 {
 			arg = libc.CString("0")
 		}
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg))))) & int(uint16(int16(_ISdigit)))) == 0 {
+		if !unicode.IsDigit(rune(*arg)) {
 			write_to_output(d, libc.CString("Must be a numeric value, try again : "))
 			return
 		}
@@ -986,7 +987,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("Oops...\r\n"))
 		}
 	case ZEDIT_ARG5:
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg))))) & int(uint16(int16(_ISdigit)))) == 0 {
+		if !unicode.IsDigit(rune(*arg)) {
 			write_to_output(d, libc.CString("Must be a numeric value, try again : "))
 			return
 		}
@@ -1016,19 +1017,19 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("Oops...\r\n"))
 		}
 	case ZEDIT_SARG1:
-		if C.strlen(arg) != 0 {
+		if libc.StrLen(arg) != 0 {
 			if (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Sarg1 != nil {
 				libc.Free(unsafe.Pointer((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Sarg1))
 			}
-			(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Sarg1 = C.strdup(arg)
+			(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Sarg1 = libc.StrDup(arg)
 			d.Olc.Mode = ZEDIT_SARG2
 			write_to_output(d, libc.CString("Enter the global value : "))
 		} else {
 			write_to_output(d, libc.CString("Must have some name to assign : "))
 		}
 	case ZEDIT_SARG2:
-		if C.strlen(arg) != 0 {
-			(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Sarg2 = C.strdup(arg)
+		if libc.StrLen(arg) != 0 {
+			(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Sarg2 = libc.StrDup(arg)
 			zedit_disp_arg4(d)
 		} else {
 			write_to_output(d, libc.CString("Must have some value to set it to :"))
@@ -1040,7 +1041,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 			} else {
 				basic_mud_log(libc.CString("SYSERR: OLC: ZEDIT_ZONE_NAME: no name to free!"))
 			}
-			d.Olc.Zone.Name = C.strdup(arg)
+			d.Olc.Zone.Name = libc.StrDup(arg)
 			d.Olc.Zone.Number = 1
 		}
 		zedit_disp_menu(d)
@@ -1051,13 +1052,13 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 			} else {
 				basic_mud_log(libc.CString("SYSERR: OLC: ZEDIT_ZONE_BUILDERS: no builders list to free!"))
 			}
-			d.Olc.Zone.Builders = C.strdup(arg)
+			d.Olc.Zone.Builders = libc.StrDup(arg)
 			d.Olc.Zone.Number = 1
 		}
 		zedit_disp_menu(d)
 	case ZEDIT_ZONE_RESET:
 		pos = libc.Atoi(libc.GoString(arg))
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg)))))&int(uint16(int16(_ISdigit)))) == 0 || pos < 0 || pos > 2 {
+		if !unicode.IsDigit(rune(*arg)) || pos < 0 || pos > 2 {
 			write_to_output(d, libc.CString("Try again (0-2) : "))
 		} else {
 			d.Olc.Zone.Reset_mode = pos
@@ -1066,7 +1067,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 		}
 	case ZEDIT_ZONE_LIFE:
 		pos = libc.Atoi(libc.GoString(arg))
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg)))))&int(uint16(int16(_ISdigit)))) == 0 || pos < 0 || pos > 240 {
+		if !unicode.IsDigit(rune(*arg)) || pos < 0 || pos > 240 {
 			write_to_output(d, libc.CString("Try again (0-240) : "))
 		} else {
 			d.Olc.Zone.Lifespan = pos
@@ -1105,7 +1106,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 		return
 	case ZEDIT_MIN_LEVEL:
 		pos = libc.Atoi(libc.GoString(arg))
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg)))))&int(uint16(int16(_ISdigit)))) == 0 || pos < 0 || pos > config_info.Play.Level_cap {
+		if !unicode.IsDigit(rune(*arg)) || pos < 0 || pos > config_info.Play.Level_cap {
 			write_to_output(d, libc.CString("Try again (0 - CONFIG_LEVEL_CAP) : \r\n"))
 		} else {
 			d.Olc.Zone.Min_level = pos
@@ -1114,7 +1115,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 		}
 	case ZEDIT_MAX_LEVEL:
 		pos = libc.Atoi(libc.GoString(arg))
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg)))))&int(uint16(int16(_ISdigit)))) == 0 || pos < 0 || pos > config_info.Play.Level_cap {
+		if !unicode.IsDigit(rune(*arg)) || pos < 0 || pos > config_info.Play.Level_cap {
 			write_to_output(d, libc.CString("Try again (0 - CONFIG_LEVEL_CAP) : \r\n"))
 		} else if d.Olc.Zone.Min_level > pos {
 			write_to_output(d, libc.CString("Max level can not be lower the Min level! :\r\n"))

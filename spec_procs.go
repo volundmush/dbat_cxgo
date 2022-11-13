@@ -15,7 +15,7 @@ func dump(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 		act(libc.CString("$p vanishes in a puff of smoke!"), FALSE, nil, k, nil, TO_ROOM)
 		extract_obj(k)
 	}
-	if C.strcmp(libc.CString("drop"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) != 0 {
+	if libc.StrCmp(libc.CString("drop"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) != 0 {
 		return FALSE
 	}
 	do_drop(ch, argument, cmd, SCMD_DROP)
@@ -63,7 +63,7 @@ func mayor(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 			path_index = 0
 		}
 	}
-	if cmd != 0 || !move || ch.Position < POS_SLEEPING || ch.Position == POS_FIGHTING {
+	if cmd != 0 || !move || int(ch.Position) < POS_SLEEPING || int(ch.Position) == POS_FIGHTING {
 		return FALSE
 	}
 	switch *(*byte)(unsafe.Add(unsafe.Pointer(path), path_index)) {
@@ -95,11 +95,11 @@ func mayor(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 	case 'E':
 		act(libc.CString("$n says 'I hereby declare Midgaard closed!'"), FALSE, ch, nil, nil, TO_ROOM)
 	case 'O':
-		do_gen_door(ch, C.strcpy(&actbuf[0], libc.CString("gate")), 0, SCMD_UNLOCK)
-		do_gen_door(ch, C.strcpy(&actbuf[0], libc.CString("gate")), 0, SCMD_OPEN)
+		do_gen_door(ch, libc.StrCpy(&actbuf[0], libc.CString("gate")), 0, SCMD_UNLOCK)
+		do_gen_door(ch, libc.StrCpy(&actbuf[0], libc.CString("gate")), 0, SCMD_OPEN)
 	case 'C':
-		do_gen_door(ch, C.strcpy(&actbuf[0], libc.CString("gate")), 0, SCMD_CLOSE)
-		do_gen_door(ch, C.strcpy(&actbuf[0], libc.CString("gate")), 0, SCMD_LOCK)
+		do_gen_door(ch, libc.StrCpy(&actbuf[0], libc.CString("gate")), 0, SCMD_CLOSE)
+		do_gen_door(ch, libc.StrCpy(&actbuf[0], libc.CString("gate")), 0, SCMD_LOCK)
 	case '.':
 		move = FALSE != 0
 	}
@@ -183,17 +183,17 @@ func gauntlet_room(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) in
 	if cmd == 0 {
 		return FALSE
 	}
-	if C.strcmp(libc.CString("flee"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	if libc.StrCmp(libc.CString("flee"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		send_to_char(ch, libc.CString("Fleeing is not allowed!  If you want to get out of here, type @Ysurrender@n while fighting to be returned to the start."))
 		return TRUE
 	}
-	if libc.FuncAddr((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command_pointer) != libc.FuncAddr(do_move) && C.strcmp(libc.CString("surrender"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) != 0 {
+	if libc.FuncAddr((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command_pointer) != libc.FuncAddr(do_move) && libc.StrCmp(libc.CString("surrender"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) != 0 {
 		return FALSE
 	}
 	if IS_NPC(ch) {
 		return FALSE
 	}
-	if C.strcmp(libc.CString("surrender"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	if libc.StrCmp(libc.CString("surrender"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		if ch.Fighting != nil {
 			char_from_room(ch)
 			char_to_room(ch, real_room(room_vnum(gauntlet_info[0][1])))
@@ -260,8 +260,8 @@ func gauntlet_end(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int
 	if cmd == 0 {
 		return FALSE
 	}
-	if C.strcmp(libc.CString("flee"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
-		if ch.Fighting != nil && ch.Position == POS_FIGHTING {
+	if libc.StrCmp(libc.CString("flee"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+		if ch.Fighting != nil && int(ch.Position) == POS_FIGHTING {
 			send_to_char(ch, libc.CString("You can't flee from this fight./r/nIt's your own fault for summoning creatures into the gauntlet!\r\n"))
 			return TRUE
 		} else {
@@ -269,7 +269,7 @@ func gauntlet_end(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int
 			return TRUE
 		}
 	}
-	if C.strcmp(libc.CString("surrender"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	if libc.StrCmp(libc.CString("surrender"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		send_to_char(ch, libc.CString("You have completed the gauntlet, why would you need to surrender?\r\n"))
 		return TRUE
 	}
@@ -307,11 +307,11 @@ func gauntlet_rest(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) in
 	if cmd == 0 {
 		return FALSE
 	}
-	if C.strcmp(libc.CString("flee"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	if libc.StrCmp(libc.CString("flee"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		send_to_char(ch, libc.CString("Fleeing is not allowed!  If you want to get out of here, type @Ysurrender@n while fighting to be returned to the start."))
 		return TRUE
 	}
-	if C.strcmp(libc.CString("surrender"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	if libc.StrCmp(libc.CString("surrender"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		send_to_char(ch, libc.CString("You are in a rest-room.  Surrender is not an option.\r\nIf you want to leave the Gauntlet, you can surrender while fighting.\r\n"))
 		return TRUE
 	}
@@ -378,7 +378,7 @@ func npc_steal(ch *char_data, victim *char_data) {
 	}
 }
 func snake(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
-	if cmd != 0 || ch.Position != POS_FIGHTING || ch.Fighting == nil {
+	if cmd != 0 || int(ch.Position) != POS_FIGHTING || ch.Fighting == nil {
 		return FALSE
 	}
 	if ch.Fighting.In_room != ch.In_room || rand_number(0, GET_LEVEL(ch)) != 0 {
@@ -394,7 +394,7 @@ func thief(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 	if IS_NPC(ch) {
 		return FALSE
 	}
-	if cmd != 0 || ch.Position != POS_STANDING {
+	if cmd != 0 || int(ch.Position) != POS_STANDING {
 		return FALSE
 	}
 	for cons = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; cons != nil; cons = cons.Next_in_room {
@@ -407,7 +407,7 @@ func thief(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 }
 func magic_user_orig(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 	var vict *char_data
-	if cmd != 0 || ch.Position != POS_FIGHTING {
+	if cmd != 0 || int(ch.Position) != POS_FIGHTING {
 		return FALSE
 	}
 	for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; vict != nil; vict = vict.Next_in_room {
@@ -509,16 +509,16 @@ func puff(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 	}
 	switch rand_number(0, 60) {
 	case 0:
-		do_say(ch, C.strcpy(&actbuf[0], libc.CString("My god!  It's full of stars!")), 0, 0)
+		do_say(ch, libc.StrCpy(&actbuf[0], libc.CString("My god!  It's full of stars!")), 0, 0)
 		return TRUE
 	case 1:
-		do_say(ch, C.strcpy(&actbuf[0], libc.CString("How'd all those fish get up here?")), 0, 0)
+		do_say(ch, libc.StrCpy(&actbuf[0], libc.CString("How'd all those fish get up here?")), 0, 0)
 		return TRUE
 	case 2:
-		do_say(ch, C.strcpy(&actbuf[0], libc.CString("I'm a very female dragon.")), 0, 0)
+		do_say(ch, libc.StrCpy(&actbuf[0], libc.CString("I'm a very female dragon.")), 0, 0)
 		return TRUE
 	case 3:
-		do_say(ch, C.strcpy(&actbuf[0], libc.CString("I've got a peaceful, easy feeling.")), 0, 0)
+		do_say(ch, libc.StrCpy(&actbuf[0], libc.CString("I've got a peaceful, easy feeling.")), 0, 0)
 		return TRUE
 	default:
 		return FALSE
@@ -557,7 +557,7 @@ func janitor(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 		if !OBJWEAR_FLAGGED(i, ITEM_WEAR_TAKE) {
 			continue
 		}
-		if i.Type_flag == ITEM_DRINKCON || i.Cost >= 100 {
+		if int(i.Type_flag) == ITEM_DRINKCON || i.Cost >= 100 {
 			continue
 		}
 		act(libc.CString("$n picks up some trash."), FALSE, ch, nil, nil, TO_ROOM)
@@ -616,7 +616,7 @@ func cityguard(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 		}
 		if spit_social > 0 {
 			var spitbuf [21]byte
-			C.strncpy(&spitbuf[0], GET_NAME(spittle), uint64(21))
+			libc.StrNCpy(&spitbuf[0], GET_NAME(spittle), int(21))
 			spitbuf[21-1] = '\x00'
 			do_action(ch, &spitbuf[0], spit_social, 0)
 			return TRUE
@@ -632,7 +632,7 @@ func pet_shops(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 		pet      *char_data
 	)
 	pet_room = ch.In_room + 1
-	if C.strcmp(libc.CString("list"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	if libc.StrCmp(libc.CString("list"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		send_to_char(ch, libc.CString("Available pets are:\r\n"))
 		for pet = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(pet_room)))).People; pet != nil; pet = pet.Next_in_room {
 			if !IS_NPC(pet) {
@@ -641,7 +641,7 @@ func pet_shops(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 			send_to_char(ch, libc.CString("%8d - %s\r\n"), GET_LEVEL(pet)*300, GET_NAME(pet))
 		}
 		return TRUE
-	} else if C.strcmp(libc.CString("buy"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	} else if libc.StrCmp(libc.CString("buy"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		two_arguments(argument, &buf[0], &pet_name[0])
 		if (func() *char_data {
 			pet = get_char_room(&buf[0], nil, pet_room)
@@ -660,9 +660,9 @@ func pet_shops(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 		pet.Affected_by[int(AFF_CHARM/32)] |= 1 << (int(AFF_CHARM % 32))
 		if pet_name[0] != 0 {
 			stdio.Snprintf(&buf[0], int(64936), "%s %s", pet.Name, &pet_name[0])
-			pet.Name = C.strdup(&buf[0])
+			pet.Name = libc.StrDup(&buf[0])
 			stdio.Snprintf(&buf[0], int(64936), "%sA small sign on a chain around the neck says 'My name is %s'\r\n", pet.Description, &pet_name[0])
-			pet.Description = C.strdup(&buf[0])
+			pet.Description = libc.StrDup(&buf[0])
 		}
 		char_to_room(pet, ch.In_room)
 		add_follower(pet, ch)
@@ -684,15 +684,15 @@ func auction(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 		found     int       = FALSE
 	)
 	auct_room = real_room(80)
-	if C.strcmp(libc.CString("cancel"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	if libc.StrCmp(libc.CString("cancel"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(auct_room)))).Contents; obj != nil; obj = next_obj {
 			next_obj = obj.Next_content
-			if obj != nil && obj.Aucter == ch.Id {
+			if obj != nil && int(obj.Aucter) == int(ch.Id) {
 				obj2 = obj
 				found = TRUE
-				if obj2.CurBidder != -1 && obj2.AucTime+0x7E900 > C.time(nil) {
+				if int(obj2.CurBidder) != -1 && obj2.AucTime+0x7E900 > libc.GetTime(nil) {
 					send_to_char(ch, libc.CString("Unable to cancel. Someone has already bid on it and their bid license hasn't expired.\r\n"))
-					var remain int64 = (obj2.AucTime + 0x7E900) - C.time(nil)
+					var remain libc.Time = (obj2.AucTime + 0x7E900) - libc.GetTime(nil)
 					var day int = int((remain % 604800) / 86400)
 					var hour int = int((remain % 86400) / 3600)
 					var minu int = int((remain % 3600) / 60)
@@ -736,28 +736,28 @@ func auction(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 			send_to_char(ch, libc.CString("There are no items being auctioned by you.\r\n"))
 		}
 		return TRUE
-	} else if C.strcmp(libc.CString("pickup"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	} else if libc.StrCmp(libc.CString("pickup"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		var (
 			d       *descriptor_data
 			founded int = FALSE
 		)
 		for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(auct_room)))).Contents; obj != nil; obj = next_obj {
 			next_obj = obj.Next_content
-			if obj != nil && obj.CurBidder == ch.Id {
+			if obj != nil && int(obj.CurBidder) == int(ch.Id) {
 				obj2 = obj
 				found = TRUE
-				if obj.Aucter <= 0 {
+				if int(obj.Aucter) <= 0 {
 					continue
 				}
 				if obj2.Bid > ch.Gold {
 					send_to_char(ch, libc.CString("Unable to purchase %s, you don't have enough money on hand.\r\n"), obj2.Short_description)
 					continue
 				}
-				if obj2.AucTime+86400 > C.time(nil) {
+				if obj2.AucTime+86400 > libc.GetTime(nil) {
 					var (
-						remain int64 = (obj2.AucTime + 86400) - C.time(nil)
-						hour   int   = int((remain % 86400) / 3600)
-						minu   int   = int((remain % 3600) / 60)
+						remain libc.Time = (obj2.AucTime + 86400) - libc.GetTime(nil)
+						hour   int       = int((remain % 86400) / 3600)
+						minu   int       = int((remain % 3600) / 60)
 					)
 					send_to_char(ch, libc.CString("Unable to purchase %s, minimum time to bid is 24 hours. %d hour%s and %d minute%s remain.\r\n"), obj2.Short_description, hour, func() string {
 						if hour > 1 {
@@ -784,7 +784,7 @@ func auction(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 					if d.Character == ch {
 						continue
 					}
-					if d.Character.Idnum == obj2.Aucter {
+					if int(d.Character.Idnum) == int(obj2.Aucter) {
 						founded = TRUE
 						d.Character.Bank_gold += obj2.Bid
 						if (d.Character.Equipment[WEAR_EYE]) != nil {
@@ -827,7 +827,7 @@ func auction(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 			send_to_char(ch, libc.CString("There are no items that you have bid on.\r\n"))
 		}
 		return TRUE
-	} else if C.strcmp(libc.CString("auction"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	} else if libc.StrCmp(libc.CString("auction"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		var (
 			arg   [2048]byte
 			arg2  [2048]byte
@@ -869,8 +869,8 @@ func auction(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 		obj2.Bid = value
 		obj2.Startbid = obj2.Bid
 		obj2.Aucter = ch.Id
-		obj2.Auctname = C.strdup(GET_NAME(ch))
-		obj2.AucTime = C.time(nil)
+		obj2.Auctname = libc.StrDup(GET_NAME(ch))
+		obj2.AucTime = libc.GetTime(nil)
 		obj2.CurBidder = -1
 		obj_from_char(obj2)
 		obj_to_room(obj2, auct_room)
@@ -906,7 +906,7 @@ func healtank(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 			continue
 		}
 	}
-	if C.strcmp(libc.CString("htank"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	if libc.StrCmp(libc.CString("htank"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		if htank == nil {
 			return FALSE
 		}
@@ -914,7 +914,7 @@ func healtank(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 			send_to_char(ch, libc.CString("@WHealing Tank Commands:\r\nhtank [ enter | exit | check ]@n"))
 			return TRUE
 		}
-		if C.strcasecmp(libc.CString("enter"), &arg[0]) == 0 {
+		if libc.StrCaseCmp(libc.CString("enter"), &arg[0]) == 0 {
 			if PLR_FLAGGED(ch, PLR_HEALT) {
 				send_to_char(ch, libc.CString("You are already inside a healing tank!\r\n"))
 				return TRUE
@@ -922,7 +922,7 @@ func healtank(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 			if ch.Master != nil && ch.Master != ch {
 				send_to_char(ch, libc.CString("You can't enter it while following someone!\r\n"))
 				return TRUE
-			} else if ch.Race == RACE_ANDROID {
+			} else if int(ch.Race) == RACE_ANDROID {
 				send_to_char(ch, libc.CString("A healing tank will have no effect on you.\r\n"))
 				return TRUE
 			} else if htank.Healcharge <= 0 {
@@ -939,29 +939,29 @@ func healtank(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 				return TRUE
 			} else {
 				ch.Charge = 0
-				ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(^(1 << (int(PLR_CHARGE % 32))))
+				ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(int32(^(1 << (int(PLR_CHARGE % 32)))))
 				ch.Chargeto = 0
 				ch.Barrier = 0
 				act(libc.CString("@wYou step inside the healing tank and put on its breathing mask. A water like solution pours over your body until the tank is full.@n"), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("@C$n@w steps inside the healing tank and puts on its breathing mask. A water like solution pours over $s body until the tank is full.@n"), TRUE, ch, nil, nil, TO_ROOM)
-				ch.Act[int(PLR_HEALT/32)] |= bitvector_t(1 << (int(PLR_HEALT % 32)))
+				ch.Act[int(PLR_HEALT/32)] |= bitvector_t(int32(1 << (int(PLR_HEALT % 32))))
 				ch.Sits = htank
 				htank.Sitting = ch
 				return TRUE
 			}
-		} else if C.strcasecmp(libc.CString("exit"), &arg[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("exit"), &arg[0]) == 0 {
 			if !PLR_FLAGGED(ch, PLR_HEALT) {
 				send_to_char(ch, libc.CString("You are not inside a healing tank.\r\n"))
 				return TRUE
 			} else {
 				act(libc.CString("@wThe healing tank drains and you exit it shortly after."), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("@C$n@w exits the healing tank after letting it drain.@n"), TRUE, ch, nil, nil, TO_ROOM)
-				ch.Act[int(PLR_HEALT/32)] &= bitvector_t(^(1 << (int(PLR_HEALT % 32))))
+				ch.Act[int(PLR_HEALT/32)] &= bitvector_t(int32(^(1 << (int(PLR_HEALT % 32)))))
 				htank.Sitting = nil
 				ch.Sits = nil
 				return TRUE
 			}
-		} else if C.strcasecmp(libc.CString("check"), &arg[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("check"), &arg[0]) == 0 {
 			if htank.Healcharge < 20 && htank.Healcharge > 0 {
 				send_to_char(ch, libc.CString("The healing tank has %d bars of energy displayed on its meter.\r\n"), htank.Healcharge)
 			} else if htank.Healcharge <= 0 {
@@ -981,7 +981,7 @@ func healtank(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 func augmenter(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 	var arg [2048]byte
 	one_argument(argument, &arg[0])
-	if C.strcmp(libc.CString("augment"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	if libc.StrCmp(libc.CString("augment"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		var (
 			strength int = int(ch.Real_abils.Str)
 			intel    int = int(ch.Real_abils.Intel)
@@ -1006,7 +1006,7 @@ func augmenter(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 			send_to_char(ch, libc.CString("@YSpeed       @y: @WCurrently measured at @w%d@W, cost to augment @Y%s@W.@n\r\n"), speed, add_commas(int64(specost)))
 			send_to_char(ch, libc.CString("\r\n"))
 			return TRUE
-		} else if C.strcasecmp(libc.CString("strength"), &arg[0]) == 0 || C.strcasecmp(libc.CString("str"), &arg[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("strength"), &arg[0]) == 0 || libc.StrCaseCmp(libc.CString("str"), &arg[0]) == 0 {
 			if strength >= 100 {
 				send_to_char(ch, libc.CString("Your strength is already as high as it can possibly go.\r\n"))
 			} else if ch.Gold < strcost {
@@ -1018,7 +1018,7 @@ func augmenter(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 				ch.Gold -= strcost
 				save_char(ch)
 			}
-		} else if C.strcasecmp(libc.CString("intelligence"), &arg[0]) == 0 || C.strcasecmp(libc.CString("int"), &arg[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("intelligence"), &arg[0]) == 0 || libc.StrCaseCmp(libc.CString("int"), &arg[0]) == 0 {
 			if intel >= 100 {
 				send_to_char(ch, libc.CString("Your intelligence is already as high as it can possibly go.\r\n"))
 			} else if ch.Gold < intcost {
@@ -1030,7 +1030,7 @@ func augmenter(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 				ch.Gold -= intcost
 				save_char(ch)
 			}
-		} else if C.strcasecmp(libc.CString("constitution"), &arg[0]) == 0 || C.strcasecmp(libc.CString("con"), &arg[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("constitution"), &arg[0]) == 0 || libc.StrCaseCmp(libc.CString("con"), &arg[0]) == 0 {
 			if consti >= 100 {
 				send_to_char(ch, libc.CString("Your constitution is already as high as it can possibly go.\r\n"))
 			} else if ch.Gold < concost {
@@ -1042,7 +1042,7 @@ func augmenter(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 				ch.Gold -= concost
 				save_char(ch)
 			}
-		} else if C.strcasecmp(libc.CString("speed"), &arg[0]) == 0 || C.strcasecmp(libc.CString("spe"), &arg[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("speed"), &arg[0]) == 0 || libc.StrCaseCmp(libc.CString("spe"), &arg[0]) == 0 {
 			if speed >= 100 {
 				send_to_char(ch, libc.CString("Your speed is already as high as it can possibly go.\r\n"))
 			} else if ch.Gold < specost {
@@ -1054,7 +1054,7 @@ func augmenter(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 				ch.Gold -= specost
 				save_char(ch)
 			}
-		} else if C.strcasecmp(libc.CString("agility"), &arg[0]) == 0 || C.strcasecmp(libc.CString("agi"), &arg[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("agility"), &arg[0]) == 0 || libc.StrCaseCmp(libc.CString("agi"), &arg[0]) == 0 {
 			if agility >= 100 {
 				send_to_char(ch, libc.CString("Your agility is already as high as it can possibly go.\r\n"))
 			} else if ch.Gold < agicost {
@@ -1066,7 +1066,7 @@ func augmenter(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 				ch.Gold -= agicost
 				save_char(ch)
 			}
-		} else if C.strcasecmp(libc.CString("wisdom"), &arg[0]) == 0 || C.strcasecmp(libc.CString("wis"), &arg[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("wisdom"), &arg[0]) == 0 || libc.StrCaseCmp(libc.CString("wis"), &arg[0]) == 0 {
 			if wisdom >= 100 {
 				send_to_char(ch, libc.CString("Your wisdom how somehow been measured is already as high as it can possibly go.\r\n"))
 			} else if ch.Gold < wiscost {
@@ -1101,7 +1101,7 @@ func gravity(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 			continue
 		}
 	}
-	if C.strcmp(libc.CString("gravity"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 || C.strcmp(libc.CString("generator"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	if libc.StrCmp(libc.CString("gravity"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 || libc.StrCmp(libc.CString("generator"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		if arg[0] == 0 {
 			send_to_char(ch, libc.CString("@WGravity Commands:@n\r\n"))
 			send_to_char(ch, libc.CString("@Wgravity [ 0 | N | 10 | 20 | 30 | 40 | 50 | 100 | 200 ]\r\n          [  300 | 400 | 500 | 1,000 | 5,000 | 10,000  ]@n\r\n"))
@@ -1111,10 +1111,10 @@ func gravity(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 			send_to_char(ch, libc.CString("It's broken!\r\n"))
 			return TRUE
 		}
-		if (C.strcasecmp(libc.CString("N"), &arg[0]) == 0 || C.strcasecmp(libc.CString("n"), &arg[0]) == 0 || C.strcasecmp(libc.CString("0"), &arg[0]) == 0) && obj.Weight == 0 {
+		if (libc.StrCaseCmp(libc.CString("N"), &arg[0]) == 0 || libc.StrCaseCmp(libc.CString("n"), &arg[0]) == 0 || libc.StrCaseCmp(libc.CString("0"), &arg[0]) == 0) && obj.Weight == 0 {
 			send_to_char(ch, libc.CString("The gravity generator is already set to that.\r\n"))
 			return TRUE
-		} else if C.strcasecmp(libc.CString("N"), &arg[0]) == 0 || C.strcasecmp(libc.CString("n"), &arg[0]) == 0 || C.strcasecmp(libc.CString("0"), &arg[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("N"), &arg[0]) == 0 || libc.StrCaseCmp(libc.CString("n"), &arg[0]) == 0 || libc.StrCaseCmp(libc.CString("0"), &arg[0]) == 0 {
 			send_to_char(ch, libc.CString("You punch in normal gravity on the generator. It hums for a moment\r\nbefore you feel the pressure on your body change.\r\n"))
 			act(libc.CString("@W$n@w pushes some buttons on the gravity generator, and you feel a change in pressure on your body.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			if ROOM_FLAGGED(ch.In_room, ROOM_VEGETA) || ROOM_FLAGGED(ch.In_room, ROOM_GRAVITYX10) {
@@ -1126,191 +1126,191 @@ func gravity(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 			}
 			match = TRUE
 		}
-		if C.strcasecmp(libc.CString("10"), &arg[0]) == 0 && obj.Weight == 10 {
+		if libc.StrCaseCmp(libc.CString("10"), &arg[0]) == 0 && obj.Weight == 10 {
 			send_to_char(ch, libc.CString("The gravity generator is already set to that.\r\n"))
 			return TRUE
-		} else if C.strcasecmp(libc.CString("10"), &arg[0]) == 0 && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10 && (ROOM_FLAGGED(ch.In_room, ROOM_VEGETA) || ROOM_FLAGGED(ch.In_room, ROOM_GRAVITYX10)) {
+		} else if libc.StrCaseCmp(libc.CString("10"), &arg[0]) == 0 && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10 && (ROOM_FLAGGED(ch.In_room, ROOM_VEGETA) || ROOM_FLAGGED(ch.In_room, ROOM_GRAVITYX10)) {
 			send_to_char(ch, libc.CString("The gravity around you is already at that.\r\n"))
 			return TRUE
-		} else if C.strcasecmp(libc.CString("10"), &arg[0]) == 0 && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity != 10 && (ROOM_FLAGGED(ch.In_room, ROOM_VEGETA) || ROOM_FLAGGED(ch.In_room, ROOM_GRAVITYX10)) {
+		} else if libc.StrCaseCmp(libc.CString("10"), &arg[0]) == 0 && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity != 10 && (ROOM_FLAGGED(ch.In_room, ROOM_VEGETA) || ROOM_FLAGGED(ch.In_room, ROOM_GRAVITYX10)) {
 			send_to_char(ch, libc.CString("You punch in normal gravity on the generator. It hums for a moment\r\nbefore you feel the pressure on your body change.\r\n"))
 			act(libc.CString("@W$n@w pushes some buttons on the gravity generator, and you feel a change in pressure on your body.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			if ROOM_FLAGGED(ch.In_room, ROOM_AURA) {
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(^(1 << (int(ROOM_AURA % 32))))
+				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(int32(^(1 << (int(ROOM_AURA % 32)))))
 				send_to_room(ch.In_room, libc.CString("The increased gravity forces the aura to disappear.\r\n"))
 			}
 			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity = 10
 			obj.Weight = 0
 			match = TRUE
-		} else if C.strcasecmp(libc.CString("10"), &arg[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("10"), &arg[0]) == 0 {
 			send_to_char(ch, libc.CString("You punch in ten times gravity on the generator. It hums for a moment\r\nbefore you feel the pressure on your body change.\r\n"))
 			act(libc.CString("@W$n@w pushes some buttons on the gravity generator, and you feel a change in pressure on your body.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity = 10
 			obj.Weight = 10
 			match = TRUE
 		}
-		if C.strcasecmp(libc.CString("20"), &arg[0]) == 0 && obj.Weight == 20 {
+		if libc.StrCaseCmp(libc.CString("20"), &arg[0]) == 0 && obj.Weight == 20 {
 			send_to_char(ch, libc.CString("The gravity generator is already set to that.\r\n"))
 			return TRUE
-		} else if C.strcasecmp(libc.CString("20"), &arg[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("20"), &arg[0]) == 0 {
 			send_to_char(ch, libc.CString("You punch in twenty times gravity on the generator. It hums for a moment\r\nbefore you feel the pressure on your body change.\r\n"))
 			act(libc.CString("@W$n@w pushes some buttons on the gravity generator, and you feel a change in pressure on your body.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			if ROOM_FLAGGED(ch.In_room, ROOM_AURA) {
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(^(1 << (int(ROOM_AURA % 32))))
+				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(int32(^(1 << (int(ROOM_AURA % 32)))))
 				send_to_room(ch.In_room, libc.CString("The increased gravity forces the aura to disappear.\r\n"))
 			}
 			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity = 20
 			obj.Weight = 20
 			match = TRUE
 		}
-		if C.strcasecmp(libc.CString("30"), &arg[0]) == 0 && obj.Weight == 30 {
+		if libc.StrCaseCmp(libc.CString("30"), &arg[0]) == 0 && obj.Weight == 30 {
 			send_to_char(ch, libc.CString("The gravity generator is already set to that.\r\n"))
 			return TRUE
-		} else if C.strcasecmp(libc.CString("30"), &arg[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("30"), &arg[0]) == 0 {
 			send_to_char(ch, libc.CString("You punch in thirty times gravity on the generator. It hums for a moment\r\nbefore you feel the pressure on your body change.\r\n"))
 			act(libc.CString("@W$n@w pushes some buttons on the gravity generator, and you feel a change in pressure on your body.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			if ROOM_FLAGGED(ch.In_room, ROOM_AURA) {
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(^(1 << (int(ROOM_AURA % 32))))
+				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(int32(^(1 << (int(ROOM_AURA % 32)))))
 				send_to_room(ch.In_room, libc.CString("The increased gravity forces the aura to disappear.\r\n"))
 			}
 			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity = 30
 			obj.Weight = 30
 			match = TRUE
 		}
-		if C.strcasecmp(libc.CString("40"), &arg[0]) == 0 && obj.Weight == 40 {
+		if libc.StrCaseCmp(libc.CString("40"), &arg[0]) == 0 && obj.Weight == 40 {
 			send_to_char(ch, libc.CString("The gravity generator is already set to that.\r\n"))
 			return TRUE
-		} else if C.strcasecmp(libc.CString("40"), &arg[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("40"), &arg[0]) == 0 {
 			send_to_char(ch, libc.CString("You punch in fourty times gravity on the generator. It hums for a moment\r\nbefore you feel the pressure on your body change.\r\n"))
 			act(libc.CString("@W$n@w pushes some buttons on the gravity generator, and you feel a change in pressure on your body.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			if ROOM_FLAGGED(ch.In_room, ROOM_AURA) {
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(^(1 << (int(ROOM_AURA % 32))))
+				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(int32(^(1 << (int(ROOM_AURA % 32)))))
 				send_to_room(ch.In_room, libc.CString("The increased gravity forces the aura to disappear.\r\n"))
 			}
 			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity = 40
 			obj.Weight = 40
 			match = TRUE
 		}
-		if C.strcasecmp(libc.CString("50"), &arg[0]) == 0 && obj.Weight == 50 {
+		if libc.StrCaseCmp(libc.CString("50"), &arg[0]) == 0 && obj.Weight == 50 {
 			send_to_char(ch, libc.CString("The gravity generator is already set to that.\r\n"))
 			return TRUE
-		} else if C.strcasecmp(libc.CString("50"), &arg[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("50"), &arg[0]) == 0 {
 			send_to_char(ch, libc.CString("You punch in fifty times gravity on the generator. It hums for a moment\r\nbefore you feel the pressure on your body change.\r\n"))
 			act(libc.CString("@W$n@w pushes some buttons on the gravity generator, and you feel a change in pressure on your body.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			if ROOM_FLAGGED(ch.In_room, ROOM_AURA) {
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(^(1 << (int(ROOM_AURA % 32))))
+				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(int32(^(1 << (int(ROOM_AURA % 32)))))
 				send_to_room(ch.In_room, libc.CString("The increased gravity forces the aura to disappear.\r\n"))
 			}
 			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity = 50
 			obj.Weight = 50
 			match = TRUE
 		}
-		if C.strcasecmp(libc.CString("100"), &arg[0]) == 0 && obj.Weight == 100 {
+		if libc.StrCaseCmp(libc.CString("100"), &arg[0]) == 0 && obj.Weight == 100 {
 			send_to_char(ch, libc.CString("The gravity generator is already set to that.\r\n"))
 			return TRUE
-		} else if C.strcasecmp(libc.CString("100"), &arg[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("100"), &arg[0]) == 0 {
 			send_to_char(ch, libc.CString("You punch in one hundred times gravity on the generator. It hums for a moment\r\nbefore you feel the pressure on your body change.\r\n"))
 			act(libc.CString("@W$n@w pushes some buttons on the gravity generator, and you feel a change in pressure on your body.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			if ROOM_FLAGGED(ch.In_room, ROOM_AURA) {
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(^(1 << (int(ROOM_AURA % 32))))
+				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(int32(^(1 << (int(ROOM_AURA % 32)))))
 				send_to_room(ch.In_room, libc.CString("The increased gravity forces the aura to disappear.\r\n"))
 			}
 			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity = 100
 			obj.Weight = 100
 			match = TRUE
 		}
-		if C.strcasecmp(libc.CString("200"), &arg[0]) == 0 && obj.Weight == 200 {
+		if libc.StrCaseCmp(libc.CString("200"), &arg[0]) == 0 && obj.Weight == 200 {
 			send_to_char(ch, libc.CString("The gravity generator is already set to that.\r\n"))
 			return TRUE
-		} else if C.strcasecmp(libc.CString("200"), &arg[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("200"), &arg[0]) == 0 {
 			send_to_char(ch, libc.CString("You punch in two hundred times gravity on the generator. It hums for a moment\r\nbefore you feel the pressure on your body change.\r\n"))
 			act(libc.CString("@W$n@w pushes some buttons on the gravity generator, and you feel a change in pressure on your body.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			if ROOM_FLAGGED(ch.In_room, ROOM_AURA) {
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(^(1 << (int(ROOM_AURA % 32))))
+				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(int32(^(1 << (int(ROOM_AURA % 32)))))
 				send_to_room(ch.In_room, libc.CString("The increased gravity forces the aura to disappear.\r\n"))
 			}
 			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity = 200
 			obj.Weight = 200
 			match = TRUE
 		}
-		if C.strcasecmp(libc.CString("300"), &arg[0]) == 0 && obj.Weight == 300 {
+		if libc.StrCaseCmp(libc.CString("300"), &arg[0]) == 0 && obj.Weight == 300 {
 			send_to_char(ch, libc.CString("The gravity generator is already set to that.\r\n"))
 			return TRUE
-		} else if C.strcasecmp(libc.CString("300"), &arg[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("300"), &arg[0]) == 0 {
 			send_to_char(ch, libc.CString("You punch in three hundred times gravity on the generator. It hums for a moment\r\nbefore you feel the pressure on your body change.\r\n"))
 			act(libc.CString("@W$n@w pushes some buttons on the gravity generator, and you feel a change in pressure on your body.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			if ROOM_FLAGGED(ch.In_room, ROOM_AURA) {
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(^(1 << (int(ROOM_AURA % 32))))
+				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(int32(^(1 << (int(ROOM_AURA % 32)))))
 				send_to_room(ch.In_room, libc.CString("The increased gravity forces the aura to disappear.\r\n"))
 			}
 			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity = 300
 			obj.Weight = 300
 			match = TRUE
 		}
-		if C.strcasecmp(libc.CString("400"), &arg[0]) == 0 && obj.Weight == 400 {
+		if libc.StrCaseCmp(libc.CString("400"), &arg[0]) == 0 && obj.Weight == 400 {
 			send_to_char(ch, libc.CString("The gravity generator is already set to that.\r\n"))
 			return TRUE
-		} else if C.strcasecmp(libc.CString("400"), &arg[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("400"), &arg[0]) == 0 {
 			send_to_char(ch, libc.CString("You punch in four hundred times gravity on the generator. It hums for a moment\r\nbefore you feel the pressure on your body change.\r\n"))
 			act(libc.CString("@W$n@w pushes some buttons on the gravity generator, and you feel a change in pressure on your body.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			if ROOM_FLAGGED(ch.In_room, ROOM_AURA) {
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(^(1 << (int(ROOM_AURA % 32))))
+				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(int32(^(1 << (int(ROOM_AURA % 32)))))
 				send_to_room(ch.In_room, libc.CString("The increased gravity forces the aura to disappear.\r\n"))
 			}
 			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity = 400
 			obj.Weight = 400
 			match = TRUE
 		}
-		if C.strcasecmp(libc.CString("500"), &arg[0]) == 0 && obj.Weight == 500 {
+		if libc.StrCaseCmp(libc.CString("500"), &arg[0]) == 0 && obj.Weight == 500 {
 			send_to_char(ch, libc.CString("The gravity generator is already set to that.\r\n"))
 			return TRUE
-		} else if C.strcasecmp(libc.CString("500"), &arg[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("500"), &arg[0]) == 0 {
 			send_to_char(ch, libc.CString("You punch in five hundred times gravity on the generator. It hums for a moment\r\nbefore you feel the pressure on your body change.\r\n"))
 			act(libc.CString("@W$n@w pushes some buttons on the gravity generator, and you feel a change in pressure on your body.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			if ROOM_FLAGGED(ch.In_room, ROOM_AURA) {
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(^(1 << (int(ROOM_AURA % 32))))
+				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(int32(^(1 << (int(ROOM_AURA % 32)))))
 				send_to_room(ch.In_room, libc.CString("The increased gravity forces the aura to disappear.\r\n"))
 			}
 			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity = 500
 			obj.Weight = 500
 			match = TRUE
 		}
-		if C.strcasecmp(libc.CString("1000"), &arg[0]) == 0 && obj.Weight == 1000 {
+		if libc.StrCaseCmp(libc.CString("1000"), &arg[0]) == 0 && obj.Weight == 1000 {
 			send_to_char(ch, libc.CString("The gravity generator is already set to that.\r\n"))
 			return TRUE
-		} else if C.strcasecmp(libc.CString("1000"), &arg[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("1000"), &arg[0]) == 0 {
 			send_to_char(ch, libc.CString("You punch in one thousand times gravity on the generator. It hums for a moment\r\nbefore you feel the pressure on your body change.\r\n"))
 			act(libc.CString("@W$n@w pushes some buttons on the gravity generator, and you feel a change in pressure on your body.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			if ROOM_FLAGGED(ch.In_room, ROOM_AURA) {
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(^(1 << (int(ROOM_AURA % 32))))
+				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(int32(^(1 << (int(ROOM_AURA % 32)))))
 				send_to_room(ch.In_room, libc.CString("The increased gravity forces the aura to disappear.\r\n"))
 			}
 			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity = 1000
 			obj.Weight = 1000
 			match = TRUE
 		}
-		if C.strcasecmp(libc.CString("5000"), &arg[0]) == 0 && obj.Weight == 5000 {
+		if libc.StrCaseCmp(libc.CString("5000"), &arg[0]) == 0 && obj.Weight == 5000 {
 			send_to_char(ch, libc.CString("The gravity generator is already set to that.\r\n"))
 			return TRUE
-		} else if C.strcasecmp(libc.CString("5000"), &arg[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("5000"), &arg[0]) == 0 {
 			send_to_char(ch, libc.CString("You punch in five thousand times gravity on the generator. It hums for a moment\r\nbefore you feel the pressure on your body change.\r\n"))
 			act(libc.CString("@W$n@w pushes some buttons on the gravity generator, and you feel a change in pressure on your body.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			if ROOM_FLAGGED(ch.In_room, ROOM_AURA) {
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(^(1 << (int(ROOM_AURA % 32))))
+				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(int32(^(1 << (int(ROOM_AURA % 32)))))
 				send_to_room(ch.In_room, libc.CString("The increased gravity forces the aura to disappear.\r\n"))
 			}
 			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity = 5000
 			obj.Weight = 5000
 			match = TRUE
 		}
-		if C.strcasecmp(libc.CString("10000"), &arg[0]) == 0 && obj.Weight == 10000 {
+		if libc.StrCaseCmp(libc.CString("10000"), &arg[0]) == 0 && obj.Weight == 10000 {
 			send_to_char(ch, libc.CString("The gravity generator is already set to that.\r\n"))
 			return TRUE
-		} else if C.strcasecmp(libc.CString("10000"), &arg[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("10000"), &arg[0]) == 0 {
 			send_to_char(ch, libc.CString("You punch in ten thousand times gravity on the generator. It hums for a moment\r\nbefore you feel the pressure on your body change.\r\n"))
 			act(libc.CString("@W$n@w pushes some buttons on the gravity generator, and you feel a change in pressure on your body.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			if ROOM_FLAGGED(ch.In_room, ROOM_AURA) {
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(^(1 << (int(ROOM_AURA % 32))))
+				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(int32(^(1 << (int(ROOM_AURA % 32)))))
 				send_to_room(ch.In_room, libc.CString("The increased gravity forces the aura to disappear.\r\n"))
 			}
 			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity = 10000
@@ -1341,7 +1341,7 @@ func bank(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 			continue
 		}
 	}
-	if C.strcmp(libc.CString("balance"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	if libc.StrCmp(libc.CString("balance"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		if OBJ_FLAGGED(obj, ITEM_BROKEN) {
 			send_to_char(ch, libc.CString("The ATM is broken!\r\n"))
 			return TRUE
@@ -1352,7 +1352,7 @@ func bank(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 			send_to_char(ch, libc.CString("You currently have no money deposited.\r\n"))
 		}
 		return TRUE
-	} else if C.strcmp(libc.CString("wire"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	} else if libc.StrCmp(libc.CString("wire"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		var (
 			arg  [2048]byte
 			arg2 [2048]byte
@@ -1405,7 +1405,7 @@ func bank(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 				send_to_char(ch, libc.CString("There is an error. Report to Iovan."))
 				return TRUE
 			}
-			if C.strcasecmp(GET_NAME(vict), ch.Desc.Tmp1) == 0 || C.strcasecmp(GET_NAME(vict), ch.Desc.Tmp2) == 0 || C.strcasecmp(GET_NAME(vict), ch.Desc.Tmp3) == 0 || C.strcasecmp(GET_NAME(vict), ch.Desc.Tmp4) == 0 || C.strcasecmp(GET_NAME(vict), ch.Desc.Tmp5) == 0 {
+			if libc.StrCaseCmp(GET_NAME(vict), ch.Desc.Tmp1) == 0 || libc.StrCaseCmp(GET_NAME(vict), ch.Desc.Tmp2) == 0 || libc.StrCaseCmp(GET_NAME(vict), ch.Desc.Tmp3) == 0 || libc.StrCaseCmp(GET_NAME(vict), ch.Desc.Tmp4) == 0 || libc.StrCaseCmp(GET_NAME(vict), ch.Desc.Tmp5) == 0 {
 				send_to_char(ch, libc.CString("You can not transfer money to your own offline characters..."))
 				if is_file == TRUE {
 					free_char(vict)
@@ -1428,7 +1428,7 @@ func bank(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 		send_to_char(ch, libc.CString("You transfer %s zenni to them.\r\n"), add_commas(int64(amount)))
 		act(libc.CString("$n makes a bank transaction."), TRUE, ch, nil, unsafe.Pointer(uintptr(FALSE)), TO_ROOM)
 		return TRUE
-	} else if C.strcmp(libc.CString("deposit"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	} else if libc.StrCmp(libc.CString("deposit"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		if OBJ_FLAGGED(obj, ITEM_BROKEN) {
 			send_to_char(ch, libc.CString("The ATM is broken!\r\n"))
 			return TRUE
@@ -1449,7 +1449,7 @@ func bank(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 		send_to_char(ch, libc.CString("You deposit %d zenni.\r\n"), amount)
 		act(libc.CString("$n makes a bank transaction."), TRUE, ch, nil, unsafe.Pointer(uintptr(FALSE)), TO_ROOM)
 		return TRUE
-	} else if C.strcmp(libc.CString("withdraw"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	} else if libc.StrCmp(libc.CString("withdraw"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		if OBJ_FLAGGED(obj, ITEM_BROKEN) {
 			send_to_char(ch, libc.CString("The ATM is broken!\r\n"))
 			return TRUE
@@ -1509,7 +1509,7 @@ func cleric_marduk(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) in
 		num_used int = 0
 		vict     *char_data
 	)
-	if cmd != 0 || ch.Position != POS_FIGHTING {
+	if cmd != 0 || int(ch.Position) != POS_FIGHTING {
 		return FALSE
 	}
 	for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; vict != nil; vict = vict.Next_in_room {
@@ -1581,7 +1581,7 @@ func cleric_ao(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 		num_used int = 0
 		vict     *char_data
 	)
-	if cmd != 0 || ch.Position != POS_FIGHTING {
+	if cmd != 0 || int(ch.Position) != POS_FIGHTING {
 		return FALSE
 	}
 	for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; vict != nil; vict = vict.Next_in_room {
@@ -1645,7 +1645,7 @@ func dziak(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 		num_used int = 0
 		vict     *char_data
 	)
-	if cmd != 0 || ch.Position != POS_FIGHTING {
+	if cmd != 0 || int(ch.Position) != POS_FIGHTING {
 		return FALSE
 	}
 	for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; vict != nil; vict = vict.Next_in_room {
@@ -1701,7 +1701,7 @@ func azimer(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 		num_used int = 0
 		vict     *char_data
 	)
-	if cmd != 0 || ch.Position != POS_FIGHTING {
+	if cmd != 0 || int(ch.Position) != POS_FIGHTING {
 		return FALSE
 	}
 	for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; vict != nil; vict = vict.Next_in_room {
@@ -1753,7 +1753,7 @@ func lyrzaxyn(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 		num_used int = 0
 		vict     *char_data
 	)
-	if cmd != 0 || ch.Position != POS_FIGHTING {
+	if cmd != 0 || int(ch.Position) != POS_FIGHTING {
 		return FALSE
 	}
 	for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; vict != nil; vict = vict.Next_in_room {
@@ -1805,13 +1805,13 @@ func magic_user(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 		num_used int = 0
 		vict     *char_data
 	)
-	if IS_NPC(ch) && ch.Position > POS_SITTING && ch.Chclass == CLASS_KABITO {
+	if IS_NPC(ch) && int(ch.Position) > POS_SITTING && int(ch.Chclass) == CLASS_KABITO {
 		if !affected_by_spell(ch, SPELL_MAGE_ARMOR) {
 			cast_spell(ch, ch, nil, SPELL_MAGE_ARMOR, nil)
 			return TRUE
 		}
 	}
-	if cmd != 0 || ch.Position != POS_FIGHTING {
+	if cmd != 0 || int(ch.Position) != POS_FIGHTING {
 		return FALSE
 	}
 	for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; vict != nil; vict = vict.Next_in_room {

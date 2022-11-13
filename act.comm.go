@@ -1,9 +1,9 @@
 package main
 
-import "C"
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"unicode"
 	"unsafe"
 )
 
@@ -54,10 +54,10 @@ func do_voice(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if *argument == 0 {
 		send_to_char(ch, libc.CString("What are you changing your voice description to?\r\n"))
 		return
-	} else if C.strlen(argument) > 75 {
+	} else if libc.StrLen(argument) > 75 {
 		send_to_char(ch, libc.CString("Your voice description can not be longer than 75 characters.\r\n"))
 		return
-	} else if C.strstr(argument, libc.CString("@")) != nil {
+	} else if libc.StrStr(argument, libc.CString("@")) != nil {
 		send_to_char(ch, libc.CString("You can not use colorcode in voice descriptions.\r\n"))
 		return
 	} else if ch.Voice != nil && ch.Rp < 1 {
@@ -68,7 +68,7 @@ func do_voice(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if ch.Voice != nil {
 			libc.Free(unsafe.Pointer(ch.Voice))
 		}
-		ch.Voice = C.strdup(argument)
+		ch.Voice = libc.StrDup(argument)
 		ch.Rp -= 1
 		ch.Desc.Rpp = ch.Rp
 		userWrite(ch.Desc, 0, 0, 0, libc.CString("index"))
@@ -79,7 +79,7 @@ func do_voice(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if ch.Voice != nil {
 			libc.Free(unsafe.Pointer(ch.Voice))
 		}
-		ch.Voice = C.strdup(argument)
+		ch.Voice = libc.StrDup(argument)
 		return
 	}
 }
@@ -123,15 +123,15 @@ func garble_text(string_ *byte, known int, lang int) {
 	)
 	switch lang {
 	case SKILL_LANG_DWARVEN:
-		C.strcpy(&letters[0], libc.CString("hprstwxyz"))
+		libc.StrCpy(&letters[0], libc.CString("hprstwxyz"))
 	case SKILL_LANG_ELVEN:
-		C.strcpy(&letters[0], libc.CString("aefhilnopstu"))
+		libc.StrCpy(&letters[0], libc.CString("aefhilnopstu"))
 	default:
-		C.strcpy(&letters[0], libc.CString("aehiopstuwxyz"))
+		libc.StrCpy(&letters[0], libc.CString("aehiopstuwxyz"))
 	}
-	for i = 0; i < int(C.strlen(string_)); i++ {
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*(*byte)(unsafe.Add(unsafe.Pointer(string_), i)))))))&int(uint16(int16(_ISalpha)))) != 0 && known == 0 {
-			*(*byte)(unsafe.Add(unsafe.Pointer(string_), i)) = letters[rand_number(0, int(C.strlen(&letters[0]))-1)]
+	for i = 0; i < libc.StrLen(string_); i++ {
+		if libc.IsAlpha(rune(*(*byte)(unsafe.Add(unsafe.Pointer(string_), i)))) && known == 0 {
+			*(*byte)(unsafe.Add(unsafe.Pointer(string_), i)) = letters[rand_number(0, libc.StrLen(&letters[0])-1)]
 		}
 	}
 }
@@ -199,34 +199,34 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 			buf  [2118]byte
 			verb [10]byte
 		)
-		if *(*byte)(unsafe.Add(unsafe.Pointer(argument), C.strlen(argument)-1)) == '!' {
-			C.strcpy(&verb[0], libc.CString("exclaim"))
-		} else if *(*byte)(unsafe.Add(unsafe.Pointer(argument), C.strlen(argument)-1)) == '?' {
-			C.strcpy(&verb[0], libc.CString("ask"))
+		if *(*byte)(unsafe.Add(unsafe.Pointer(argument), libc.StrLen(argument)-1)) == '!' {
+			libc.StrCpy(&verb[0], libc.CString("exclaim"))
+		} else if *(*byte)(unsafe.Add(unsafe.Pointer(argument), libc.StrLen(argument)-1)) == '?' {
+			libc.StrCpy(&verb[0], libc.CString("ask"))
 		} else {
-			C.strcpy(&verb[0], libc.CString("say"))
+			libc.StrCpy(&verb[0], libc.CString("say"))
 		}
 		for tch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; tch != nil; tch = tch.Next_in_room {
 			if tch != ch && tch.Desc != nil {
 				var sayto [100]byte
 				stdio.Sprintf(&sayto[0], "to %s ", GET_NAME(tch))
-				if C.strstr(argument, &sayto[0]) != nil {
+				if libc.StrStr(argument, &sayto[0]) != nil {
 					var saytoo [200]byte
 					verb[0] = '\x00'
 					stdio.Sprintf(&saytoo[0], "says to @g%s@W", GET_NAME(tch))
 					search_replace(argument, &sayto[0], libc.CString(""))
-					C.strcpy(&verb[0], &saytoo[0])
+					libc.StrCpy(&verb[0], &saytoo[0])
 					sch = tch
 				} else if !IS_NPC(tch) && !IS_NPC(ch) {
 					if readIntro(ch, tch) == 1 {
 						stdio.Sprintf(&sayto[0], "to %s ", get_i_name(ch, tch))
 					}
-					if C.strstr(argument, &sayto[0]) != nil {
+					if libc.StrStr(argument, &sayto[0]) != nil {
 						var saytoo [200]byte
 						verb[0] = '\x00'
 						stdio.Sprintf(&saytoo[0], "says to @g%s@W", GET_NAME(tch))
 						search_replace(argument, &sayto[0], libc.CString(""))
-						C.strcpy(&verb[0], &saytoo[0])
+						libc.StrCpy(&verb[0], &saytoo[0])
 						sch = tch
 					}
 				}
@@ -244,11 +244,11 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if !IS_NPC(ch) && PRF_FLAGGED(ch, PRF_NOREPEAT) {
 			send_to_char(ch, libc.CString("%s"), config_info.Play.OK)
 		} else {
-			if C.strstr(&verb[0], libc.CString("says to")) != nil {
+			if libc.StrStr(&verb[0], libc.CString("says to")) != nil {
 				var saytoo [200]byte
 				verb[0] = '\x00'
 				stdio.Sprintf(&saytoo[0], "say to @g%s@W", GET_NAME(sch))
-				C.strcpy(&verb[0], &saytoo[0])
+				libc.StrCpy(&verb[0], &saytoo[0])
 			}
 			stdio.Snprintf(&buf[0], int(2118), "@WYou %s, '@C%s@W'@n\r\n", &verb[0], argument)
 			send_to_char(ch, libc.CString("%s"), &buf[0])
@@ -265,27 +265,27 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 					}
 					return -1
 				}()) == room_vnum(DRAGONR) {
-					if C.strstr(argument, libc.CString("wish")) != nil {
+					if libc.StrStr(argument, libc.CString("wish")) != nil {
 						for d = descriptor_list; d != nil; d = d.Next {
 							if d.Connected != CON_PLAYING {
 								continue
 							}
-							if C.strstr(argument, GET_NAME(d.Character)) != nil && wch == nil {
+							if libc.StrStr(argument, GET_NAME(d.Character)) != nil && wch == nil {
 								wch = d.Character
 								found = TRUE
-							} else if C.strstr(argument, GET_NAME(d.Character)) != nil && wch2 == nil {
+							} else if libc.StrStr(argument, GET_NAME(d.Character)) != nil && wch2 == nil {
 								wch2 = d.Character
-							} else if C.strstr(argument, GET_NAME(d.Character)) != nil && wch3 == nil {
+							} else if libc.StrStr(argument, GET_NAME(d.Character)) != nil && wch3 == nil {
 								wch3 = d.Character
 							}
 						}
-						if wch == nil && C.strstr(argument, libc.CString("myself")) != nil {
+						if wch == nil && libc.StrStr(argument, libc.CString("myself")) != nil {
 							wch = ch
 						}
 						if wch == nil {
 							return
 						}
-						if granted == FALSE && C.strstr(argument, libc.CString("knowledge")) != nil {
+						if granted == FALSE && libc.StrStr(argument, libc.CString("knowledge")) != nil {
 							if wch != nil {
 								send_to_room(real_room(room_vnum(DRAGONR)), libc.CString("@wShenron says, '@CYour wish has been granted, %s now has more knowledge!%s@w'@n\r\n"), GET_NAME(wch), func() string {
 									if WISH[0] != 0 {
@@ -300,7 +300,7 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 								WAIT_STATE(ch, (int(1000000/OPT_USEC))*4)
 							}
 						}
-						if granted == FALSE && C.strstr(argument, libc.CString("speed")) != nil {
+						if granted == FALSE && libc.StrStr(argument, libc.CString("speed")) != nil {
 							if wch != nil {
 								send_to_room(real_room(room_vnum(DRAGONR)), libc.CString("@wShenron says, '@CYour wish has been granted, %s is now faster!%s@w'@n\r\n"), GET_NAME(wch), func() string {
 									if WISH[0] != 0 {
@@ -309,7 +309,7 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 									return " Now make your second wish."
 								}())
 								wch.Real_abils.Cha += 10
-								if wch.Real_abils.Cha > 100 {
+								if int(wch.Real_abils.Cha) > 100 {
 									wch.Real_abils.Cha = 100
 								}
 								save_char(wch)
@@ -319,7 +319,7 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 								WAIT_STATE(ch, (int(1000000/OPT_USEC))*4)
 							}
 						}
-						if granted == FALSE && C.strstr(argument, libc.CString("tough")) != nil {
+						if granted == FALSE && libc.StrStr(argument, libc.CString("tough")) != nil {
 							if wch != nil {
 								send_to_room(real_room(room_vnum(DRAGONR)), libc.CString("@wShenron says, '@CYour wish has been granted, %s is now tougher!%s@w'@n\r\n"), GET_NAME(wch), func() string {
 									if WISH[0] != 0 {
@@ -334,7 +334,7 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 								WAIT_STATE(ch, (int(1000000/OPT_USEC))*4)
 							}
 						}
-						if granted == FALSE && C.strstr(argument, libc.CString("strength")) != nil {
+						if granted == FALSE && libc.StrStr(argument, libc.CString("strength")) != nil {
 							if wch != nil {
 								send_to_room(real_room(room_vnum(DRAGONR)), libc.CString("@wShenron says, '@CYour wish has been granted, %s has more strength!%s@w'@n\r\n"), GET_NAME(wch), func() string {
 									if WISH[0] != 0 {
@@ -343,7 +343,7 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 									return " Now make your second wish."
 								}())
 								wch.Real_abils.Str += 10
-								if wch.Real_abils.Str > 100 {
+								if int(wch.Real_abils.Str) > 100 {
 									wch.Real_abils.Str = 100
 								}
 								save_char(wch)
@@ -353,7 +353,7 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 								WAIT_STATE(ch, (int(1000000/OPT_USEC))*4)
 							}
 						}
-						if granted == FALSE && C.strstr(argument, libc.CString("intelligence")) != nil {
+						if granted == FALSE && libc.StrStr(argument, libc.CString("intelligence")) != nil {
 							if wch != nil {
 								send_to_room(real_room(room_vnum(DRAGONR)), libc.CString("@wShenron says, '@CYour wish has been granted, %s is now smarter!%s@w'@n\r\n"), GET_NAME(wch), func() string {
 									if WISH[0] != 0 {
@@ -362,7 +362,7 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 									return " Now make your second wish."
 								}())
 								wch.Real_abils.Intel += 10
-								if wch.Real_abils.Intel > 100 {
+								if int(wch.Real_abils.Intel) > 100 {
 									wch.Real_abils.Intel = 100
 								}
 								save_char(wch)
@@ -372,7 +372,7 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 								WAIT_STATE(ch, (int(1000000/OPT_USEC))*4)
 							}
 						}
-						if granted == FALSE && C.strstr(argument, libc.CString("wisdom")) != nil {
+						if granted == FALSE && libc.StrStr(argument, libc.CString("wisdom")) != nil {
 							if wch != nil {
 								send_to_room(real_room(room_vnum(DRAGONR)), libc.CString("@wShenron says, '@CYour wish has been granted, %s is now wiser!%s@w'@n\r\n"), GET_NAME(wch), func() string {
 									if WISH[0] != 0 {
@@ -381,7 +381,7 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 									return " Now make your second wish."
 								}())
 								wch.Real_abils.Wis += 10
-								if wch.Real_abils.Wis > 100 {
+								if int(wch.Real_abils.Wis) > 100 {
 									wch.Real_abils.Wis = 100
 								}
 								granted = TRUE
@@ -390,7 +390,7 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 								WAIT_STATE(ch, (int(1000000/OPT_USEC))*4)
 							}
 						}
-						if granted == FALSE && C.strstr(argument, libc.CString("agility")) != nil {
+						if granted == FALSE && libc.StrStr(argument, libc.CString("agility")) != nil {
 							if wch != nil {
 								send_to_room(real_room(room_vnum(DRAGONR)), libc.CString("@wShenron says, '@CYour wish has been granted, %s is now more agile!%s@w'@n\r\n"), GET_NAME(wch), func() string {
 									if WISH[0] != 0 {
@@ -399,7 +399,7 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 									return " Now make your second wish."
 								}())
 								wch.Real_abils.Dex += 10
-								if wch.Real_abils.Dex > 100 {
+								if int(wch.Real_abils.Dex) > 100 {
 									wch.Real_abils.Dex = 100
 								}
 								save_char(wch)
@@ -409,7 +409,7 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 								WAIT_STATE(ch, (int(1000000/OPT_USEC))*4)
 							}
 						}
-						if granted == FALSE && C.strstr(argument, libc.CString("constitution")) != nil {
+						if granted == FALSE && libc.StrStr(argument, libc.CString("constitution")) != nil {
 							if wch != nil {
 								send_to_room(real_room(room_vnum(DRAGONR)), libc.CString("@wShenron says, '@CYour wish has been granted, %s has more guts!%s@w'@n\r\n"), GET_NAME(wch), func() string {
 									if WISH[0] != 0 {
@@ -418,7 +418,7 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 									return " Now make your second wish."
 								}())
 								wch.Real_abils.Con += 10
-								if wch.Real_abils.Con > 100 {
+								if int(wch.Real_abils.Con) > 100 {
 									wch.Real_abils.Con = 100
 								}
 								save_char(wch)
@@ -428,7 +428,7 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 								WAIT_STATE(ch, (int(1000000/OPT_USEC))*4)
 							}
 						}
-						if granted == FALSE && C.strstr(argument, libc.CString("skill")) != nil {
+						if granted == FALSE && libc.StrStr(argument, libc.CString("skill")) != nil {
 							if wch != nil {
 								send_to_room(real_room(room_vnum(DRAGONR)), libc.CString("@wShenron says, '@CYour wish has been granted, %s has more skill!%s@w'@n\r\n"), GET_NAME(wch), func() string {
 									if WISH[0] != 0 {
@@ -446,13 +446,13 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 								WAIT_STATE(ch, (int(1000000/OPT_USEC))*4)
 							}
 						}
-						if granted == FALSE && C.strstr(argument, libc.CString("power")) != nil {
+						if granted == FALSE && libc.StrStr(argument, libc.CString("power")) != nil {
 							if wch != nil {
 								send_to_room(real_room(room_vnum(DRAGONR)), libc.CString("@wShenron says, '@CYour wish cannot be granted, You might want to try something else instead, mortal!@w'@n\r\n"))
 								WAIT_STATE(ch, (int(1000000/OPT_USEC))*4)
 							}
 						}
-						if granted == FALSE && C.strstr(argument, libc.CString("money")) != nil {
+						if granted == FALSE && libc.StrStr(argument, libc.CString("money")) != nil {
 							if wch != nil {
 								send_to_room(real_room(room_vnum(DRAGONR)), libc.CString("@wShenron says, '@CYour wish has been granted, %s now has become richer!%s@w'@n\r\n"), GET_NAME(wch), func() string {
 									if WISH[0] != 0 {
@@ -467,7 +467,7 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 								WAIT_STATE(ch, (int(1000000/OPT_USEC))*4)
 							}
 						}
-						if granted == FALSE && C.strstr(argument, libc.CString("immunity")) != nil {
+						if granted == FALSE && libc.StrStr(argument, libc.CString("immunity")) != nil {
 							if wch != nil {
 								send_to_room(real_room(room_vnum(DRAGONR)), libc.CString("@wShenron says, '@CYour wish has been granted, %s now has immunity to Burn, Freezing, Mind Break, Poison, Blindness, Yoikominminken, and Paralysis!%s@w'@n\r\n"), GET_NAME(wch), func() string {
 									if WISH[0] != 0 {
@@ -482,13 +482,13 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 								WAIT_STATE(ch, (int(1000000/OPT_USEC))*4)
 							}
 						}
-						if granted == FALSE && C.strstr(argument, libc.CString("vitality")) != nil {
+						if granted == FALSE && libc.StrStr(argument, libc.CString("vitality")) != nil {
 							if wch != nil {
 								send_to_room(real_room(room_vnum(DRAGONR)), libc.CString("@wShenron says, '@CYour wish cannot be granted, You might want to try something else instead, mortal!%s@w'@n\r\n"))
 								WAIT_STATE(ch, (int(1000000/OPT_USEC))*4)
 							}
 						}
-						if granted == FALSE && C.strstr(argument, libc.CString("revive")) != nil {
+						if granted == FALSE && libc.StrStr(argument, libc.CString("revive")) != nil {
 							var count int = 0
 							if wch != nil {
 								count += 1
@@ -626,10 +626,10 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 								}
 							}
 						}
-						if granted == FALSE && C.strstr(argument, libc.CString("immortal")) != nil && WISH[0] == 0 {
+						if granted == FALSE && libc.StrStr(argument, libc.CString("immortal")) != nil && WISH[0] == 0 {
 							if wch != nil {
 								send_to_room(real_room(room_vnum(DRAGONR)), libc.CString("@wShenron says, '@CYour wish has been granted, %s is now immortal!@w'@n\r\n"), GET_NAME(wch))
-								wch.Act[int(PLR_IMMORTAL/32)] |= bitvector_t(1 << (int(PLR_IMMORTAL % 32)))
+								wch.Act[int(PLR_IMMORTAL/32)] |= bitvector_t(int32(1 << (int(PLR_IMMORTAL % 32))))
 								WISH[0] = 1
 								WISH[1] = 1
 								granted = TRUE
@@ -638,12 +638,12 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 								WAIT_STATE(ch, (int(1000000/OPT_USEC))*4)
 							}
 						}
-						if granted == FALSE && C.strstr(argument, libc.CString("immortal")) != nil && WISH[0] == 1 {
+						if granted == FALSE && libc.StrStr(argument, libc.CString("immortal")) != nil && WISH[0] == 1 {
 							if wch != nil {
 								send_to_room(real_room(room_vnum(DRAGONR)), libc.CString("@wShenron says, '@CI can not grant that wish, there is not enough remaining power in this summoning!@w'@n\r\n"))
 							}
 						}
-						if granted == FALSE && C.strstr(argument, libc.CString(" mortal")) != nil {
+						if granted == FALSE && libc.StrStr(argument, libc.CString(" mortal")) != nil {
 							if wch != nil {
 								send_to_room(real_room(room_vnum(DRAGONR)), libc.CString("@wShenron says, '@CYour wish has been granted, %s is now mortal!%s@w'@n\r\n"), GET_NAME(wch), func() string {
 									if WISH[0] != 0 {
@@ -651,14 +651,14 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 									}
 									return " Now make your second wish."
 								}())
-								wch.Act[int(PLR_IMMORTAL/32)] &= bitvector_t(^(1 << (int(PLR_IMMORTAL % 32))))
+								wch.Act[int(PLR_IMMORTAL/32)] &= bitvector_t(int32(^(1 << (int(PLR_IMMORTAL % 32)))))
 								granted = TRUE
 								SELFISHMETER += 4
 								mudlog(NRM, ADMLVL_GOD, TRUE, libc.CString("Shenron: %s has made a mortal wish on %s."), GET_NAME(ch), GET_NAME(wch))
 								WAIT_STATE(ch, (int(1000000/OPT_USEC))*4)
 							}
 						}
-						if granted == FALSE && C.strstr(argument, libc.CString("senzu")) != nil {
+						if granted == FALSE && libc.StrStr(argument, libc.CString("senzu")) != nil {
 							if wch != nil {
 								obj = read_object(1, VIRTUAL)
 								obj_to_char(obj, ch)
@@ -691,7 +691,7 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 								mudlog(NRM, ADMLVL_GOD, TRUE, libc.CString("Shenron: %s has made a senzu wish."), GET_NAME(ch))
 							}
 						}
-						if granted == FALSE && C.strstr(argument, libc.CString("roleplay")) != nil {
+						if granted == FALSE && libc.StrStr(argument, libc.CString("roleplay")) != nil {
 							if wch != nil {
 								send_to_room(real_room(room_vnum(DRAGONR)), libc.CString("@wShenron says, '@CYour wish has been granted, %s!%s@w'@n\r\n"), GET_NAME(wch), func() string {
 									if WISH[0] != 0 {
@@ -760,7 +760,7 @@ func do_gsay(ch *char_data, argument *byte, cmd int, subcmd int) {
 		} else {
 			k = ch
 		}
-		C.strcpy(&buf[0], argument)
+		libc.StrCpy(&buf[0], argument)
 		stdio.Sprintf(&blah[0], "$n@W tells the group @W'@G%s@W'@n\r\n", &buf[0])
 		if AFF_FLAGGED(k, AFF_GROUP) && k != ch && AWAKE(k) {
 			if config_info.Play.Enable_languages != 0 {
@@ -815,7 +815,7 @@ func perform_tell(ch *char_data, vict *char_data, arg *byte) {
 		buf  [64936]byte
 		buf2 [64936]byte
 	)
-	C.strcpy(&buf[0], arg)
+	libc.StrCpy(&buf[0], arg)
 	if config_info.Play.Enable_languages != 0 {
 		stdio.Snprintf(&buf2[0], int(64936), "@[13]%s tells you%s '%s@[13]'@n\r\n", func() *byte {
 			if CAN_SEE(vict, ch) {
@@ -938,10 +938,10 @@ func do_tell(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if k.User == nil {
 				continue
 			}
-			if found == FALSE && !IS_NPC(ch) && (C.strcasecmp(k.User, &buf[0]) == 0 || C.strstr(k.User, &buf[0]) != nil) {
+			if found == FALSE && !IS_NPC(ch) && (libc.StrCaseCmp(k.User, &buf[0]) == 0 || libc.StrStr(k.User, &buf[0]) != nil) {
 				vict = k.Character
 				found = TRUE
-			} else if !IS_NPC(ch) && found == FALSE && (C.strcasecmp(GET_NAME(k.Character), &buf[0]) == 0 || C.strstr(GET_NAME(k.Character), &buf[0]) != nil) && k.Character.Admlevel > 0 {
+			} else if !IS_NPC(ch) && found == FALSE && (libc.StrCaseCmp(GET_NAME(k.Character), &buf[0]) == 0 || libc.StrStr(GET_NAME(k.Character), &buf[0]) != nil) && k.Character.Admlevel > 0 {
 				vict = k.Character
 				found = TRUE
 			}
@@ -972,12 +972,12 @@ func do_reply(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	skip_spaces(&argument)
-	if ch.Player_specials.Last_tell == int32(-1) {
+	if int(ch.Player_specials.Last_tell) == int(-1) {
 		send_to_char(ch, libc.CString("You have nobody to reply to!\r\n"))
 	} else if *argument == 0 {
 		send_to_char(ch, libc.CString("What is your reply?\r\n"))
 	} else {
-		for tch != nil && (IS_NPC(tch) || tch.Idnum != ch.Player_specials.Last_tell) {
+		for tch != nil && (IS_NPC(tch) || int(tch.Idnum) != int(ch.Player_specials.Last_tell)) {
 			tch = tch.Next
 		}
 		if tch == nil {
@@ -1030,7 +1030,7 @@ func do_spec_comm(ch *char_data, argument *byte, cmd int, subcmd int) {
 			obuf [64936]byte
 		)
 		if config_info.Play.Enable_languages != 0 {
-			C.strcpy(&obuf[0], &buf2[0])
+			libc.StrCpy(&obuf[0], &buf2[0])
 			garble_text(&obuf[0], GET_SKILL(vict, ch.Player_specials.Speaking), ch.Player_specials.Speaking)
 			stdio.Snprintf(&buf1[0], int(64936), "$n %s you%s '%s'", action_plur, func() string {
 				if GET_SKILL(vict, ch.Player_specials.Speaking) != 0 {
@@ -1244,13 +1244,13 @@ func do_write(ch *char_data, argument *byte, cmd int, subcmd int) {
 		buf2      [64936]byte
 	)
 	for obj = ch.Carrying; obj != nil; obj = obj.Next_content {
-		if obj.Type_flag == ITEM_BOARD {
+		if int(obj.Type_flag) == ITEM_BOARD {
 			break
 		}
 	}
 	if obj == nil {
 		for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; obj != nil; obj = obj.Next_content {
-			if obj.Type_flag == ITEM_BOARD {
+			if int(obj.Type_flag) == ITEM_BOARD {
 				break
 			}
 		}
@@ -1293,10 +1293,10 @@ func do_write(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("There is no %s in your inventory.\r\n"), papername)
 			return
 		}
-		if paper.Type_flag == ITEM_PEN {
+		if int(paper.Type_flag) == ITEM_PEN {
 			pen = paper
 			paper = nil
-		} else if paper.Type_flag != ITEM_NOTE {
+		} else if int(paper.Type_flag) != ITEM_NOTE {
 			send_to_char(ch, libc.CString("That thing has nothing to do with writing.\r\n"))
 			return
 		}
@@ -1314,19 +1314,19 @@ func do_write(ch *char_data, argument *byte, cmd int, subcmd int) {
 			pen = ch.Equipment[WEAR_WIELD2]
 		}
 	}
-	if pen.Type_flag != ITEM_PEN {
+	if int(pen.Type_flag) != ITEM_PEN {
 		act(libc.CString("$p is no good for writing with."), FALSE, ch, pen, nil, TO_CHAR)
-	} else if paper.Type_flag != ITEM_NOTE {
+	} else if int(paper.Type_flag) != ITEM_NOTE {
 		act(libc.CString("You can't write on $p."), FALSE, ch, paper, nil, TO_CHAR)
 	} else {
 		var backstr *byte = nil
 		if paper.Action_description != nil {
-			backstr = C.strdup(paper.Action_description)
+			backstr = libc.StrDup(paper.Action_description)
 			send_to_char(ch, libc.CString("There's something written on it already:\r\n"))
 			send_to_char(ch, libc.CString("%s"), paper.Action_description)
 		}
 		act(libc.CString("$n begins to jot down a note."), TRUE, ch, nil, nil, TO_ROOM)
-		paper.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(1 << (int(ITEM_UNIQUE_SAVE % 32)))
+		paper.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(int32(1 << (int(ITEM_UNIQUE_SAVE % 32))))
 		send_editor_help(ch.Desc)
 		string_write(ch.Desc, &paper.Action_description, MAX_NOTE_LENGTH, 0, unsafe.Pointer(backstr))
 	}
@@ -1346,7 +1346,7 @@ func do_page(ch *char_data, argument *byte, cmd int, subcmd int) {
 	} else {
 		var buf [64936]byte
 		stdio.Snprintf(&buf[0], int(64936), "\a\a*$n* %s", &buf2[0])
-		if C.strcasecmp(&arg[0], libc.CString("all")) == 0 {
+		if libc.StrCaseCmp(&arg[0], libc.CString("all")) == 0 {
 			if ADM_FLAGGED(ch, ADM_TELLALL) {
 				for d = descriptor_list; d != nil; d = d.Next {
 					if d.Connected == CON_PLAYING && d.Character != nil {
@@ -1418,7 +1418,7 @@ func do_gen_comm(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You must be at least level %d before you can %s.\r\n"), config_info.Play.Level_can_shout, com_msgs[subcmd][1])
 		return
 	}
-	if !IS_NPC(ch) && PRF_FLAGGED(ch, bitvector_t(channels[subcmd])) {
+	if !IS_NPC(ch) && PRF_FLAGGED(ch, bitvector_t(int32(channels[subcmd]))) {
 		send_to_char(ch, libc.CString("%s"), com_msgs[subcmd][2])
 		return
 	}
@@ -1436,7 +1436,7 @@ func do_gen_comm(ch *char_data, argument *byte, cmd int, subcmd int) {
 		add_history(ch, &buf2[0], hist_type[subcmd])
 	}
 	for i = descriptor_list; i != nil; i = i.Next {
-		if i.Connected == CON_PLAYING && i != ch.Desc && i.Character != nil && (IS_NPC(i.Character) || !PRF_FLAGGED(i.Character, bitvector_t(channels[subcmd]))) && (IS_NPC(i.Character) || !PLR_FLAGGED(i.Character, PLR_WRITING)) && !ROOM_FLAGGED(i.Character.In_room, ROOM_SOUNDPROOF) {
+		if i.Connected == CON_PLAYING && i != ch.Desc && i.Character != nil && (IS_NPC(i.Character) || !PRF_FLAGGED(i.Character, bitvector_t(int32(channels[subcmd])))) && (IS_NPC(i.Character) || !PLR_FLAGGED(i.Character, PLR_WRITING)) && !ROOM_FLAGGED(i.Character.In_room, ROOM_SOUNDPROOF) {
 			if subcmd == SCMD_SHOUT && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone != (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i.Character.In_room)))).Zone || !AWAKE(i.Character)) {
 				continue
 			}
@@ -1487,7 +1487,7 @@ func do_gen_comm(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if ch.Spam >= 3 && ch.Admlevel < 1 {
 		send_to_imm(libc.CString("SPAMMING: %s has been frozen for spamming!\r\n"), GET_NAME(ch))
 		send_to_all(libc.CString("@rSPAMMING@D: @C%s@w has been frozen for spamming, let that be a lesson to 'em.@n\r\n"), GET_NAME(ch))
-		ch.Act[int(PLR_FROZEN/32)] |= bitvector_t(1 << (int(PLR_FROZEN % 32)))
+		ch.Act[int(PLR_FROZEN/32)] |= bitvector_t(int32(1 << (int(PLR_FROZEN % 32))))
 		ch.Player_specials.Freeze_level = 1
 	} else if ch.Spam < 3 {
 		ch.Spam += 1
@@ -1500,7 +1500,7 @@ func do_qcomm(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	skip_spaces(&argument)
 	if *argument == 0 {
-		send_to_char(ch, libc.CString("%c%s?  Yes, fine, %s we must, but WHAT??\r\n"), C.toupper(int(*(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command)), (*byte)(unsafe.Add(unsafe.Pointer((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command), 1)), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command)
+		send_to_char(ch, libc.CString("%c%s?  Yes, fine, %s we must, but WHAT??\r\n"), unicode.ToUpper(rune(*(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command)), (*byte)(unsafe.Add(unsafe.Pointer((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command), 1)), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command)
 	} else {
 		var (
 			buf [64936]byte
@@ -1538,14 +1538,14 @@ func do_respond(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	for obj = ch.Carrying; obj != nil; obj = obj.Next_content {
-		if obj.Type_flag == ITEM_BOARD {
+		if int(obj.Type_flag) == ITEM_BOARD {
 			found = 1
 			break
 		}
 	}
 	if obj == nil {
 		for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; obj != nil; obj = obj.Next_content {
-			if obj.Type_flag == ITEM_BOARD {
+			if int(obj.Type_flag) == ITEM_BOARD {
 				found = 1
 				break
 			}
@@ -1557,7 +1557,7 @@ func do_respond(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("Respond to what?\r\n"))
 			return
 		}
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(number[0])))))&int(uint16(int16(_ISdigit)))) == 0 || (func() int {
+		if !unicode.IsDigit(rune(number[0])) || (func() int {
 			mnum = libc.Atoi(libc.GoString(&number[0]))
 			return mnum
 		}()) == 0 {

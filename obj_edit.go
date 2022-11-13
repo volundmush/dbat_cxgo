@@ -82,11 +82,11 @@ func pobj_edit_parse(d *descriptor_data, arg *byte) {
 				disp_restring_menu(d)
 				d.Obj_editval = EDIT_RESTRING_MAIN
 				return
-			} else if C.strstr(arg, libc.CString("@")) != nil {
+			} else if libc.StrStr(arg, libc.CString("@")) != nil {
 				write_to_output(d, libc.CString("@RNO COLORCODE IN THE KEYWORD NAME.@n"))
 				write_to_output(d, libc.CString("@wEnter: @n\n"))
 				return
-			} else if C.strlen(arg) > 100 {
+			} else if libc.StrLen(arg) > 100 {
 				write_to_output(d, libc.CString("@wToo long. Limit is 100 character.@n\r\n"))
 				write_to_output(d, libc.CString("@wEnter: @n\n"))
 				return
@@ -96,7 +96,7 @@ func pobj_edit_parse(d *descriptor_data, arg *byte) {
 				}
 				buf[0] = '\x00'
 				stdio.Sprintf(&buf[0], "%s", arg)
-				d.Obj_name = C.strdup(&buf[0])
+				d.Obj_name = libc.StrDup(&buf[0])
 				disp_restring_menu(d)
 				d.Obj_editval = EDIT_RESTRING_MAIN
 			}
@@ -106,7 +106,7 @@ func pobj_edit_parse(d *descriptor_data, arg *byte) {
 				disp_custom_menu(d)
 				d.Obj_editval = EDIT_RESTRING_MAIN
 				return
-			} else if C.strlen(arg) > 150 {
+			} else if libc.StrLen(arg) > 150 {
 				write_to_output(d, libc.CString("@wToo long. Limit is 200 character.@n\r\n"))
 				write_to_output(d, libc.CString("@wEnter: @n\n"))
 				return
@@ -116,7 +116,7 @@ func pobj_edit_parse(d *descriptor_data, arg *byte) {
 				}
 				buf[0] = '\x00'
 				stdio.Snprintf(&buf[0], int(2048), "%s", arg)
-				d.Obj_short = C.strdup(&buf[0])
+				d.Obj_short = libc.StrDup(&buf[0])
 				disp_restring_menu(d)
 				d.Obj_editval = EDIT_RESTRING_MAIN
 			}
@@ -126,7 +126,7 @@ func pobj_edit_parse(d *descriptor_data, arg *byte) {
 				disp_custom_menu(d)
 				d.Obj_editval = EDIT_RESTRING_MAIN
 				return
-			} else if C.strlen(arg) > 200 {
+			} else if libc.StrLen(arg) > 200 {
 				write_to_output(d, libc.CString("@wToo long. Limit is 200 character.@n\r\n"))
 				write_to_output(d, libc.CString("@wEnter: @n\n"))
 				return
@@ -136,7 +136,7 @@ func pobj_edit_parse(d *descriptor_data, arg *byte) {
 				}
 				buf[0] = '\x00'
 				stdio.Snprintf(&buf[0], int(2048), "%s", arg)
-				d.Obj_long = C.strdup(&buf[0])
+				d.Obj_long = libc.StrDup(&buf[0])
 				disp_restring_menu(d)
 				d.Obj_editval = EDIT_RESTRING_MAIN
 			}
@@ -144,28 +144,28 @@ func pobj_edit_parse(d *descriptor_data, arg *byte) {
 			if *arg == 0 {
 				write_to_output(d, libc.CString("Save current changes and be charged?\r\nYes or No\r\n"))
 				return
-			} else if C.strcasecmp(arg, libc.CString("yes")) == 0 || C.strcasecmp(arg, libc.CString("Yes")) == 0 || C.strcasecmp(arg, libc.CString("y")) == 0 || C.strcasecmp(arg, libc.CString("Y")) == 0 {
+			} else if libc.StrCaseCmp(arg, libc.CString("yes")) == 0 || libc.StrCaseCmp(arg, libc.CString("Yes")) == 0 || libc.StrCaseCmp(arg, libc.CString("y")) == 0 || libc.StrCaseCmp(arg, libc.CString("Y")) == 0 {
 				obj = d.Obj_point
 				buf[0] = '\x00'
 				stdio.Sprintf(&buf[0], "%s", d.Obj_name)
-				obj.Name = C.strdup(&buf[0])
+				obj.Name = libc.StrDup(&buf[0])
 				buf2[0] = '\x00'
 				stdio.Sprintf(&buf2[0], "%s", d.Obj_short)
-				obj.Short_description = C.strdup(&buf2[0])
+				obj.Short_description = libc.StrDup(&buf2[0])
 				buf3[0] = '\x00'
 				stdio.Sprintf(&buf3[0], "%s", d.Obj_long)
-				obj.Description = C.strdup(&buf3[0])
+				obj.Description = libc.StrDup(&buf3[0])
 				d.Obj_editflag = EDIT_NONE
 				d.Obj_editval = EDIT_NONE
 				d.Character.Rbank -= 2
 				d.Character.Rbank = d.Character.Rbank
 				d.Rbank -= 2
 				userWrite(d, 0, 0, 0, libc.CString("index"))
-				obj.Extra_flags[int(ITEM_RESTRING/32)] |= bitvector_t(1 << (int(ITEM_RESTRING % 32)))
+				obj.Extra_flags[int(ITEM_RESTRING/32)] |= bitvector_t(int32(1 << (int(ITEM_RESTRING % 32))))
 				write_to_output(d, libc.CString("Purchase complete."))
 				send_to_imm(libc.CString("Restring Eq: %s has bought: %s, which was %s."), GET_NAME(d.Character), obj.Short_description, d.Obj_was)
 				d.Connected = CON_PLAYING
-			} else if C.strcasecmp(arg, libc.CString("No")) == 0 || C.strcasecmp(arg, libc.CString("no")) == 0 || C.strcasecmp(arg, libc.CString("n")) == 0 || C.strcasecmp(arg, libc.CString("N")) == 0 {
+			} else if libc.StrCaseCmp(arg, libc.CString("No")) == 0 || libc.StrCaseCmp(arg, libc.CString("no")) == 0 || libc.StrCaseCmp(arg, libc.CString("n")) == 0 || libc.StrCaseCmp(arg, libc.CString("N")) == 0 {
 				write_to_output(d, libc.CString("Canceling purchase at no cost.\r\n"))
 				send_to_imm(libc.CString("Restring Eq: %s has canceled their equipment restring."), GET_NAME(d.Character))
 				d.Obj_editval = EDIT_NONE
@@ -232,11 +232,11 @@ func pobj_edit_parse(d *descriptor_data, arg *byte) {
 				disp_custom_menu(d)
 				d.Obj_editval = EDIT_CUSTOM_MAIN
 				return
-			} else if C.strstr(arg, libc.CString("@")) != nil {
+			} else if libc.StrStr(arg, libc.CString("@")) != nil {
 				write_to_output(d, libc.CString("@RNO COLORCODE IN THE KEYWORD NAME.@n"))
 				write_to_output(d, libc.CString("@wEnter: @n\n"))
 				return
-			} else if C.strlen(arg) > 100 {
+			} else if libc.StrLen(arg) > 100 {
 				write_to_output(d, libc.CString("@wToo long. Limit is 100 character.@n\r\n"))
 				write_to_output(d, libc.CString("@wEnter: @n\n"))
 				return
@@ -246,7 +246,7 @@ func pobj_edit_parse(d *descriptor_data, arg *byte) {
 				}
 				buf[0] = '\x00'
 				stdio.Sprintf(&buf[0], "%s", arg)
-				d.Obj_name = C.strdup(&buf[0])
+				d.Obj_name = libc.StrDup(&buf[0])
 				disp_custom_menu(d)
 				d.Obj_editval = EDIT_CUSTOM_MAIN
 			}
@@ -256,7 +256,7 @@ func pobj_edit_parse(d *descriptor_data, arg *byte) {
 				disp_custom_menu(d)
 				d.Obj_editval = EDIT_CUSTOM_MAIN
 				return
-			} else if C.strlen(arg) > 150 {
+			} else if libc.StrLen(arg) > 150 {
 				write_to_output(d, libc.CString("@wToo long. Limit is 200 character.@n\r\n"))
 				write_to_output(d, libc.CString("@wEnter: @n\n"))
 				return
@@ -266,7 +266,7 @@ func pobj_edit_parse(d *descriptor_data, arg *byte) {
 				}
 				buf[0] = '\x00'
 				stdio.Snprintf(&buf[0], int(2048), "%s", arg)
-				d.Obj_short = C.strdup(&buf[0])
+				d.Obj_short = libc.StrDup(&buf[0])
 				disp_custom_menu(d)
 				d.Obj_editval = EDIT_CUSTOM_MAIN
 			}
@@ -276,7 +276,7 @@ func pobj_edit_parse(d *descriptor_data, arg *byte) {
 				disp_custom_menu(d)
 				d.Obj_editval = EDIT_CUSTOM_MAIN
 				return
-			} else if C.strlen(arg) > 200 {
+			} else if libc.StrLen(arg) > 200 {
 				write_to_output(d, libc.CString("@wToo long. Limit is 200 character.@n\r\n"))
 				write_to_output(d, libc.CString("@wEnter: @n\n"))
 				return
@@ -286,7 +286,7 @@ func pobj_edit_parse(d *descriptor_data, arg *byte) {
 				}
 				buf[0] = '\x00'
 				stdio.Snprintf(&buf[0], int(2048), "%s", arg)
-				d.Obj_long = C.strdup(&buf[0])
+				d.Obj_long = libc.StrDup(&buf[0])
 				disp_custom_menu(d)
 				d.Obj_editval = EDIT_CUSTOM_MAIN
 			}
@@ -333,7 +333,7 @@ func pobj_edit_parse(d *descriptor_data, arg *byte) {
 			if *arg == 0 {
 				write_to_output(d, libc.CString("@wPurchase this custom piece? (Y or N)@n\r\n"))
 				return
-			} else if C.strcasecmp(arg, libc.CString("y")) == 0 || C.strcasecmp(arg, libc.CString("Y")) == 0 {
+			} else if libc.StrCaseCmp(arg, libc.CString("y")) == 0 || libc.StrCaseCmp(arg, libc.CString("Y")) == 0 {
 				write_to_output(d, libc.CString("@wPurchase complete.@n\r\n"))
 				d.Connected = CON_PLAYING
 				if d.Obj_weapon == 0 {
@@ -373,25 +373,25 @@ func pobj_edit_parse(d *descriptor_data, arg *byte) {
 					}
 					buf[0] = '\x00'
 					stdio.Sprintf(&buf[0], libc.GoString(d.Obj_name))
-					obj.Name = C.strdup(&buf[0])
+					obj.Name = libc.StrDup(&buf[0])
 					buf2[0] = '\x00'
 					stdio.Sprintf(&buf2[0], libc.GoString(d.Obj_short))
-					obj.Short_description = C.strdup(&buf2[0])
+					obj.Short_description = libc.StrDup(&buf2[0])
 					buf3[0] = '\x00'
 					stdio.Sprintf(&buf3[0], libc.GoString(d.Obj_long))
-					obj.Description = C.strdup(&buf3[0])
+					obj.Description = libc.StrDup(&buf3[0])
 				} else {
 					obj = read_object(0x4E82, VIRTUAL)
 					obj_to_char(obj, d.Character)
 					buf[0] = '\x00'
 					stdio.Sprintf(&buf[0], "%s", d.Obj_name)
-					obj.Name = C.strdup(&buf[0])
+					obj.Name = libc.StrDup(&buf[0])
 					buf2[0] = '\x00'
 					stdio.Sprintf(&buf2[0], "%s", d.Obj_short)
-					obj.Short_description = C.strdup(&buf2[0])
+					obj.Short_description = libc.StrDup(&buf2[0])
 					buf3[0] = '\x00'
 					stdio.Sprintf(&buf3[0], "%s", d.Obj_long)
-					obj.Description = C.strdup(&buf3[0])
+					obj.Description = libc.StrDup(&buf3[0])
 					switch d.Obj_weapon {
 					case 1:
 						obj.Value[VAL_WEAPON_DAMTYPE] = int(TYPE_SLASH - TYPE_HIT)
@@ -408,7 +408,7 @@ func pobj_edit_parse(d *descriptor_data, arg *byte) {
 					}
 					obj.Level = 20
 				}
-				obj.Extra_flags[int(ITEM_SLOT2/32)] |= bitvector_t(1 << (int(ITEM_SLOT2 % 32)))
+				obj.Extra_flags[int(ITEM_SLOT2/32)] |= bitvector_t(int32(1 << (int(ITEM_SLOT2 % 32))))
 				d.Obj_editflag = EDIT_NONE
 				d.Obj_editval = EDIT_NONE
 				d.Character.Rbank -= 30
@@ -416,11 +416,11 @@ func pobj_edit_parse(d *descriptor_data, arg *byte) {
 				d.Rbank -= 30
 				userWrite(d, 0, 0, 0, libc.CString("index"))
 				obj.Size = get_size(d.Character)
-				obj.Extra_flags[int(ITEM_CUSTOM/32)] |= bitvector_t(1 << (int(ITEM_CUSTOM % 32)))
+				obj.Extra_flags[int(ITEM_CUSTOM/32)] |= bitvector_t(int32(1 << (int(ITEM_CUSTOM % 32))))
 				send_to_imm(libc.CString("Custom Eq: %s has bought: %s."), GET_NAME(d.Character), obj.Short_description)
 				customWrite(d.Character, obj)
 				log_custom(d, obj)
-			} else if C.strcasecmp(arg, libc.CString("n")) == 0 || C.strcasecmp(arg, libc.CString("N")) == 0 {
+			} else if libc.StrCaseCmp(arg, libc.CString("n")) == 0 || libc.StrCaseCmp(arg, libc.CString("N")) == 0 {
 				write_to_output(d, libc.CString("Canceling purchase at no cost.\r\n"))
 				send_to_imm(libc.CString("Custom Eq: %s has canceled their custom eq construction."), GET_NAME(d.Character))
 				d.Obj_editval = EDIT_NONE

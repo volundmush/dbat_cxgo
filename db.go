@@ -1,10 +1,11 @@
 package main
 
-import "C"
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
 	"math"
+	"os"
+	"unicode"
 	"unsafe"
 )
 
@@ -28,7 +29,7 @@ const LIB_PLRTEXT = "plrtext/"
 const LIB_PLROBJS = "plrobjs/"
 const LIB_PLRVARS = "plrvars/"
 const LIB_PLRALIAS = "plralias/"
-const LIB_PLRC.FILES = "plrfiles/"
+const LIB_PLRFILES = "plrfiles/"
 const LIB_HOUSE = "house/"
 const LIB_PLRIMC = "plrimc/"
 const SLASH = "/"
@@ -105,13 +106,12 @@ type player_index_element struct {
 	Level    int
 	Admlevel int
 	Flags    int
-	Last     int64
+	Last     libc.Time
 	Ship     int
 	Shiproom int
-	Played   int64
+	Played   libc.Time
 	Clan     *byte
 }
-
 type help_index_element struct {
 	Index     *byte
 	Keywords  *byte
@@ -119,22 +119,21 @@ type help_index_element struct {
 	Duplicate int
 	Min_level int
 }
-
 type ban_list_element struct {
 	Site [51]byte
 	Type int
-	Date int64
+	Date libc.Time
 	Name [21]byte
 	Next *ban_list_element
 }
-
 type disabled_data struct {
-	Next        *disabled_data
+	Next        *DISABLED_DATA
 	Command     *command_info
 	Disabled_by *byte
 	Level       int16
 	Subcmd      int
 }
+type DISABLED_DATA disabled_data
 
 const NUM_OBJ_UNIQUE_POOLS = 5000
 const ZO_DEAD = 999
@@ -167,7 +166,7 @@ var dg_owner_purged int
 var no_mail int = 0
 var mini_mud int = 0
 var no_rent_check int = 0
-var boot_time int64 = 0
+var boot_time libc.Time = 0
 var circle_restrict int = 0
 var dballtime int = 0
 var SHENRON int = FALSE
@@ -243,42 +242,42 @@ func mob_stats(mob *char_data) {
 		mob.Real_abils.Con = int8(rand_number(start+5, finish))
 		mob.Real_abils.Cha = int8(rand_number(start, finish))
 	} else {
-		if mob.Race == RACE_SAIYAN {
+		if int(mob.Race) == RACE_SAIYAN {
 			mob.Real_abils.Str = int8(rand_number(start+10, finish))
 			mob.Real_abils.Intel = int8(rand_number(start, finish-10))
 			mob.Real_abils.Wis = int8(rand_number(start, finish-5))
 			mob.Real_abils.Dex = int8(rand_number(start, finish))
 			mob.Real_abils.Con = int8(rand_number(start+5, finish))
 			mob.Real_abils.Cha = int8(rand_number(start+5, finish))
-		} else if mob.Race == RACE_KONATSU {
+		} else if int(mob.Race) == RACE_KONATSU {
 			mob.Real_abils.Str = int8(rand_number(start, finish-10))
 			mob.Real_abils.Intel = int8(rand_number(start, finish))
 			mob.Real_abils.Wis = int8(rand_number(start, finish))
 			mob.Real_abils.Dex = int8(rand_number(start+10, finish))
 			mob.Real_abils.Con = int8(rand_number(start, finish))
 			mob.Real_abils.Cha = int8(rand_number(start, finish))
-		} else if mob.Race == RACE_ANDROID {
+		} else if int(mob.Race) == RACE_ANDROID {
 			mob.Real_abils.Str = int8(rand_number(start, finish))
 			mob.Real_abils.Intel = int8(rand_number(start, finish))
 			mob.Real_abils.Wis = int8(rand_number(start, finish-10))
 			mob.Real_abils.Dex = int8(rand_number(start, finish))
 			mob.Real_abils.Con = int8(rand_number(start, finish))
 			mob.Real_abils.Cha = int8(rand_number(start, finish))
-		} else if mob.Race == RACE_MAJIN {
+		} else if int(mob.Race) == RACE_MAJIN {
 			mob.Real_abils.Str = int8(rand_number(start, finish))
 			mob.Real_abils.Intel = int8(rand_number(start, finish-10))
 			mob.Real_abils.Wis = int8(rand_number(start, finish-5))
 			mob.Real_abils.Dex = int8(rand_number(start, finish))
 			mob.Real_abils.Con = int8(rand_number(start+15, finish))
 			mob.Real_abils.Cha = int8(rand_number(start, finish))
-		} else if mob.Race == RACE_TRUFFLE {
+		} else if int(mob.Race) == RACE_TRUFFLE {
 			mob.Real_abils.Str = int8(rand_number(start, finish-10))
 			mob.Real_abils.Intel = int8(rand_number(start+15, finish))
 			mob.Real_abils.Wis = int8(rand_number(start, finish))
 			mob.Real_abils.Dex = int8(rand_number(start, finish))
 			mob.Real_abils.Con = int8(rand_number(start, finish))
 			mob.Real_abils.Cha = int8(rand_number(start, finish))
-		} else if mob.Race == RACE_ICER {
+		} else if int(mob.Race) == RACE_ICER {
 			mob.Real_abils.Str = int8(rand_number(start+5, finish))
 			mob.Real_abils.Intel = int8(rand_number(start, finish))
 			mob.Real_abils.Wis = int8(rand_number(start, finish))
@@ -294,34 +293,34 @@ func mob_stats(mob *char_data) {
 			mob.Real_abils.Cha = int8(rand_number(start, finish))
 		}
 	}
-	if mob.Real_abils.Str > 100 {
+	if int(mob.Real_abils.Str) > 100 {
 		mob.Real_abils.Str = 100
-	} else if mob.Real_abils.Str < 5 {
+	} else if int(mob.Real_abils.Str) < 5 {
 		mob.Real_abils.Str = int8(rand_number(5, 8))
 	}
-	if mob.Real_abils.Intel > 100 {
+	if int(mob.Real_abils.Intel) > 100 {
 		mob.Real_abils.Intel = 100
-	} else if mob.Real_abils.Intel < 5 {
+	} else if int(mob.Real_abils.Intel) < 5 {
 		mob.Real_abils.Intel = int8(rand_number(5, 8))
 	}
-	if mob.Real_abils.Wis > 100 {
+	if int(mob.Real_abils.Wis) > 100 {
 		mob.Real_abils.Wis = 100
-	} else if mob.Real_abils.Wis < 5 {
+	} else if int(mob.Real_abils.Wis) < 5 {
 		mob.Real_abils.Wis = int8(rand_number(5, 8))
 	}
-	if mob.Real_abils.Con > 100 {
+	if int(mob.Real_abils.Con) > 100 {
 		mob.Real_abils.Con = 100
-	} else if mob.Real_abils.Con < 5 {
+	} else if int(mob.Real_abils.Con) < 5 {
 		mob.Real_abils.Con = int8(rand_number(5, 8))
 	}
-	if mob.Real_abils.Cha > 100 {
+	if int(mob.Real_abils.Cha) > 100 {
 		mob.Real_abils.Cha = 100
-	} else if mob.Real_abils.Cha < 5 {
+	} else if int(mob.Real_abils.Cha) < 5 {
 		mob.Real_abils.Cha = int8(rand_number(5, 8))
 	}
-	if mob.Real_abils.Dex > 100 {
+	if int(mob.Real_abils.Dex) > 100 {
 		mob.Real_abils.Dex = 100
-	} else if mob.Real_abils.Dex < 5 {
+	} else if int(mob.Real_abils.Dex) < 5 {
 		mob.Real_abils.Dex = int8(rand_number(5, 8))
 	}
 }
@@ -422,7 +421,7 @@ func free_text_files() {
 func do_reboot(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var arg [2048]byte
 	one_argument(argument, &arg[0])
-	if C.strcasecmp(&arg[0], libc.CString("all")) == 0 || arg[0] == '*' {
+	if libc.StrCaseCmp(&arg[0], libc.CString("all")) == 0 || arg[0] == '*' {
 		if load_levels() < 0 {
 			send_to_char(ch, libc.CString("Cannot read level configurations\r\n"))
 		}
@@ -469,72 +468,72 @@ func do_reboot(ch *char_data, argument *byte, cmd int, subcmd int) {
 			free_help_table()
 		}
 		index_boot(DB_BOOT_HLP)
-	} else if C.strcasecmp(&arg[0], libc.CString("levels")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("levels")) == 0 {
 		if load_levels() < 0 {
 			send_to_char(ch, libc.CString("Cannot read level configurations\r\n"))
 		}
-	} else if C.strcasecmp(&arg[0], libc.CString("wizlist")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("wizlist")) == 0 {
 		if file_to_string_alloc(libc.CString(LIB_TEXT), &wizlist) < 0 {
 			send_to_char(ch, libc.CString("Cannot read wizlist\r\n"))
 		}
-	} else if C.strcasecmp(&arg[0], libc.CString("immlist")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("immlist")) == 0 {
 		if file_to_string_alloc(libc.CString(LIB_TEXT), &immlist) < 0 {
 			send_to_char(ch, libc.CString("Cannot read immlist\r\n"))
 		}
-	} else if C.strcasecmp(&arg[0], libc.CString("news")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("news")) == 0 {
 		if file_to_string_alloc(libc.CString(LIB_TEXT), &news) < 0 {
 			send_to_char(ch, libc.CString("Cannot read news\r\n"))
 		}
-	} else if C.strcasecmp(&arg[0], libc.CString("credits")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("credits")) == 0 {
 		if file_to_string_alloc(libc.CString(LIB_TEXT), &credits) < 0 {
 			send_to_char(ch, libc.CString("Cannot read credits\r\n"))
 		}
-	} else if C.strcasecmp(&arg[0], libc.CString("motd")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("motd")) == 0 {
 		if file_to_string_alloc(libc.CString(LIB_TEXT), &motd) < 0 {
 			send_to_char(ch, libc.CString("Cannot read motd\r\n"))
 		}
-	} else if C.strcasecmp(&arg[0], libc.CString("imotd")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("imotd")) == 0 {
 		if file_to_string_alloc(libc.CString(LIB_TEXT), &imotd) < 0 {
 			send_to_char(ch, libc.CString("Cannot read imotd\r\n"))
 		}
-	} else if C.strcasecmp(&arg[0], libc.CString("help")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("help")) == 0 {
 		if file_to_string_alloc(libc.CString(LIB_TEXT_HELP), &help) < 0 {
 			send_to_char(ch, libc.CString("Cannot read help front page\r\n"))
 		}
-	} else if C.strcasecmp(&arg[0], libc.CString("info")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("info")) == 0 {
 		if file_to_string_alloc(libc.CString(LIB_TEXT), &info) < 0 {
 			send_to_char(ch, libc.CString("Cannot read info\r\n"))
 		}
-	} else if C.strcasecmp(&arg[0], libc.CString("policy")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("policy")) == 0 {
 		if file_to_string_alloc(libc.CString(LIB_TEXT), &policies) < 0 {
 			send_to_char(ch, libc.CString("Cannot read policy\r\n"))
 		}
-	} else if C.strcasecmp(&arg[0], libc.CString("handbook")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("handbook")) == 0 {
 		if file_to_string_alloc(libc.CString(LIB_TEXT), &handbook) < 0 {
 			send_to_char(ch, libc.CString("Cannot read handbook\r\n"))
 		}
-	} else if C.strcasecmp(&arg[0], libc.CString("background")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("background")) == 0 {
 		if file_to_string_alloc(libc.CString(LIB_TEXT), &background) < 0 {
 			send_to_char(ch, libc.CString("Cannot read background\r\n"))
 		}
-	} else if C.strcasecmp(&arg[0], libc.CString("greetings")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("greetings")) == 0 {
 		if file_to_string_alloc(libc.CString(LIB_TEXT), &GREETINGS) == 0 {
 			prune_crlf(GREETINGS)
 		} else {
 			send_to_char(ch, libc.CString("Cannot read greetings.\r\n"))
 		}
-	} else if C.strcasecmp(&arg[0], libc.CString("greetansi")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("greetansi")) == 0 {
 		if file_to_string_alloc(libc.CString(LIB_TEXT), &GREETANSI) == 0 {
 			prune_crlf(GREETANSI)
 		} else {
 			send_to_char(ch, libc.CString("Cannot read greetings.\r\n"))
 		}
-	} else if C.strcasecmp(&arg[0], libc.CString("xhelp")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("xhelp")) == 0 {
 		if help_table != nil {
 			free_help_table()
 		}
 		index_boot(DB_BOOT_HLP)
-	} else if C.strcasecmp(&arg[0], libc.CString("ihelp")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("ihelp")) == 0 {
 		if file_to_string_alloc(libc.CString(LIB_TEXT_HELP), &ihelp) < 0 {
 			send_to_char(ch, libc.CString("Cannot read help front page\r\n"))
 		}
@@ -591,8 +590,8 @@ func free_extra_descriptions(edesc *extra_descr_data) {
 }
 func destroy_db() {
 	var (
-		cnt    ssize_t
-		itr    ssize_t
+		cnt    int64
+		itr    int64
 		chtmp  *char_data
 		objtmp *obj_data
 	)
@@ -609,7 +608,7 @@ func destroy_db() {
 		object_list = object_list.Next
 		free_obj(objtmp)
 	}
-	for cnt = 0; cnt <= ssize_t(top_of_world); cnt++ {
+	for cnt = 0; cnt <= int64(top_of_world); cnt++ {
 		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(cnt)))).Name != nil {
 			libc.Free(unsafe.Pointer((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(cnt)))).Name))
 		}
@@ -637,7 +636,7 @@ func destroy_db() {
 	libc.Free(unsafe.Pointer(world))
 	top_of_world = 0
 	htree_free(room_htree)
-	for cnt = 0; cnt <= ssize_t(top_of_objt); cnt++ {
+	for cnt = 0; cnt <= int64(top_of_objt); cnt++ {
 		if (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(cnt)))).Name != nil {
 			libc.Free(unsafe.Pointer((*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(cnt)))).Name))
 		}
@@ -658,7 +657,7 @@ func destroy_db() {
 	libc.Free(unsafe.Pointer(obj_proto))
 	libc.Free(unsafe.Pointer(obj_index))
 	htree_free(obj_htree)
-	for cnt = 0; cnt <= ssize_t(top_of_mobt); cnt++ {
+	for cnt = 0; cnt <= int64(top_of_mobt); cnt++ {
 		if (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(cnt)))).Name != nil {
 			libc.Free(unsafe.Pointer((*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(cnt)))).Name))
 		}
@@ -695,7 +694,7 @@ func destroy_db() {
 			ftemp = temp
 		}
 	}
-	for cnt = 0; cnt <= ssize_t(top_of_zone_table); cnt++ {
+	for cnt = 0; cnt <= int64(top_of_zone_table); cnt++ {
 		if (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(cnt)))).Name != nil {
 			libc.Free(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(cnt)))).Name))
 		}
@@ -728,7 +727,7 @@ func destroy_db() {
 			ftemp = temp
 		}
 	}
-	for cnt = 0; cnt < ssize_t(top_of_trigt); cnt++ {
+	for cnt = 0; cnt < int64(top_of_trigt); cnt++ {
 		if (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(cnt)))).Proto != nil {
 			if (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(cnt)))).Proto.Cmdlist != nil {
 				var (
@@ -867,13 +866,13 @@ func boot_db() {
 		reset_q.Tail = nil
 		return *p
 	}()
-	boot_time = C.time(nil)
+	boot_time = libc.GetTime(nil)
 	basic_mud_log(libc.CString("Boot db -- DONE."))
 }
 func auc_save() {
-	var fl *C.FILE
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(LIB_ETC, "w")))
+	var fl *stdio.File
+	if (func() *stdio.File {
+		fl = stdio.FOpen(LIB_ETC, "w")
 		return fl
 	}()) == nil {
 		basic_mud_log(libc.CString("SYSERR: Can't write to '%s' auction file."), LIB_ETC)
@@ -885,11 +884,11 @@ func auc_save() {
 		for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(80))))).Contents; obj != nil; obj = next_obj {
 			next_obj = obj.Next_content
 			if obj != nil {
-				stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%lld %s %d %d %d %d %ld\n", obj.Unique_id, obj.Auctname, obj.Aucter, obj.CurBidder, obj.Startbid, obj.Bid, obj.AucTime)
+				stdio.Fprintf(fl, "%lld %s %d %d %d %d %ld\n", obj.Unique_id, obj.Auctname, obj.Aucter, obj.CurBidder, obj.Startbid, obj.Bid, obj.AucTime)
 			}
 		}
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "~END~\n")
-		C.fclose(fl)
+		stdio.Fprintf(fl, "~END~\n")
+		fl.Close()
 	}
 }
 func auc_load(obj *obj_data) {
@@ -897,24 +896,24 @@ func auc_load(obj *obj_data) {
 		line   [500]byte
 		filler [50]byte
 		oID    int64
-		timer  int64
+		timer  libc.Time
 		aID    int
 		bID    int
 		cost   int
 		startc int
-		fl     *C.FILE
+		fl     *stdio.File
 	)
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(LIB_ETC, "r")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(LIB_ETC, "r")
 		return fl
 	}()) == nil {
 		basic_mud_log(libc.CString("SYSERR: Can't read from '%s' auction file."), LIB_ETC)
 	} else {
-		for C.feof(fl) == 0 {
+		for int(fl.IsEOF()) == 0 {
 			get_line(fl, &line[0])
-			__isoc99_sscanf(&line[0], libc.CString("%lld %s %d %d %d %d %ld\n"), &oID, &filler[0], &aID, &bID, &startc, &cost, &timer)
+			stdio.Sscanf(&line[0], "%lld %s %d %d %d %d %ld\n", &oID, &filler[0], &aID, &bID, &startc, &cost, &timer)
 			if obj.Unique_id == oID {
-				obj.Auctname = C.strdup(&filler[0])
+				obj.Auctname = libc.StrDup(&filler[0])
 				obj.Aucter = int32(aID)
 				obj.CurBidder = int32(bID)
 				obj.Startbid = startc
@@ -922,47 +921,47 @@ func auc_load(obj *obj_data) {
 				obj.AucTime = timer
 			}
 		}
-		C.fclose(fl)
+		fl.Close()
 	}
 }
 func reset_time() {
 	var (
-		beginning_of_time int64 = 0
-		bgtime            *C.FILE
+		beginning_of_time libc.Time = 0
+		bgtime            *stdio.File
 	)
-	if (func() *C.FILE {
-		bgtime = (*C.FILE)(unsafe.Pointer(stdio.FOpen(LIB_ETC, "r")))
+	if (func() *stdio.File {
+		bgtime = stdio.FOpen(LIB_ETC, "r")
 		return bgtime
 	}()) == nil {
 		basic_mud_log(libc.CString("SYSERR: Can't read from '%s' time file."), LIB_ETC)
 	} else {
-		__isoc99_fscanf(bgtime, libc.CString("%lld\n"), &beginning_of_time)
-		__isoc99_fscanf(bgtime, libc.CString("%lld\n"), &NEWSUPDATE)
-		__isoc99_fscanf(bgtime, libc.CString("%lld\n"), &BOARDNEWMORT)
-		__isoc99_fscanf(bgtime, libc.CString("%lld\n"), &BOARDNEWDUO)
-		__isoc99_fscanf(bgtime, libc.CString("%lld\n"), &BOARDNEWCOD)
-		__isoc99_fscanf(bgtime, libc.CString("%lld\n"), &BOARDNEWBUI)
-		__isoc99_fscanf(bgtime, libc.CString("%lld\n"), &BOARDNEWIMM)
-		__isoc99_fscanf(bgtime, libc.CString("%lld\n"), &INTERESTTIME)
-		__isoc99_fscanf(bgtime, libc.CString("%lld\n"), &LASTINTEREST)
-		__isoc99_fscanf(bgtime, libc.CString("%d\n"), &HIGHPCOUNT)
-		__isoc99_fscanf(bgtime, libc.CString("%lld\n"), &PCOUNTDATE)
-		__isoc99_fscanf(bgtime, libc.CString("%d\n"), &WISHTIME)
-		__isoc99_fscanf(bgtime, libc.CString("%d\n"), &PCOUNT)
-		__isoc99_fscanf(bgtime, libc.CString("%lld\n"), &LASTPAYOUT)
-		__isoc99_fscanf(bgtime, libc.CString("%d\n"), &LASTPAYTYPE)
-		__isoc99_fscanf(bgtime, libc.CString("%d\n"), &LASTNEWS)
-		__isoc99_fscanf(bgtime, libc.CString("%d\n"), &dballtime)
-		__isoc99_fscanf(bgtime, libc.CString("%d\n"), &SELFISHMETER)
-		__isoc99_fscanf(bgtime, libc.CString("%d\n"), &SHADOW_DRAGON1)
-		__isoc99_fscanf(bgtime, libc.CString("%d\n"), &SHADOW_DRAGON2)
-		__isoc99_fscanf(bgtime, libc.CString("%d\n"), &SHADOW_DRAGON3)
-		__isoc99_fscanf(bgtime, libc.CString("%d\n"), &SHADOW_DRAGON4)
-		__isoc99_fscanf(bgtime, libc.CString("%d\n"), &SHADOW_DRAGON5)
-		__isoc99_fscanf(bgtime, libc.CString("%d\n"), &SHADOW_DRAGON6)
-		__isoc99_fscanf(bgtime, libc.CString("%d\n"), &SHADOW_DRAGON7)
-		__isoc99_fscanf(bgtime, libc.CString("%d\n"), &ERAPLAYERS)
-		C.fclose(bgtime)
+		stdio.Fscanf(bgtime, "%lld\n", &beginning_of_time)
+		stdio.Fscanf(bgtime, "%lld\n", &NEWSUPDATE)
+		stdio.Fscanf(bgtime, "%lld\n", &BOARDNEWMORT)
+		stdio.Fscanf(bgtime, "%lld\n", &BOARDNEWDUO)
+		stdio.Fscanf(bgtime, "%lld\n", &BOARDNEWCOD)
+		stdio.Fscanf(bgtime, "%lld\n", &BOARDNEWBUI)
+		stdio.Fscanf(bgtime, "%lld\n", &BOARDNEWIMM)
+		stdio.Fscanf(bgtime, "%lld\n", &INTERESTTIME)
+		stdio.Fscanf(bgtime, "%lld\n", &LASTINTEREST)
+		stdio.Fscanf(bgtime, "%d\n", &HIGHPCOUNT)
+		stdio.Fscanf(bgtime, "%lld\n", &PCOUNTDATE)
+		stdio.Fscanf(bgtime, "%d\n", &WISHTIME)
+		stdio.Fscanf(bgtime, "%d\n", &PCOUNT)
+		stdio.Fscanf(bgtime, "%lld\n", &LASTPAYOUT)
+		stdio.Fscanf(bgtime, "%d\n", &LASTPAYTYPE)
+		stdio.Fscanf(bgtime, "%d\n", &LASTNEWS)
+		stdio.Fscanf(bgtime, "%d\n", &dballtime)
+		stdio.Fscanf(bgtime, "%d\n", &SELFISHMETER)
+		stdio.Fscanf(bgtime, "%d\n", &SHADOW_DRAGON1)
+		stdio.Fscanf(bgtime, "%d\n", &SHADOW_DRAGON2)
+		stdio.Fscanf(bgtime, "%d\n", &SHADOW_DRAGON3)
+		stdio.Fscanf(bgtime, "%d\n", &SHADOW_DRAGON4)
+		stdio.Fscanf(bgtime, "%d\n", &SHADOW_DRAGON5)
+		stdio.Fscanf(bgtime, "%d\n", &SHADOW_DRAGON6)
+		stdio.Fscanf(bgtime, "%d\n", &SHADOW_DRAGON7)
+		stdio.Fscanf(bgtime, "%d\n", &ERAPLAYERS)
+		bgtime.Close()
 	}
 	if dballtime == 0 {
 		dballtime = 604800
@@ -970,7 +969,7 @@ func reset_time() {
 	if beginning_of_time == 0 {
 		beginning_of_time = 0x26C359CB
 	}
-	time_info = *mud_time_passed(C.time(nil), beginning_of_time)
+	time_info = *mud_time_passed(libc.GetTime(nil), beginning_of_time)
 	if time_info.Hours <= 4 {
 		weather_info.Sunlight = SUN_DARK
 	} else if time_info.Hours == 5 {
@@ -1001,43 +1000,43 @@ func reset_time() {
 	}
 }
 func save_mud_time(when *time_info_data) {
-	var bgtime *C.FILE
-	if (func() *C.FILE {
-		bgtime = (*C.FILE)(unsafe.Pointer(stdio.FOpen(LIB_ETC, "w")))
+	var bgtime *stdio.File
+	if (func() *stdio.File {
+		bgtime = stdio.FOpen(LIB_ETC, "w")
 		return bgtime
 	}()) == nil {
 		basic_mud_log(libc.CString("SYSERR: Can't write to '%s' time file."), LIB_ETC)
 	} else {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%ld\n", mud_time_to_secs(when))
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%ld\n", NEWSUPDATE)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%ld\n", BOARDNEWMORT)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%ld\n", BOARDNEWDUO)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%ld\n", BOARDNEWCOD)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%ld\n", BOARDNEWBUI)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%ld\n", BOARDNEWIMM)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%ld\n", INTERESTTIME)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%ld\n", LASTINTEREST)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%d\n", HIGHPCOUNT)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%ld\n", PCOUNTDATE)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%d\n", WISHTIME)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%d\n", PCOUNT)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%ld\n", LASTPAYOUT)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%d\n", LASTPAYTYPE)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%d\n", LASTNEWS)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%d\n", dballtime)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%d\n", SELFISHMETER)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%d\n", SHADOW_DRAGON1)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%d\n", SHADOW_DRAGON2)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%d\n", SHADOW_DRAGON3)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%d\n", SHADOW_DRAGON4)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%d\n", SHADOW_DRAGON5)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%d\n", SHADOW_DRAGON6)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%d\n", SHADOW_DRAGON7)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(bgtime)), "%d\n", ERAPLAYERS)
-		C.fclose(bgtime)
+		stdio.Fprintf(bgtime, "%ld\n", mud_time_to_secs(when))
+		stdio.Fprintf(bgtime, "%ld\n", NEWSUPDATE)
+		stdio.Fprintf(bgtime, "%ld\n", BOARDNEWMORT)
+		stdio.Fprintf(bgtime, "%ld\n", BOARDNEWDUO)
+		stdio.Fprintf(bgtime, "%ld\n", BOARDNEWCOD)
+		stdio.Fprintf(bgtime, "%ld\n", BOARDNEWBUI)
+		stdio.Fprintf(bgtime, "%ld\n", BOARDNEWIMM)
+		stdio.Fprintf(bgtime, "%ld\n", INTERESTTIME)
+		stdio.Fprintf(bgtime, "%ld\n", LASTINTEREST)
+		stdio.Fprintf(bgtime, "%d\n", HIGHPCOUNT)
+		stdio.Fprintf(bgtime, "%ld\n", PCOUNTDATE)
+		stdio.Fprintf(bgtime, "%d\n", WISHTIME)
+		stdio.Fprintf(bgtime, "%d\n", PCOUNT)
+		stdio.Fprintf(bgtime, "%ld\n", LASTPAYOUT)
+		stdio.Fprintf(bgtime, "%d\n", LASTPAYTYPE)
+		stdio.Fprintf(bgtime, "%d\n", LASTNEWS)
+		stdio.Fprintf(bgtime, "%d\n", dballtime)
+		stdio.Fprintf(bgtime, "%d\n", SELFISHMETER)
+		stdio.Fprintf(bgtime, "%d\n", SHADOW_DRAGON1)
+		stdio.Fprintf(bgtime, "%d\n", SHADOW_DRAGON2)
+		stdio.Fprintf(bgtime, "%d\n", SHADOW_DRAGON3)
+		stdio.Fprintf(bgtime, "%d\n", SHADOW_DRAGON4)
+		stdio.Fprintf(bgtime, "%d\n", SHADOW_DRAGON5)
+		stdio.Fprintf(bgtime, "%d\n", SHADOW_DRAGON6)
+		stdio.Fprintf(bgtime, "%d\n", SHADOW_DRAGON7)
+		stdio.Fprintf(bgtime, "%d\n", ERAPLAYERS)
+		bgtime.Close()
 	}
 }
-func count_alias_records(fl *C.FILE) int {
+func count_alias_records(fl *stdio.File) int {
 	var (
 		key            [256]byte
 		next_key       [256]byte
@@ -1049,7 +1048,7 @@ func count_alias_records(fl *C.FILE) int {
 	for key[0] != '$' {
 		for {
 			get_one_line(fl, &line[0])
-			if C.feof(fl) != 0 {
+			if int(fl.IsEOF()) != 0 {
 				goto ackeof
 			}
 			if line[0] == '#' {
@@ -1067,21 +1066,21 @@ func count_alias_records(fl *C.FILE) int {
 			}
 		}
 		get_one_line(fl, &key[0])
-		if C.feof(fl) != 0 {
+		if int(fl.IsEOF()) != 0 {
 			goto ackeof
 		}
 	}
 	return total_keywords
 ackeof:
 	basic_mud_log(libc.CString("SYSERR: Unexpected end of help file."))
-	C.exit(1)
+	os.Exit(1)
 }
-func count_hash_records(fl *C.FILE) int {
+func count_hash_records(fl *stdio.File) int {
 	var (
 		buf   [128]byte
 		count int = 0
 	)
-	for C.fgets(&buf[0], 128, fl) != nil {
+	for fl.GetS(&buf[0], 128) != nil {
 		if buf[0] == '#' {
 			count++
 		}
@@ -1092,11 +1091,11 @@ func index_boot(mode int) {
 	var (
 		index_filename *byte
 		prefix         *byte = nil
-		db_index       *C.FILE
-		db_file        *C.FILE
+		db_index       *stdio.File
+		db_file        *stdio.File
 		rec_count      int = 0
 		size           [2]int
-		buf2           [4096]byte
+		buf2           [260]byte
 		buf1           [64936]byte
 	)
 	switch mode {
@@ -1118,30 +1117,30 @@ func index_boot(mode int) {
 		prefix = libc.CString(LIB_WORLD)
 	default:
 		basic_mud_log(libc.CString("SYSERR: Unknown subcommand %d to index_boot!"), mode)
-		C.exit(1)
+		os.Exit(1)
 	}
 	if mini_mud != 0 {
 		index_filename = libc.CString(MINDEX_FILE)
 	} else {
 		index_filename = libc.CString(INDEX_FILE)
 	}
-	stdio.Snprintf(&buf2[0], int(4096), "%s%s", prefix, index_filename)
-	if (func() *C.FILE {
-		db_index = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&buf2[0]), "r")))
+	stdio.Snprintf(&buf2[0], int(260), "%s%s", prefix, index_filename)
+	if (func() *stdio.File {
+		db_index = stdio.FOpen(libc.GoString(&buf2[0]), "r")
 		return db_index
 	}()) == nil {
-		basic_mud_log(libc.CString("SYSERR: opening index file '%s': %s"), &buf2[0], C.strerror(*__errno_location()))
-		C.exit(1)
+		basic_mud_log(libc.CString("SYSERR: opening index file '%s': %s"), &buf2[0], libc.StrError(libc.Errno))
+		os.Exit(1)
 	}
-	__isoc99_fscanf(db_index, libc.CString("%s\n"), &buf1[0])
+	stdio.Fscanf(db_index, "%s\n", &buf1[0])
 	for buf1[0] != '$' {
-		stdio.Snprintf(&buf2[0], int(4096), "%s%s", prefix, &buf1[0])
-		if (func() *C.FILE {
-			db_file = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&buf2[0]), "r")))
+		stdio.Snprintf(&buf2[0], int(260), "%s%s", prefix, &buf1[0])
+		if (func() *stdio.File {
+			db_file = stdio.FOpen(libc.GoString(&buf2[0]), "r")
 			return db_file
 		}()) == nil {
-			basic_mud_log(libc.CString("SYSERR: File '%s' listed in '%s%s': %s"), &buf2[0], prefix, index_filename, C.strerror(*__errno_location()))
-			__isoc99_fscanf(db_index, libc.CString("%s\n"), &buf1[0])
+			basic_mud_log(libc.CString("SYSERR: File '%s' listed in '%s%s': %s"), &buf2[0], prefix, index_filename, libc.StrError(libc.Errno))
+			stdio.Fscanf(db_index, "%s\n", &buf1[0])
 			continue
 		} else {
 			if mode == DB_BOOT_ZON {
@@ -1152,15 +1151,15 @@ func index_boot(mode int) {
 				rec_count += count_hash_records(db_file)
 			}
 		}
-		C.fclose(db_file)
-		__isoc99_fscanf(db_index, libc.CString("%s\n"), &buf1[0])
+		db_file.Close()
+		stdio.Fscanf(db_index, "%s\n", &buf1[0])
 	}
 	if rec_count == 0 {
 		if mode == DB_BOOT_SHP || mode == DB_BOOT_GLD {
 			return
 		}
 		basic_mud_log(libc.CString("SYSERR: boot error - 0 records counted in %s/%s."), prefix, index_filename)
-		C.exit(1)
+		os.Exit(1)
 	}
 	switch mode {
 	case DB_BOOT_TRG:
@@ -1190,16 +1189,16 @@ func index_boot(mode int) {
 		size[0] = rec_count * int(unsafe.Sizeof(help_index_element{}))
 		basic_mud_log(libc.CString("   %d entries, %d bytes."), rec_count, size[0])
 	}
-	C.rewind(db_index)
-	__isoc99_fscanf(db_index, libc.CString("%s\n"), &buf1[0])
+	rewind(db_index)
+	stdio.Fscanf(db_index, "%s\n", &buf1[0])
 	for buf1[0] != '$' {
-		stdio.Snprintf(&buf2[0], int(4096), "%s%s", prefix, &buf1[0])
-		if (func() *C.FILE {
-			db_file = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&buf2[0]), "r")))
+		stdio.Snprintf(&buf2[0], int(260), "%s%s", prefix, &buf1[0])
+		if (func() *stdio.File {
+			db_file = stdio.FOpen(libc.GoString(&buf2[0]), "r")
 			return db_file
 		}()) == nil {
-			basic_mud_log(libc.CString("SYSERR: %s: %s"), &buf2[0], C.strerror(*__errno_location()))
-			C.exit(1)
+			basic_mud_log(libc.CString("SYSERR: %s: %s"), &buf2[0], libc.StrError(libc.Errno))
+			os.Exit(1)
 		}
 		switch mode {
 		case DB_BOOT_WLD:
@@ -1219,10 +1218,10 @@ func index_boot(mode int) {
 		case DB_BOOT_GLD:
 			boot_the_guilds(db_file, &buf2[0], rec_count)
 		}
-		C.fclose(db_file)
-		__isoc99_fscanf(db_index, libc.CString("%s\n"), &buf1[0])
+		db_file.Close()
+		stdio.Fscanf(db_index, "%s\n", &buf1[0])
 	}
-	C.fclose(db_index)
+	db_index.Close()
 	if mode == DB_BOOT_HLP {
 		libc.Sort(unsafe.Pointer(help_table), uint32(int32(top_of_helpt)), uint32(unsafe.Sizeof(help_index_element{})), func(arg1 unsafe.Pointer, arg2 unsafe.Pointer) int32 {
 			return int32(hsort(arg1, arg2))
@@ -1230,7 +1229,7 @@ func index_boot(mode int) {
 		top_of_helpt--
 	}
 }
-func discrete_load(fl *C.FILE, mode int, filename *byte) {
+func discrete_load(fl *stdio.File, mode int, filename *byte) {
 	var (
 		nr    int = -1
 		last  int
@@ -1245,7 +1244,7 @@ func discrete_load(fl *C.FILE, mode int, filename *byte) {
 				} else {
 					basic_mud_log(libc.CString("SYSERR: Format error in %s after %s #%d\n...expecting a new %s, but file ended!\n(maybe the file is not terminated with '$'?)"), filename, modes[mode], nr, modes[mode])
 				}
-				C.exit(1)
+				os.Exit(1)
 			}
 		}
 		if line[0] == '$' {
@@ -1253,9 +1252,9 @@ func discrete_load(fl *C.FILE, mode int, filename *byte) {
 		}
 		if line[0] == '#' {
 			last = nr
-			if __isoc99_sscanf(&line[0], libc.CString("#%d"), &nr) != 1 {
+			if stdio.Sscanf(&line[0], "#%d", &nr) != 1 {
 				basic_mud_log(libc.CString("SYSERR: Format error after %s #%d"), modes[mode], last)
-				C.exit(1)
+				os.Exit(1)
 			}
 			if nr >= 99999 {
 				return
@@ -1274,15 +1273,15 @@ func discrete_load(fl *C.FILE, mode int, filename *byte) {
 		} else {
 			basic_mud_log(libc.CString("SYSERR: Format error in %s file %s near %s #%d"), modes[mode], filename, modes[mode], nr)
 			basic_mud_log(libc.CString("SYSERR: ... offending line: '%s'"), &line[0])
-			C.exit(1)
+			os.Exit(1)
 		}
 	}
 }
-func fread_letter(fp *C.FILE) int8 {
+func fread_letter(fp *stdio.File) int8 {
 	var c int8
 	for {
-		c = int8(getc(fp))
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(c))))) & int(uint16(int16(_ISspace)))) == 0 {
+		c = int8(fp.GetC())
+		if !unicode.IsSpace(rune(c)) {
 			break
 		}
 	}
@@ -1295,17 +1294,17 @@ func asciiflag_conv(flag *byte) bitvector_t {
 		p      *byte
 	)
 	for p = flag; *p != 0; p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1)) {
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p))))) & int(uint16(int16(_ISlower)))) != 0 {
+		if unicode.IsLower(rune(*p)) {
 			flags |= bitvector_t(1 << (*p - 'a'))
-		} else if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p))))) & int(uint16(int16(_ISupper)))) != 0 {
+		} else if unicode.IsUpper(rune(*p)) {
 			flags |= bitvector_t(1 << ((*p - 'A') + 26))
 		}
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p)))))&int(uint16(int16(_ISdigit)))) == 0 && *p != '-' {
+		if !unicode.IsDigit(rune(*p)) && *p != '-' {
 			is_num = FALSE
 		}
 	}
 	if is_num != 0 {
-		flags = bitvector_t(libc.Atoi(libc.GoString(flag)))
+		flags = bitvector_t(int32(libc.Atoi(libc.GoString(flag))))
 	}
 	return flags
 }
@@ -1316,21 +1315,21 @@ func asciiflag_conv_aff(flag *byte) bitvector_t {
 		p      *byte
 	)
 	for p = flag; *p != 0; p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1)) {
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p))))) & int(uint16(int16(_ISlower)))) != 0 {
+		if unicode.IsLower(rune(*p)) {
 			flags |= bitvector_t(1 << ((*p - 'a') + 1))
-		} else if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p))))) & int(uint16(int16(_ISupper)))) != 0 {
+		} else if unicode.IsUpper(rune(*p)) {
 			flags |= bitvector_t(1 << ((*p - 'A') + 26))
 		}
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p)))))&int(uint16(int16(_ISdigit)))) == 0 && *p != '-' {
+		if !unicode.IsDigit(rune(*p)) && *p != '-' {
 			is_num = FALSE
 		}
 	}
 	if is_num != 0 {
-		flags = bitvector_t(libc.Atoi(libc.GoString(flag)))
+		flags = bitvector_t(int32(libc.Atoi(libc.GoString(flag))))
 	}
 	return flags
 }
-func parse_room(fl *C.FILE, virtual_nr int) {
+func parse_room(fl *stdio.File, virtual_nr int) {
 	var (
 		room_nr   int = 0
 		zone      int = 0
@@ -1350,7 +1349,7 @@ func parse_room(fl *C.FILE, virtual_nr int) {
 	stdio.Snprintf(&buf2[0], int(64936), "room #%d", virtual_nr)
 	if virtual_nr < int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot) {
 		basic_mud_log(libc.CString("SYSERR: Room #%d is below zone %d."), virtual_nr, zone)
-		C.exit(1)
+		os.Exit(1)
 	}
 	for virtual_nr > int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top) {
 		if func() int {
@@ -1359,7 +1358,7 @@ func parse_room(fl *C.FILE, virtual_nr int) {
 			return *p
 		}() > int(top_of_zone_table) {
 			basic_mud_log(libc.CString("SYSERR: Room %d is outside of any zone."), virtual_nr)
-			C.exit(1)
+			os.Exit(1)
 		}
 	}
 	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Zone = zone_rnum(zone)
@@ -1372,14 +1371,14 @@ func parse_room(fl *C.FILE, virtual_nr int) {
 	htree_add(room_htree, int64(virtual_nr), int64(room_nr))
 	if get_line(fl, &line[0]) == 0 {
 		basic_mud_log(libc.CString("SYSERR: Expecting roomflags/sector type of room #%d but file ended!"), virtual_nr)
-		C.exit(1)
+		os.Exit(1)
 	}
 	if (func() int {
-		retval = __isoc99_sscanf(&line[0], libc.CString(" %d %s %s %s %s %d "), &t[0], &flags[0], &flags2[0], &flags3[0], &flags4[0], &t[2])
+		retval = stdio.Sscanf(&line[0], " %d %s %s %s %s %d ", &t[0], &flags[0], &flags2[0], &flags3[0], &flags4[0], &t[2])
 		return retval
 	}()) == 3 && bitwarning == TRUE {
 		basic_mud_log(libc.CString("WARNING: Conventional worldfiles detected. Please read 128bit.readme."))
-		C.exit(1)
+		os.Exit(1)
 	} else if retval == 3 && bitwarning == FALSE {
 		basic_mud_log(libc.CString("Converting room #%d to 128bits.."), virtual_nr)
 		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Room_flags[0] = asciiflag_conv(&flags[0])
@@ -1406,7 +1405,7 @@ func parse_room(fl *C.FILE, virtual_nr int) {
 		}
 	} else {
 		basic_mud_log(libc.CString("SYSERR: Format error in roomflags/sector type of room #%d"), virtual_nr)
-		C.exit(1)
+		os.Exit(1)
 	}
 	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Func = nil
 	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Contents = nil
@@ -1450,7 +1449,7 @@ func parse_room(fl *C.FILE, virtual_nr int) {
 	for {
 		if get_line(fl, &line[0]) == 0 {
 			basic_mud_log(libc.CString("%s"), &buf[0])
-			C.exit(1)
+			os.Exit(1)
 		}
 		switch line[0] {
 		case 'D':
@@ -1460,9 +1459,9 @@ func parse_room(fl *C.FILE, virtual_nr int) {
 			new_descr.Keyword = fread_string(fl, &buf2[0])
 			new_descr.Description = fread_string(fl, &buf2[0])
 			{
-				var tmp *byte = C.strchr(new_descr.Description, '\x00')
+				var tmp *byte = libc.StrChr(new_descr.Description, '\x00')
 				if uintptr(unsafe.Pointer(tmp)) > uintptr(unsafe.Pointer(new_descr.Description)) && *((*byte)(unsafe.Add(unsafe.Pointer(tmp), -1))) != '\n' {
-					tmp = (*byte)(unsafe.Pointer(&make([]int8, int(C.strlen(new_descr.Description)+3))[0]))
+					tmp = (*byte)(unsafe.Pointer(&make([]int8, libc.StrLen(new_descr.Description)+3)[0]))
 					stdio.Sprintf(tmp, "%s\r\n", new_descr.Description)
 					libc.Free(unsafe.Pointer(new_descr.Description))
 					new_descr.Description = tmp
@@ -1472,11 +1471,11 @@ func parse_room(fl *C.FILE, virtual_nr int) {
 			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Ex_description = new_descr
 		case 'S':
 			letter = fread_letter(fl)
-			ungetc(int(letter), fl)
+			fl.UnGetC(int(letter))
 			for int(letter) == 'T' {
 				dg_read_trigger(fl, unsafe.Pointer((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))), WLD_TRIGGER)
 				letter = fread_letter(fl)
-				ungetc(int(letter), fl)
+				fl.UnGetC(int(letter))
 			}
 			top_of_world = room_rnum(func() int {
 				p := &room_nr
@@ -1487,11 +1486,11 @@ func parse_room(fl *C.FILE, virtual_nr int) {
 			return
 		default:
 			basic_mud_log(libc.CString("%s"), &buf[0])
-			C.exit(1)
+			os.Exit(1)
 		}
 	}
 }
-func setup_dir(fl *C.FILE, room int, dir int) {
+func setup_dir(fl *stdio.File, room int, dir int) {
 	var (
 		t      [11]int
 		retval int
@@ -1509,14 +1508,14 @@ func setup_dir(fl *C.FILE, room int, dir int) {
 	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Keyword = fread_string(fl, &buf2[0])
 	if get_line(fl, &line[0]) == 0 {
 		basic_mud_log(libc.CString("SYSERR: Format error, %s"), &buf2[0])
-		C.exit(1)
+		os.Exit(1)
 	}
 	if (func() int {
-		retval = __isoc99_sscanf(&line[0], libc.CString(" %d %d %d %d %d %d %d %d %d %d %d"), &t[0], &t[1], &t[2], &t[3], &t[4], &t[5], &t[6], &t[7], &t[8], &t[9], &t[10])
+		retval = stdio.Sscanf(&line[0], " %d %d %d %d %d %d %d %d %d %d %d", &t[0], &t[1], &t[2], &t[3], &t[4], &t[5], &t[6], &t[7], &t[8], &t[9], &t[10])
 		return retval
 	}()) == 3 && bitwarning == TRUE {
 		basic_mud_log(libc.CString("SYSERR: Format error, %s"), &buf2[0])
-		C.exit(1)
+		os.Exit(1)
 	} else if bitwarning == FALSE {
 		if t[0] == 1 {
 			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Exit_info = 1 << 0
@@ -1597,7 +1596,7 @@ func check_start_rooms() {
 		return r_mortal_start_room
 	}()) == room_rnum(-1) {
 		basic_mud_log(libc.CString("SYSERR:  Mortal start room does not exist.  Change mortal_start_room in lib/etc/config."))
-		C.exit(1)
+		os.Exit(1)
 	}
 	if (func() room_rnum {
 		r_immort_start_room = real_room(config_info.Room_nums.Immort_start_room)
@@ -1771,7 +1770,7 @@ func mob_autobalance(ch *char_data) {
 	ch.Mob_specials.Damsizedice = 0
 	ch.Damage_mod = 0
 }
-func parse_simple_mob(mob_f *C.FILE, ch *char_data, nr int) int {
+func parse_simple_mob(mob_f *stdio.File, ch *char_data, nr int) int {
 	var (
 		j    int
 		t    [10]int
@@ -1787,7 +1786,7 @@ func parse_simple_mob(mob_f *C.FILE, ch *char_data, nr int) int {
 		basic_mud_log(libc.CString("SYSERR: Format error in mob #%d, file ended after S flag!"), nr)
 		return 0
 	}
-	if __isoc99_sscanf(&line[0], libc.CString(" %d %d %d %dd%d+%d %dd%d+%d "), &t[0], &t[1], &t[2], &t[3], &t[4], &t[5], &t[6], &t[7], &t[8]) != 9 {
+	if stdio.Sscanf(&line[0], " %d %d %d %dd%d+%d %dd%d+%d ", &t[0], &t[1], &t[2], &t[3], &t[4], &t[5], &t[6], &t[7], &t[8]) != 9 {
 		basic_mud_log(libc.CString("SYSERR: Format error in mob #%d, first line after S flag\n...expecting line of form '# # # #d#+# #d#+#'"), nr)
 		return 0
 	}
@@ -1806,7 +1805,7 @@ func parse_simple_mob(mob_f *C.FILE, ch *char_data, nr int) int {
 		basic_mud_log(libc.CString("SYSERR: Format error in mob #%d, second line after S flag\n...expecting line of form '# #', but file ended!"), nr)
 		return 0
 	}
-	if __isoc99_sscanf(&line[0], libc.CString(" %d %d %d %d"), &t[0], &t[1], &t[2], &t[3]) != 4 {
+	if stdio.Sscanf(&line[0], " %d %d %d %d", &t[0], &t[1], &t[2], &t[3]) != 4 {
 		basic_mud_log(libc.CString("SYSERR: Format error in mob #%d, second line after S flag\n...expecting line of form '# # # #'"), nr)
 		return 0
 	}
@@ -1817,7 +1816,7 @@ func parse_simple_mob(mob_f *C.FILE, ch *char_data, nr int) int {
 	ch.Saving_throw[SAVING_FORTITUDE] = 0
 	ch.Saving_throw[SAVING_REFLEX] = 0
 	ch.Saving_throw[SAVING_WILL] = 0
-	if ch.Race != RACE_HUMAN {
+	if int(ch.Race) != RACE_HUMAN {
 		if !AFF_FLAGGED(ch, AFF_INFRAVISION) {
 			ch.Affected_by[int(AFF_INFRAVISION/32)] |= 1 << (int(AFF_INFRAVISION % 32))
 		}
@@ -1827,7 +1826,7 @@ func parse_simple_mob(mob_f *C.FILE, ch *char_data, nr int) int {
 		basic_mud_log(libc.CString("SYSERR: Format error in last line of mob #%d\n...expecting line of form '# # #', but file ended!"), nr)
 		return 0
 	}
-	if __isoc99_sscanf(&line[0], libc.CString(" %d %d %d "), &t[0], &t[1], &t[2]) != 3 {
+	if stdio.Sscanf(&line[0], " %d %d %d ", &t[0], &t[1], &t[2]) != 3 {
 		basic_mud_log(libc.CString("SYSERR: Format error in last line of mob #%d\n...expecting line of form '# # #'"), nr)
 		return 0
 	}
@@ -1859,111 +1858,111 @@ func interpret_espec(keyword *byte, value *byte, ch *char_data, nr int) {
 	if value != nil {
 		num_arg = libc.Atoi(libc.GoString(value))
 	}
-	if value != nil && matched == 0 && C.strcasecmp(keyword, libc.CString("BareHandAttack")) == 0 && (func() int {
+	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("BareHandAttack")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
 		num_arg = MAX(0, MIN(99, num_arg))
 		ch.Mob_specials.Attack_type = int8(num_arg)
 	}
-	if value != nil && matched == 0 && C.strcasecmp(keyword, libc.CString("Size")) == 0 && (func() int {
+	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Size")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
 		num_arg = MAX(int(-1), MIN(int(NUM_SIZES-1), num_arg))
 		ch.Size = num_arg
 	}
-	if value != nil && matched == 0 && C.strcasecmp(keyword, libc.CString("Str")) == 0 && (func() int {
+	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Str")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
 		num_arg = MAX(0, MIN(200, num_arg))
 		ch.Real_abils.Str = int8(num_arg)
 	}
-	if value != nil && matched == 0 && C.strcasecmp(keyword, libc.CString("StrAdd")) == 0 && (func() int {
+	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("StrAdd")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
 		basic_mud_log(libc.CString("mob #%d trying to set StrAdd, rebalance its strength."), GET_MOB_VNUM(ch))
 	}
-	if value != nil && matched == 0 && C.strcasecmp(keyword, libc.CString("Int")) == 0 && (func() int {
+	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Int")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
 		num_arg = MAX(0, MIN(200, num_arg))
 		ch.Real_abils.Intel = int8(num_arg)
 	}
-	if value != nil && matched == 0 && C.strcasecmp(keyword, libc.CString("Wis")) == 0 && (func() int {
+	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Wis")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
 		num_arg = MAX(0, MIN(200, num_arg))
 		ch.Real_abils.Wis = int8(num_arg)
 	}
-	if value != nil && matched == 0 && C.strcasecmp(keyword, libc.CString("Dex")) == 0 && (func() int {
+	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Dex")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
 		num_arg = MAX(0, MIN(200, num_arg))
 		ch.Real_abils.Dex = int8(num_arg)
 	}
-	if value != nil && matched == 0 && C.strcasecmp(keyword, libc.CString("Con")) == 0 && (func() int {
+	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Con")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
 		num_arg = MAX(0, MIN(200, num_arg))
 		ch.Real_abils.Con = int8(num_arg)
 	}
-	if value != nil && matched == 0 && C.strcasecmp(keyword, libc.CString("Cha")) == 0 && (func() int {
+	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Cha")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
 		num_arg = MAX(0, MIN(200, num_arg))
 		ch.Real_abils.Cha = int8(num_arg)
 	}
-	if value != nil && matched == 0 && C.strcasecmp(keyword, libc.CString("Hit")) == 0 && (func() int {
+	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Hit")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
 		num_arg = MAX(0, MIN(99999, num_arg))
 		ch.Hit = int64(num_arg)
 	}
-	if value != nil && matched == 0 && C.strcasecmp(keyword, libc.CString("MaxHit")) == 0 && (func() int {
+	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("MaxHit")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
 		num_arg = MAX(0, MIN(99999, num_arg))
 		ch.Max_hit = int64(num_arg)
 	}
-	if value != nil && matched == 0 && C.strcasecmp(keyword, libc.CString("Mana")) == 0 && (func() int {
+	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Mana")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
 		num_arg = MAX(0, MIN(99999, num_arg))
 		ch.Mana = int64(num_arg)
 	}
-	if value != nil && matched == 0 && C.strcasecmp(keyword, libc.CString("MaxMana")) == 0 && (func() int {
+	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("MaxMana")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
 		num_arg = MAX(0, MIN(99999, num_arg))
 		ch.Max_mana = int64(num_arg)
 	}
-	if value != nil && matched == 0 && C.strcasecmp(keyword, libc.CString("Moves")) == 0 && (func() int {
+	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Moves")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
 		num_arg = MAX(0, MIN(99999, num_arg))
 		ch.Move = int64(num_arg)
 	}
-	if value != nil && matched == 0 && C.strcasecmp(keyword, libc.CString("MaxMoves")) == 0 && (func() int {
+	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("MaxMoves")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
 		num_arg = MAX(0, MIN(99999, num_arg))
 		ch.Max_move = int64(num_arg)
 	}
-	if value != nil && matched == 0 && C.strcasecmp(keyword, libc.CString("Affect")) == 0 && (func() int {
+	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Affect")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
@@ -1983,18 +1982,18 @@ func interpret_espec(keyword *byte, value *byte, ch *char_data, nr int) {
 			}()
 			return num2
 		}()
-		__isoc99_sscanf(value, libc.CString("%d %d %d %d %d %d"), &num, &num2, &num3, &num4, &num5, &num6)
+		stdio.Sscanf(value, "%d %d %d %d %d %d", &num, &num2, &num3, &num4, &num5, &num6)
 		if num > 0 {
 			af.Type = int16(num)
 			af.Duration = int16(num2)
 			af.Modifier = num3
 			af.Location = num4
-			af.Bitvector = bitvector_t(num5)
+			af.Bitvector = bitvector_t(int32(num5))
 			af.Specific = num6
 			affect_to_char(ch, &af)
 		}
 	}
-	if value != nil && matched == 0 && C.strcasecmp(keyword, libc.CString("AffectV")) == 0 && (func() int {
+	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("AffectV")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
@@ -2014,29 +2013,29 @@ func interpret_espec(keyword *byte, value *byte, ch *char_data, nr int) {
 			}()
 			return num2
 		}()
-		__isoc99_sscanf(value, libc.CString("%d %d %d %d %d %d"), &num, &num2, &num3, &num4, &num5, &num6)
+		stdio.Sscanf(value, "%d %d %d %d %d %d", &num, &num2, &num3, &num4, &num5, &num6)
 		if num > 0 {
 			af.Type = int16(num)
 			af.Duration = int16(num2)
 			af.Modifier = num3
 			af.Location = num4
-			af.Bitvector = bitvector_t(num5)
+			af.Bitvector = bitvector_t(int32(num5))
 			af.Specific = num6
 			affectv_to_char(ch, &af)
 		}
 	}
-	if value != nil && matched == 0 && C.strcasecmp(keyword, libc.CString("Feat")) == 0 && (func() int {
+	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Feat")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
-		__isoc99_sscanf(value, libc.CString("%d %d"), &num, &num2)
+		stdio.Sscanf(value, "%d %d", &num, &num2)
 		ch.Feats[num] = int8(num2)
 	}
-	if value != nil && matched == 0 && C.strcasecmp(keyword, libc.CString("Skill")) == 0 && (func() int {
+	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Skill")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
-		__isoc99_sscanf(value, libc.CString("%d %d"), &num, &num2)
+		stdio.Sscanf(value, "%d %d", &num, &num2)
 		for {
 			ch.Skills[num] = int8(num2)
 			if true {
@@ -2044,11 +2043,11 @@ func interpret_espec(keyword *byte, value *byte, ch *char_data, nr int) {
 			}
 		}
 	}
-	if value != nil && matched == 0 && C.strcasecmp(keyword, libc.CString("SkillMod")) == 0 && (func() int {
+	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("SkillMod")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
-		__isoc99_sscanf(value, libc.CString("%d %d"), &num, &num2)
+		stdio.Sscanf(value, "%d %d", &num, &num2)
 		for {
 			ch.Skillmods[num] = int8(num2)
 			if true {
@@ -2056,19 +2055,19 @@ func interpret_espec(keyword *byte, value *byte, ch *char_data, nr int) {
 			}
 		}
 	}
-	if value != nil && matched == 0 && C.strcasecmp(keyword, libc.CString("Class")) == 0 && (func() int {
+	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Class")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
-		__isoc99_sscanf(value, libc.CString("%d %d"), &num, &num2)
+		stdio.Sscanf(value, "%d %d", &num, &num2)
 		ch.Chclasses[num] = num2
 		ch.Level += num2
 	}
-	if value != nil && matched == 0 && C.strcasecmp(keyword, libc.CString("EpicClass")) == 0 && (func() int {
+	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("EpicClass")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
-		__isoc99_sscanf(value, libc.CString("%d %d"), &num, &num2)
+		stdio.Sscanf(value, "%d %d", &num, &num2)
 		ch.Epicclasses[num] = num2
 		ch.Level += num2
 	}
@@ -2079,7 +2078,7 @@ func interpret_espec(keyword *byte, value *byte, ch *char_data, nr int) {
 func parse_espec(buf *byte, ch *char_data, nr int) {
 	var ptr *byte
 	if (func() *byte {
-		ptr = C.strchr(buf, ':')
+		ptr = libc.StrChr(buf, ':')
 		return ptr
 	}()) != nil {
 		*(func() *byte {
@@ -2088,17 +2087,17 @@ func parse_espec(buf *byte, ch *char_data, nr int) {
 			*p = (*byte)(unsafe.Add(unsafe.Pointer(*p), 1))
 			return x
 		}()) = '\x00'
-		for (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*ptr))))) & int(uint16(int16(_ISspace)))) != 0 {
+		for unicode.IsSpace(rune(*ptr)) {
 			ptr = (*byte)(unsafe.Add(unsafe.Pointer(ptr), 1))
 		}
 	}
 	interpret_espec(buf, ptr, ch, nr)
 }
-func parse_enhanced_mob(mob_f *C.FILE, ch *char_data, nr int) int {
+func parse_enhanced_mob(mob_f *stdio.File, ch *char_data, nr int) int {
 	var line [256]byte
 	parse_simple_mob(mob_f, ch, nr)
 	for get_line(mob_f, &line[0]) != 0 {
-		if C.strcmp(&line[0], libc.CString("E")) == 0 {
+		if libc.StrCmp(&line[0], libc.CString("E")) == 0 {
 			return 1
 		} else if line[0] == '#' {
 			basic_mud_log(libc.CString("SYSERR: Unterminated E section in mob #%d"), nr)
@@ -2110,7 +2109,7 @@ func parse_enhanced_mob(mob_f *C.FILE, ch *char_data, nr int) int {
 	basic_mud_log(libc.CString("SYSERR: Unexpected end of file reached after mob #%d"), nr)
 	return 0
 }
-func parse_mobile_from_file(mob_f *C.FILE, ch *char_data) int {
+func parse_mobile_from_file(mob_f *stdio.File, ch *char_data) int {
 	var (
 		j      int
 		t      [10]int
@@ -2138,8 +2137,8 @@ func parse_mobile_from_file(mob_f *C.FILE, ch *char_data) int {
 		return *p
 	}()
 	if tmpptr != nil && *tmpptr != 0 {
-		if C.strcasecmp(fname(tmpptr), libc.CString("a")) == 0 || C.strcasecmp(fname(tmpptr), libc.CString("an")) == 0 || C.strcasecmp(fname(tmpptr), libc.CString("the")) == 0 {
-			*tmpptr = byte(int8(C.tolower(int(*tmpptr))))
+		if libc.StrCaseCmp(fname(tmpptr), libc.CString("a")) == 0 || libc.StrCaseCmp(fname(tmpptr), libc.CString("an")) == 0 || libc.StrCaseCmp(fname(tmpptr), libc.CString("the")) == 0 {
+			*tmpptr = byte(int8(unicode.ToLower(rune(*tmpptr))))
 		}
 	}
 	ch.Long_descr = fread_string(mob_f, &buf2[0])
@@ -2149,7 +2148,7 @@ func parse_mobile_from_file(mob_f *C.FILE, ch *char_data) int {
 		return 0
 	}
 	if (func() int {
-		retval = __isoc99_sscanf(&line[0], libc.CString("%s %s %s %s %s %s %s %s %d %c"), &f1[0], &f2[0], &f3[0], &f4[0], &f5[0], &f6[0], &f7[0], &f8[0], &t[2], &letter)
+		retval = stdio.Sscanf(&line[0], "%s %s %s %s %s %s %s %s %d %c", &f1[0], &f2[0], &f3[0], &f4[0], &f5[0], &f6[0], &f7[0], &f8[0], &t[2], &letter)
 		return retval
 	}()) == 10 && bitwarning == TRUE {
 		basic_mud_log(libc.CString("WARNING: Conventional mobilefiles detected. Please read 128bit.readme."))
@@ -2171,15 +2170,15 @@ func parse_mobile_from_file(mob_f *C.FILE, ch *char_data) int {
 		ch.Affected_by[int(AFF_GROUP/32)] &= ^(1 << (int(AFF_GROUP % 32)))
 		ch.Affected_by[int(AFF_SLEEP/32)] &= ^(1 << (int(AFF_SLEEP % 32)))
 		if MOB_FLAGGED(ch, MOB_AGGRESSIVE) && MOB_FLAGGED(ch, MOB_AGGR_GOOD) {
-			ch.Act[int(MOB_AGGR_GOOD/32)] &= bitvector_t(^(1 << (int(MOB_AGGR_GOOD % 32))))
+			ch.Act[int(MOB_AGGR_GOOD/32)] &= bitvector_t(int32(^(1 << (int(MOB_AGGR_GOOD % 32)))))
 		}
 		if MOB_FLAGGED(ch, MOB_AGGRESSIVE) && MOB_FLAGGED(ch, MOB_AGGR_NEUTRAL) {
-			ch.Act[int(MOB_AGGR_NEUTRAL/32)] &= bitvector_t(^(1 << (int(MOB_AGGR_NEUTRAL % 32))))
+			ch.Act[int(MOB_AGGR_NEUTRAL/32)] &= bitvector_t(int32(^(1 << (int(MOB_AGGR_NEUTRAL % 32)))))
 		}
 		if MOB_FLAGGED(ch, MOB_AGGRESSIVE) && MOB_FLAGGED(ch, MOB_AGGR_EVIL) {
-			ch.Act[int(MOB_AGGR_EVIL/32)] &= bitvector_t(^(1 << (int(MOB_AGGR_EVIL % 32))))
+			ch.Act[int(MOB_AGGR_EVIL/32)] &= bitvector_t(int32(^(1 << (int(MOB_AGGR_EVIL % 32)))))
 		}
-		check_bitvector_names(bitvector_t(ch.Affected_by[0]), affected_bits_count, &buf2[0], libc.CString("mobile affect"))
+		check_bitvector_names(bitvector_t(int32(ch.Affected_by[0])), affected_bits_count, &buf2[0], libc.CString("mobile affect"))
 		letter = int8(f4[0])
 		if bitsavetodisk != 0 {
 			add_to_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(real_zone_by_thing(room_vnum(nr)))))).Number, 0)
@@ -2201,18 +2200,18 @@ func parse_mobile_from_file(mob_f *C.FILE, ch *char_data) int {
 		ch.Affected_by[3] = int(asciiflag_conv(&f8[0]))
 		ch.Alignment = t[2]
 		for taeller = 0; taeller < AF_ARRAY_MAX; taeller++ {
-			check_bitvector_names(bitvector_t(ch.Affected_by[taeller]), affected_bits_count, &buf2[0], libc.CString("mobile affect"))
+			check_bitvector_names(bitvector_t(int32(ch.Affected_by[taeller])), affected_bits_count, &buf2[0], libc.CString("mobile affect"))
 		}
 	} else {
 		basic_mud_log(libc.CString("SYSERR: Format error after string section of mob #%d\n...expecting line of form '# # # {S | E}'"), nr)
-		C.exit(1)
+		os.Exit(1)
 	}
-	ch.Act[int(MOB_ISNPC/32)] |= bitvector_t(1 << (int(MOB_ISNPC % 32)))
+	ch.Act[int(MOB_ISNPC/32)] |= bitvector_t(int32(1 << (int(MOB_ISNPC % 32))))
 	if MOB_FLAGGED(ch, MOB_NOTDEADYET) {
 		basic_mud_log(libc.CString("SYSERR: Mob #%d has reserved bit MOB_NOTDEADYET set."), nr)
-		ch.Act[int(MOB_NOTDEADYET/32)] &= bitvector_t(^(1 << (int(MOB_NOTDEADYET % 32))))
+		ch.Act[int(MOB_NOTDEADYET/32)] &= bitvector_t(int32(^(1 << (int(MOB_NOTDEADYET % 32)))))
 	}
-	switch C.toupper(int(letter)) {
+	switch unicode.ToUpper(rune(letter)) {
 	case 'S':
 		parse_simple_mob(mob_f, ch, int(nr))
 	case 'E':
@@ -2220,14 +2219,14 @@ func parse_mobile_from_file(mob_f *C.FILE, ch *char_data) int {
 		mob_stats(ch)
 	default:
 		basic_mud_log(libc.CString("SYSERR: Unsupported mob type '%c' in mob #%d"), letter, nr)
-		C.exit(1)
+		os.Exit(1)
 	}
 	letter = fread_letter(mob_f)
-	ungetc(int(letter), mob_f)
+	mob_f.UnGetC(int(letter))
 	for int(letter) == 'T' {
 		dg_read_trigger(mob_f, unsafe.Pointer(ch), MOB_TRIGGER)
 		letter = fread_letter(mob_f)
-		ungetc(int(letter), mob_f)
+		mob_f.UnGetC(int(letter))
 	}
 	ch.Aff_abils = ch.Real_abils
 	for j = 0; j < NUM_WEARS; j++ {
@@ -2235,7 +2234,7 @@ func parse_mobile_from_file(mob_f *C.FILE, ch *char_data) int {
 	}
 	return 1
 }
-func parse_mobile(mob_f *C.FILE, nr int) {
+func parse_mobile(mob_f *stdio.File, nr int) {
 	var i int = 0
 	(*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Vnum = mob_vnum(nr)
 	(*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Number = 0
@@ -2255,10 +2254,10 @@ func parse_mobile(mob_f *C.FILE, nr int) {
 			return x
 		}())
 	} else {
-		C.exit(1)
+		os.Exit(1)
 	}
 }
-func parse_object(obj_f *C.FILE, nr int) *byte {
+func parse_object(obj_f *stdio.File, nr int) *byte {
 	var (
 		i         int = 0
 		line      [256]byte
@@ -2297,7 +2296,7 @@ func parse_object(obj_f *C.FILE, nr int) *byte {
 		return *p
 	}()) == nil {
 		basic_mud_log(libc.CString("SYSERR: Null obj name or format error at or near %s"), &buf2[0])
-		C.exit(1)
+		os.Exit(1)
 	}
 	tmpptr = func() *byte {
 		p := &(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Short_description
@@ -2305,8 +2304,8 @@ func parse_object(obj_f *C.FILE, nr int) *byte {
 		return *p
 	}()
 	if tmpptr != nil && *tmpptr != 0 {
-		if C.strcasecmp(fname(tmpptr), libc.CString("a")) == 0 || C.strcasecmp(fname(tmpptr), libc.CString("an")) == 0 || C.strcasecmp(fname(tmpptr), libc.CString("the")) == 0 {
-			*tmpptr = byte(int8(C.tolower(int(*tmpptr))))
+		if libc.StrCaseCmp(fname(tmpptr), libc.CString("a")) == 0 || libc.StrCaseCmp(fname(tmpptr), libc.CString("an")) == 0 || libc.StrCaseCmp(fname(tmpptr), libc.CString("the")) == 0 {
+			*tmpptr = byte(int8(unicode.ToLower(rune(*tmpptr))))
 		}
 	}
 	tmpptr = func() *byte {
@@ -2320,14 +2319,14 @@ func parse_object(obj_f *C.FILE, nr int) *byte {
 	(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Action_description = fread_string(obj_f, &buf2[0])
 	if get_line(obj_f, &line[0]) == 0 {
 		basic_mud_log(libc.CString("SYSERR: Expecting first numeric line of %s, but file ended!"), &buf2[0])
-		C.exit(1)
+		os.Exit(1)
 	}
 	if (func() int {
-		retval = __isoc99_sscanf(&line[0], libc.CString(" %d %s %s %s %s %s %s %s %s %s %s %s %s"), &t[0], &f1[0], &f2[0], &f3[0], &f4[0], &f5[0], &f6[0], &f7[0], &f8[0], &f9[0], &f10[0], &f11[0], &f12[0])
+		retval = stdio.Sscanf(&line[0], " %d %s %s %s %s %s %s %s %s %s %s %s %s", &t[0], &f1[0], &f2[0], &f3[0], &f4[0], &f5[0], &f6[0], &f7[0], &f8[0], &f9[0], &f10[0], &f11[0], &f12[0])
 		return retval
 	}()) == 4 && bitwarning == TRUE {
 		basic_mud_log(libc.CString("WARNING: Conventional objectfiles detected. Please read 128bit.readme."))
-		C.exit(1)
+		os.Exit(1)
 	} else if (retval == 4 || retval == 3) && bitwarning == FALSE {
 		if retval == 3 {
 			t[3] = 0
@@ -2367,27 +2366,27 @@ func parse_object(obj_f *C.FILE, nr int) *byte {
 		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Bitvector[3] = asciiflag_conv(&f12[0])
 	} else {
 		basic_mud_log(libc.CString("SYSERR: Format error in first numeric line (expecting 13 args, got %d), %s"), retval, &buf2[0])
-		C.exit(1)
+		os.Exit(1)
 	}
 	((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Type_flag = int8(t[0])
 	if get_line(obj_f, &line[0]) == 0 {
 		basic_mud_log(libc.CString("SYSERR: Expecting second numeric line of %s, but file ended!"), &buf2[0])
-		C.exit(1)
+		os.Exit(1)
 	}
 	for j = 0; j < NUM_OBJ_VAL_POSITIONS; j++ {
 		t[j] = 0
 	}
 	if (func() int {
-		retval = __isoc99_sscanf(&line[0], libc.CString("%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d"), &t[0], &t[1], &t[2], &t[3], &t[4], &t[5], &t[6], &t[7], &t[8], &t[9], &t[10], &t[11], &t[12], &t[13], &t[14], &t[15])
+		retval = stdio.Sscanf(&line[0], "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d", &t[0], &t[1], &t[2], &t[3], &t[4], &t[5], &t[6], &t[7], &t[8], &t[9], &t[10], &t[11], &t[12], &t[13], &t[14], &t[15])
 		return retval
 	}()) > NUM_OBJ_VAL_POSITIONS {
 		basic_mud_log(libc.CString("SYSERR: Format error in second numeric line (expecting <=%d args, got %d), %s"), NUM_OBJ_VAL_POSITIONS, retval, &buf2[0])
-		C.exit(1)
+		os.Exit(1)
 	}
 	for j = 0; j < NUM_OBJ_VAL_POSITIONS; j++ {
 		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Value[j] = t[j]
 	}
-	if (((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Type_flag == ITEM_PORTAL || ((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Type_flag == ITEM_HATCH) && ((((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Value[VAL_DOOR_DCLOCK]) == 0 || (((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Value[VAL_DOOR_DCHIDE]) == 0) {
+	if (int(((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Type_flag) == ITEM_PORTAL || int(((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Type_flag) == ITEM_HATCH) && ((((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Value[VAL_DOOR_DCLOCK]) == 0 || (((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Value[VAL_DOOR_DCHIDE]) == 0) {
 		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Value[VAL_DOOR_DCLOCK] = 20
 		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Value[VAL_DOOR_DCHIDE] = 20
 		if bitsavetodisk != 0 {
@@ -2395,7 +2394,7 @@ func parse_object(obj_f *C.FILE, nr int) *byte {
 			converting = TRUE
 		}
 	}
-	if ((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Type_flag == ITEM_WEAPON && (((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Value[0]) > 169 {
+	if int(((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Type_flag) == ITEM_WEAPON && (((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Value[0]) > 169 {
 		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Value[0] = suntzu_weapon_convert(t[0])
 		if bitsavetodisk != 0 {
 			add_to_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(real_zone_by_thing(room_vnum(nr)))))).Number, 1)
@@ -2404,17 +2403,17 @@ func parse_object(obj_f *C.FILE, nr int) *byte {
 	}
 	if get_line(obj_f, &line[0]) == 0 {
 		basic_mud_log(libc.CString("SYSERR: Expecting third numeric line of %s, but file ended!"), &buf2[0])
-		C.exit(1)
+		os.Exit(1)
 	}
 	if (func() int {
-		retval = __isoc99_sscanf(&line[0], libc.CString("%d %d %d %d"), &t[0], &t[1], &t[2], &t[3])
+		retval = stdio.Sscanf(&line[0], "%d %d %d %d", &t[0], &t[1], &t[2], &t[3])
 		return retval
 	}()) != 4 {
 		if retval == 3 {
 			t[3] = 0
 		} else {
 			basic_mud_log(libc.CString("SYSERR: Format error in third numeric line (expecting 4 args, got %d), %s"), retval, &buf2[0])
-			C.exit(1)
+			os.Exit(1)
 		}
 	}
 	((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Weight = int64(t[0])
@@ -2422,12 +2421,12 @@ func parse_object(obj_f *C.FILE, nr int) *byte {
 	((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Cost_per_day = t[2]
 	((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Level = t[3]
 	((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Size = SIZE_MEDIUM
-	if ((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Type_flag == ITEM_DRINKCON || ((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Type_flag == ITEM_FOUNTAIN {
+	if int(((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Type_flag) == ITEM_DRINKCON || int(((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Type_flag) == ITEM_FOUNTAIN {
 		if ((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Weight < int64(((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Value[1]) {
 			((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Weight = int64((((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Value[1]) + 5)
 		}
 	}
-	if ((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Type_flag == ITEM_PORTAL {
+	if int(((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Type_flag) == ITEM_PORTAL {
 		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Timer = -1
 	}
 	for j = 0; j < MAX_OBJ_AFFECT; j++ {
@@ -2435,12 +2434,12 @@ func parse_object(obj_f *C.FILE, nr int) *byte {
 		(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Affected[j].Modifier = 0
 		(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Affected[j].Specific = 0
 	}
-	C.strcat(&buf2[0], libc.CString(", after numeric constants\n...expecting 'E', 'A', '$', or next object number"))
+	libc.StrCat(&buf2[0], libc.CString(", after numeric constants\n...expecting 'E', 'A', '$', or next object number"))
 	j = 0
 	for {
 		if get_line(obj_f, &line[0]) == 0 {
 			basic_mud_log(libc.CString("SYSERR: Format error in %s"), &buf2[0])
-			C.exit(1)
+			os.Exit(1)
 		}
 		switch line[0] {
 		case 'E':
@@ -2452,20 +2451,20 @@ func parse_object(obj_f *C.FILE, nr int) *byte {
 		case 'A':
 			if j >= MAX_OBJ_AFFECT {
 				basic_mud_log(libc.CString("SYSERR: Too many A fields (%d max), %s"), MAX_OBJ_AFFECT, &buf2[0])
-				C.exit(1)
+				os.Exit(1)
 			}
 			if get_line(obj_f, &line[0]) == 0 {
 				basic_mud_log(libc.CString("SYSERR: Format error in 'A' field, %s\n...expecting 2 numeric constants but file ended!"), &buf2[0])
-				C.exit(1)
+				os.Exit(1)
 			}
 			t[1] = 0
 			if (func() int {
-				retval = __isoc99_sscanf(&line[0], libc.CString(" %d %d %d "), &t[0], &t[1], &t[2])
+				retval = stdio.Sscanf(&line[0], " %d %d %d ", &t[0], &t[1], &t[2])
 				return retval
 			}()) != 3 {
 				if retval != 2 {
 					basic_mud_log(libc.CString("SYSERR: Format error in 'A' field, %s\n...expecting 2 numeric arguments, got %d\n...offending line: '%s'"), &buf2[0], retval, &line[0])
-					C.exit(1)
+					os.Exit(1)
 				}
 			}
 			if t[0] >= APPLY_UNUSED3 && t[0] <= APPLY_UNUSED4 {
@@ -2478,18 +2477,18 @@ func parse_object(obj_f *C.FILE, nr int) *byte {
 		case 'S':
 			if j >= SPELLBOOK_SIZE {
 				basic_mud_log(libc.CString("SYSERR: Unknown spellbook slot in S field, %s"), &buf2[0])
-				C.exit(1)
+				os.Exit(1)
 			}
 			if get_line(obj_f, &line[0]) == 0 {
 				basic_mud_log(libc.CString("SYSERR: Format error in 'S' field, %s\n...expecting 2 numeric constants but file ended!"), &buf2[0])
-				C.exit(1)
+				os.Exit(1)
 			}
 			if (func() int {
-				retval = __isoc99_sscanf(&line[0], libc.CString(" %d %d "), &t[0], &t[1])
+				retval = stdio.Sscanf(&line[0], " %d %d ", &t[0], &t[1])
 				return retval
 			}()) != 2 {
 				basic_mud_log(libc.CString("SYSERR: Format error in 'S' field, %s\n...expecting 2 numeric arguments, got %d\n...offending line: '%s'"), &buf2[0], retval, &line[0])
-				C.exit(1)
+				os.Exit(1)
 			}
 			if (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Sbinfo == nil {
 				(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Sbinfo = &make([]obj_spellbook_spell, SPELLBOOK_SIZE)[0]
@@ -2503,11 +2502,11 @@ func parse_object(obj_f *C.FILE, nr int) *byte {
 		case 'Z':
 			if get_line(obj_f, &line[0]) == 0 {
 				basic_mud_log(libc.CString("SYSERR: Format error in 'Z' field, %s\n...expecting numeric constant but file ended!"), &buf2[0])
-				C.exit(1)
+				os.Exit(1)
 			}
-			if __isoc99_sscanf(&line[0], libc.CString("%d"), &t[0]) != 1 {
+			if stdio.Sscanf(&line[0], "%d", &t[0]) != 1 {
 				basic_mud_log(libc.CString("SYSERR: Format error in 'Z' field, %s\n...expecting numeric argument\n...offending line: '%s'"), &buf2[0], &line[0])
-				C.exit(1)
+				os.Exit(1)
 			}
 			((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Size = t[0]
 		case '$':
@@ -2515,7 +2514,7 @@ func parse_object(obj_f *C.FILE, nr int) *byte {
 		case '#':
 			if OBJAFF_FLAGGED((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i))), AFF_CHARM) {
 				basic_mud_log(libc.CString("SYSERR: Object #%d has reserved bit AFF_CHARM set."), nr)
-				((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Bitvector[int(AFF_CHARM/32)] &= bitvector_t(^(1 << (int(AFF_CHARM % 32))))
+				((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Bitvector[int(AFF_CHARM/32)] &= bitvector_t(int32(^(1 << (int(AFF_CHARM % 32)))))
 			}
 			top_of_objt = obj_rnum(i)
 			check_object((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i))))
@@ -2523,12 +2522,12 @@ func parse_object(obj_f *C.FILE, nr int) *byte {
 			return &line[0]
 		default:
 			basic_mud_log(libc.CString("SYSERR: Format error in (%c): %s"), line[0], &buf2[0])
-			C.exit(1)
+			os.Exit(1)
 		}
 	}
 	return &line[0]
 }
-func load_zones(fl *C.FILE, zonename *byte) {
+func load_zones(fl *stdio.File, zonename *byte) {
 	var (
 		zone        zone_rnum = 0
 		cmd_no      int
@@ -2552,47 +2551,47 @@ func load_zones(fl *C.FILE, zonename *byte) {
 		get_line(fl, &buf[0])
 	}
 	for get_line(fl, &buf[0]) != 0 {
-		if C.strchr(libc.CString("MOPGERDTV"), int(buf[0])) != nil && buf[1] == ' ' || buf[0] == 'S' && buf[1] == '\x00' {
+		if libc.StrChr(libc.CString("MOPGERDTV"), buf[0]) != nil && buf[1] == ' ' || buf[0] == 'S' && buf[1] == '\x00' {
 			num_of_cmds++
 		}
 	}
-	C.rewind(fl)
+	rewind(fl)
 	if num_of_cmds == 0 {
 		basic_mud_log(libc.CString("SYSERR: %s is empty!"), &zname[0])
-		C.exit(1)
+		os.Exit(1)
 	} else {
 		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd = &make([]reset_com, num_of_cmds)[0]
 	}
 	line_num += get_line(fl, &buf[0])
 	if buf[0] == '@' {
-		if __isoc99_sscanf(&buf[0], libc.CString("@Version: %d"), &version) != 1 {
+		if stdio.Sscanf(&buf[0], "@Version: %d", &version) != 1 {
 			basic_mud_log(libc.CString("SYSERR: Format error in %s (version)"), &zname[0])
 			basic_mud_log(libc.CString("SYSERR: ...Line: %s"), &line[0])
-			C.exit(1)
+			os.Exit(1)
 		}
 		line_num += get_line(fl, &buf[0])
 	}
-	if __isoc99_sscanf(&buf[0], libc.CString("#%hd"), &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Number) != 1 {
+	if stdio.Sscanf(&buf[0], "#%hd", &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Number) != 1 {
 		basic_mud_log(libc.CString("SYSERR: Format error in %s, line %d"), &zname[0], line_num)
-		C.exit(1)
+		os.Exit(1)
 	}
 	stdio.Snprintf(&buf2[0], int(64936), "beginning of zone #%d", (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Number)
 	line_num += get_line(fl, &buf[0])
 	if (func() *byte {
-		ptr = C.strchr(&buf[0], '~')
+		ptr = libc.StrChr(&buf[0], '~')
 		return ptr
 	}()) != nil {
 		*ptr = '\x00'
 	}
-	(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Builders = C.strdup(&buf[0])
+	(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Builders = libc.StrDup(&buf[0])
 	line_num += get_line(fl, &buf[0])
 	if (func() *byte {
-		ptr = C.strchr(&buf[0], '~')
+		ptr = libc.StrChr(&buf[0], '~')
 		return ptr
 	}()) != nil {
 		*ptr = '\x00'
 	}
-	(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Name = C.strdup(&buf[0])
+	(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Name = libc.StrDup(&buf[0])
 	line_num += get_line(fl, &buf[0])
 	if version >= 2 {
 		var (
@@ -2601,30 +2600,30 @@ func load_zones(fl *C.FILE, zonename *byte) {
 			zbuf3 [64936]byte
 			zbuf4 [64936]byte
 		)
-		if __isoc99_sscanf(&buf[0], libc.CString(" %hd %hd %d %d %s %s %s %s %d %d"), &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Lifespan, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Reset_mode, &zbuf1[0], &zbuf2[0], &zbuf3[0], &zbuf4[0], &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Min_level, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Max_level) != 10 {
+		if stdio.Sscanf(&buf[0], " %hd %hd %d %d %s %s %s %s %d %d", &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Lifespan, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Reset_mode, &zbuf1[0], &zbuf2[0], &zbuf3[0], &zbuf4[0], &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Min_level, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Max_level) != 10 {
 			basic_mud_log(libc.CString("SYSERR: Format error in 10-constant line of %s"), &zname[0])
-			C.exit(1)
+			os.Exit(1)
 		}
 		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Zone_flags[0] = int(asciiflag_conv(&zbuf1[0]))
 		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Zone_flags[1] = int(asciiflag_conv(&zbuf2[0]))
 		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Zone_flags[2] = int(asciiflag_conv(&zbuf3[0]))
 		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Zone_flags[3] = int(asciiflag_conv(&zbuf4[0]))
-	} else if __isoc99_sscanf(&buf[0], libc.CString(" %hd %hd %d %d "), &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Lifespan, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Reset_mode) != 4 {
+	} else if stdio.Sscanf(&buf[0], " %hd %hd %d %d ", &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Lifespan, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Reset_mode) != 4 {
 		basic_mud_log(libc.CString("SYSERR: Format error in numeric constant line of %s, attempting to fix."), &zname[0])
-		if __isoc99_sscanf((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Name, libc.CString(" %hd %hd %d %d "), &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Lifespan, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Reset_mode) != 4 {
+		if stdio.Sscanf((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Name, " %hd %hd %d %d ", &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Lifespan, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Reset_mode) != 4 {
 			basic_mud_log(libc.CString("SYSERR: Could not fix previous error, aborting game."))
-			C.exit(1)
+			os.Exit(1)
 		} else {
 			libc.Free(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Name))
-			(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Name = C.strdup((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Builders)
+			(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Name = libc.StrDup((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Builders)
 			libc.Free(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Builders))
-			(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Builders = C.strdup(libc.CString("None."))
+			(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Builders = libc.CString("None.")
 			zone_fix = TRUE
 		}
 	}
 	if (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot > (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top {
 		basic_mud_log(libc.CString("SYSERR: Zone %d bottom (%d) > top (%d)."), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Number, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top)
-		C.exit(1)
+		os.Exit(1)
 	}
 	cmd_no = 0
 	for {
@@ -2634,7 +2633,7 @@ func load_zones(fl *C.FILE, zonename *byte) {
 				return tmp
 			}()) == 0 {
 				basic_mud_log(libc.CString("SYSERR: Format error in %s - premature end of file"), &zname[0])
-				C.exit(1)
+				os.Exit(1)
 			}
 		} else {
 			zone_fix = FALSE
@@ -2655,20 +2654,20 @@ func load_zones(fl *C.FILE, zonename *byte) {
 			break
 		}
 		error = 0
-		if C.strchr(libc.CString("MOEPDTVG"), int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command)) == nil {
-			if __isoc99_sscanf(ptr, libc.CString(" %d %d %d %d "), &tmp, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3) != 4 {
+		if libc.StrChr(libc.CString("MOEPDTVG"), byte((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command)) == nil {
+			if stdio.Sscanf(ptr, " %d %d %d %d ", &tmp, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3) != 4 {
 				error = 1
 			}
 		} else if int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command) == 'V' {
-			if __isoc99_sscanf(ptr, libc.CString(" %d %d %d %d %d %d %79s %79[^\f\n\r\t\v]"), &tmp, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg4, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg5, &t1[0], &t2[0]) != 8 {
+			if stdio.Sscanf(ptr, " %d %d %d %d %d %d %79s %79[^\f\n\r\t\v]", &tmp, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg4, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg5, &t1[0], &t2[0]) != 8 {
 				error = 1
 			} else {
-				(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Sarg1 = C.strdup(&t1[0])
-				(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Sarg2 = C.strdup(&t2[0])
+				(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Sarg1 = libc.StrDup(&t1[0])
+				(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Sarg2 = libc.StrDup(&t2[0])
 			}
 		} else {
 			if (func() int {
-				arg_num = __isoc99_sscanf(ptr, libc.CString(" %d %d %d %d %d %d "), &tmp, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg4, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg5)
+				arg_num = stdio.Sscanf(ptr, " %d %d %d %d %d %d ", &tmp, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg4, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg5)
 				return arg_num
 			}()) != 6 {
 				if arg_num != 5 {
@@ -2681,14 +2680,14 @@ func load_zones(fl *C.FILE, zonename *byte) {
 		(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).If_flag = tmp != 0
 		if error != 0 {
 			basic_mud_log(libc.CString("SYSERR: Format error in %s, line %d: '%s'"), &zname[0], line_num, &buf[0])
-			C.exit(1)
+			os.Exit(1)
 		}
 		(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Line = line_num
 		cmd_no++
 	}
 	if num_of_cmds != cmd_no+1 {
 		basic_mud_log(libc.CString("SYSERR: Zone command count mismatch for %s. Estimated: %d, Actual: %d"), &zname[0], num_of_cmds, cmd_no+1)
-		C.exit(1)
+		os.Exit(1)
 	}
 	top_of_zone_table = func() zone_rnum {
 		p := &zone
@@ -2697,12 +2696,12 @@ func load_zones(fl *C.FILE, zonename *byte) {
 		return x
 	}()
 }
-func get_one_line(fl *C.FILE, buf *byte) {
-	if C.fgets(buf, READ_SIZE, fl) == nil {
+func get_one_line(fl *stdio.File, buf *byte) {
+	if fl.GetS(buf, READ_SIZE) == nil {
 		basic_mud_log(libc.CString("SYSERR: error reading help file: not terminated with $?"))
-		C.exit(1)
+		os.Exit(1)
 	}
-	*(*byte)(unsafe.Add(unsafe.Pointer(buf), C.strlen(buf)-1)) = '\x00'
+	*(*byte)(unsafe.Add(unsafe.Pointer(buf), libc.StrLen(buf)-1)) = '\x00'
 }
 func free_help(cmhelp *help_index_element) {
 	if cmhelp.Keywords != nil {
@@ -2729,7 +2728,7 @@ func free_help_table() {
 	}
 	top_of_helpt = 0
 }
-func load_help(fl *C.FILE, name *byte) {
+func load_help(fl *stdio.File, name *byte) {
 	var (
 		key      [257]byte
 		next_key [257]byte
@@ -2743,13 +2742,13 @@ func load_help(fl *C.FILE, name *byte) {
 	strlcpy(&hname[0], name, uint64(257))
 	get_one_line(fl, &key[0])
 	for key[0] != '$' {
-		C.strcat(&key[0], libc.CString("\r\n"))
+		libc.StrCat(&key[0], libc.CString("\r\n"))
 		entrylen = strlcpy(&entry[0], &key[0], uint64(32384))
 		get_one_line(fl, &line[0])
 		for line[0] != '#' && entrylen < uint64(32384-1) {
 			entrylen += strlcpy(&entry[entrylen], &line[0], uint64(32384-uintptr(entrylen)))
 			if entrylen+2 < uint64(32384-1) {
-				C.strcpy(&entry[entrylen], libc.CString("\r\n"))
+				libc.StrCpy(&entry[entrylen], libc.CString("\r\n"))
 				entrylen += 2
 			}
 			get_one_line(fl, &line[0])
@@ -2759,24 +2758,24 @@ func load_help(fl *C.FILE, name *byte) {
 				keysize  int
 				truncmsg *byte = libc.CString("\r\n*TRUNCATED*\r\n")
 			)
-			C.strcpy((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(&entry[32384]), -C.strlen(truncmsg)))), -1)), truncmsg)
-			keysize = int(C.strlen(&key[0]) - 2)
+			libc.StrCpy((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(&entry[32384]), -libc.StrLen(truncmsg)))), -1)), truncmsg)
+			keysize = libc.StrLen(&key[0]) - 2
 			basic_mud_log(libc.CString("SYSERR: Help entry exceeded buffer space: %.*s"), keysize, &key[0])
 			for line[0] != '#' {
 				get_one_line(fl, &line[0])
 			}
 		}
 		if line[0] == '#' {
-			if __isoc99_sscanf(&line[0], libc.CString("#%d"), &el.Min_level) != 1 {
+			if stdio.Sscanf(&line[0], "#%d", &el.Min_level) != 1 {
 				basic_mud_log(libc.CString("SYSERR: Help entry does not have a min level. %s"), &key[0])
 				el.Min_level = 0
 			}
 		}
 		el.Duplicate = 0
-		el.Entry = C.strdup(&entry[0])
+		el.Entry = libc.StrDup(&entry[0])
 		scan = one_word(&key[0], &next_key[0])
 		for next_key[0] != 0 {
-			el.Keywords = C.strdup(&next_key[0])
+			el.Keywords = libc.StrDup(&next_key[0])
 			*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(func() int {
 				p := &top_of_helpt
 				x := *p
@@ -2796,7 +2795,7 @@ func hsort(a unsafe.Pointer, b unsafe.Pointer) int {
 	)
 	a1 = (*help_index_element)(a)
 	b1 = (*help_index_element)(b)
-	return C.strcasecmp(a1.Keywords, b1.Keywords)
+	return libc.StrCaseCmp(a1.Keywords, b1.Keywords)
 }
 func vnum_mobile(searchname *byte, ch *char_data) int {
 	var (
@@ -2867,7 +2866,7 @@ func vnum_weapontype(searchname *byte, ch *char_data) int {
 		found int = 0
 	)
 	for nr = 0; nr <= int(top_of_objt); nr++ {
-		if (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(nr)))).Type_flag == ITEM_WEAPON {
+		if int((*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(nr)))).Type_flag) == ITEM_WEAPON {
 			if isname(searchname, weapon_type[(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(nr)))).Value[VAL_WEAPON_SKILL]]) != 0 {
 				send_to_char(ch, libc.CString("%3d. [%5d] %-40s %s\r\n"), func() int {
 					p := &found
@@ -2890,7 +2889,7 @@ func vnum_armortype(searchname *byte, ch *char_data) int {
 		found int = 0
 	)
 	for nr = 0; nr <= int(top_of_objt); nr++ {
-		if (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(nr)))).Type_flag == ITEM_ARMOR {
+		if int((*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(nr)))).Type_flag) == ITEM_ARMOR {
 			if isname(searchname, armor_type[(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(nr)))).Value[VAL_ARMOR_SKILL]]) != 0 {
 				send_to_char(ch, libc.CString("%3d. [%5d] %-40s %s\r\n"), func() int {
 					p := &found
@@ -2947,7 +2946,7 @@ func read_mobile(nr mob_vnum, type_ int) *char_data {
 	character_list = mob
 	mob.Next_affect = nil
 	mob.Next_affectv = nil
-	if mob.Race == RACE_HOSHIJIN && mob.Sex == SEX_MALE {
+	if int(mob.Race) == RACE_HOSHIJIN && int(mob.Sex) == SEX_MALE {
 		mob.Hairl = 0
 		mob.Hairc = 0
 		mob.Hairs = 0
@@ -2963,13 +2962,13 @@ func read_mobile(nr mob_vnum, type_ int) *char_data {
 	mob.Sits = nil
 	mob.Blocked = nil
 	mob.Blocks = nil
-	if mob.Race != RACE_HUMAN && mob.Race != RACE_SAIYAN && mob.Race != RACE_HALFBREED && mob.Race != RACE_NAMEK {
+	if int(mob.Race) != RACE_HUMAN && int(mob.Race) != RACE_SAIYAN && int(mob.Race) != RACE_HALFBREED && int(mob.Race) != RACE_NAMEK {
 		mob.Skin = int8(rand_number(0, 11))
 	}
-	if mob.Race == RACE_NAMEK {
+	if int(mob.Race) == RACE_NAMEK {
 		mob.Skin = 2
 	}
-	if mob.Race == RACE_HUMAN || mob.Race == RACE_SAIYAN || mob.Race == RACE_HALFBREED {
+	if int(mob.Race) == RACE_HUMAN || int(mob.Race) == RACE_SAIYAN || int(mob.Race) == RACE_HALFBREED {
 		if rand_number(1, 5) <= 2 {
 			mob.Skin = int8(rand_number(0, 1))
 		} else if rand_number(1, 5) <= 4 {
@@ -2978,7 +2977,7 @@ func read_mobile(nr mob_vnum, type_ int) *char_data {
 			mob.Skin = int8(rand_number(9, 10))
 		}
 	}
-	if mob.Race == RACE_SAIYAN {
+	if int(mob.Race) == RACE_SAIYAN {
 		mob.Hairc = int8(rand_number(1, 2))
 		mob.Eye = 1
 	}
@@ -3234,7 +3233,7 @@ func read_mobile(nr mob_vnum, type_ int) *char_data {
 			mult = int64(rand_number(1250000000, 1500000000))
 		}
 	}
-	mob.Lastpl = C.time(nil)
+	mob.Lastpl = libc.GetTime(nil)
 	if mob.Max_hit <= 1 {
 		mob.Max_hit = int64(GET_LEVEL(mob) * int(mult))
 		if GET_LEVEL(mob) > 140 {
@@ -3540,23 +3539,23 @@ func read_mobile(nr mob_vnum, type_ int) *char_data {
 		mob.Exp = int64(float64(mob.Exp) * 0.9)
 		mob.Exp += int64(GET_LEVEL(mob) / 2)
 		mob.Exp += int64(GET_LEVEL(mob) / 3)
-		if mob.Race == RACE_LIZARDFOLK {
+		if int(mob.Race) == RACE_LIZARDFOLK {
 			mob.Exp *= int64(1.4)
-		} else if mob.Race == RACE_ANDROID {
+		} else if int(mob.Race) == RACE_ANDROID {
 			mob.Exp *= int64(1.25)
-		} else if mob.Race == RACE_SAIYAN {
+		} else if int(mob.Race) == RACE_SAIYAN {
 			mob.Exp *= int64(1.1)
-		} else if mob.Race == RACE_BIO {
+		} else if int(mob.Race) == RACE_BIO {
 			mob.Exp *= int64(1.2)
-		} else if mob.Race == RACE_MAJIN {
+		} else if int(mob.Race) == RACE_MAJIN {
 			mob.Exp *= int64(1.25)
-		} else if mob.Race == RACE_DEMON {
+		} else if int(mob.Race) == RACE_DEMON {
 			mob.Exp *= int64(1.1)
-		} else if mob.Chclass == CLASS_SHADOWDANCER {
+		} else if int(mob.Chclass) == CLASS_SHADOWDANCER {
 			mob.Exp *= 2
 		}
-		if mob.Chclass == CLASS_NPC_COMMONER && IS_HUMANOID(mob) && mob.Race != RACE_LIZARDFOLK {
-			if mob.Race != RACE_ANDROID && mob.Race != RACE_SAIYAN && mob.Race != RACE_BIO && mob.Race != RACE_MAJIN {
+		if int(mob.Chclass) == CLASS_NPC_COMMONER && IS_HUMANOID(mob) && int(mob.Race) != RACE_LIZARDFOLK {
+			if int(mob.Race) != RACE_ANDROID && int(mob.Race) != RACE_SAIYAN && int(mob.Race) != RACE_BIO && int(mob.Race) != RACE_MAJIN {
 				mob.Exp *= int64(0.75)
 			}
 		}
@@ -3580,21 +3579,21 @@ func read_mobile(nr mob_vnum, type_ int) *char_data {
 	mob.Hit = mob.Max_hit
 	mob.Mana = mob.Max_hit
 	mob.Move = mob.Max_hit
-	mob.Time.Birth = C.time(nil) - birth_age(mob)
-	mob.Time.Created = func() int64 {
+	mob.Time.Birth = libc.GetTime(nil) - birth_age(mob)
+	mob.Time.Created = func() libc.Time {
 		p := &mob.Time.Logon
-		mob.Time.Logon = C.time(nil)
+		mob.Time.Logon = libc.GetTime(nil)
 		return *p
 	}()
 	mob.Time.Maxage = mob.Time.Birth + max_age(mob)
 	mob.Time.Played = 0
-	mob.Time.Logon = C.time(nil)
+	mob.Time.Logon = libc.GetTime(nil)
 	mob.Hometown = -1
 	if IS_HUMANOID(mob) {
-		mob.Act[int(MOB_RARM/32)] |= bitvector_t(1 << (int(MOB_RARM % 32)))
-		mob.Act[int(MOB_LARM/32)] |= bitvector_t(1 << (int(MOB_LARM % 32)))
-		mob.Act[int(MOB_RLEG/32)] |= bitvector_t(1 << (int(MOB_RLEG % 32)))
-		mob.Act[int(MOB_LLEG/32)] |= bitvector_t(1 << (int(MOB_LLEG % 32)))
+		mob.Act[int(MOB_RARM/32)] |= bitvector_t(int32(1 << (int(MOB_RARM % 32))))
+		mob.Act[int(MOB_LARM/32)] |= bitvector_t(int32(1 << (int(MOB_LARM % 32))))
+		mob.Act[int(MOB_RLEG/32)] |= bitvector_t(int32(1 << (int(MOB_RLEG % 32))))
+		mob.Act[int(MOB_LLEG/32)] |= bitvector_t(int32(1 << (int(MOB_LLEG % 32))))
 	}
 	(*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Number++
 	mob.Id = int32(func() int {
@@ -3614,7 +3613,7 @@ func read_mobile(nr mob_vnum, type_ int) *char_data {
 }
 
 type obj_unique_hash_elem struct {
-	Generation int64
+	Generation libc.Time
 	Unique_id  int64
 	Obj        *obj_data
 	Next_e     *obj_unique_hash_elem
@@ -3648,14 +3647,14 @@ func add_unique_id(obj *obj_data) {
 	}
 	if obj.Unique_id == -1 {
 		if unsafe.Sizeof(int64(0)) > unsafe.Sizeof(int(0)) {
-			obj.Unique_id = int64(((int64(circle_random())) << int64(unsafe.Sizeof(int64(0))*4)) + int64(circle_random()))
+			obj.Unique_id = ((int64(circle_random())) << int64(unsafe.Sizeof(int64(0))*4)) + int64(circle_random())
 		} else {
 			obj.Unique_id = int64(circle_random())
 		}
 	}
 	if config_info.Play.All_items_unique != 0 {
 		if !OBJ_FLAGGED(obj, ITEM_UNIQUE_SAVE) {
-			obj.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(1 << (int(ITEM_UNIQUE_SAVE % 32)))
+			obj.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(int32(1 << (int(ITEM_UNIQUE_SAVE % 32))))
 		}
 	}
 	elem = new(obj_unique_hash_elem)
@@ -3763,7 +3762,7 @@ func check_unique_id(obj *obj_data) {
 		}
 		if elem.Generation == obj.Generation && elem.Unique_id == obj.Unique_id {
 			log_dupe_objects(elem.Obj, obj)
-			obj.Extra_flags[int(ITEM_PURGE/32)] |= bitvector_t(1 << (int(ITEM_PURGE % 32)))
+			obj.Extra_flags[int(ITEM_PURGE/32)] |= bitvector_t(int32(1 << (int(ITEM_PURGE % 32))))
 		}
 		elem = elem.Next_e
 	}
@@ -3784,17 +3783,17 @@ func sprintuniques(low int, high int) *byte {
 		remain += 40
 		for q != nil {
 			count++
-			remain += int((func() int64 {
+			remain += (func() int {
 				if q.Obj.Short_description != nil {
-					return C.strlen(q.Obj.Short_description)
+					return libc.StrLen(q.Obj.Short_description)
 				}
 				return 20
-			}()) + 80)
+			}()) + 80
 			q = q.Next_e
 		}
 	}
 	if count < 1 {
-		return C.strdup(libc.CString("No objects in unique hash.\r\n"))
+		return libc.CString("No objects in unique hash.\r\n")
 	}
 	str = (*byte)(unsafe.Pointer(&make([]int8, remain+1)[0]))
 	ptr = str
@@ -3839,7 +3838,7 @@ func create_obj() *obj_data {
 		return x
 	}())
 	add_to_lookup_table(int(obj.Id), unsafe.Pointer(obj))
-	obj.Generation = C.time(nil)
+	obj.Generation = libc.GetTime(nil)
 	obj.Unique_id = -1
 	assign_triggers(unsafe.Pointer(obj), OBJ_TRIGGER)
 	add_to_lookup_table(int(obj.Id), unsafe.Pointer(obj))
@@ -3879,7 +3878,7 @@ func read_object(nr obj_vnum, type_ int) *obj_data {
 		return x
 	}())
 	add_to_lookup_table(int(obj.Id), unsafe.Pointer(obj))
-	obj.Generation = C.time(nil)
+	obj.Generation = libc.GetTime(nil)
 	obj.Unique_id = -1
 	if (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Sbinfo != nil {
 		obj.Sbinfo = &make([]obj_spellbook_spell, SPELLBOOK_SIZE)[0]
@@ -3893,7 +3892,7 @@ func read_object(nr obj_vnum, type_ int) *obj_data {
 	if GET_OBJ_VNUM(obj) == 65 {
 		obj.Healcharge = 20
 	}
-	if obj.Type_flag == ITEM_FOOD {
+	if int(obj.Type_flag) == ITEM_FOOD {
 		if (obj.Value[1]) == 0 {
 			obj.Value[1] = obj.Value[VAL_FOOD_FOODVAL]
 		}
@@ -4264,7 +4263,7 @@ func reset_zone(zone zone_rnum) {
 				reset_wtrigger((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum))))
 				if ROOM_FLAGGED(rrnum, ROOM_AURA) && rand_number(1, 5) >= 4 {
 					send_to_room(rrnum, libc.CString("The aura of regeneration covering the surrounding area disappears.\r\n"))
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(^(1 << (int(ROOM_AURA % 32))))
+					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(int32(^(1 << (int(ROOM_AURA % 32)))))
 				}
 				if (func() int {
 					if rrnum != room_rnum(-1) && rrnum <= top_of_world {
@@ -4354,7 +4353,7 @@ func is_empty(zone_nr zone_rnum) int {
 	}
 	return 1
 }
-func fread_string(fl *C.FILE, error *byte) *byte {
+func fread_string(fl *stdio.File, error *byte) *byte {
 	var (
 		buf        [64936]byte
 		tmp        [520]byte
@@ -4369,9 +4368,9 @@ func fread_string(fl *C.FILE, error *byte) *byte {
 		return *p
 	}()
 	for {
-		if C.fgets(&tmp[0], 512, fl) == nil {
-			basic_mud_log(libc.CString("SYSERR: fread_string: format error at string (pos %ld): %s at or near %s"), ftell(fl), func() string {
-				if C.feof(fl) != 0 {
+		if fl.GetS(&tmp[0], 512) == nil {
+			basic_mud_log(libc.CString("SYSERR: fread_string: format error at string (pos %ld): %s at or near %s"), fl.Tell(), func() string {
+				if int(fl.IsEOF()) != 0 {
 					return "EOF"
 				}
 				if ferror(fl) != 0 {
@@ -4379,7 +4378,7 @@ func fread_string(fl *C.FILE, error *byte) *byte {
 				}
 				return "unknown error"
 			}(), error)
-			C.exit(1)
+			os.Exit(1)
 		}
 		for point = &tmp[0]; *point != 0 && *point != '\r' && *point != '\n'; point = (*byte)(unsafe.Add(unsafe.Pointer(point), 1)) {
 		}
@@ -4407,17 +4406,17 @@ func fread_string(fl *C.FILE, error *byte) *byte {
 		if length+templength >= MAX_STRING_LENGTH {
 			basic_mud_log(libc.CString("SYSERR: fread_string: string too large (db.c)"))
 			basic_mud_log(libc.CString("%s"), error)
-			C.exit(1)
+			os.Exit(1)
 		} else {
-			C.strcat(&buf[length], &tmp[0])
+			libc.StrCat(&buf[length], &tmp[0])
 			length += templength
 		}
 		if done != 0 {
 			break
 		}
 	}
-	if C.strlen(&buf[0]) != 0 {
-		return C.strdup(&buf[0])
+	if libc.StrLen(&buf[0]) != 0 {
+		return libc.StrDup(&buf[0])
 	}
 	return nil
 }
@@ -4441,9 +4440,6 @@ func free_char(ch *char_data) {
 		next_learn *level_learn_entry
 	)
 	if ch.Player_specials != nil && ch.Player_specials != &dummy_mob {
-		if config_info.Operation.Imc_enabled != 0 {
-			imc_freechardata(ch)
-		}
 		for (func() *alias_data {
 			a = ch.Player_specials.Aliases
 			return a
@@ -4548,7 +4544,7 @@ func free_char(ch *char_data) {
 		}
 	}
 	ch.Level_info = nil
-	if ch.Id != 0 {
+	if int(ch.Id) != 0 {
 		remove_from_lookup_table(int(ch.Id))
 	}
 	libc.Free(unsafe.Pointer(ch))
@@ -4597,7 +4593,7 @@ func file_to_string_alloc(name *byte, buf **byte) int {
 		temppage = in_use.Showstr_page
 		paginate_string(func() *byte {
 			p := &in_use.Showstr_head
-			in_use.Showstr_head = C.strdup(*in_use.Showstr_vector)
+			in_use.Showstr_head = libc.StrDup(*in_use.Showstr_vector)
 			return *p
 		}(), in_use)
 		in_use.Showstr_page = temppage
@@ -4605,43 +4601,43 @@ func file_to_string_alloc(name *byte, buf **byte) int {
 	if *buf != nil {
 		libc.Free(unsafe.Pointer(*buf))
 	}
-	*buf = C.strdup(&temp[0])
+	*buf = libc.StrDup(&temp[0])
 	return 0
 }
 func file_to_string(name *byte, buf *byte) int {
 	var (
-		fl   *C.FILE
+		fl   *stdio.File
 		tmp  [259]byte
 		len_ int
 	)
 	*buf = '\x00'
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(name), "r")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(name), "r")
 		return fl
 	}()) == nil {
-		basic_mud_log(libc.CString("SYSERR: reading %s: %s"), name, C.strerror(*__errno_location()))
+		basic_mud_log(libc.CString("SYSERR: reading %s: %s"), name, libc.StrError(libc.Errno))
 		return -1
 	}
 	for {
-		if C.fgets(&tmp[0], READ_SIZE, fl) == nil {
+		if fl.GetS(&tmp[0], READ_SIZE) == nil {
 			break
 		}
 		if (func() int {
-			len_ = int(C.strlen(&tmp[0]))
+			len_ = libc.StrLen(&tmp[0])
 			return len_
 		}()) > 0 {
 			tmp[len_-1] = '\x00'
 		}
-		C.strcat(&tmp[0], libc.CString("\r\n"))
-		if C.strlen(buf)+C.strlen(&tmp[0])+1 > MAX_STRING_LENGTH {
+		libc.StrCat(&tmp[0], libc.CString("\r\n"))
+		if libc.StrLen(buf)+libc.StrLen(&tmp[0])+1 > MAX_STRING_LENGTH {
 			basic_mud_log(libc.CString("SYSERR: %s: string too big (%d max)"), name, MAX_STRING_LENGTH)
 			*buf = '\x00'
-			C.fclose(fl)
+			fl.Close()
 			return -1
 		}
-		C.strcat(buf, &tmp[0])
+		libc.StrCat(buf, &tmp[0])
 	}
-	C.fclose(fl)
+	fl.Close()
 	return 0
 }
 func reset_char(ch *char_data) {
@@ -4661,7 +4657,7 @@ func reset_char(ch *char_data) {
 	ch.Mob_specials.Default_pos = POS_STANDING
 	ch.Carry_weight = 0
 	ch.Carry_items = 0
-	ch.Time.Logon = C.time(nil)
+	ch.Time.Logon = libc.GetTime(nil)
 	if ch.Hit <= 0 {
 		ch.Hit = 1
 	}
@@ -4701,7 +4697,7 @@ func init_char(ch *char_data) {
 	}
 	ch.Admlevel = ADMLVL_NONE
 	ch.Crank = 0
-	ch.Clan = C.strdup(libc.CString("None."))
+	ch.Clan = libc.CString("None.")
 	ch.Absorbs = 0
 	ch.Absorbing = nil
 	ch.Absorbby = nil
@@ -4724,9 +4720,9 @@ func init_char(ch *char_data) {
 	ch.Short_descr = nil
 	ch.Long_descr = nil
 	ch.Description = nil
-	ch.Time.Logon = func() int64 {
+	ch.Time.Logon = func() libc.Time {
 		p := &ch.Time.Created
-		ch.Time.Created = C.time(nil)
+		ch.Time.Created = libc.GetTime(nil)
 		return *p
 	}()
 	ch.Time.Maxage = ch.Time.Birth + max_age(ch)
@@ -4946,7 +4942,7 @@ func check_object(obj *obj_data) int {
 	}
 	stdio.Snprintf(&objname[0], int(2080), "Object #%d (%s)", GET_OBJ_VNUM(obj), obj.Short_description)
 	for y = 0; y < TW_ARRAY_MAX; y++ {
-		error |= check_bitvector_names(bitvector_t(obj.Wear_flags[y]), wear_bits_count, &objname[0], libc.CString("object wear"))
+		error |= check_bitvector_names(bitvector_t(int32(obj.Wear_flags[y])), wear_bits_count, &objname[0], libc.CString("object wear"))
 		error |= check_bitvector_names(obj.Extra_flags[y], extra_bits_count, &objname[0], libc.CString("object extra"))
 		error |= check_bitvector_names(obj.Bitvector[y], affected_bits_count, &objname[0], libc.CString("object affect"))
 	}
@@ -4954,7 +4950,7 @@ func check_object(obj *obj_data) int {
 	case ITEM_DRINKCON:
 		var (
 			onealias [2048]byte
-			space    *byte = strrchr(obj.Name, ' ')
+			space    *byte = libc.StrRChr(obj.Name, ' ')
 		)
 		strlcpy(&onealias[0], func() *byte {
 			if space != nil {
@@ -5020,7 +5016,7 @@ func check_object_spell_number(obj *obj_data, val int) int {
 		return error
 	}
 	spellname = skill_name(obj.Value[val])
-	if (spellname == unused_spellname || C.strcasecmp(libc.CString("UNDEFINED"), spellname) == 0) && (func() int {
+	if (spellname == unused_spellname || libc.StrCaseCmp(libc.CString("UNDEFINED"), spellname) == 0) && (func() int {
 		error = TRUE
 		return error
 	}()) != 0 {
@@ -5043,7 +5039,7 @@ func check_bitvector_names(bits bitvector_t, namecount uint64, whatami *byte, wh
 		flagnum uint
 		error   bool = FALSE != 0
 	)
-	if bits <= (^bitvector_t(0) >> bitvector_t(unsafe.Sizeof(bitvector_t(0))*8-uintptr(namecount))) {
+	if uintptr(bits) <= (uintptr(^bitvector_t(0)) >> (unsafe.Sizeof(bitvector_t(0))*8 - uintptr(namecount))) {
 		return FALSE
 	}
 	for flagnum = uint(namecount); flagnum < uint(unsafe.Sizeof(bitvector_t(0))*8); flagnum++ {
@@ -5054,7 +5050,7 @@ func check_bitvector_names(bits bitvector_t, namecount uint64, whatami *byte, wh
 	}
 	return int(libc.BoolToInt(error))
 }
-func my_obj_save_to_disk(fp *C.FILE, obj *obj_data, locate int) int {
+func my_obj_save_to_disk(fp *stdio.File, obj *obj_data, locate int) int {
 	var (
 		counter2 int
 		i        int
@@ -5066,7 +5062,7 @@ func my_obj_save_to_disk(fp *C.FILE, obj *obj_data, locate int) int {
 		ebuf3    [64936]byte
 	)
 	if obj.Action_description != nil {
-		C.strcpy(&buf1[0], obj.Action_description)
+		libc.StrCpy(&buf1[0], obj.Action_description)
 		strip_string(&buf1[0])
 	} else {
 		buf1[0] = 0
@@ -5075,11 +5071,11 @@ func my_obj_save_to_disk(fp *C.FILE, obj *obj_data, locate int) int {
 	sprintascii(&ebuf1[0], obj.Extra_flags[1])
 	sprintascii(&ebuf2[0], obj.Extra_flags[2])
 	sprintascii(&ebuf3[0], obj.Extra_flags[3])
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "#%d\n%d %d %d %d %d %d %d %d %d %s %s %s %s %d %d %d %d %d %d %d %d\n", GET_OBJ_VNUM(obj), locate, obj.Value[0], obj.Value[1], obj.Value[2], obj.Value[3], obj.Value[4], obj.Value[5], obj.Value[6], obj.Value[7], &ebuf0[0], &ebuf1[0], &ebuf2[0], &ebuf3[0], obj.Value[8], obj.Value[9], obj.Value[10], obj.Value[11], obj.Value[12], obj.Value[13], obj.Value[14], obj.Value[15])
-	if !OBJ_FLAGGED(obj, ITEM_UNIQUE_SAVE) && int(libc.BoolToInt(obj.Type_flag == 0)) == ITEM_SPELLBOOK {
+	stdio.Fprintf(fp, "#%d\n%d %d %d %d %d %d %d %d %d %s %s %s %s %d %d %d %d %d %d %d %d\n", GET_OBJ_VNUM(obj), locate, obj.Value[0], obj.Value[1], obj.Value[2], obj.Value[3], obj.Value[4], obj.Value[5], obj.Value[6], obj.Value[7], &ebuf0[0], &ebuf1[0], &ebuf2[0], &ebuf3[0], obj.Value[8], obj.Value[9], obj.Value[10], obj.Value[11], obj.Value[12], obj.Value[13], obj.Value[14], obj.Value[15])
+	if !OBJ_FLAGGED(obj, ITEM_UNIQUE_SAVE) && int(libc.BoolToInt(int(obj.Type_flag) == 0)) == ITEM_SPELLBOOK {
 		return 1
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "XAP\n%s~\n%s~\n%s~\n%s~\n%d %d %d %d %d %lld %d %d\n", func() *byte {
+	stdio.Fprintf(fp, "XAP\n%s~\n%s~\n%s~\n%s~\n%d %d %d %d %d %lld %d %d\n", func() *byte {
 		if obj.Name != nil {
 			return obj.Name
 		}
@@ -5096,15 +5092,15 @@ func my_obj_save_to_disk(fp *C.FILE, obj *obj_data, locate int) int {
 		return libc.CString("undefined")
 	}(), &buf1[0], obj.Type_flag, obj.Wear_flags[0], obj.Wear_flags[1], obj.Wear_flags[2], obj.Wear_flags[3], obj.Weight, obj.Cost, obj.Cost_per_day)
 	if obj.Generation != 0 {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "G\n%ld\n", obj.Generation)
+		stdio.Fprintf(fp, "G\n%ld\n", obj.Generation)
 	}
 	if obj.Unique_id != 0 {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "U\n%lld\n", obj.Unique_id)
+		stdio.Fprintf(fp, "U\n%lld\n", obj.Unique_id)
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "Z\n%d\n", obj.Size)
+	stdio.Fprintf(fp, "Z\n%d\n", obj.Size)
 	for counter2 = 0; counter2 < MAX_OBJ_AFFECT; counter2++ {
 		if obj.Affected[counter2].Modifier != 0 {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "A\n%d %d %d\n", obj.Affected[counter2].Location, obj.Affected[counter2].Modifier, obj.Affected[counter2].Specific)
+			stdio.Fprintf(fp, "A\n%d %d %d\n", obj.Affected[counter2].Location, obj.Affected[counter2].Modifier, obj.Affected[counter2].Specific)
 		}
 	}
 	if obj.Ex_description != nil {
@@ -5112,9 +5108,9 @@ func my_obj_save_to_disk(fp *C.FILE, obj *obj_data, locate int) int {
 			if *ex_desc.Keyword == 0 || *ex_desc.Description == 0 {
 				continue
 			}
-			C.strcpy(&buf1[0], ex_desc.Description)
+			libc.StrCpy(&buf1[0], ex_desc.Description)
 			strip_string(&buf1[0])
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "E\n%s~\n%s~\n", ex_desc.Keyword, &buf1[0])
+			stdio.Fprintf(fp, "E\n%s~\n%s~\n", ex_desc.Keyword, &buf1[0])
 		}
 	}
 	if obj.Sbinfo != nil {
@@ -5122,7 +5118,7 @@ func my_obj_save_to_disk(fp *C.FILE, obj *obj_data, locate int) int {
 			if (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(i)))).Spellname == 0 {
 				break
 			}
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "S\n%d %d\n", (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(i)))).Spellname, (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(i)))).Pages)
+			stdio.Fprintf(fp, "S\n%d %d\n", (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(i)))).Spellname, (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(i)))).Pages)
 			continue
 		}
 	}
@@ -5162,9 +5158,9 @@ func load_default_config() {
 	config_info.Play.Idle_max_level = idle_max_level
 	config_info.Play.Dts_are_dumps = dts_are_dumps
 	config_info.Play.Load_into_inventory = load_into_inventory
-	config_info.Play.OK = C.strdup(OK)
-	config_info.Play.NOPERSON = C.strdup(NOPERSON)
-	config_info.Play.NOEFFECT = C.strdup(NOEFFECT)
+	config_info.Play.OK = libc.StrDup(OK)
+	config_info.Play.NOPERSON = libc.StrDup(NOPERSON)
+	config_info.Play.NOEFFECT = libc.StrDup(NOEFFECT)
 	config_info.Play.Track_through_doors = track_through_doors
 	config_info.Play.Level_cap = level_cap
 	config_info.Play.Stack_mobs = show_mob_stacking
@@ -5192,13 +5188,13 @@ func load_default_config() {
 	config_info.Room_nums.Donation_room_3 = donation_room_3
 	config_info.Operation.DFLT_PORT = DFLT_PORT
 	if DFLT_IP != nil {
-		config_info.Operation.DFLT_IP = C.strdup(DFLT_IP)
+		config_info.Operation.DFLT_IP = libc.StrDup(DFLT_IP)
 	} else {
 		config_info.Operation.DFLT_IP = nil
 	}
-	config_info.Operation.DFLT_DIR = C.strdup(DFLT_DIR)
+	config_info.Operation.DFLT_DIR = libc.StrDup(DFLT_DIR)
 	if LOGNAME != nil {
-		config_info.Operation.LOGNAME = C.strdup(LOGNAME)
+		config_info.Operation.LOGNAME = libc.StrDup(LOGNAME)
 	} else {
 		config_info.Operation.LOGNAME = nil
 	}
@@ -5209,9 +5205,9 @@ func load_default_config() {
 	config_info.Operation.Nameserver_is_slow = nameserver_is_slow
 	config_info.Operation.Use_new_socials = use_new_socials
 	config_info.Operation.Auto_save_olc = auto_save_olc
-	config_info.Operation.MENU = C.strdup(MENU)
-	config_info.Operation.WELC_MESSG = C.strdup(WELC_MESSG)
-	config_info.Operation.START_MESSG = C.strdup(START_MESSG)
+	config_info.Operation.MENU = libc.StrDup(MENU)
+	config_info.Operation.WELC_MESSG = libc.StrDup(WELC_MESSG)
+	config_info.Operation.START_MESSG = libc.StrDup(START_MESSG)
 	config_info.Operation.Imc_enabled = imc_is_enabled
 	config_info.Play.Exp_multiplier = 1.0
 	config_info.Autowiz.Use_autowiz = use_autowiz
@@ -5231,7 +5227,7 @@ func load_default_config() {
 }
 func load_config() {
 	var (
-		fl   *C.FILE
+		fl   *stdio.File
 		line [64936]byte
 		tag  [2048]byte
 		num  int
@@ -5239,264 +5235,264 @@ func load_config() {
 		buf  [2048]byte
 	)
 	load_default_config()
-	stdio.Snprintf(&buf[0], int(2048), "%s/%s", DFLT_DIR, config_info.CONFC.FILE)
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(config_info.CONFC.FILE), "r")))
+	stdio.Snprintf(&buf[0], int(2048), "%s/%s", DFLT_DIR, config_info.CONFFILE)
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(config_info.CONFFILE), "r")
 		return fl
-	}()) == nil && (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&buf[0]), "r")))
+	}()) == nil && (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(&buf[0]), "r")
 		return fl
 	}()) == nil {
-		stdio.Snprintf(&buf[0], int(2048), "Game Config File: %s", config_info.CONFC.FILE)
-		C.perror(&buf[0])
+		stdio.Snprintf(&buf[0], int(2048), "Game Config File: %s", config_info.CONFFILE)
+		perror(&buf[0])
 		return
 	}
 	for get_line(fl, &line[0]) != 0 {
 		split_argument(&line[0], &tag[0])
 		num = libc.Atoi(libc.GoString(&line[0]))
 		fum = float32(libc.Atof(libc.GoString(&line[0])))
-		switch C.tolower(int(tag[0])) {
+		switch unicode.ToLower(rune(tag[0])) {
 		case 'a':
-			if C.strcasecmp(&tag[0], libc.CString("auto_save")) == 0 {
+			if libc.StrCaseCmp(&tag[0], libc.CString("auto_save")) == 0 {
 				config_info.Csd.Auto_save = num
-			} else if C.strcasecmp(&tag[0], libc.CString("autosave_time")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("autosave_time")) == 0 {
 				config_info.Csd.Autosave_time = num
-			} else if C.strcasecmp(&tag[0], libc.CString("auto_save_olc")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("auto_save_olc")) == 0 {
 				config_info.Operation.Auto_save_olc = num
-			} else if C.strcasecmp(&tag[0], libc.CString("allow_multiclass")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("allow_multiclass")) == 0 {
 				config_info.Advance.Allow_multiclass = num
-			} else if C.strcasecmp(&tag[0], libc.CString("allow_prestige")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("allow_prestige")) == 0 {
 				config_info.Advance.Allow_prestige = num
-			} else if C.strcasecmp(&tag[0], libc.CString("auto_level")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("auto_level")) == 0 {
 				basic_mud_log(libc.CString("ignoring obsolete config option auto_level"))
-			} else if C.strcasecmp(&tag[0], libc.CString("all_items_unique")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("all_items_unique")) == 0 {
 				config_info.Play.All_items_unique = num
 			}
 		case 'c':
-			if C.strcasecmp(&tag[0], libc.CString("crash_file_timeout")) == 0 {
+			if libc.StrCaseCmp(&tag[0], libc.CString("crash_file_timeout")) == 0 {
 				config_info.Csd.Crash_file_timeout = num
-			} else if C.strcasecmp(&tag[0], libc.CString("compression")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("compression")) == 0 {
 				config_info.Play.Enable_compression = num
 			}
 		case 'd':
-			if C.strcasecmp(&tag[0], libc.CString("disp_closed_doors")) == 0 {
+			if libc.StrCaseCmp(&tag[0], libc.CString("disp_closed_doors")) == 0 {
 				config_info.Play.Disp_closed_doors = num
-			} else if C.strcasecmp(&tag[0], libc.CString("dts_are_dumps")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("dts_are_dumps")) == 0 {
 				config_info.Play.Dts_are_dumps = num
-			} else if C.strcasecmp(&tag[0], libc.CString("donation_room_1")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("donation_room_1")) == 0 {
 				if num == -1 {
 					config_info.Room_nums.Donation_room_1 = -1
 				} else {
 					config_info.Room_nums.Donation_room_1 = room_vnum(num)
 				}
-			} else if C.strcasecmp(&tag[0], libc.CString("donation_room_2")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("donation_room_2")) == 0 {
 				if num == -1 {
 					config_info.Room_nums.Donation_room_2 = -1
 				} else {
 					config_info.Room_nums.Donation_room_2 = room_vnum(num)
 				}
-			} else if C.strcasecmp(&tag[0], libc.CString("donation_room_3")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("donation_room_3")) == 0 {
 				if num == -1 {
 					config_info.Room_nums.Donation_room_3 = -1
 				} else {
 					config_info.Room_nums.Donation_room_3 = room_vnum(num)
 				}
-			} else if C.strcasecmp(&tag[0], libc.CString("dflt_dir")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("dflt_dir")) == 0 {
 				if config_info.Operation.DFLT_DIR != nil {
 					libc.Free(unsafe.Pointer(config_info.Operation.DFLT_DIR))
 				}
 				if line != nil && line[0] != 0 {
-					config_info.Operation.DFLT_DIR = C.strdup(&line[0])
+					config_info.Operation.DFLT_DIR = libc.StrDup(&line[0])
 				} else {
-					config_info.Operation.DFLT_DIR = C.strdup(DFLT_DIR)
+					config_info.Operation.DFLT_DIR = libc.StrDup(DFLT_DIR)
 				}
-			} else if C.strcasecmp(&tag[0], libc.CString("dflt_ip")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("dflt_ip")) == 0 {
 				if config_info.Operation.DFLT_IP != nil {
 					libc.Free(unsafe.Pointer(config_info.Operation.DFLT_IP))
 				}
 				if line != nil && line[0] != 0 {
-					config_info.Operation.DFLT_IP = C.strdup(&line[0])
+					config_info.Operation.DFLT_IP = libc.StrDup(&line[0])
 				} else {
 					config_info.Operation.DFLT_IP = nil
 				}
-			} else if C.strcasecmp(&tag[0], libc.CString("dflt_port")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("dflt_port")) == 0 {
 				config_info.Operation.DFLT_PORT = uint16(int16(num))
 			}
 		case 'e':
-			if C.strcasecmp(&tag[0], libc.CString("enable_languages")) == 0 {
+			if libc.StrCaseCmp(&tag[0], libc.CString("enable_languages")) == 0 {
 				config_info.Play.Enable_languages = num
-			} else if C.strcasecmp(&tag[0], libc.CString("exp_multiplier")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("exp_multiplier")) == 0 {
 				config_info.Play.Exp_multiplier = fum
 			}
 		case 'f':
-			if C.strcasecmp(&tag[0], libc.CString("free_rent")) == 0 {
+			if libc.StrCaseCmp(&tag[0], libc.CString("free_rent")) == 0 {
 				config_info.Csd.Free_rent = num
-			} else if C.strcasecmp(&tag[0], libc.CString("frozen_start_room")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("frozen_start_room")) == 0 {
 				config_info.Room_nums.Frozen_start_room = room_vnum(num)
 			}
 		case 'h':
-			if C.strcasecmp(&tag[0], libc.CString("holler_move_cost")) == 0 {
+			if libc.StrCaseCmp(&tag[0], libc.CString("holler_move_cost")) == 0 {
 				config_info.Play.Holler_move_cost = num
 			}
 		case 'i':
-			if C.strcasecmp(&tag[0], libc.CString("idle_void")) == 0 {
+			if libc.StrCaseCmp(&tag[0], libc.CString("idle_void")) == 0 {
 				config_info.Play.Idle_void = num
-			} else if C.strcasecmp(&tag[0], libc.CString("idle_rent_time")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("idle_rent_time")) == 0 {
 				config_info.Play.Idle_rent_time = num
-			} else if C.strcasecmp(&tag[0], libc.CString("idle_max_level")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("idle_max_level")) == 0 {
 				if num >= config_info.Play.Level_cap {
 					num += 1 - config_info.Play.Level_cap
 				}
 				config_info.Play.Idle_max_level = num
-			} else if C.strcasecmp(&tag[0], libc.CString("immort_level_ok")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("immort_level_ok")) == 0 {
 				basic_mud_log(libc.CString("Ignoring immort_level_ok obsolete config"))
-			} else if C.strcasecmp(&tag[0], libc.CString("immort_start_room")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("immort_start_room")) == 0 {
 				config_info.Room_nums.Immort_start_room = room_vnum(num)
-			} else if C.strcasecmp(&tag[0], libc.CString("imc_enabled")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("imc_enabled")) == 0 {
 				config_info.Operation.Imc_enabled = num
-			} else if C.strcasecmp(&tag[0], libc.CString("initial_points")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("initial_points")) == 0 {
 				config_info.Play.Initial_points = num
 			}
 		case 'l':
-			if C.strcasecmp(&tag[0], libc.CString("level_can_shout")) == 0 {
+			if libc.StrCaseCmp(&tag[0], libc.CString("level_can_shout")) == 0 {
 				config_info.Play.Level_can_shout = num
-			} else if C.strcasecmp(&tag[0], libc.CString("level_cap")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("level_cap")) == 0 {
 				config_info.Play.Level_cap = num
-			} else if C.strcasecmp(&tag[0], libc.CString("load_into_inventory")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("load_into_inventory")) == 0 {
 				config_info.Play.Load_into_inventory = num
-			} else if C.strcasecmp(&tag[0], libc.CString("logname")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("logname")) == 0 {
 				if config_info.Operation.LOGNAME != nil {
 					libc.Free(unsafe.Pointer(config_info.Operation.LOGNAME))
 				}
 				if line != nil && line[0] != 0 {
-					config_info.Operation.LOGNAME = C.strdup(&line[0])
+					config_info.Operation.LOGNAME = libc.StrDup(&line[0])
 				} else {
 					config_info.Operation.LOGNAME = nil
 				}
 			}
 		case 'm':
-			if C.strcasecmp(&tag[0], libc.CString("max_bad_pws")) == 0 {
+			if libc.StrCaseCmp(&tag[0], libc.CString("max_bad_pws")) == 0 {
 				config_info.Operation.Max_bad_pws = num
-			} else if C.strcasecmp(&tag[0], libc.CString("max_exp_gain")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("max_exp_gain")) == 0 {
 				config_info.Play.Max_exp_gain = num
-			} else if C.strcasecmp(&tag[0], libc.CString("max_exp_loss")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("max_exp_loss")) == 0 {
 				config_info.Play.Max_exp_loss = num
-			} else if C.strcasecmp(&tag[0], libc.CString("max_filesize")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("max_filesize")) == 0 {
 				config_info.Operation.Max_filesize = num
-			} else if C.strcasecmp(&tag[0], libc.CString("max_npc_corpse_time")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("max_npc_corpse_time")) == 0 {
 				config_info.Play.Max_npc_corpse_time = num
-			} else if C.strcasecmp(&tag[0], libc.CString("max_obj_save")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("max_obj_save")) == 0 {
 				config_info.Csd.Max_obj_save = num
-			} else if C.strcasecmp(&tag[0], libc.CString("max_pc_corpse_time")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("max_pc_corpse_time")) == 0 {
 				config_info.Play.Max_pc_corpse_time = num
-			} else if C.strcasecmp(&tag[0], libc.CString("max_playing")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("max_playing")) == 0 {
 				config_info.Operation.Max_playing = num
-			} else if C.strcasecmp(&tag[0], libc.CString("menu")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("menu")) == 0 {
 				if config_info.Operation.MENU != nil {
 					libc.Free(unsafe.Pointer(config_info.Operation.MENU))
 				}
-				C.strncpy(&buf[0], libc.CString("Reading menu in load_config()"), uint64(2048))
+				libc.StrNCpy(&buf[0], libc.CString("Reading menu in load_config()"), int(2048))
 				config_info.Operation.MENU = fread_string(fl, &buf[0])
-			} else if C.strcasecmp(&tag[0], libc.CString("min_rent_cost")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("min_rent_cost")) == 0 {
 				config_info.Csd.Min_rent_cost = num
-			} else if C.strcasecmp(&tag[0], libc.CString("min_wizlist_lev")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("min_wizlist_lev")) == 0 {
 				if num >= config_info.Play.Level_cap {
 					num += 1 - config_info.Play.Level_cap
 				}
 				config_info.Autowiz.Min_wizlist_lev = num
-			} else if C.strcasecmp(&tag[0], libc.CString("mob_fighting")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("mob_fighting")) == 0 {
 				config_info.Play.Mob_fighting = num
-			} else if C.strcasecmp(&tag[0], libc.CString("mortal_start_room")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("mortal_start_room")) == 0 {
 				config_info.Room_nums.Mortal_start_room = room_vnum(num)
-			} else if C.strcasecmp(&tag[0], libc.CString("method")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("method")) == 0 {
 				config_info.Creation.Method = num
 			}
 		case 'n':
-			if C.strcasecmp(&tag[0], libc.CString("nameserver_is_slow")) == 0 {
+			if libc.StrCaseCmp(&tag[0], libc.CString("nameserver_is_slow")) == 0 {
 				config_info.Operation.Nameserver_is_slow = num
-			} else if C.strcasecmp(&tag[0], libc.CString("noperson")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("noperson")) == 0 {
 				var tmp [256]byte
 				if config_info.Play.NOPERSON != nil {
 					libc.Free(unsafe.Pointer(config_info.Play.NOPERSON))
 				}
 				stdio.Snprintf(&tmp[0], int(256), "%s\r\n", &line[0])
-				config_info.Play.NOPERSON = C.strdup(&tmp[0])
-			} else if C.strcasecmp(&tag[0], libc.CString("noeffect")) == 0 {
+				config_info.Play.NOPERSON = libc.StrDup(&tmp[0])
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("noeffect")) == 0 {
 				var tmp [256]byte
 				if config_info.Play.NOEFFECT != nil {
 					libc.Free(unsafe.Pointer(config_info.Play.NOEFFECT))
 				}
 				stdio.Snprintf(&tmp[0], int(256), "%s\r\n", &line[0])
-				config_info.Play.NOEFFECT = C.strdup(&tmp[0])
+				config_info.Play.NOEFFECT = libc.StrDup(&tmp[0])
 			}
 		case 'o':
-			if C.strcasecmp(&tag[0], libc.CString("ok")) == 0 {
+			if libc.StrCaseCmp(&tag[0], libc.CString("ok")) == 0 {
 				var tmp [256]byte
 				if config_info.Play.OK != nil {
 					libc.Free(unsafe.Pointer(config_info.Play.OK))
 				}
 				stdio.Snprintf(&tmp[0], int(256), "%s\r\n", &line[0])
-				config_info.Play.OK = C.strdup(&tmp[0])
+				config_info.Play.OK = libc.StrDup(&tmp[0])
 			}
 		case 'p':
-			if C.strcasecmp(&tag[0], libc.CString("pk_allowed")) == 0 {
+			if libc.StrCaseCmp(&tag[0], libc.CString("pk_allowed")) == 0 {
 				config_info.Play.Pk_allowed = num
-			} else if C.strcasecmp(&tag[0], libc.CString("pt_allowed")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("pt_allowed")) == 0 {
 				config_info.Play.Pt_allowed = num
-			} else if C.strcasecmp(&tag[0], libc.CString("pulse_viol")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("pulse_viol")) == 0 {
 				config_info.Ticks.Pulse_violence = num
-			} else if C.strcasecmp(&tag[0], libc.CString("pulse_mobile")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("pulse_mobile")) == 0 {
 				config_info.Ticks.Pulse_mobile = num
-			} else if C.strcasecmp(&tag[0], libc.CString("pulse_current")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("pulse_current")) == 0 {
 				config_info.Ticks.Pulse_current = num
-			} else if C.strcasecmp(&tag[0], libc.CString("pulse_zone")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("pulse_zone")) == 0 {
 				config_info.Ticks.Pulse_zone = num
-			} else if C.strcasecmp(&tag[0], libc.CString("pulse_autosave")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("pulse_autosave")) == 0 {
 				config_info.Ticks.Pulse_autosave = num
-			} else if C.strcasecmp(&tag[0], libc.CString("pulse_usage")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("pulse_usage")) == 0 {
 				config_info.Ticks.Pulse_usage = num
-			} else if C.strcasecmp(&tag[0], libc.CString("pulse_sanity")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("pulse_sanity")) == 0 {
 				config_info.Ticks.Pulse_sanity = num
-			} else if C.strcasecmp(&tag[0], libc.CString("pulse_timesave")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("pulse_timesave")) == 0 {
 				config_info.Ticks.Pulse_timesave = num
-			} else if C.strcasecmp(&tag[0], libc.CString("pulse_idlepwd")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("pulse_idlepwd")) == 0 {
 				config_info.Ticks.Pulse_idlepwd = num
 			}
 		case 'r':
-			if C.strcasecmp(&tag[0], libc.CString("rent_file_timeout")) == 0 {
+			if libc.StrCaseCmp(&tag[0], libc.CString("rent_file_timeout")) == 0 {
 				config_info.Csd.Rent_file_timeout = num
-			} else if C.strcasecmp(&tag[0], libc.CString("reroll_stats")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("reroll_stats")) == 0 {
 				config_info.Play.Reroll_player = num
 			}
 		case 's':
-			if C.strcasecmp(&tag[0], libc.CString("siteok_everyone")) == 0 {
+			if libc.StrCaseCmp(&tag[0], libc.CString("siteok_everyone")) == 0 {
 				config_info.Operation.Siteok_everyone = num
-			} else if C.strcasecmp(&tag[0], libc.CString("start_messg")) == 0 {
-				C.strncpy(&buf[0], libc.CString("Reading start message in load_config()"), uint64(2048))
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("start_messg")) == 0 {
+				libc.StrNCpy(&buf[0], libc.CString("Reading start message in load_config()"), int(2048))
 				if config_info.Operation.START_MESSG != nil {
 					libc.Free(unsafe.Pointer(config_info.Operation.START_MESSG))
 				}
 				config_info.Operation.START_MESSG = fread_string(fl, &buf[0])
-			} else if C.strcasecmp(&tag[0], libc.CString("stack_mobs")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("stack_mobs")) == 0 {
 				config_info.Play.Stack_mobs = num
-			} else if C.strcasecmp(&tag[0], libc.CString("stack_objs")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("stack_objs")) == 0 {
 				config_info.Play.Stack_objs = num
 			}
 		case 't':
-			if C.strcasecmp(&tag[0], libc.CString("tunnel_size")) == 0 {
+			if libc.StrCaseCmp(&tag[0], libc.CString("tunnel_size")) == 0 {
 				config_info.Play.Tunnel_size = num
-			} else if C.strcasecmp(&tag[0], libc.CString("track_through_doors")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("track_through_doors")) == 0 {
 				config_info.Play.Track_through_doors = num
 			}
 		case 'u':
-			if C.strcasecmp(&tag[0], libc.CString("use_autowiz")) == 0 {
+			if libc.StrCaseCmp(&tag[0], libc.CString("use_autowiz")) == 0 {
 				config_info.Autowiz.Use_autowiz = num
-			} else if C.strcasecmp(&tag[0], libc.CString("use_new_socials")) == 0 {
+			} else if libc.StrCaseCmp(&tag[0], libc.CString("use_new_socials")) == 0 {
 				config_info.Operation.Use_new_socials = num
 			}
 		case 'w':
-			if C.strcasecmp(&tag[0], libc.CString("welc_messg")) == 0 {
-				C.strncpy(&buf[0], libc.CString("Reading welcome message in load_config()"), uint64(2048))
+			if libc.StrCaseCmp(&tag[0], libc.CString("welc_messg")) == 0 {
+				libc.StrNCpy(&buf[0], libc.CString("Reading welcome message in load_config()"), int(2048))
 				if config_info.Operation.WELC_MESSG != nil {
 					libc.Free(unsafe.Pointer(config_info.Operation.WELC_MESSG))
 				}
@@ -5505,9 +5501,9 @@ func load_config() {
 		default:
 		}
 	}
-	C.fclose(fl)
+	fl.Close()
 }
-func read_level_data(ch *char_data, fl *C.FILE) {
+func read_level_data(ch *char_data, fl *stdio.File) {
 	var (
 		buf   [256]byte
 		p     *byte
@@ -5517,7 +5513,7 @@ func read_level_data(ch *char_data, fl *C.FILE) {
 		learn *level_learn_entry
 	)
 	ch.Level_info = nil
-	for C.feof(fl) == 0 {
+	for int(fl.IsEOF()) == 0 {
 		i++
 		if get_line(fl, &buf[0]) == 0 {
 			basic_mud_log(libc.CString("read_level_data: get_line() failed reading level data line %d for %s"), i, GET_NAME(ch))
@@ -5525,7 +5521,7 @@ func read_level_data(ch *char_data, fl *C.FILE) {
 		}
 		for p = &buf[0]; *p != 0 && *p != ' '; p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1)) {
 		}
-		if C.strcmp(&buf[0], libc.CString("end")) == 0 {
+		if libc.StrCmp(&buf[0], libc.CString("end")) == 0 {
 			return
 		}
 		if *p == 0 {
@@ -5538,8 +5534,8 @@ func read_level_data(ch *char_data, fl *C.FILE) {
 			*p = (*byte)(unsafe.Add(unsafe.Pointer(*p), 1))
 			return x
 		}()) = 0
-		if C.strcmp(&buf[0], libc.CString("level")) == 0 {
-			if __isoc99_sscanf(p, libc.CString("%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d"), &t[0], &t[1], &t[2], &t[3], &t[4], &t[5], &t[6], &t[7], &t[8], &t[9], &t[10], &t[11], &t[12], &t[13], &t[14], &t[15]) != 16 {
+		if libc.StrCmp(&buf[0], libc.CString("level")) == 0 {
+			if stdio.Sscanf(p, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d", &t[0], &t[1], &t[2], &t[3], &t[4], &t[5], &t[6], &t[7], &t[8], &t[9], &t[10], &t[11], &t[12], &t[13], &t[14], &t[15]) != 16 {
 				basic_mud_log(libc.CString("read_level_data: missing fields on level_data line %d for %s"), i, GET_NAME(ch))
 				curr = nil
 				continue
@@ -5581,7 +5577,7 @@ func read_level_data(ch *char_data, fl *C.FILE) {
 			basic_mud_log(libc.CString("read_level_data: found continuation entry without current level for %s"), GET_NAME(ch))
 			continue
 		}
-		if __isoc99_sscanf(p, libc.CString("%d %d %d"), &t[0], &t[1], &t[2]) != 3 {
+		if stdio.Sscanf(p, "%d %d %d", &t[0], &t[1], &t[2]) != 3 {
 			basic_mud_log(libc.CString("read_level_data: missing fields on level_data %s line %d for %s"), &buf[0], i, GET_NAME(ch))
 			continue
 		}
@@ -5589,10 +5585,10 @@ func read_level_data(ch *char_data, fl *C.FILE) {
 		learn.Location = t[0]
 		learn.Specific = t[1]
 		learn.Value = int8(t[2])
-		if C.strcmp(&buf[0], libc.CString("skill")) == 0 {
+		if libc.StrCmp(&buf[0], libc.CString("skill")) == 0 {
 			learn.Next = curr.Skills
 			curr.Skills = learn
-		} else if C.strcmp(&buf[0], libc.CString("feat")) == 0 {
+		} else if libc.StrCmp(&buf[0], libc.CString("feat")) == 0 {
 			learn.Next = curr.Feats
 			curr.Feats = learn
 		}
@@ -5600,7 +5596,7 @@ func read_level_data(ch *char_data, fl *C.FILE) {
 	basic_mud_log(libc.CString("read_level_data: EOF reached reading level_data for %s"), GET_NAME(ch))
 	return
 }
-func write_level_data(ch *char_data, fl *C.FILE) {
+func write_level_data(ch *char_data, fl *stdio.File) {
 	var (
 		lev   *levelup_data
 		learn *level_learn_entry
@@ -5608,14 +5604,14 @@ func write_level_data(ch *char_data, fl *C.FILE) {
 	for lev = ch.Level_info; lev != nil && lev.Next != nil; lev = lev.Next {
 	}
 	for lev != nil {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "level %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n", lev.Type, lev.Spec, lev.Level, lev.Hp_roll, lev.Mana_roll, lev.Ki_roll, lev.Move_roll, lev.Accuracy, lev.Fort, lev.Reflex, lev.Will, lev.Add_skill, lev.Add_gen_feats, lev.Add_epic_feats, lev.Add_class_feats, lev.Add_class_epic_feats)
+		stdio.Fprintf(fl, "level %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n", lev.Type, lev.Spec, lev.Level, lev.Hp_roll, lev.Mana_roll, lev.Ki_roll, lev.Move_roll, lev.Accuracy, lev.Fort, lev.Reflex, lev.Will, lev.Add_skill, lev.Add_gen_feats, lev.Add_epic_feats, lev.Add_class_feats, lev.Add_class_epic_feats)
 		for learn = lev.Skills; learn != nil; learn = learn.Next {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "skill %d %d %d", learn.Location, learn.Specific, learn.Value)
+			stdio.Fprintf(fl, "skill %d %d %d", learn.Location, learn.Specific, learn.Value)
 		}
 		for learn = lev.Feats; learn != nil; learn = learn.Next {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "feat %d %d %d", learn.Location, learn.Specific, learn.Value)
+			stdio.Fprintf(fl, "feat %d %d %d", learn.Location, learn.Specific, learn.Value)
 		}
 		lev = lev.Prev
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "end\n")
+	stdio.Fprintf(fl, "end\n")
 }

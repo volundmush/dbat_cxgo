@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
+	"math"
 	"unsafe"
 )
 
@@ -136,9 +137,8 @@ func queue_enq(q *queue, data unsafe.Pointer, key int) *q_element {
 }
 func queue_deq(q *queue, qe *q_element) {
 	var i int
-	if qe != nil {
-	} else {
-		__assert_fail(libc.CString("qe"), libc.CString(__FILE__), __LINE__, (*byte)(nil))
+	if qe == nil {
+		panic("assert failed")
 	}
 	i = qe.Key % NUM_EVENT_QUEUES
 	if qe.Prev == nil {
@@ -172,7 +172,7 @@ func queue_key(q *queue) int {
 	if q.Head[i] != nil {
 		return q.Head[i].Key
 	} else {
-		return LONG_MAX
+		return math.MaxInt32
 	}
 }
 func queue_elmt_key(qe *q_element) int {

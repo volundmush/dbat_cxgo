@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"unicode"
 	"unsafe"
 )
 
@@ -187,13 +188,11 @@ const SCMD_REDIT = 1
 const SCMD_OEDIT = 2
 const SCMD_MEDIT = 3
 
-type CommandFunc = func(ch *char_data, argument *byte, cmd int, subcmd int)
-
 type command_info struct {
 	Command          *byte
 	Sort_as          *byte
 	Minimum_position int8
-	Command_pointer  CommandFunc
+	Command_pointer  func(ch *char_data, argument *byte, cmd int, subcmd int)
 	Minimum_level    int16
 	Minimum_admlevel int16
 	Subcmd           int
@@ -210,8 +209,7 @@ const RECON = 1
 const USURP = 2
 const UNSWITCH = 3
 
-var disabled_first *disabled_data = nil
-
+var disabled_first *DISABLED_DATA = nil
 var complete_cmd_info *command_info
 var cmd_info [537]command_info = [537]command_info{{Command: libc.CString("RESERVED"), Sort_as: libc.CString(""), Minimum_position: 0, Command_pointer: nil, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("north"), Sort_as: libc.CString("n"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NORTH}, {Command: libc.CString("east"), Sort_as: libc.CString("e"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_EAST}, {Command: libc.CString("south"), Sort_as: libc.CString("s"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SOUTH}, {Command: libc.CString("west"), Sort_as: libc.CString("w"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_WEST}, {Command: libc.CString("up"), Sort_as: libc.CString("u"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_UP}, {Command: libc.CString("down"), Sort_as: libc.CString("d"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_DOWN}, {Command: libc.CString("northwest"), Sort_as: libc.CString("northw"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NW}, {Command: libc.CString("nw"), Sort_as: libc.CString("nw"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NW}, {Command: libc.CString("northeast"), Sort_as: libc.CString("northe"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NE}, {Command: libc.CString("ne"), Sort_as: libc.CString("ne"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NE}, {Command: libc.CString("southeast"), Sort_as: libc.CString("southe"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SE}, {Command: libc.CString("se"), Sort_as: libc.CString("se"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SE}, {Command: libc.CString("southwest"), Sort_as: libc.CString("southw"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SW}, {Command: libc.CString("sw"), Sort_as: libc.CString("sw"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SW}, {Command: libc.CString("i"), Sort_as: libc.CString("i"), Minimum_position: POS_DEAD, Command_pointer: do_inventory, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("inside"), Sort_as: libc.CString("in"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_IN}, {Command: libc.CString("outside"), Sort_as: libc.CString("out"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_OUT}, {Command: libc.CString("absorb"), Sort_as: libc.CString("absor"), Minimum_position: POS_STANDING, Command_pointer: do_absorb, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("at"), Sort_as: libc.CString("at"), Minimum_position: POS_DEAD, Command_pointer: do_at, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("adrenaline"), Sort_as: libc.CString("adrenalin"), Minimum_position: POS_DEAD, Command_pointer: do_adrenaline, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("advance"), Sort_as: libc.CString("adv"), Minimum_position: POS_DEAD, Command_pointer: do_advance, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: 0}, {Command: libc.CString("aedit"), Sort_as: libc.CString("aed"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: SCMD_OASIS_AEDIT}, {Command: libc.CString("alias"), Sort_as: libc.CString("ali"), Minimum_position: POS_DEAD, Command_pointer: do_alias, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("afk"), Sort_as: libc.CString("afk"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_AFK}, {Command: libc.CString("aid"), Sort_as: libc.CString("aid"), Minimum_position: POS_STANDING, Command_pointer: do_aid, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("amnesiac"), Sort_as: libc.CString("amnesia"), Minimum_position: POS_STANDING, Command_pointer: do_amnisiac, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("appraise"), Sort_as: libc.CString("apprais"), Minimum_position: POS_STANDING, Command_pointer: do_appraise, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("approve"), Sort_as: libc.CString("approve"), Minimum_position: POS_STANDING, Command_pointer: do_approve, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("arena"), Sort_as: libc.CString("aren"), Minimum_position: POS_RESTING, Command_pointer: do_arena, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("ashcloud"), Sort_as: libc.CString("ashclou"), Minimum_position: POS_RESTING, Command_pointer: do_ashcloud, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("assedit"), Sort_as: libc.CString("assed"), Minimum_position: POS_STANDING, Command_pointer: do_assedit, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("assist"), Sort_as: libc.CString("assis"), Minimum_position: POS_STANDING, Command_pointer: do_assist, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("astat"), Sort_as: libc.CString("ast"), Minimum_position: POS_DEAD, Command_pointer: do_astat, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("ask"), Sort_as: libc.CString("ask"), Minimum_position: POS_RESTING, Command_pointer: do_spec_comm, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_ASK}, {Command: libc.CString("attack"), Sort_as: libc.CString("attack"), Minimum_position: POS_FIGHTING, Command_pointer: do_attack, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("auction"), Sort_as: libc.CString("auctio"), Minimum_position: POS_RESTING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("augment"), Sort_as: libc.CString("augmen"), Minimum_position: POS_SITTING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("aura"), Sort_as: libc.CString("aura"), Minimum_position: POS_RESTING, Command_pointer: do_aura, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("autoexit"), Sort_as: libc.CString("autoex"), Minimum_position: POS_DEAD, Command_pointer: do_autoexit, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("autogold"), Sort_as: libc.CString("autogo"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_AUTOGOLD}, {Command: libc.CString("autoloot"), Sort_as: libc.CString("autolo"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_AUTOLOOT}, {Command: libc.CString("autosplit"), Sort_as: libc.CString("autosp"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_AUTOSPLIT}, {Command: libc.CString("bakuhatsuha"), Sort_as: libc.CString("baku"), Minimum_position: POS_FIGHTING, Command_pointer: do_baku, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("ban"), Sort_as: libc.CString("ban"), Minimum_position: POS_DEAD, Command_pointer: do_ban, Minimum_level: 0, Minimum_admlevel: ADMLVL_VICE, Subcmd: 0}, {Command: libc.CString("balance"), Sort_as: libc.CString("bal"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("balefire"), Sort_as: libc.CString("balef"), Minimum_position: POS_FIGHTING, Command_pointer: do_balefire, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("barrage"), Sort_as: libc.CString("barrage"), Minimum_position: POS_FIGHTING, Command_pointer: do_pbarrage, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("barrier"), Sort_as: libc.CString("barri"), Minimum_position: POS_FIGHTING, Command_pointer: do_barrier, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("bash"), Sort_as: libc.CString("bas"), Minimum_position: POS_FIGHTING, Command_pointer: do_bash, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("beam"), Sort_as: libc.CString("bea"), Minimum_position: POS_FIGHTING, Command_pointer: do_beam, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("bexchange"), Sort_as: libc.CString("bexchan"), Minimum_position: POS_RESTING, Command_pointer: do_rbanktrans, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("bid"), Sort_as: libc.CString("bi"), Minimum_position: POS_RESTING, Command_pointer: do_bid, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("bigbang"), Sort_as: libc.CString("bigban"), Minimum_position: POS_FIGHTING, Command_pointer: do_bigbang, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("bite"), Sort_as: libc.CString("bit"), Minimum_position: POS_FIGHTING, Command_pointer: do_bite, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("blessedhammer"), Sort_as: libc.CString("bham"), Minimum_position: POS_FIGHTING, Command_pointer: do_blessedhammer, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("block"), Sort_as: libc.CString("block"), Minimum_position: POS_FIGHTING, Command_pointer: do_block, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("book"), Sort_as: libc.CString("boo"), Minimum_position: POS_SLEEPING, Command_pointer: do_gen_ps, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_INFO}, {Command: libc.CString("break"), Sort_as: libc.CString("break"), Minimum_position: POS_STANDING, Command_pointer: do_break, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("brief"), Sort_as: libc.CString("br"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_BRIEF}, {Command: libc.CString("build"), Sort_as: libc.CString("bui"), Minimum_position: POS_SITTING, Command_pointer: do_assemble, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_BREW}, {Command: libc.CString("buildwalk"), Sort_as: libc.CString("buildwalk"), Minimum_position: POS_STANDING, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_BUILDWALK}, {Command: libc.CString("buy"), Sort_as: libc.CString("bu"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("bug"), Sort_as: libc.CString("bug"), Minimum_position: POS_DEAD, Command_pointer: do_gen_write, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_BUG}, {Command: libc.CString("cancel"), Sort_as: libc.CString("cance"), Minimum_position: POS_RESTING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("candy"), Sort_as: libc.CString("cand"), Minimum_position: POS_FIGHTING, Command_pointer: do_candy, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("carry"), Sort_as: libc.CString("carr"), Minimum_position: POS_STANDING, Command_pointer: do_carry, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("carve"), Sort_as: libc.CString("carv"), Minimum_position: POS_SLEEPING, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: SCMD_CARVE}, {Command: libc.CString("cedit"), Sort_as: libc.CString("cedit"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: SCMD_OASIS_CEDIT}, {Command: libc.CString("channel"), Sort_as: libc.CString("channe"), Minimum_position: POS_FIGHTING, Command_pointer: do_channel, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("charge"), Sort_as: libc.CString("char"), Minimum_position: POS_FIGHTING, Command_pointer: do_charge, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("check"), Sort_as: libc.CString("ch"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("checkload"), Sort_as: libc.CString("checkl"), Minimum_position: POS_DEAD, Command_pointer: do_checkloadstatus, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("chown"), Sort_as: libc.CString("cho"), Minimum_position: POS_DEAD, Command_pointer: do_chown, Minimum_level: 1, Minimum_admlevel: ADMLVL_IMPL, Subcmd: 0}, {Command: libc.CString("clan"), Sort_as: libc.CString("cla"), Minimum_position: POS_DEAD, Command_pointer: do_clan, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("clear"), Sort_as: libc.CString("cle"), Minimum_position: POS_DEAD, Command_pointer: do_gen_ps, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_CLEAR}, {Command: libc.CString("close"), Sort_as: libc.CString("cl"), Minimum_position: POS_SITTING, Command_pointer: do_gen_door, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_CLOSE}, {Command: libc.CString("closeeyes"), Sort_as: libc.CString("closeey"), Minimum_position: POS_RESTING, Command_pointer: do_eyec, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("cls"), Sort_as: libc.CString("cls"), Minimum_position: POS_DEAD, Command_pointer: do_gen_ps, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_CLEAR}, {Command: libc.CString("clsolc"), Sort_as: libc.CString("clsolc"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: SCMD_CLS}, {Command: libc.CString("consider"), Sort_as: libc.CString("con"), Minimum_position: POS_RESTING, Command_pointer: do_consider, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("color"), Sort_as: libc.CString("col"), Minimum_position: POS_DEAD, Command_pointer: do_color, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("combine"), Sort_as: libc.CString("comb"), Minimum_position: POS_RESTING, Command_pointer: do_combine, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("compare"), Sort_as: libc.CString("comp"), Minimum_position: POS_RESTING, Command_pointer: do_compare, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("commands"), Sort_as: libc.CString("com"), Minimum_position: POS_DEAD, Command_pointer: do_commands, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_COMMANDS}, {Command: libc.CString("commune"), Sort_as: libc.CString("comm"), Minimum_position: POS_DEAD, Command_pointer: do_commune, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("compact"), Sort_as: libc.CString("compact"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_COMPACT}, {Command: libc.CString("cook"), Sort_as: libc.CString("coo"), Minimum_position: POS_RESTING, Command_pointer: do_cook, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("copyover"), Sort_as: libc.CString("copyover"), Minimum_position: POS_DEAD, Command_pointer: do_copyover, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("create"), Sort_as: libc.CString("crea"), Minimum_position: POS_STANDING, Command_pointer: do_form, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("credits"), Sort_as: libc.CString("cred"), Minimum_position: POS_DEAD, Command_pointer: do_gen_ps, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_CREDITS}, {Command: libc.CString("crusher"), Sort_as: libc.CString("crushe"), Minimum_position: POS_FIGHTING, Command_pointer: do_crusher, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("date"), Sort_as: libc.CString("da"), Minimum_position: POS_DEAD, Command_pointer: do_date, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_DATE}, {Command: libc.CString("darkness"), Sort_as: libc.CString("darknes"), Minimum_position: POS_FIGHTING, Command_pointer: do_ddslash, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("dc"), Sort_as: libc.CString("dc"), Minimum_position: POS_DEAD, Command_pointer: do_dc, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("deathball"), Sort_as: libc.CString("deathbal"), Minimum_position: POS_FIGHTING, Command_pointer: do_deathball, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("deathbeam"), Sort_as: libc.CString("deathbea"), Minimum_position: POS_FIGHTING, Command_pointer: do_deathbeam, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("decapitate"), Sort_as: libc.CString("decapit"), Minimum_position: POS_STANDING, Command_pointer: do_spoil, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("defend"), Sort_as: libc.CString("defen"), Minimum_position: POS_STANDING, Command_pointer: do_defend, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("deploy"), Sort_as: libc.CString("deplo"), Minimum_position: POS_STANDING, Command_pointer: do_deploy, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("dualbeam"), Sort_as: libc.CString("dualbea"), Minimum_position: POS_FIGHTING, Command_pointer: do_dualbeam, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("deposit"), Sort_as: libc.CString("depo"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("diagnose"), Sort_as: libc.CString("diagnos"), Minimum_position: POS_RESTING, Command_pointer: do_diagnose, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("dimizu"), Sort_as: libc.CString("dimizu"), Minimum_position: POS_STANDING, Command_pointer: do_dimizu, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("disable"), Sort_as: libc.CString("disa"), Minimum_position: POS_DEAD, Command_pointer: do_disable, Minimum_level: 0, Minimum_admlevel: ADMLVL_VICE, Subcmd: 0}, {Command: libc.CString("disguise"), Sort_as: libc.CString("disguis"), Minimum_position: POS_DEAD, Command_pointer: do_disguise, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("dig"), Sort_as: libc.CString("dig"), Minimum_position: POS_DEAD, Command_pointer: do_bury, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("display"), Sort_as: libc.CString("disp"), Minimum_position: POS_DEAD, Command_pointer: do_display, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("dodonpa"), Sort_as: libc.CString("dodon"), Minimum_position: POS_FIGHTING, Command_pointer: do_dodonpa, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("donate"), Sort_as: libc.CString("don"), Minimum_position: POS_RESTING, Command_pointer: do_drop, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_DONATE}, {Command: libc.CString("drag"), Sort_as: libc.CString("dra"), Minimum_position: POS_STANDING, Command_pointer: do_drag, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("draw"), Sort_as: libc.CString("dra"), Minimum_position: POS_SITTING, Command_pointer: do_draw, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("drink"), Sort_as: libc.CString("dri"), Minimum_position: POS_RESTING, Command_pointer: do_drink, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_DRINK}, {Command: libc.CString("drop"), Sort_as: libc.CString("dro"), Minimum_position: POS_RESTING, Command_pointer: do_drop, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_DROP}, {Command: libc.CString("dub"), Sort_as: libc.CString("du"), Minimum_position: POS_STANDING, Command_pointer: do_intro, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("eat"), Sort_as: libc.CString("ea"), Minimum_position: POS_RESTING, Command_pointer: do_eat, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_EAT}, {Command: libc.CString("eavesdrop"), Sort_as: libc.CString("eaves"), Minimum_position: POS_RESTING, Command_pointer: do_eavesdrop, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("echo"), Sort_as: libc.CString("ec"), Minimum_position: POS_SLEEPING, Command_pointer: do_echo, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_ECHO}, {Command: libc.CString("elbow"), Sort_as: libc.CString("elb"), Minimum_position: POS_FIGHTING, Command_pointer: do_elbow, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("emote"), Sort_as: libc.CString("em"), Minimum_position: POS_RESTING, Command_pointer: do_echo, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_EMOTE}, {Command: libc.CString("energize"), Sort_as: libc.CString("energiz"), Minimum_position: POS_RESTING, Command_pointer: do_energize, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString(":"), Sort_as: libc.CString(":"), Minimum_position: POS_RESTING, Command_pointer: do_echo, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_EMOTE}, {Command: libc.CString("ensnare"), Sort_as: libc.CString("ensnar"), Minimum_position: POS_FIGHTING, Command_pointer: do_ensnare, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("enter"), Sort_as: libc.CString("ent"), Minimum_position: POS_STANDING, Command_pointer: do_enter, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("equipment"), Sort_as: libc.CString("eq"), Minimum_position: POS_SLEEPING, Command_pointer: do_equipment, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("eraser"), Sort_as: libc.CString("eras"), Minimum_position: POS_FIGHTING, Command_pointer: do_eraser, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("escape"), Sort_as: libc.CString("esca"), Minimum_position: POS_RESTING, Command_pointer: do_escape, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("evolve"), Sort_as: libc.CString("evolv"), Minimum_position: POS_RESTING, Command_pointer: do_evolve, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("exchange"), Sort_as: libc.CString("exchan"), Minimum_position: POS_RESTING, Command_pointer: do_rptrans, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("exits"), Sort_as: libc.CString("ex"), Minimum_position: POS_RESTING, Command_pointer: do_exits, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("examine"), Sort_as: libc.CString("exa"), Minimum_position: POS_SITTING, Command_pointer: do_examine, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("extract"), Sort_as: libc.CString("extrac"), Minimum_position: POS_STANDING, Command_pointer: do_extract, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("feed"), Sort_as: libc.CString("fee"), Minimum_position: POS_STANDING, Command_pointer: do_feed, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("fill"), Sort_as: libc.CString("fil"), Minimum_position: POS_STANDING, Command_pointer: do_pour, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_FILL}, {Command: libc.CString("file"), Sort_as: libc.CString("fi"), Minimum_position: POS_SLEEPING, Command_pointer: do_file, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("finalflash"), Sort_as: libc.CString("finalflash"), Minimum_position: POS_FIGHTING, Command_pointer: do_final, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("finddoor"), Sort_as: libc.CString("findd"), Minimum_position: POS_SLEEPING, Command_pointer: do_finddoor, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("findkey"), Sort_as: libc.CString("findk"), Minimum_position: POS_SLEEPING, Command_pointer: do_findkey, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("finger"), Sort_as: libc.CString("finge"), Minimum_position: POS_SLEEPING, Command_pointer: do_finger, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("fireshield"), Sort_as: libc.CString("firesh"), Minimum_position: POS_STANDING, Command_pointer: do_fireshield, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("fish"), Sort_as: libc.CString("fis"), Minimum_position: POS_STANDING, Command_pointer: do_fish, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("fix"), Sort_as: libc.CString("fix"), Minimum_position: POS_STANDING, Command_pointer: do_fix, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("flee"), Sort_as: libc.CString("fl"), Minimum_position: POS_FIGHTING, Command_pointer: do_flee, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("fly"), Sort_as: libc.CString("fly"), Minimum_position: POS_RESTING, Command_pointer: do_fly, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("focus"), Sort_as: libc.CString("foc"), Minimum_position: POS_STANDING, Command_pointer: do_focus, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("follow"), Sort_as: libc.CString("fol"), Minimum_position: POS_RESTING, Command_pointer: do_follow, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("force"), Sort_as: libc.CString("force"), Minimum_position: POS_SLEEPING, Command_pointer: do_force, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("forgery"), Sort_as: libc.CString("forg"), Minimum_position: POS_RESTING, Command_pointer: do_forgery, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("forget"), Sort_as: libc.CString("forg"), Minimum_position: POS_RESTING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("freeze"), Sort_as: libc.CString("freeze"), Minimum_position: POS_DEAD, Command_pointer: do_wizutil, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_FREEZE}, {Command: libc.CString("fury"), Sort_as: libc.CString("fury"), Minimum_position: POS_FIGHTING, Command_pointer: do_fury, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("future"), Sort_as: libc.CString("futu"), Minimum_position: POS_STANDING, Command_pointer: do_future, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("gain"), Sort_as: libc.CString("ga"), Minimum_position: POS_RESTING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("galikgun"), Sort_as: libc.CString("galik"), Minimum_position: POS_FIGHTING, Command_pointer: do_galikgun, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("game"), Sort_as: libc.CString("gam"), Minimum_position: POS_RESTING, Command_pointer: do_show, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("garden"), Sort_as: libc.CString("garde"), Minimum_position: POS_STANDING, Command_pointer: do_garden, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("genkidama"), Sort_as: libc.CString("genkidam"), Minimum_position: POS_FIGHTING, Command_pointer: do_genki, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("genocide"), Sort_as: libc.CString("genocid"), Minimum_position: POS_FIGHTING, Command_pointer: do_geno, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("get"), Sort_as: libc.CString("get"), Minimum_position: POS_RESTING, Command_pointer: do_get, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("gecho"), Sort_as: libc.CString("gecho"), Minimum_position: POS_DEAD, Command_pointer: do_gecho, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("gedit"), Sort_as: libc.CString("gedit"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: SCMD_OASIS_GEDIT}, {Command: libc.CString("gemote"), Sort_as: libc.CString("gem"), Minimum_position: POS_SLEEPING, Command_pointer: do_gen_comm, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_GEMOTE}, {Command: libc.CString("generator"), Sort_as: libc.CString("genr"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("glist"), Sort_as: libc.CString("glist"), Minimum_position: POS_SLEEPING, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: SCMD_OASIS_GLIST}, {Command: libc.CString("give"), Sort_as: libc.CString("giv"), Minimum_position: POS_RESTING, Command_pointer: do_give, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("goto"), Sort_as: libc.CString("go"), Minimum_position: POS_SLEEPING, Command_pointer: do_goto, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("gold"), Sort_as: libc.CString("gol"), Minimum_position: POS_RESTING, Command_pointer: do_gold, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("group"), Sort_as: libc.CString("gro"), Minimum_position: POS_RESTING, Command_pointer: do_group, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("grab"), Sort_as: libc.CString("grab"), Minimum_position: POS_RESTING, Command_pointer: do_grab, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("grand"), Sort_as: libc.CString("gran"), Minimum_position: POS_RESTING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("grapple"), Sort_as: libc.CString("grapp"), Minimum_position: POS_FIGHTING, Command_pointer: do_grapple, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("grats"), Sort_as: libc.CString("grat"), Minimum_position: POS_SLEEPING, Command_pointer: do_gen_comm, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_GRATZ}, {Command: libc.CString("gravity"), Sort_as: libc.CString("grav"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("gsay"), Sort_as: libc.CString("gsay"), Minimum_position: POS_SLEEPING, Command_pointer: do_gsay, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("gtell"), Sort_as: libc.CString("gt"), Minimum_position: POS_SLEEPING, Command_pointer: do_gsay, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hand"), Sort_as: libc.CString("han"), Minimum_position: POS_SITTING, Command_pointer: do_hand, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("handout"), Sort_as: libc.CString("hand"), Minimum_position: POS_STANDING, Command_pointer: do_handout, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("hasshuken"), Sort_as: libc.CString("hasshuke"), Minimum_position: POS_STANDING, Command_pointer: do_hass, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hayasa"), Sort_as: libc.CString("hayas"), Minimum_position: POS_STANDING, Command_pointer: do_hayasa, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("headbutt"), Sort_as: libc.CString("headbut"), Minimum_position: POS_FIGHTING, Command_pointer: do_head, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("heal"), Sort_as: libc.CString("hea"), Minimum_position: POS_STANDING, Command_pointer: do_heal, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("health"), Sort_as: libc.CString("hea"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_GHEALTH}, {Command: libc.CString("healingglow"), Sort_as: libc.CString("healing"), Minimum_position: POS_STANDING, Command_pointer: do_healglow, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("heeldrop"), Sort_as: libc.CString("heeldr"), Minimum_position: POS_FIGHTING, Command_pointer: do_heeldrop, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hellflash"), Sort_as: libc.CString("hellflas"), Minimum_position: POS_FIGHTING, Command_pointer: do_hellflash, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hellspear"), Sort_as: libc.CString("hellspea"), Minimum_position: POS_FIGHTING, Command_pointer: do_hellspear, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("help"), Sort_as: libc.CString("h"), Minimum_position: POS_DEAD, Command_pointer: do_help, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hedit"), Sort_as: libc.CString("hedit"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_HEDIT}, {Command: libc.CString("hindex"), Sort_as: libc.CString("hind"), Minimum_position: POS_DEAD, Command_pointer: do_hindex, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("helpcheck"), Sort_as: libc.CString("helpch"), Minimum_position: POS_DEAD, Command_pointer: do_helpcheck, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("handbook"), Sort_as: libc.CString("handb"), Minimum_position: POS_DEAD, Command_pointer: do_gen_ps, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_HANDBOOK}, {Command: libc.CString("hide"), Sort_as: libc.CString("hide"), Minimum_position: POS_RESTING, Command_pointer: do_gen_tog, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_HIDE}, {Command: libc.CString("hints"), Sort_as: libc.CString("hints"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_HINTS}, {Command: libc.CString("history"), Sort_as: libc.CString("hist"), Minimum_position: POS_DEAD, Command_pointer: do_history, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hold"), Sort_as: libc.CString("hold"), Minimum_position: POS_RESTING, Command_pointer: do_grab, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("holylight"), Sort_as: libc.CString("holy"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_HOLYLIGHT}, {Command: libc.CString("honoo"), Sort_as: libc.CString("hono"), Minimum_position: POS_FIGHTING, Command_pointer: do_honoo, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("house"), Sort_as: libc.CString("house"), Minimum_position: POS_RESTING, Command_pointer: do_house, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hsedit"), Sort_as: libc.CString("hsedit"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: SCMD_OASIS_HSEDIT}, {Command: libc.CString("hspiral"), Sort_as: libc.CString("hspira"), Minimum_position: POS_FIGHTING, Command_pointer: do_hspiral, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("htank"), Sort_as: libc.CString("htan"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hydromancy"), Sort_as: libc.CString("hydrom"), Minimum_position: POS_STANDING, Command_pointer: do_hydromancy, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hyoga"), Sort_as: libc.CString("hyoga"), Minimum_position: POS_STANDING, Command_pointer: do_obstruct, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("ihealth"), Sort_as: libc.CString("ihea"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_IHEALTH}, {Command: libc.CString("info"), Sort_as: libc.CString("info"), Minimum_position: POS_DEAD, Command_pointer: do_ginfo, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("infuse"), Sort_as: libc.CString("infus"), Minimum_position: POS_STANDING, Command_pointer: do_infuse, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("ingest"), Sort_as: libc.CString("inges"), Minimum_position: POS_STANDING, Command_pointer: do_ingest, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("imotd"), Sort_as: libc.CString("imotd"), Minimum_position: POS_DEAD, Command_pointer: do_gen_ps, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_IMOTD}, {Command: libc.CString("immlist"), Sort_as: libc.CString("imm"), Minimum_position: POS_DEAD, Command_pointer: do_gen_ps, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_WIZLIST}, {Command: libc.CString("implant"), Sort_as: libc.CString("implan"), Minimum_position: POS_RESTING, Command_pointer: do_implant, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("instant"), Sort_as: libc.CString("insta"), Minimum_position: POS_STANDING, Command_pointer: do_instant, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("instill"), Sort_as: libc.CString("instil"), Minimum_position: POS_STANDING, Command_pointer: do_instill, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("instruct"), Sort_as: libc.CString("instruc"), Minimum_position: POS_STANDING, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: SCMD_INSTRUCT}, {Command: libc.CString("inventory"), Sort_as: libc.CString("inv"), Minimum_position: POS_DEAD, Command_pointer: do_inventory, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("interest"), Sort_as: libc.CString("inter"), Minimum_position: POS_DEAD, Command_pointer: do_interest, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: 0}, {Command: libc.CString("iedit"), Sort_as: libc.CString("ie"), Minimum_position: POS_DEAD, Command_pointer: do_iedit, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: 0}, {Command: libc.CString("invis"), Sort_as: libc.CString("invi"), Minimum_position: POS_DEAD, Command_pointer: do_invis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("iwarp"), Sort_as: libc.CString("iwarp"), Minimum_position: POS_RESTING, Command_pointer: do_warp, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("junk"), Sort_as: libc.CString("junk"), Minimum_position: POS_RESTING, Command_pointer: do_drop, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_JUNK}, {Command: libc.CString("kaioken"), Sort_as: libc.CString("kaioken"), Minimum_position: POS_STANDING, Command_pointer: do_kaioken, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kakusanha"), Sort_as: libc.CString("kakusan"), Minimum_position: POS_FIGHTING, Command_pointer: do_kakusanha, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kamehameha"), Sort_as: libc.CString("kame"), Minimum_position: POS_FIGHTING, Command_pointer: do_kamehameha, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kanso"), Sort_as: libc.CString("kans"), Minimum_position: POS_FIGHTING, Command_pointer: do_kanso, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kiball"), Sort_as: libc.CString("kibal"), Minimum_position: POS_FIGHTING, Command_pointer: do_kiball, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kiblast"), Sort_as: libc.CString("kiblas"), Minimum_position: POS_FIGHTING, Command_pointer: do_kiblast, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kienzan"), Sort_as: libc.CString("kienza"), Minimum_position: POS_FIGHTING, Command_pointer: do_kienzan, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kill"), Sort_as: libc.CString("kil"), Minimum_position: POS_FIGHTING, Command_pointer: do_kill, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("kick"), Sort_as: libc.CString("kic"), Minimum_position: POS_FIGHTING, Command_pointer: do_kick, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("knee"), Sort_as: libc.CString("kne"), Minimum_position: POS_FIGHTING, Command_pointer: do_knee, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("koteiru"), Sort_as: libc.CString("koteiru"), Minimum_position: POS_FIGHTING, Command_pointer: do_koteiru, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kousengan"), Sort_as: libc.CString("kousengan"), Minimum_position: POS_FIGHTING, Command_pointer: do_kousengan, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kuraiiro"), Sort_as: libc.CString("kuraiir"), Minimum_position: POS_FIGHTING, Command_pointer: do_kura, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kyodaika"), Sort_as: libc.CString("kyodaik"), Minimum_position: POS_STANDING, Command_pointer: do_kyodaika, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("look"), Sort_as: libc.CString("lo"), Minimum_position: POS_RESTING, Command_pointer: do_look, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_LOOK}, {Command: libc.CString("lag"), Sort_as: libc.CString("la"), Minimum_position: POS_RESTING, Command_pointer: do_lag, Minimum_level: 0, Minimum_admlevel: 5, Subcmd: 0}, {Command: libc.CString("land"), Sort_as: libc.CString("lan"), Minimum_position: POS_RESTING, Command_pointer: do_land, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("languages"), Sort_as: libc.CString("lang"), Minimum_position: POS_RESTING, Command_pointer: do_languages, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("last"), Sort_as: libc.CString("last"), Minimum_position: POS_DEAD, Command_pointer: do_last, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("learn"), Sort_as: libc.CString("lear"), Minimum_position: POS_RESTING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("leave"), Sort_as: libc.CString("lea"), Minimum_position: POS_STANDING, Command_pointer: do_leave, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("levels"), Sort_as: libc.CString("lev"), Minimum_position: POS_DEAD, Command_pointer: do_levels, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("light"), Sort_as: libc.CString("ligh"), Minimum_position: POS_STANDING, Command_pointer: do_lightgrenade, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("list"), Sort_as: libc.CString("lis"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("life"), Sort_as: libc.CString("lif"), Minimum_position: POS_SLEEPING, Command_pointer: do_lifeforce, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("links"), Sort_as: libc.CString("lin"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: SCMD_OASIS_LINKS}, {Command: libc.CString("liquefy"), Sort_as: libc.CString("liquef"), Minimum_position: POS_SLEEPING, Command_pointer: do_liquefy, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("lkeep"), Sort_as: libc.CString("lkee"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_LKEEP}, {Command: libc.CString("lock"), Sort_as: libc.CString("loc"), Minimum_position: POS_SITTING, Command_pointer: do_gen_door, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_LOCK}, {Command: libc.CString("lockout"), Sort_as: libc.CString("lock"), Minimum_position: POS_STANDING, Command_pointer: do_hell, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("load"), Sort_as: libc.CString("load"), Minimum_position: POS_DEAD, Command_pointer: do_load, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("majinize"), Sort_as: libc.CString("majini"), Minimum_position: POS_STANDING, Command_pointer: do_majinize, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("malice"), Sort_as: libc.CString("malic"), Minimum_position: POS_FIGHTING, Command_pointer: do_malice, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("masenko"), Sort_as: libc.CString("masenk"), Minimum_position: POS_FIGHTING, Command_pointer: do_masenko, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("motd"), Sort_as: libc.CString("motd"), Minimum_position: POS_DEAD, Command_pointer: do_gen_ps, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_MOTD}, {Command: libc.CString("mail"), Sort_as: libc.CString("mail"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 2, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("map"), Sort_as: libc.CString("map"), Minimum_position: POS_STANDING, Command_pointer: do_map, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("medit"), Sort_as: libc.CString("medit"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_MEDIT}, {Command: libc.CString("meditate"), Sort_as: libc.CString("medita"), Minimum_position: POS_SITTING, Command_pointer: do_meditate, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("metamorph"), Sort_as: libc.CString("metamorp"), Minimum_position: POS_STANDING, Command_pointer: do_metamorph, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mimic"), Sort_as: libc.CString("mimi"), Minimum_position: POS_STANDING, Command_pointer: do_mimic, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mlist"), Sort_as: libc.CString("mlist"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_MLIST}, {Command: libc.CString("moondust"), Sort_as: libc.CString("moondus"), Minimum_position: POS_STANDING, Command_pointer: do_moondust, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("multiform"), Sort_as: libc.CString("multifor"), Minimum_position: POS_STANDING, Command_pointer: do_multiform, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mute"), Sort_as: libc.CString("mute"), Minimum_position: POS_DEAD, Command_pointer: do_wizutil, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_SQUELCH}, {Command: libc.CString("music"), Sort_as: libc.CString("musi"), Minimum_position: POS_RESTING, Command_pointer: do_gen_comm, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_HOLLER}, {Command: libc.CString("newbie"), Sort_as: libc.CString("newbie"), Minimum_position: POS_SLEEPING, Command_pointer: do_gen_comm, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_AUCTION}, {Command: libc.CString("news"), Sort_as: libc.CString("news"), Minimum_position: POS_SLEEPING, Command_pointer: do_news, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("newsedit"), Sort_as: libc.CString("newsedi"), Minimum_position: POS_SLEEPING, Command_pointer: do_newsedit, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("nickname"), Sort_as: libc.CString("nicknam"), Minimum_position: POS_RESTING, Command_pointer: do_nickname, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("nocompress"), Sort_as: libc.CString("nocompress"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOCOMPRESS}, {Command: libc.CString("noeq"), Sort_as: libc.CString("noeq"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOEQSEE}, {Command: libc.CString("nolin"), Sort_as: libc.CString("nolin"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NODEC}, {Command: libc.CString("nomusic"), Sort_as: libc.CString("nomusi"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOMUSIC}, {Command: libc.CString("noooc"), Sort_as: libc.CString("noooc"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOGOSSIP}, {Command: libc.CString("nogive"), Sort_as: libc.CString("nogiv"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: SCMD_NOGIVE}, {Command: libc.CString("nograts"), Sort_as: libc.CString("nograts"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOGRATZ}, {Command: libc.CString("nogrow"), Sort_as: libc.CString("nogro"), Minimum_position: POS_DEAD, Command_pointer: do_nogrow, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("nohassle"), Sort_as: libc.CString("nohassle"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_NOHASSLE}, {Command: libc.CString("nomail"), Sort_as: libc.CString("nomail"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NMWARN}, {Command: libc.CString("nonewbie"), Sort_as: libc.CString("nonewbie"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOAUCTION}, {Command: libc.CString("noparry"), Sort_as: libc.CString("noparr"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOPARRY}, {Command: libc.CString("norepeat"), Sort_as: libc.CString("norepeat"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOREPEAT}, {Command: libc.CString("noshout"), Sort_as: libc.CString("noshout"), Minimum_position: POS_SLEEPING, Command_pointer: do_gen_tog, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_DEAF}, {Command: libc.CString("nosummon"), Sort_as: libc.CString("nosummon"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOSUMMON}, {Command: libc.CString("notell"), Sort_as: libc.CString("notell"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOTELL}, {Command: libc.CString("notitle"), Sort_as: libc.CString("notitle"), Minimum_position: POS_DEAD, Command_pointer: do_wizutil, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: SCMD_NOTITLE}, {Command: libc.CString("nova"), Sort_as: libc.CString("nov"), Minimum_position: POS_STANDING, Command_pointer: do_nova, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("nowiz"), Sort_as: libc.CString("nowiz"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_NOWIZ}, {Command: libc.CString("ooc"), Sort_as: libc.CString("ooc"), Minimum_position: POS_SLEEPING, Command_pointer: do_gen_comm, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_GOSSIP}, {Command: libc.CString("offer"), Sort_as: libc.CString("off"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("open"), Sort_as: libc.CString("ope"), Minimum_position: POS_SITTING, Command_pointer: do_gen_door, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_OPEN}, {Command: libc.CString("olc"), Sort_as: libc.CString("olc"), Minimum_position: POS_DEAD, Command_pointer: do_show_save_list, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("olist"), Sort_as: libc.CString("olist"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_OLIST}, {Command: libc.CString("oedit"), Sort_as: libc.CString("oedit"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_OEDIT}, {Command: libc.CString("osay"), Sort_as: libc.CString("osay"), Minimum_position: POS_RESTING, Command_pointer: do_osay, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("pack"), Sort_as: libc.CString("pac"), Minimum_position: POS_STANDING, Command_pointer: do_pack, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("page"), Sort_as: libc.CString("pag"), Minimum_position: POS_DEAD, Command_pointer: do_page, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("paralyze"), Sort_as: libc.CString("paralyz"), Minimum_position: POS_FIGHTING, Command_pointer: do_paralyze, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("pagelength"), Sort_as: libc.CString("pagel"), Minimum_position: POS_DEAD, Command_pointer: do_pagelength, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("peace"), Sort_as: libc.CString("pea"), Minimum_position: POS_DEAD, Command_pointer: do_peace, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("perfect"), Sort_as: libc.CString("perfec"), Minimum_position: POS_DEAD, Command_pointer: do_perf, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("permission"), Sort_as: libc.CString("permiss"), Minimum_position: POS_DEAD, Command_pointer: do_permission, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("phoenix"), Sort_as: libc.CString("phoeni"), Minimum_position: POS_FIGHTING, Command_pointer: do_pslash, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("pick"), Sort_as: libc.CString("pi"), Minimum_position: POS_STANDING, Command_pointer: do_gen_door, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_PICK}, {Command: libc.CString("pickup"), Sort_as: libc.CString("picku"), Minimum_position: POS_RESTING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("pilot"), Sort_as: libc.CString("pilot"), Minimum_position: POS_SITTING, Command_pointer: do_drive, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("plant"), Sort_as: libc.CString("plan"), Minimum_position: POS_STANDING, Command_pointer: do_plant, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("play"), Sort_as: libc.CString("pla"), Minimum_position: POS_SITTING, Command_pointer: do_play, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("players"), Sort_as: libc.CString("play"), Minimum_position: POS_DEAD, Command_pointer: do_plist, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: 0}, {Command: libc.CString("poofin"), Sort_as: libc.CString("poofi"), Minimum_position: POS_DEAD, Command_pointer: do_poofset, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_POOFIN}, {Command: libc.CString("poofout"), Sort_as: libc.CString("poofo"), Minimum_position: POS_DEAD, Command_pointer: do_poofset, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_POOFOUT}, {Command: libc.CString("pose"), Sort_as: libc.CString("pos"), Minimum_position: POS_STANDING, Command_pointer: do_pose, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("post"), Sort_as: libc.CString("pos"), Minimum_position: POS_STANDING, Command_pointer: do_post, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("potential"), Sort_as: libc.CString("poten"), Minimum_position: POS_STANDING, Command_pointer: do_potential, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("pour"), Sort_as: libc.CString("pour"), Minimum_position: POS_STANDING, Command_pointer: do_pour, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_POUR}, {Command: libc.CString("powerup"), Sort_as: libc.CString("poweru"), Minimum_position: POS_FIGHTING, Command_pointer: do_powerup, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("preference"), Sort_as: libc.CString("preferenc"), Minimum_position: POS_DEAD, Command_pointer: do_preference, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("program"), Sort_as: libc.CString("progra"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_OASIS_REDIT}, {Command: libc.CString("prompt"), Sort_as: libc.CString("pro"), Minimum_position: POS_DEAD, Command_pointer: do_display, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("practice"), Sort_as: libc.CString("pra"), Minimum_position: POS_RESTING, Command_pointer: do_practice, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("psychic"), Sort_as: libc.CString("psychi"), Minimum_position: POS_FIGHTING, Command_pointer: do_psyblast, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("punch"), Sort_as: libc.CString("punc"), Minimum_position: POS_FIGHTING, Command_pointer: do_punch, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("pushup"), Sort_as: libc.CString("pushu"), Minimum_position: POS_STANDING, Command_pointer: do_pushup, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("put"), Sort_as: libc.CString("put"), Minimum_position: POS_RESTING, Command_pointer: do_put, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("purge"), Sort_as: libc.CString("purge"), Minimum_position: POS_DEAD, Command_pointer: do_purge, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("qui"), Sort_as: libc.CString("qui"), Minimum_position: POS_DEAD, Command_pointer: do_quit, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("quit"), Sort_as: libc.CString("quit"), Minimum_position: POS_DEAD, Command_pointer: do_quit, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_QUIT}, {Command: libc.CString("radar"), Sort_as: libc.CString("rada"), Minimum_position: POS_RESTING, Command_pointer: do_sradar, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("raise"), Sort_as: libc.CString("rai"), Minimum_position: POS_DEAD, Command_pointer: do_raise, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rbank"), Sort_as: libc.CString("rban"), Minimum_position: POS_RESTING, Command_pointer: do_rbank, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("refuel"), Sort_as: libc.CString("refue"), Minimum_position: POS_SITTING, Command_pointer: do_refuel, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("resize"), Sort_as: libc.CString("resiz"), Minimum_position: POS_STANDING, Command_pointer: do_resize, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("restring"), Sort_as: libc.CString("restring"), Minimum_position: POS_STANDING, Command_pointer: do_restring, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rclone"), Sort_as: libc.CString("rclon"), Minimum_position: POS_DEAD, Command_pointer: do_rcopy, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("rcopy"), Sort_as: libc.CString("rcopy"), Minimum_position: POS_DEAD, Command_pointer: do_rcopy, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("roomdisplay"), Sort_as: libc.CString("roomdisplay"), Minimum_position: POS_STANDING, Command_pointer: do_rdisplay, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("read"), Sort_as: libc.CString("rea"), Minimum_position: POS_RESTING, Command_pointer: do_look, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_READ}, {Command: libc.CString("recall"), Sort_as: libc.CString("reca"), Minimum_position: POS_STANDING, Command_pointer: do_recall, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("recharge"), Sort_as: libc.CString("rechar"), Minimum_position: POS_STANDING, Command_pointer: do_recharge, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("regenerate"), Sort_as: libc.CString("regen"), Minimum_position: POS_RESTING, Command_pointer: do_regenerate, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("renzokou"), Sort_as: libc.CString("renzo"), Minimum_position: POS_FIGHTING, Command_pointer: do_renzo, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("repair"), Sort_as: libc.CString("repai"), Minimum_position: POS_STANDING, Command_pointer: do_srepair, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("reply"), Sort_as: libc.CString("rep"), Minimum_position: POS_SLEEPING, Command_pointer: do_reply, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rescue"), Sort_as: libc.CString("rescu"), Minimum_position: POS_STANDING, Command_pointer: do_rescue, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rest"), Sort_as: libc.CString("re"), Minimum_position: POS_RESTING, Command_pointer: do_rest, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("reward"), Sort_as: libc.CString("rewar"), Minimum_position: POS_RESTING, Command_pointer: do_reward, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("reload"), Sort_as: libc.CString("reload"), Minimum_position: POS_DEAD, Command_pointer: do_reboot, Minimum_level: 0, Minimum_admlevel: 5, Subcmd: 0}, {Command: libc.CString("receive"), Sort_as: libc.CString("rece"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("remove"), Sort_as: libc.CString("rem"), Minimum_position: POS_RESTING, Command_pointer: do_remove, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rent"), Sort_as: libc.CString("rent"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("report"), Sort_as: libc.CString("repor"), Minimum_position: POS_DEAD, Command_pointer: do_gen_write, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_IDEA}, {Command: libc.CString("reroll"), Sort_as: libc.CString("rero"), Minimum_position: POS_DEAD, Command_pointer: do_wizutil, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: SCMD_REROLL}, {Command: libc.CString("respond"), Sort_as: libc.CString("resp"), Minimum_position: POS_RESTING, Command_pointer: do_respond, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("restore"), Sort_as: libc.CString("resto"), Minimum_position: POS_DEAD, Command_pointer: do_restore, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("return"), Sort_as: libc.CString("retu"), Minimum_position: POS_DEAD, Command_pointer: do_return, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("redit"), Sort_as: libc.CString("redit"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_REDIT}, {Command: libc.CString("rip"), Sort_as: libc.CString("ri"), Minimum_position: POS_DEAD, Command_pointer: do_rip, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rlist"), Sort_as: libc.CString("rlist"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_RLIST}, {Command: libc.CString("rogafufuken"), Sort_as: libc.CString("rogafu"), Minimum_position: POS_FIGHTING, Command_pointer: do_rogafufuken, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("roomflags"), Sort_as: libc.CString("roomf"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_ROOMFLAGS}, {Command: libc.CString("roundhouse"), Sort_as: libc.CString("roundhou"), Minimum_position: POS_FIGHTING, Command_pointer: do_roundhouse, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rpbank"), Sort_as: libc.CString("rpban"), Minimum_position: POS_SLEEPING, Command_pointer: do_rpbank, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rpp"), Sort_as: libc.CString("rpp"), Minimum_position: POS_SLEEPING, Command_pointer: do_rpp, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("runic"), Sort_as: libc.CString("runi"), Minimum_position: POS_STANDING, Command_pointer: do_runic, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("say"), Sort_as: libc.CString("say"), Minimum_position: POS_RESTING, Command_pointer: do_say, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("'"), Sort_as: libc.CString("'"), Minimum_position: POS_RESTING, Command_pointer: do_say, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("save"), Sort_as: libc.CString("sav"), Minimum_position: POS_SLEEPING, Command_pointer: do_save, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("saveall"), Sort_as: libc.CString("saveall"), Minimum_position: POS_DEAD, Command_pointer: do_saveall, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("sbc"), Sort_as: libc.CString("sbc"), Minimum_position: POS_FIGHTING, Command_pointer: do_sbc, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("scan"), Sort_as: libc.CString("sca"), Minimum_position: POS_FIGHTING, Command_pointer: do_scan, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("scatter"), Sort_as: libc.CString("scatte"), Minimum_position: POS_FIGHTING, Command_pointer: do_scatter, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("score"), Sort_as: libc.CString("sc"), Minimum_position: POS_DEAD, Command_pointer: do_score, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("scouter"), Sort_as: libc.CString("scou"), Minimum_position: POS_RESTING, Command_pointer: do_scouter, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("scry"), Sort_as: libc.CString("scr"), Minimum_position: POS_STANDING, Command_pointer: do_scry, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("seishou"), Sort_as: libc.CString("seisho"), Minimum_position: POS_FIGHTING, Command_pointer: do_seishou, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("shell"), Sort_as: libc.CString("she"), Minimum_position: POS_STANDING, Command_pointer: do_shell, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("shimmer"), Sort_as: libc.CString("shimme"), Minimum_position: POS_STANDING, Command_pointer: do_shimmer, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("shogekiha"), Sort_as: libc.CString("shog"), Minimum_position: POS_STANDING, Command_pointer: do_shogekiha, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("shuffle"), Sort_as: libc.CString("shuff"), Minimum_position: POS_SITTING, Command_pointer: do_shuffle, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("snet"), Sort_as: libc.CString("snet"), Minimum_position: POS_RESTING, Command_pointer: do_snet, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("search"), Sort_as: libc.CString("sea"), Minimum_position: POS_STANDING, Command_pointer: do_look, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SEARCH}, {Command: libc.CString("sell"), Sort_as: libc.CString("sell"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("selfdestruct"), Sort_as: libc.CString("selfdest"), Minimum_position: POS_STANDING, Command_pointer: do_selfd, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("sedit"), Sort_as: libc.CString("sedit"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_SEDIT}, {Command: libc.CString("send"), Sort_as: libc.CString("send"), Minimum_position: POS_SLEEPING, Command_pointer: do_send, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("sense"), Sort_as: libc.CString("sense"), Minimum_position: POS_RESTING, Command_pointer: do_track, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("set"), Sort_as: libc.CString("set"), Minimum_position: POS_DEAD, Command_pointer: do_set, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("shout"), Sort_as: libc.CString("sho"), Minimum_position: POS_RESTING, Command_pointer: do_gen_comm, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SHOUT}, {Command: libc.CString("show"), Sort_as: libc.CString("show"), Minimum_position: POS_DEAD, Command_pointer: do_showoff, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("shutdow"), Sort_as: libc.CString("shutdow"), Minimum_position: POS_DEAD, Command_pointer: do_shutdown, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: 0}, {Command: libc.CString("shutdown"), Sort_as: libc.CString("shutdown"), Minimum_position: POS_DEAD, Command_pointer: do_shutdown, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: SCMD_SHUTDOWN}, {Command: libc.CString("silk"), Sort_as: libc.CString("sil"), Minimum_position: POS_RESTING, Command_pointer: do_silk, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("sip"), Sort_as: libc.CString("sip"), Minimum_position: POS_RESTING, Command_pointer: do_drink, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SIP}, {Command: libc.CString("sit"), Sort_as: libc.CString("sit"), Minimum_position: POS_RESTING, Command_pointer: do_sit, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("situp"), Sort_as: libc.CString("situp"), Minimum_position: POS_STANDING, Command_pointer: do_situp, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("skills"), Sort_as: libc.CString("skills"), Minimum_position: POS_SLEEPING, Command_pointer: do_skills, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("skillset"), Sort_as: libc.CString("skillset"), Minimum_position: POS_SLEEPING, Command_pointer: do_skillset, Minimum_level: 0, Minimum_admlevel: 5, Subcmd: 0}, {Command: libc.CString("slam"), Sort_as: libc.CString("sla"), Minimum_position: POS_FIGHTING, Command_pointer: do_slam, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("sleep"), Sort_as: libc.CString("sl"), Minimum_position: POS_SLEEPING, Command_pointer: do_sleep, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("slist"), Sort_as: libc.CString("slist"), Minimum_position: POS_SLEEPING, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_SLIST}, {Command: libc.CString("slowns"), Sort_as: libc.CString("slowns"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: SCMD_SLOWNS}, {Command: libc.CString("smote"), Sort_as: libc.CString("sm"), Minimum_position: POS_RESTING, Command_pointer: do_echo, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SMOTE}, {Command: libc.CString("sneak"), Sort_as: libc.CString("sneak"), Minimum_position: POS_STANDING, Command_pointer: do_gen_tog, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SNEAK}, {Command: libc.CString("snoop"), Sort_as: libc.CString("snoop"), Minimum_position: POS_DEAD, Command_pointer: do_snoop, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("song"), Sort_as: libc.CString("son"), Minimum_position: POS_RESTING, Command_pointer: do_song, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("spiral"), Sort_as: libc.CString("spiral"), Minimum_position: POS_STANDING, Command_pointer: do_spiral, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("socials"), Sort_as: libc.CString("socials"), Minimum_position: POS_DEAD, Command_pointer: do_commands, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SOCIALS}, {Command: libc.CString("solarflare"), Sort_as: libc.CString("solarflare"), Minimum_position: POS_FIGHTING, Command_pointer: do_solar, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("spar"), Sort_as: libc.CString("spa"), Minimum_position: POS_FIGHTING, Command_pointer: do_spar, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("spit"), Sort_as: libc.CString("spi"), Minimum_position: POS_STANDING, Command_pointer: do_spit, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("spiritball"), Sort_as: libc.CString("spiritball"), Minimum_position: POS_FIGHTING, Command_pointer: do_spiritball, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("spiritcontrol"), Sort_as: libc.CString("spiritcontro"), Minimum_position: POS_RESTING, Command_pointer: do_spiritcontrol, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("split"), Sort_as: libc.CString("split"), Minimum_position: POS_SITTING, Command_pointer: do_split, Minimum_level: 1, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("speak"), Sort_as: libc.CString("spe"), Minimum_position: POS_RESTING, Command_pointer: do_languages, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("spells"), Sort_as: libc.CString("spel"), Minimum_position: POS_RESTING, Command_pointer: do_spells, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("stand"), Sort_as: libc.CString("st"), Minimum_position: POS_RESTING, Command_pointer: do_stand, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("starbreaker"), Sort_as: libc.CString("starbr"), Minimum_position: POS_FIGHTING, Command_pointer: do_breaker, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("stake"), Sort_as: libc.CString("stak"), Minimum_position: POS_SLEEPING, Command_pointer: do_beacon, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("stat"), Sort_as: libc.CString("stat"), Minimum_position: POS_DEAD, Command_pointer: do_stat, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("status"), Sort_as: libc.CString("statu"), Minimum_position: POS_DEAD, Command_pointer: do_status, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("steal"), Sort_as: libc.CString("ste"), Minimum_position: POS_STANDING, Command_pointer: do_steal, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("stone"), Sort_as: libc.CString("ston"), Minimum_position: POS_STANDING, Command_pointer: do_spit, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("stop"), Sort_as: libc.CString("sto"), Minimum_position: POS_STANDING, Command_pointer: do_stop, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("study"), Sort_as: libc.CString("stu"), Minimum_position: POS_RESTING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("summon"), Sort_as: libc.CString("summo"), Minimum_position: POS_STANDING, Command_pointer: do_summon, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("sunder"), Sort_as: libc.CString("sunde"), Minimum_position: POS_STANDING, Command_pointer: do_sunder, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("suppress"), Sort_as: libc.CString("suppres"), Minimum_position: POS_STANDING, Command_pointer: do_suppress, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("swallow"), Sort_as: libc.CString("swall"), Minimum_position: POS_RESTING, Command_pointer: do_use, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_QUAFF}, {Command: libc.CString("switch"), Sort_as: libc.CString("switch"), Minimum_position: POS_DEAD, Command_pointer: do_switch, Minimum_level: 0, Minimum_admlevel: ADMLVL_VICE, Subcmd: 0}, {Command: libc.CString("syslog"), Sort_as: libc.CString("syslog"), Minimum_position: POS_DEAD, Command_pointer: do_syslog, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("tailhide"), Sort_as: libc.CString("tailh"), Minimum_position: POS_RESTING, Command_pointer: do_tailhide, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("table"), Sort_as: libc.CString("tabl"), Minimum_position: POS_SITTING, Command_pointer: do_table, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("teach"), Sort_as: libc.CString("teac"), Minimum_position: POS_STANDING, Command_pointer: do_teach, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("tell"), Sort_as: libc.CString("tel"), Minimum_position: POS_DEAD, Command_pointer: do_tell, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("take"), Sort_as: libc.CString("tak"), Minimum_position: POS_RESTING, Command_pointer: do_get, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("tailwhip"), Sort_as: libc.CString("tailw"), Minimum_position: POS_FIGHTING, Command_pointer: do_tailwhip, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("taisha"), Sort_as: libc.CString("taish"), Minimum_position: POS_FIGHTING, Command_pointer: do_taisha, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("taste"), Sort_as: libc.CString("tas"), Minimum_position: POS_RESTING, Command_pointer: do_eat, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_TASTE}, {Command: libc.CString("teleport"), Sort_as: libc.CString("tele"), Minimum_position: POS_DEAD, Command_pointer: do_teleport, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("telepathy"), Sort_as: libc.CString("telepa"), Minimum_position: POS_DEAD, Command_pointer: do_telepathy, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("tedit"), Sort_as: libc.CString("tedit"), Minimum_position: POS_DEAD, Command_pointer: do_tedit, Minimum_level: 0, Minimum_admlevel: ADMLVL_GRGOD, Subcmd: 0}, {Command: libc.CString("test"), Sort_as: libc.CString("test"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: SCMD_TEST}, {Command: libc.CString("thaw"), Sort_as: libc.CString("thaw"), Minimum_position: POS_DEAD, Command_pointer: do_wizutil, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_THAW}, {Command: libc.CString("think"), Sort_as: libc.CString("thin"), Minimum_position: POS_DEAD, Command_pointer: do_think, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("throw"), Sort_as: libc.CString("thro"), Minimum_position: POS_FIGHTING, Command_pointer: do_throw, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("title"), Sort_as: libc.CString("title"), Minimum_position: POS_DEAD, Command_pointer: do_title, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("time"), Sort_as: libc.CString("time"), Minimum_position: POS_DEAD, Command_pointer: do_time, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("toggle"), Sort_as: libc.CString("toggle"), Minimum_position: POS_DEAD, Command_pointer: do_toggle, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("toplist"), Sort_as: libc.CString("toplis"), Minimum_position: POS_DEAD, Command_pointer: do_toplist, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("trackthru"), Sort_as: libc.CString("trackthru"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: SCMD_TRACK}, {Command: libc.CString("train"), Sort_as: libc.CString("train"), Minimum_position: POS_STANDING, Command_pointer: do_train, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("transfer"), Sort_as: libc.CString("transfer"), Minimum_position: POS_SLEEPING, Command_pointer: do_trans, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("transform"), Sort_as: libc.CString("transform"), Minimum_position: POS_FIGHTING, Command_pointer: do_transform, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("transo"), Sort_as: libc.CString("trans"), Minimum_position: POS_STANDING, Command_pointer: do_transobj, Minimum_level: 0, Minimum_admlevel: 5, Subcmd: 0}, {Command: libc.CString("tribeam"), Sort_as: libc.CString("tribe"), Minimum_position: POS_FIGHTING, Command_pointer: do_tribeam, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("trigedit"), Sort_as: libc.CString("trigedit"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_TRIGEDIT}, {Command: libc.CString("trip"), Sort_as: libc.CString("trip"), Minimum_position: POS_FIGHTING, Command_pointer: do_trip, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("tsuihidan"), Sort_as: libc.CString("tsuihida"), Minimum_position: POS_FIGHTING, Command_pointer: do_tsuihidan, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("tunnel"), Sort_as: libc.CString("tunne"), Minimum_position: POS_DEAD, Command_pointer: do_dig, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("twinslash"), Sort_as: libc.CString("twins"), Minimum_position: POS_FIGHTING, Command_pointer: do_tslash, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("twohand"), Sort_as: libc.CString("twohand"), Minimum_position: POS_DEAD, Command_pointer: do_twohand, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("typo"), Sort_as: libc.CString("typo"), Minimum_position: POS_DEAD, Command_pointer: do_gen_write, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_TYPO}, {Command: libc.CString("unlock"), Sort_as: libc.CString("unlock"), Minimum_position: POS_SITTING, Command_pointer: do_gen_door, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_UNLOCK}, {Command: libc.CString("ungroup"), Sort_as: libc.CString("ungroup"), Minimum_position: POS_DEAD, Command_pointer: do_ungroup, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("unban"), Sort_as: libc.CString("unban"), Minimum_position: POS_DEAD, Command_pointer: do_unban, Minimum_level: 0, Minimum_admlevel: ADMLVL_GRGOD, Subcmd: 0}, {Command: libc.CString("unaffect"), Sort_as: libc.CString("unaffect"), Minimum_position: POS_DEAD, Command_pointer: do_wizutil, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: SCMD_UNAFFECT}, {Command: libc.CString("uppercut"), Sort_as: libc.CString("upperc"), Minimum_position: POS_FIGHTING, Command_pointer: do_uppercut, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("upgrade"), Sort_as: libc.CString("upgrad"), Minimum_position: POS_RESTING, Command_pointer: do_upgrade, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("uptime"), Sort_as: libc.CString("uptime"), Minimum_position: POS_DEAD, Command_pointer: do_date, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_UPTIME}, {Command: libc.CString("use"), Sort_as: libc.CString("use"), Minimum_position: POS_SITTING, Command_pointer: do_use, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_USE}, {Command: libc.CString("users"), Sort_as: libc.CString("users"), Minimum_position: POS_DEAD, Command_pointer: do_users, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("value"), Sort_as: libc.CString("val"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("varstat"), Sort_as: libc.CString("varst"), Minimum_position: POS_DEAD, Command_pointer: do_varstat, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("version"), Sort_as: libc.CString("ver"), Minimum_position: POS_DEAD, Command_pointer: do_gen_ps, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_VERSION}, {Command: libc.CString("vieworder"), Sort_as: libc.CString("view"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_VIEWORDER}, {Command: libc.CString("visible"), Sort_as: libc.CString("vis"), Minimum_position: POS_RESTING, Command_pointer: do_visible, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("vnum"), Sort_as: libc.CString("vnum"), Minimum_position: POS_DEAD, Command_pointer: do_vnum, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("voice"), Sort_as: libc.CString("voic"), Minimum_position: POS_RESTING, Command_pointer: do_voice, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("vstat"), Sort_as: libc.CString("vstat"), Minimum_position: POS_DEAD, Command_pointer: do_vstat, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("wake"), Sort_as: libc.CString("wa"), Minimum_position: POS_SLEEPING, Command_pointer: do_wake, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("warppool"), Sort_as: libc.CString("warppoo"), Minimum_position: POS_STANDING, Command_pointer: do_warppool, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("waterrazor"), Sort_as: libc.CString("waterraz"), Minimum_position: POS_STANDING, Command_pointer: do_razor, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("waterspikes"), Sort_as: libc.CString("waterspik"), Minimum_position: POS_STANDING, Command_pointer: do_spike, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("wear"), Sort_as: libc.CString("wea"), Minimum_position: POS_RESTING, Command_pointer: do_wear, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("weather"), Sort_as: libc.CString("weather"), Minimum_position: POS_RESTING, Command_pointer: do_weather, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("who"), Sort_as: libc.CString("who"), Minimum_position: POS_DEAD, Command_pointer: do_who, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("whoami"), Sort_as: libc.CString("whoami"), Minimum_position: POS_DEAD, Command_pointer: do_gen_ps, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_WHOAMI}, {Command: libc.CString("whohide"), Sort_as: libc.CString("whohide"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_WHOHIDE}, {Command: libc.CString("whois"), Sort_as: libc.CString("whois"), Minimum_position: POS_DEAD, Command_pointer: do_whois, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("where"), Sort_as: libc.CString("where"), Minimum_position: POS_RESTING, Command_pointer: do_where, Minimum_level: 1, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("whisper"), Sort_as: libc.CString("whisper"), Minimum_position: POS_RESTING, Command_pointer: do_spec_comm, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_WHISPER}, {Command: libc.CString("wield"), Sort_as: libc.CString("wie"), Minimum_position: POS_RESTING, Command_pointer: do_wield, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("will"), Sort_as: libc.CString("wil"), Minimum_position: POS_RESTING, Command_pointer: do_willpower, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("wimpy"), Sort_as: libc.CString("wimpy"), Minimum_position: POS_DEAD, Command_pointer: do_value, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_WIMPY}, {Command: libc.CString("withdraw"), Sort_as: libc.CString("withdraw"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("wire"), Sort_as: libc.CString("wir"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("wiznet"), Sort_as: libc.CString("wiz"), Minimum_position: POS_DEAD, Command_pointer: do_wiznet, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString(";"), Sort_as: libc.CString(";"), Minimum_position: POS_DEAD, Command_pointer: do_wiznet, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("wizhelp"), Sort_as: libc.CString("wizhelp"), Minimum_position: POS_SLEEPING, Command_pointer: do_commands, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_WIZHELP}, {Command: libc.CString("wizlist"), Sort_as: libc.CString("wizlist"), Minimum_position: POS_DEAD, Command_pointer: do_gen_ps, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_WIZLIST}, {Command: libc.CString("wizlock"), Sort_as: libc.CString("wizlock"), Minimum_position: POS_DEAD, Command_pointer: do_wizlock, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("wizupdate"), Sort_as: libc.CString("wizupdate"), Minimum_position: POS_DEAD, Command_pointer: do_wizupdate, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: 0}, {Command: libc.CString("write"), Sort_as: libc.CString("write"), Minimum_position: POS_STANDING, Command_pointer: do_write, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("zanzoken"), Sort_as: libc.CString("zanzo"), Minimum_position: POS_FIGHTING, Command_pointer: do_zanzoken, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("zen"), Sort_as: libc.CString("ze"), Minimum_position: POS_FIGHTING, Command_pointer: do_zen, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("zcheck"), Sort_as: libc.CString("zcheck"), Minimum_position: POS_DEAD, Command_pointer: do_zcheck, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("zreset"), Sort_as: libc.CString("zreset"), Minimum_position: POS_DEAD, Command_pointer: do_zreset, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("zedit"), Sort_as: libc.CString("zedit"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_ZEDIT}, {Command: libc.CString("zlist"), Sort_as: libc.CString("zlist"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_ZLIST}, {Command: libc.CString("zpurge"), Sort_as: libc.CString("zpurge"), Minimum_position: POS_DEAD, Command_pointer: do_zpurge, Minimum_level: 0, Minimum_admlevel: ADMLVL_GRGOD, Subcmd: 0}, {Command: libc.CString("attach"), Sort_as: libc.CString("attach"), Minimum_position: POS_DEAD, Command_pointer: do_attach, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("detach"), Sort_as: libc.CString("detach"), Minimum_position: POS_DEAD, Command_pointer: do_detach, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("detect"), Sort_as: libc.CString("detec"), Minimum_position: POS_STANDING, Command_pointer: do_radar, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("tlist"), Sort_as: libc.CString("tlist"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_TLIST}, {Command: libc.CString("tstat"), Sort_as: libc.CString("tstat"), Minimum_position: POS_DEAD, Command_pointer: do_tstat, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("masound"), Sort_as: libc.CString("masound"), Minimum_position: POS_DEAD, Command_pointer: do_masound, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mheal"), Sort_as: libc.CString("mhea"), Minimum_position: POS_SITTING, Command_pointer: do_mheal, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mkill"), Sort_as: libc.CString("mkill"), Minimum_position: POS_STANDING, Command_pointer: do_mkill, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mjunk"), Sort_as: libc.CString("mjunk"), Minimum_position: POS_SITTING, Command_pointer: do_mjunk, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mdamage"), Sort_as: libc.CString("mdamage"), Minimum_position: POS_DEAD, Command_pointer: do_mdamage, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mdoor"), Sort_as: libc.CString("mdoor"), Minimum_position: POS_DEAD, Command_pointer: do_mdoor, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mecho"), Sort_as: libc.CString("mecho"), Minimum_position: POS_DEAD, Command_pointer: do_mecho, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mechoaround"), Sort_as: libc.CString("mechoaround"), Minimum_position: POS_DEAD, Command_pointer: do_mechoaround, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("msend"), Sort_as: libc.CString("msend"), Minimum_position: POS_DEAD, Command_pointer: do_msend, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mload"), Sort_as: libc.CString("mload"), Minimum_position: POS_DEAD, Command_pointer: do_mload, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mpurge"), Sort_as: libc.CString("mpurge"), Minimum_position: POS_DEAD, Command_pointer: do_mpurge, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mgoto"), Sort_as: libc.CString("mgoto"), Minimum_position: POS_DEAD, Command_pointer: do_mgoto, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mat"), Sort_as: libc.CString("mat"), Minimum_position: POS_DEAD, Command_pointer: do_mat, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mteleport"), Sort_as: libc.CString("mteleport"), Minimum_position: POS_DEAD, Command_pointer: do_mteleport, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mforce"), Sort_as: libc.CString("mforce"), Minimum_position: POS_DEAD, Command_pointer: do_mforce, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mremember"), Sort_as: libc.CString("mremember"), Minimum_position: POS_DEAD, Command_pointer: do_mremember, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mforget"), Sort_as: libc.CString("mforget"), Minimum_position: POS_DEAD, Command_pointer: do_mforget, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mtransform"), Sort_as: libc.CString("mtransform"), Minimum_position: POS_DEAD, Command_pointer: do_mtransform, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mzoneecho"), Sort_as: libc.CString("mzoneecho"), Minimum_position: POS_DEAD, Command_pointer: do_mzoneecho, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("vdelete"), Sort_as: libc.CString("vdelete"), Minimum_position: POS_DEAD, Command_pointer: do_vdelete, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("mfollow"), Sort_as: libc.CString("mfollow"), Minimum_position: POS_DEAD, Command_pointer: do_mfollow, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("\n"), Sort_as: libc.CString("zzzzzzz"), Minimum_position: 0, Command_pointer: nil, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}}
 var fill [9]*byte = [9]*byte{libc.CString("in"), libc.CString("into"), libc.CString("from"), libc.CString("with"), libc.CString("the"), libc.CString("on"), libc.CString("at"), libc.CString("to"), libc.CString("\n")}
@@ -227,14 +225,14 @@ func roll_stats(ch *char_data, type_ int, bonus int) int {
 		stamina    int = 2
 	)
 	if type_ == powerlevel {
-		base_num = int(ch.Real_abils.Str * 3)
-		max_num = int(ch.Real_abils.Str * 5)
+		base_num = int(ch.Real_abils.Str) * 3
+		max_num = int(ch.Real_abils.Str) * 5
 	} else if type_ == ki {
-		base_num = int(ch.Real_abils.Intel * 3)
-		max_num = int(ch.Real_abils.Intel * 5)
+		base_num = int(ch.Real_abils.Intel) * 3
+		max_num = int(ch.Real_abils.Intel) * 5
 	} else if type_ == stamina {
-		base_num = int(ch.Real_abils.Con * 3)
-		max_num = int(ch.Real_abils.Con * 5)
+		base_num = int(ch.Real_abils.Con) * 3
+		max_num = int(ch.Real_abils.Con) * 5
 	}
 	pool = rand_number(base_num, max_num) + bonus
 	return pool
@@ -261,14 +259,14 @@ func command_interpreter(ch *char_data, argument *byte) {
 	if *argument == 0 {
 		return
 	}
-	if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*argument))))) & int(uint16(int16(_ISalpha)))) == 0 {
+	if !libc.IsAlpha(rune(*argument)) {
 		arg[0] = *argument
 		arg[1] = '\x00'
 		line = (*byte)(unsafe.Add(unsafe.Pointer(argument), 1))
 	} else {
 		line = any_one_arg(argument, &arg[0])
 	}
-	if C.strcasecmp(&arg[0], libc.CString("-")) == 0 {
+	if libc.StrCaseCmp(&arg[0], libc.CString("-")) == 0 {
 		return
 	}
 	{
@@ -285,13 +283,13 @@ func command_interpreter(ch *char_data, argument *byte) {
 		}
 	}
 	for func() int {
-		length = int(C.strlen(&arg[0]))
+		length = libc.StrLen(&arg[0])
 		return func() int {
 			cmd = 0
 			return cmd
 		}()
 	}(); *(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command != '\n'; cmd++ {
-		if C.strncmp((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, &arg[0], uint64(length)) == 0 {
+		if libc.StrNCmp((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, &arg[0], length) == 0 {
 			if GET_LEVEL(ch) >= int((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Minimum_level) && ch.Admlevel >= int((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Minimum_admlevel) {
 				break
 			}
@@ -299,20 +297,12 @@ func command_interpreter(ch *char_data, argument *byte) {
 	}
 	var blah [2048]byte
 	stdio.Sprintf(&blah[0], "%s", (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command)
-	if C.strcasecmp(&blah[0], libc.CString("throw")) == 0 {
+	if libc.StrCaseCmp(&blah[0], libc.CString("throw")) == 0 {
 		ch.Throws = rand_number(1, 3)
 	}
 	if *(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command == '\n' {
-		if config_info.Operation.Imc_enabled != 0 && !IS_NPC(ch) {
-			if !IS_NPC(ch) && !imc_command_hook(ch, &arg[0], line) {
-				send_to_char(ch, libc.CString("Huh!?!\r\n"))
-			} else {
-				skip_ld = 1
-			}
-		} else {
-			send_to_char(ch, libc.CString("Huh!?!\r\n"))
-			return
-		}
+		send_to_char(ch, libc.CString("Huh!?!\r\n"))
+		return
 	} else if command_pass(&blah[0], ch) == 0 && ch.Admlevel < 1 {
 		send_to_char(ch, libc.CString("It's unfortunate...\r\n"))
 	} else if check_disabled((*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))) != 0 {
@@ -325,9 +315,9 @@ func command_interpreter(ch *char_data, argument *byte) {
 		send_to_char(ch, libc.CString("You are occupied with your Spiral Comet attack!\r\n"))
 	} else if (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command_pointer == nil {
 		send_to_char(ch, libc.CString("Sorry, that command hasn't been implemented yet.\r\n"))
-	} else if IS_NPC(ch) && (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Minimum_admlevel >= ADMLVL_IMMORT {
+	} else if IS_NPC(ch) && int((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Minimum_admlevel) >= ADMLVL_IMMORT {
 		send_to_char(ch, libc.CString("You can't use immortal commands while switched.\r\n"))
-	} else if ch.Position < (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Minimum_position && ch.Position != POS_FIGHTING {
+	} else if int(ch.Position) < int((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Minimum_position) && int(ch.Position) != POS_FIGHTING {
 		switch ch.Position {
 		case POS_DEAD:
 			send_to_char(ch, libc.CString("Lie still; you are DEAD!!! :-(\r\n"))
@@ -355,7 +345,7 @@ func command_interpreter(ch *char_data, argument *byte) {
 func find_alias(alias_list *alias_data, str *byte) *alias_data {
 	for alias_list != nil {
 		if *str == *alias_list.Alias {
-			if C.strcmp(str, alias_list.Alias) == 0 {
+			if libc.StrCmp(str, alias_list.Alias) == 0 {
 				return alias_list
 			}
 		}
@@ -421,15 +411,15 @@ func do_alias(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_char(ch, libc.CString("Alias deleted.\r\n"))
 			}
 		} else {
-			if C.strcasecmp(&arg[0], libc.CString("alias")) == 0 {
+			if libc.StrCaseCmp(&arg[0], libc.CString("alias")) == 0 {
 				send_to_char(ch, libc.CString("You can't alias 'alias'.\r\n"))
 				return
 			}
 			a = new(alias_data)
-			a.Alias = C.strdup(&arg[0])
+			a.Alias = libc.StrDup(&arg[0])
 			delete_doubledollar(repl)
-			a.Replacement = C.strdup(repl)
-			if C.strchr(repl, ALIAS_SEP_CHAR) != nil || C.strchr(repl, ALIAS_VAR_CHAR) != nil {
+			a.Replacement = libc.StrDup(repl)
+			if libc.StrChr(repl, ALIAS_SEP_CHAR) != nil || libc.StrChr(repl, ALIAS_VAR_CHAR) != nil {
 				a.Type = ALIAS_COMPLEX
 			} else {
 				a.Type = ALIAS_SIMPLE
@@ -451,8 +441,8 @@ func perform_complex_alias(input_q *txt_q, orig *byte, a *alias_data) {
 		num_of_tokens int = 0
 		num           int
 	)
-	C.strcpy(&buf2[0], orig)
-	temp = strtok(&buf2[0], libc.CString(" "))
+	libc.StrCpy(&buf2[0], orig)
+	temp = libc.StrTok(&buf2[0], libc.CString(" "))
 	for temp != nil && num_of_tokens < NUM_TOKENS {
 		tokens[func() int {
 			p := &num_of_tokens
@@ -460,7 +450,7 @@ func perform_complex_alias(input_q *txt_q, orig *byte, a *alias_data) {
 			*p++
 			return x
 		}()] = temp
-		temp = strtok(nil, libc.CString(" "))
+		temp = libc.StrTok(nil, libc.CString(" "))
 	}
 	write_point = &buf[0]
 	temp_queue.Head = func() *txt_block {
@@ -480,11 +470,11 @@ func perform_complex_alias(input_q *txt_q, orig *byte, a *alias_data) {
 				num = int(*temp - '1')
 				return num
 			}()) < num_of_tokens && num >= 0 {
-				C.strcpy(write_point, tokens[num])
-				write_point = (*byte)(unsafe.Add(unsafe.Pointer(write_point), C.strlen(tokens[num])))
+				libc.StrCpy(write_point, tokens[num])
+				write_point = (*byte)(unsafe.Add(unsafe.Pointer(write_point), libc.StrLen(tokens[num])))
 			} else if *temp == ALIAS_GLOB_CHAR {
-				C.strcpy(write_point, orig)
-				write_point = (*byte)(unsafe.Add(unsafe.Pointer(write_point), C.strlen(orig)))
+				libc.StrCpy(write_point, orig)
+				write_point = (*byte)(unsafe.Add(unsafe.Pointer(write_point), libc.StrLen(orig)))
 			} else if (func() byte {
 				p := (func() *byte {
 					p := &write_point
@@ -569,11 +559,11 @@ func search_block(arg *byte, list **byte, exact int) int {
 		return -1
 	}
 	for l = 0; *((*byte)(unsafe.Add(unsafe.Pointer(arg), l))) != 0; l++ {
-		*((*byte)(unsafe.Add(unsafe.Pointer(arg), l))) = byte(int8(C.tolower(int(*((*byte)(unsafe.Add(unsafe.Pointer(arg), l)))))))
+		*((*byte)(unsafe.Add(unsafe.Pointer(arg), l))) = byte(int8(unicode.ToLower(rune(*((*byte)(unsafe.Add(unsafe.Pointer(arg), l)))))))
 	}
 	if exact != 0 {
 		for i = 0; **((**byte)(unsafe.Add(unsafe.Pointer(list), unsafe.Sizeof((*byte)(nil))*uintptr(i)))) != '\n'; i++ {
-			if C.strcmp(arg, *((**byte)(unsafe.Add(unsafe.Pointer(list), unsafe.Sizeof((*byte)(nil))*uintptr(i))))) == 0 {
+			if libc.StrCmp(arg, *((**byte)(unsafe.Add(unsafe.Pointer(list), unsafe.Sizeof((*byte)(nil))*uintptr(i))))) == 0 {
 				return i
 			}
 		}
@@ -582,7 +572,7 @@ func search_block(arg *byte, list **byte, exact int) int {
 			l = 1
 		}
 		for i = 0; **((**byte)(unsafe.Add(unsafe.Pointer(list), unsafe.Sizeof((*byte)(nil))*uintptr(i)))) != '\n'; i++ {
-			if C.strncmp(arg, *((**byte)(unsafe.Add(unsafe.Pointer(list), unsafe.Sizeof((*byte)(nil))*uintptr(i)))), uint64(l)) == 0 {
+			if libc.StrNCmp(arg, *((**byte)(unsafe.Add(unsafe.Pointer(list), unsafe.Sizeof((*byte)(nil))*uintptr(i)))), l) == 0 {
 				return i
 			}
 		}
@@ -591,19 +581,19 @@ func search_block(arg *byte, list **byte, exact int) int {
 }
 func is_number(str *byte) int {
 	for *str != 0 {
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*(func() *byte {
+		if !unicode.IsDigit(rune(*(func() *byte {
 			p := &str
 			x := *p
 			*p = (*byte)(unsafe.Add(unsafe.Pointer(*p), 1))
 			return x
-		}())))))) & int(uint16(int16(_ISdigit)))) == 0 {
+		}()))) {
 			return 0
 		}
 	}
 	return 1
 }
 func skip_spaces(string_ **byte) {
-	for ; **string_ != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(**string_)))))&int(uint16(int16(_ISspace)))) != 0; *string_ = (*byte)(unsafe.Add(unsafe.Pointer(*string_), 1)) {
+	for ; **string_ != 0 && unicode.IsSpace(rune(**string_)); *string_ = (*byte)(unsafe.Add(unsafe.Pointer(*string_), 1)) {
 	}
 }
 func delete_doubledollar(string_ *byte) *byte {
@@ -612,7 +602,7 @@ func delete_doubledollar(string_ *byte) *byte {
 		ddwrite *byte
 	)
 	if (func() *byte {
-		ddwrite = C.strchr(string_, '$')
+		ddwrite = libc.StrChr(string_, '$')
 		return ddwrite
 	}()) == nil {
 		return string_
@@ -652,7 +642,7 @@ func fill_word(argument *byte) int {
 }
 func topLoad() {
 	var (
-		file   *C.FILE
+		file   *stdio.File
 		fname  [40]byte
 		line   [256]byte
 		filler [50]byte
@@ -661,22 +651,22 @@ func topLoad() {
 	if get_filename(&fname[0], uint64(40), INTRO_FILE, libc.CString("toplist")) == 0 {
 		basic_mud_log(libc.CString("ERROR: Toplist file does not exist."))
 		return
-	} else if (func() *C.FILE {
-		file = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "r")))
+	} else if (func() *stdio.File {
+		file = stdio.FOpen(libc.GoString(&fname[0]), "r")
 		return file
 	}()) == nil {
 		basic_mud_log(libc.CString("ERROR: Toplist file does not exist."))
 		return
 	}
 	TOPLOADED = TRUE
-	for C.feof(file) == 0 {
+	for int(file.IsEOF()) == 0 {
 		get_line(file, &line[0])
-		__isoc99_sscanf(&line[0], libc.CString("%s %lld\n"), &filler[0], &toppoint[x])
-		topname[x] = C.strdup(&filler[0])
+		stdio.Sscanf(&line[0], "%s %lld\n", &filler[0], &toppoint[x])
+		topname[x] = libc.StrDup(&filler[0])
 		filler[0] = '\x00'
 		x++
 	}
-	C.fclose(file)
+	file.Close()
 }
 func topWrite(ch *char_data) {
 	if ch.Admlevel > 0 || IS_NPC(ch) {
@@ -686,7 +676,7 @@ func topWrite(ch *char_data) {
 		return
 	}
 	var fname [40]byte
-	var fl *C.FILE
+	var fl *stdio.File
 	var positions [25]*byte
 	var points [25]int64 = [25]int64{}
 	var x int = 0
@@ -703,18 +693,18 @@ func topWrite(ch *char_data) {
 		return
 	}
 	for x = start; x < finish; x++ {
-		positions[x] = C.strdup(topname[x])
+		positions[x] = libc.StrDup(topname[x])
 		points[x] = toppoint[x]
 	}
 	start = 0
 	finish = 5
 	for x = start; x < finish; x++ {
 		if placed == FALSE {
-			if C.strcasecmp(topname[x], GET_NAME(ch)) != 0 {
+			if libc.StrCaseCmp(topname[x], GET_NAME(ch)) != 0 {
 				if ch.Max_hit > toppoint[x] {
 					libc.Free(unsafe.Pointer(topname[x]))
 					toppoint[x] = ch.Max_hit
-					topname[x] = C.strdup(GET_NAME(ch))
+					topname[x] = libc.StrDup(GET_NAME(ch))
 					placed = TRUE
 					writeEm = TRUE
 					location = x
@@ -725,17 +715,17 @@ func topWrite(ch *char_data) {
 			}
 		} else {
 			if x < finish && location < finish {
-				if C.strcasecmp(positions[location], GET_NAME(ch)) != 0 {
+				if libc.StrCaseCmp(positions[location], GET_NAME(ch)) != 0 {
 					libc.Free(unsafe.Pointer(topname[x]))
 					toppoint[x] = points[location]
-					topname[x] = C.strdup(positions[location])
+					topname[x] = libc.StrDup(positions[location])
 					location += 1
 				} else {
 					progress = TRUE
 					location += 1
 					libc.Free(unsafe.Pointer(topname[x]))
 					toppoint[x] = points[location]
-					topname[x] = C.strdup(positions[location])
+					topname[x] = libc.StrDup(positions[location])
 					location += 1
 				}
 			}
@@ -753,11 +743,11 @@ func topWrite(ch *char_data) {
 	finish = 10
 	for x = start; x < finish; x++ {
 		if placed == FALSE {
-			if C.strcasecmp(topname[x], GET_NAME(ch)) != 0 {
+			if libc.StrCaseCmp(topname[x], GET_NAME(ch)) != 0 {
 				if ch.Max_mana > toppoint[x] {
 					libc.Free(unsafe.Pointer(topname[x]))
 					toppoint[x] = ch.Max_mana
-					topname[x] = C.strdup(GET_NAME(ch))
+					topname[x] = libc.StrDup(GET_NAME(ch))
 					placed = TRUE
 					writeEm = TRUE
 					location = x
@@ -768,17 +758,17 @@ func topWrite(ch *char_data) {
 			}
 		} else {
 			if x < finish && location < finish {
-				if C.strcasecmp(positions[location], GET_NAME(ch)) != 0 {
+				if libc.StrCaseCmp(positions[location], GET_NAME(ch)) != 0 {
 					libc.Free(unsafe.Pointer(topname[x]))
 					toppoint[x] = points[location]
-					topname[x] = C.strdup(positions[location])
+					topname[x] = libc.StrDup(positions[location])
 					location += 1
 				} else {
 					progress = TRUE
 					location += 1
 					libc.Free(unsafe.Pointer(topname[x]))
 					toppoint[x] = points[location]
-					topname[x] = C.strdup(positions[location])
+					topname[x] = libc.StrDup(positions[location])
 					location += 1
 				}
 			}
@@ -796,11 +786,11 @@ func topWrite(ch *char_data) {
 	finish = 15
 	for x = start; x < finish; x++ {
 		if placed == FALSE {
-			if C.strcasecmp(topname[x], GET_NAME(ch)) != 0 {
+			if libc.StrCaseCmp(topname[x], GET_NAME(ch)) != 0 {
 				if ch.Max_move > toppoint[x] {
 					libc.Free(unsafe.Pointer(topname[x]))
 					toppoint[x] = ch.Max_move
-					topname[x] = C.strdup(GET_NAME(ch))
+					topname[x] = libc.StrDup(GET_NAME(ch))
 					placed = TRUE
 					writeEm = TRUE
 					location = x
@@ -811,17 +801,17 @@ func topWrite(ch *char_data) {
 			}
 		} else {
 			if x < finish && location < finish {
-				if C.strcasecmp(positions[location], GET_NAME(ch)) != 0 {
+				if libc.StrCaseCmp(positions[location], GET_NAME(ch)) != 0 {
 					libc.Free(unsafe.Pointer(topname[x]))
 					toppoint[x] = points[location]
-					topname[x] = C.strdup(positions[location])
+					topname[x] = libc.StrDup(positions[location])
 					location += 1
 				} else {
 					progress = TRUE
 					location += 1
 					libc.Free(unsafe.Pointer(topname[x]))
 					toppoint[x] = points[location]
-					topname[x] = C.strdup(positions[location])
+					topname[x] = libc.StrDup(positions[location])
 					location += 1
 				}
 			}
@@ -839,11 +829,11 @@ func topWrite(ch *char_data) {
 	finish = 20
 	for x = start; x < finish; x++ {
 		if placed == FALSE {
-			if C.strcasecmp(topname[x], GET_NAME(ch)) != 0 {
+			if libc.StrCaseCmp(topname[x], GET_NAME(ch)) != 0 {
 				if ch.Bank_gold+ch.Gold > int(toppoint[x]) {
 					libc.Free(unsafe.Pointer(topname[x]))
 					toppoint[x] = int64(ch.Bank_gold + ch.Gold)
-					topname[x] = C.strdup(GET_NAME(ch))
+					topname[x] = libc.StrDup(GET_NAME(ch))
 					placed = TRUE
 					writeEm = TRUE
 					location = x
@@ -854,17 +844,17 @@ func topWrite(ch *char_data) {
 			}
 		} else {
 			if x < finish && location < finish {
-				if C.strcasecmp(positions[location], GET_NAME(ch)) != 0 {
+				if libc.StrCaseCmp(positions[location], GET_NAME(ch)) != 0 {
 					libc.Free(unsafe.Pointer(topname[x]))
 					toppoint[x] = points[location]
-					topname[x] = C.strdup(positions[location])
+					topname[x] = libc.StrDup(positions[location])
 					location += 1
 				} else {
 					progress = TRUE
 					location += 1
 					libc.Free(unsafe.Pointer(topname[x]))
 					toppoint[x] = points[location]
-					topname[x] = C.strdup(positions[location])
+					topname[x] = libc.StrDup(positions[location])
 					location += 1
 				}
 			}
@@ -882,11 +872,11 @@ func topWrite(ch *char_data) {
 	finish = 25
 	for x = start; x < finish; x++ {
 		if placed == FALSE {
-			if C.strcasecmp(topname[x], GET_USER(ch)) != 0 {
+			if libc.StrCaseCmp(topname[x], GET_USER(ch)) != 0 {
 				if ch.Trp > int(toppoint[x]) {
 					libc.Free(unsafe.Pointer(topname[x]))
 					toppoint[x] = int64(ch.Trp)
-					topname[x] = C.strdup(GET_USER(ch))
+					topname[x] = libc.StrDup(GET_USER(ch))
 					placed = TRUE
 					writeEm = TRUE
 					location = x
@@ -897,17 +887,17 @@ func topWrite(ch *char_data) {
 			}
 		} else {
 			if x < finish && location < finish {
-				if C.strcasecmp(positions[location], GET_USER(ch)) != 0 {
+				if libc.StrCaseCmp(positions[location], GET_USER(ch)) != 0 {
 					libc.Free(unsafe.Pointer(topname[x]))
 					toppoint[x] = points[location]
-					topname[x] = C.strdup(positions[location])
+					topname[x] = libc.StrDup(positions[location])
 					location += 1
 				} else {
 					progress = TRUE
 					location += 1
 					libc.Free(unsafe.Pointer(topname[x]))
 					toppoint[x] = points[location]
-					topname[x] = C.strdup(positions[location])
+					topname[x] = libc.StrDup(positions[location])
 					location += 1
 				}
 			}
@@ -928,8 +918,8 @@ func topWrite(ch *char_data) {
 		if get_filename(&fname[0], uint64(40), INTRO_FILE, libc.CString("toplist")) == 0 {
 			return
 		}
-		if (func() *C.FILE {
-			fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "w")))
+		if (func() *stdio.File {
+			fl = stdio.FOpen(libc.GoString(&fname[0]), "w")
 			return fl
 		}()) == nil {
 			basic_mud_log(libc.CString("ERROR: could not save Toplist File, %s."), &fname[0])
@@ -937,10 +927,10 @@ func topWrite(ch *char_data) {
 		}
 		x = 0
 		for x < 25 {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s %lld\n", topname[x], toppoint[x])
+			stdio.Fprintf(fl, "%s %lld\n", topname[x], toppoint[x])
 			x++
 		}
-		C.fclose(fl)
+		fl.Close()
 	}
 	return
 }
@@ -956,13 +946,13 @@ func one_argument(argument *byte, first_arg *byte) *byte {
 	for {
 		skip_spaces(&argument)
 		first_arg = begin
-		for *argument != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*argument)))))&int(uint16(int16(_ISspace)))) == 0 {
+		for *argument != 0 && !unicode.IsSpace(rune(*argument)) {
 			*(func() *byte {
 				p := &first_arg
 				x := *p
 				*p = (*byte)(unsafe.Add(unsafe.Pointer(*p), 1))
 				return x
-			}()) = byte(int8(C.tolower(int(*argument))))
+			}()) = byte(int8(unicode.ToLower(rune(*argument))))
 			argument = (*byte)(unsafe.Add(unsafe.Pointer(argument), 1))
 		}
 		*first_arg = '\x00'
@@ -982,18 +972,18 @@ func one_word(argument *byte, first_arg *byte) *byte {
 				x := *p
 				*p = (*byte)(unsafe.Add(unsafe.Pointer(*p), 1))
 				return x
-			}()) = byte(int8(C.tolower(int(*argument))))
+			}()) = byte(int8(unicode.ToLower(rune(*argument))))
 			argument = (*byte)(unsafe.Add(unsafe.Pointer(argument), 1))
 		}
 		argument = (*byte)(unsafe.Add(unsafe.Pointer(argument), 1))
 	} else {
-		for *argument != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*argument)))))&int(uint16(int16(_ISspace)))) == 0 {
+		for *argument != 0 && !unicode.IsSpace(rune(*argument)) {
 			*(func() *byte {
 				p := &first_arg
 				x := *p
 				*p = (*byte)(unsafe.Add(unsafe.Pointer(*p), 1))
 				return x
-			}()) = byte(int8(C.tolower(int(*argument))))
+			}()) = byte(int8(unicode.ToLower(rune(*argument))))
 			argument = (*byte)(unsafe.Add(unsafe.Pointer(argument), 1))
 		}
 	}
@@ -1002,13 +992,13 @@ func one_word(argument *byte, first_arg *byte) *byte {
 }
 func any_one_arg(argument *byte, first_arg *byte) *byte {
 	skip_spaces(&argument)
-	for *argument != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*argument)))))&int(uint16(int16(_ISspace)))) == 0 {
+	for *argument != 0 && !unicode.IsSpace(rune(*argument)) {
 		*(func() *byte {
 			p := &first_arg
 			x := *p
 			*p = (*byte)(unsafe.Add(unsafe.Pointer(*p), 1))
 			return x
-		}()) = byte(int8(C.tolower(int(*argument))))
+		}()) = byte(int8(unicode.ToLower(rune(*argument))))
 		argument = (*byte)(unsafe.Add(unsafe.Pointer(argument), 1))
 	}
 	*first_arg = '\x00'
@@ -1028,7 +1018,7 @@ func display_races(d *descriptor_data) {
 	)
 	send_to_char(d.Character, libc.CString("\r\n@YRace SELECTION menu:\r\n@D---------------------------------------\r\n@n"))
 	for x = 0; x < NUM_RACES; x++ {
-		if race_ok_gender[int(d.Character.Sex)][x] != 0 {
+		if race_ok_gender[int(d.Character.Sex)][x] {
 			send_to_char(d.Character, libc.CString("@B%2d@W) @C%-15s@D[@R%-6s@D]@n%s"), func() int {
 				if (x + 1) != 21 {
 					return x + 1
@@ -1057,7 +1047,7 @@ func display_classes(d *descriptor_data) {
 	)
 	send_to_char(d.Character, libc.CString("\r\n@YSensei SELECTION menu:\r\n@D--------------------------------------\r\n@n"))
 	for x = 0; x < 14; x++ {
-		if class_ok_race[int(d.Character.Race)][x] != 0 {
+		if class_ok_race[int(d.Character.Race)][x] {
 			send_to_char(d.Character, libc.CString("@B%2d@W) @C%s@n%s"), x+1, pc_class_types[x], func() string {
 				if (func() int {
 					p := &i
@@ -1081,7 +1071,7 @@ func display_races_help(d *descriptor_data) {
 	)
 	send_to_char(d.Character, libc.CString("\r\n@YRace HELP menu:\r\n@G--------------------------------------------\r\n@n"))
 	for x = 0; x < NUM_RACES; x++ {
-		if race_ok_gender[int(d.Character.Sex)][x] != 0 {
+		if race_ok_gender[int(d.Character.Sex)][x] {
 			send_to_char(d.Character, libc.CString("@B%2d@W) @C%-15s@n%s"), x+1, pc_race_types[x], func() string {
 				if (func() int {
 					p := &i
@@ -1104,7 +1094,7 @@ func display_classes_help(d *descriptor_data) {
 	)
 	send_to_char(d.Character, libc.CString("\r\n@YClass HELP menu:\r\n@G-------------------------------------------\r\n@n"))
 	for x = 0; x < 14; x++ {
-		if class_ok_race[int(d.Character.Race)][x] != 0 {
+		if class_ok_race[int(d.Character.Race)][x] {
 			send_to_char(d.Character, libc.CString("@B%2d@W) @C%s@n%s"), x+1, pc_class_types[x], func() string {
 				if (func() int {
 					p := &i
@@ -1133,7 +1123,7 @@ func is_abbrev(arg1 *byte, arg2 *byte) int {
 			return x
 		}()
 	}() {
-		if C.tolower(int(*arg1)) != C.tolower(int(*arg2)) {
+		if unicode.ToLower(rune(*arg1)) != unicode.ToLower(rune(*arg2)) {
 			return 0
 		}
 	}
@@ -1148,13 +1138,13 @@ func half_chop(string_ *byte, arg1 *byte, arg2 *byte) {
 	temp = any_one_arg(string_, arg1)
 	skip_spaces(&temp)
 	if arg2 != temp {
-		C.strcpy(arg2, temp)
+		libc.StrCpy(arg2, temp)
 	}
 }
 func find_command(command *byte) int {
 	var cmd int
 	for cmd = 0; *(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command != '\n'; cmd++ {
-		if C.strcmp((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, command) == 0 {
+		if libc.StrCmp((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, command) == 0 {
 			return cmd
 		}
 	}
@@ -1228,7 +1218,7 @@ func _parse_name(arg *byte, name *byte) int {
 			return x
 		}()
 	}() {
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg))))) & int(uint16(int16(_ISalpha)))) == 0 {
+		if !libc.IsAlpha(rune(*arg)) {
 			return 1
 		}
 	}
@@ -1252,7 +1242,7 @@ func perform_dupe_check(d *descriptor_data) int {
 		if k == d {
 			continue
 		}
-		if k.Original != nil && k.Original.Idnum == int32(id) {
+		if k.Original != nil && int(k.Original.Idnum) == id {
 			write_to_output(d, libc.CString("\r\nMultiple login detected -- disconnecting.\r\n"))
 			k.Connected = CON_CLOSE
 			if target == nil {
@@ -1264,9 +1254,9 @@ func perform_dupe_check(d *descriptor_data) int {
 			}
 			k.Character = nil
 			k.Original = nil
-		} else if k.Character != nil && k.Character.Idnum == int32(id) && k.Original != nil {
+		} else if k.Character != nil && int(k.Character.Idnum) == id && k.Original != nil {
 			do_return(k.Character, nil, 0, 0)
-		} else if k.Character != nil && k.Character.Idnum == int32(id) {
+		} else if k.Character != nil && int(k.Character.Idnum) == id {
 			if target == nil && k.Connected == CON_PLAYING {
 				write_to_output(k, libc.CString("\r\nThis body has been usurped!\r\n"))
 				if k.Snoop_by != nil {
@@ -1289,7 +1279,7 @@ func perform_dupe_check(d *descriptor_data) int {
 		if IS_NPC(ch) {
 			continue
 		}
-		if ch.Idnum != int32(id) {
+		if int(ch.Idnum) != id {
 			continue
 		}
 		if ch.Desc != nil {
@@ -1317,8 +1307,8 @@ func perform_dupe_check(d *descriptor_data) int {
 	d.Character.Desc = d
 	d.Original = nil
 	d.Character.Timer = 0
-	d.Character.Act[int(PLR_MAILING/32)] &= bitvector_t(^(1 << (int(PLR_MAILING % 32))))
-	d.Character.Act[int(PLR_WRITING/32)] &= bitvector_t(^(1 << (int(PLR_WRITING % 32))))
+	d.Character.Act[int(PLR_MAILING/32)] &= bitvector_t(int32(^(1 << (int(PLR_MAILING % 32)))))
+	d.Character.Act[int(PLR_WRITING/32)] &= bitvector_t(int32(^(1 << (int(PLR_WRITING % 32)))))
 	d.Character.Affected_by[int(AFF_GROUP/32)] &= ^(1 << (int(AFF_GROUP % 32)))
 	d.Connected = CON_PLAYING
 	switch mode {
@@ -1337,7 +1327,7 @@ func perform_dupe_check(d *descriptor_data) int {
 			if PCOUNT >= HIGHPCOUNT {
 				oldcount = HIGHPCOUNT
 				HIGHPCOUNT = PCOUNT
-				PCOUNTDATE = C.time(nil)
+				PCOUNTDATE = libc.GetTime(nil)
 			}
 		}
 		if PCOUNT < HIGHPCOUNT && PCOUNT >= HIGHPCOUNT-4 {
@@ -1349,7 +1339,7 @@ func perform_dupe_check(d *descriptor_data) int {
 		if PCOUNT > oldcount {
 			payout(2)
 		}
-		d.Character.Time.Logon = C.time(nil)
+		d.Character.Time.Logon = libc.GetTime(nil)
 		act(libc.CString("$n has reconnected."), TRUE, d.Character, nil, nil, TO_ROOM)
 		mudlog(NRM, MAX(ADMLVL_NONE, int(d.Character.Player_specials.Invis_level)), TRUE, libc.CString("%s [%s] has reconnected."), GET_NAME(d.Character), &d.Host[0])
 		d.Character.Rp = d.Rpp
@@ -1403,19 +1393,11 @@ func perform_dupe_check(d *descriptor_data) int {
 				send_to_char(d.Character, libc.CString("Interest happened while you were away, %d times.\r\n@cBank Interest@D: @Y%s@n\r\n"), mult, add_commas(int64(inc)))
 			}
 		}
-		if config_info.Play.Enable_compression != 0 && !PRF_FLAGGED(d.Character, PRF_NOCOMPRESS) {
-			d.Comp.State = 1
-			write_to_output(d, libc.CString("%s"), &compress_offer[0])
-		}
 	case USURP:
 		write_to_output(d, libc.CString("You take over your own body, already in use!\r\n"))
 		act(libc.CString("$n suddenly keels over in pain, surrounded by a white aura...\r\n$n's body has been taken over by a new spirit!"), TRUE, d.Character, nil, nil, TO_ROOM)
 		d.Character.Rp = d.Rpp
 		mudlog(NRM, MAX(ADMLVL_IMMORT, int(d.Character.Player_specials.Invis_level)), TRUE, libc.CString("%s has re-logged in ... disconnecting old socket."), GET_NAME(d.Character))
-		if config_info.Play.Enable_compression != 0 && !PRF_FLAGGED(d.Character, PRF_NOCOMPRESS) {
-			d.Comp.State = 1
-			write_to_output(d, libc.CString("%s"), &compress_offer[0])
-		}
 	case UNSWITCH:
 		write_to_output(d, libc.CString("Reconnecting to unswitched char."))
 		mudlog(NRM, MAX(ADMLVL_IMMORT, int(d.Character.Player_specials.Invis_level)), TRUE, libc.CString("%s [%s] has reconnected."), GET_NAME(d.Character), &d.Host[0])
@@ -1458,12 +1440,12 @@ func enter_player_game(d *descriptor_data) int {
 		libc.Free(unsafe.Pointer(d.Character.Player_specials.Host))
 		d.Character.Player_specials.Host = nil
 	}
-	d.Character.Player_specials.Host = C.strdup(&d.Host[0])
+	d.Character.Player_specials.Host = libc.StrDup(&d.Host[0])
 	d.Character.Id = d.Character.Idnum
 	add_to_lookup_table(int(d.Character.Id), unsafe.Pointer(d.Character))
 	read_saved_vars(d.Character)
 	for check = character_list; check != nil; check = check.Next {
-		if check.Master == nil && IS_NPC(check) && check.Master_id == d.Character.Idnum && AFF_FLAGGED(check, AFF_CHARM) && !circle_follow(check, d.Character) {
+		if check.Master == nil && IS_NPC(check) && int(check.Master_id) == int(d.Character.Idnum) && AFF_FLAGGED(check, AFF_CHARM) && !circle_follow(check, d.Character) {
 			add_follower(check, d.Character)
 		}
 	}
@@ -1476,20 +1458,20 @@ func enter_player_game(d *descriptor_data) int {
 		d.Character.Lifeforce = int64(GET_LIFEMAX(d.Character))
 	}
 	if PLR_FLAGGED(d.Character, PLR_RARM) {
-		d.Character.Limb_condition[0] = 100
-		d.Character.Act[int(PLR_RARM/32)] &= bitvector_t(^(1 << (int(PLR_RARM % 32))))
+		d.Character.Limb_condition[1] = 100
+		d.Character.Act[int(PLR_RARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_RARM % 32)))))
 	}
 	if PLR_FLAGGED(d.Character, PLR_LARM) {
-		d.Character.Limb_condition[1] = 100
-		d.Character.Act[int(PLR_LARM/32)] &= bitvector_t(^(1 << (int(PLR_LARM % 32))))
+		d.Character.Limb_condition[2] = 100
+		d.Character.Act[int(PLR_LARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_LARM % 32)))))
 	}
 	if PLR_FLAGGED(d.Character, PLR_LLEG) {
-		d.Character.Limb_condition[3] = 100
-		d.Character.Act[int(PLR_LLEG/32)] &= bitvector_t(^(1 << (int(PLR_LLEG % 32))))
+		d.Character.Limb_condition[4] = 100
+		d.Character.Act[int(PLR_LLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_LLEG % 32)))))
 	}
 	if PLR_FLAGGED(d.Character, PLR_RLEG) {
-		d.Character.Limb_condition[2] = 100
-		d.Character.Act[int(PLR_RLEG/32)] &= bitvector_t(^(1 << (int(PLR_RLEG % 32))))
+		d.Character.Limb_condition[3] = 100
+		d.Character.Act[int(PLR_RLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_RLEG % 32)))))
 	}
 	d.Character.Combine = -1
 	d.Character.Sleeptime = 8
@@ -1509,9 +1491,9 @@ func enter_player_game(d *descriptor_data) int {
 		d.Character.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
 	}
 	if PLR_FLAGGED(d.Character, PLR_KNOCKED) {
-		d.Character.Act[int(PLR_KNOCKED/32)] &= bitvector_t(^(1 << (int(PLR_KNOCKED % 32))))
+		d.Character.Act[int(PLR_KNOCKED/32)] &= bitvector_t(int32(^(1 << (int(PLR_KNOCKED % 32)))))
 	}
-	if d.Character.Race == RACE_ANDROID && !AFF_FLAGGED(d.Character, AFF_INFRAVISION) {
+	if int(d.Character.Race) == RACE_ANDROID && !AFF_FLAGGED(d.Character, AFF_INFRAVISION) {
 		d.Character.Affected_by[int(AFF_INFRAVISION/32)] |= 1 << (int(AFF_INFRAVISION % 32))
 	}
 	d.Character.Absorbing = nil
@@ -1535,14 +1517,11 @@ func enter_player_game(d *descriptor_data) int {
 	if d.Character.Trp < d.Character.Rp {
 		d.Character.Trp = d.Character.Rp
 	}
-	if d.Character.Race == RACE_NAMEK && (d.Character.Player_specials.Conditions[HUNGER]) >= 0 {
+	if int(d.Character.Race) == RACE_NAMEK && int(d.Character.Player_specials.Conditions[HUNGER]) >= 0 {
 		d.Character.Player_specials.Conditions[HUNGER] = -1
 	}
 	if PLR_FLAGGED(d.Character, PLR_HEALT) {
-		d.Character.Act[int(PLR_HEALT/32)] &= bitvector_t(^(1 << (int(PLR_HEALT % 32))))
-	}
-	if config_info.Operation.Imc_enabled != 0 {
-		load_imc_pfile(d.Character)
+		d.Character.Act[int(PLR_HEALT/32)] &= bitvector_t(int32(^(1 << (int(PLR_HEALT % 32)))))
 	}
 	if readIntro(d.Character, d.Character) == 2 {
 		introCreate(d.Character)
@@ -1553,25 +1532,25 @@ func enter_player_game(d *descriptor_data) int {
 	if d.Character.Admlevel > 0 {
 		d.Level = 1
 	}
-	if d.Character.Clan != nil && C.strstr(d.Character.Clan, libc.CString("None")) == nil {
+	if d.Character.Clan != nil && libc.StrStr(d.Character.Clan, libc.CString("None")) == nil {
 		if !clanIsMember(d.Character.Clan, d.Character) {
 			if !clanIsModerator(d.Character.Clan, d.Character) {
 				if checkCLAN(d.Character) == 0 {
 					write_to_output(d, libc.CString("Your clan no longer exists.\r\n"))
-					d.Character.Clan = C.strdup(libc.CString("None."))
+					d.Character.Clan = libc.CString("None.")
 				}
 			}
 		}
 	}
 	d.Character.Rp = d.Rpp
 	d.Character.Rbank = d.Rbank
-	if MOON_UP == FALSE && (d.Character.Race == RACE_SAIYAN || d.Character.Race == RACE_HALFBREED) {
+	if MOON_UP == FALSE && (int(d.Character.Race) == RACE_SAIYAN || int(d.Character.Race) == RACE_HALFBREED) {
 		oozaru_drop(d.Character)
 	}
-	if MOON_UP == TRUE && (d.Character.Race == RACE_SAIYAN || d.Character.Race == RACE_HALFBREED) {
+	if MOON_UP == TRUE && (int(d.Character.Race) == RACE_SAIYAN || int(d.Character.Race) == RACE_HALFBREED) {
 		oozaru_add(d.Character)
 	}
-	if d.Character.Race == RACE_HOSHIJIN {
+	if int(d.Character.Race) == RACE_HOSHIJIN {
 		if time_info.Day <= 14 {
 			star_phase(d.Character, 1)
 		} else if time_info.Day <= 21 {
@@ -1580,7 +1559,7 @@ func enter_player_game(d *descriptor_data) int {
 			star_phase(d.Character, 0)
 		}
 	}
-	if d.Character.Race == RACE_ICER && GET_SKILL(d.Character, SKILL_TAILWHIP) == 0 {
+	if int(d.Character.Race) == RACE_ICER && GET_SKILL(d.Character, SKILL_TAILWHIP) == 0 {
 		var numb int = rand_number(20, 30)
 		for {
 			d.Character.Skills[SKILL_TAILWHIP] = int8(numb)
@@ -1588,7 +1567,7 @@ func enter_player_game(d *descriptor_data) int {
 				break
 			}
 		}
-	} else if d.Character.Race != RACE_ICER && GET_SKILL(d.Character, SKILL_TAILWHIP) != 0 {
+	} else if int(d.Character.Race) != RACE_ICER && GET_SKILL(d.Character, SKILL_TAILWHIP) != 0 {
 		for {
 			d.Character.Skills[SKILL_TAILWHIP] = 0
 			if true {
@@ -1596,7 +1575,7 @@ func enter_player_game(d *descriptor_data) int {
 			}
 		}
 	}
-	if d.Character.Race == RACE_MUTANT && ((d.Character.Genome[0]) == 9 || (d.Character.Genome[1]) == 9) && GET_SKILL(d.Character, SKILL_TELEPATHY) == 0 {
+	if int(d.Character.Race) == RACE_MUTANT && ((d.Character.Genome[0]) == 9 || (d.Character.Genome[1]) == 9) && GET_SKILL(d.Character, SKILL_TELEPATHY) == 0 {
 		for {
 			d.Character.Skills[SKILL_TELEPATHY] = 50
 			if true {
@@ -1604,7 +1583,7 @@ func enter_player_game(d *descriptor_data) int {
 			}
 		}
 	}
-	if d.Character.Race == RACE_BIO && ((d.Character.Genome[0]) == 7 || (d.Character.Genome[1]) == 7) && GET_SKILL(d.Character, SKILL_TELEPATHY) == 0 && GET_SKILL(d.Character, SKILL_FOCUS) == 0 {
+	if int(d.Character.Race) == RACE_BIO && ((d.Character.Genome[0]) == 7 || (d.Character.Genome[1]) == 7) && GET_SKILL(d.Character, SKILL_TELEPATHY) == 0 && GET_SKILL(d.Character, SKILL_FOCUS) == 0 {
 		for {
 			d.Character.Skills[SKILL_TELEPATHY] = 30
 			if true {
@@ -1624,29 +1603,29 @@ func enter_player_game(d *descriptor_data) int {
 func readUserIndex(name *byte) int {
 	var (
 		fname [40]byte
-		fl    *C.FILE
+		fl    *stdio.File
 	)
 	if get_filename(&fname[0], uint64(40), USER_FILE, name) == 0 {
 		return 0
-	} else if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "r")))
+	} else if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(&fname[0]), "r")
 		return fl
 	}()) == nil {
 		return 0
 	}
-	C.fclose(fl)
+	fl.Close()
 	return 1
 }
 func payout(num int) {
 	var k *descriptor_data
 	if LASTPAYOUT == 0 {
-		LASTPAYOUT = C.time(nil) + 86400
+		LASTPAYOUT = libc.GetTime(nil) + 86400
 		LASTPAYTYPE = num
 	} else if num > LASTPAYTYPE {
-		LASTPAYOUT = C.time(nil) + 86400
+		LASTPAYOUT = libc.GetTime(nil) + 86400
 		LASTPAYTYPE = num
-	} else if LASTPAYOUT <= C.time(nil) {
-		LASTPAYOUT = C.time(nil) + 86400
+	} else if LASTPAYOUT <= libc.GetTime(nil) {
+		LASTPAYOUT = libc.GetTime(nil) + 86400
 		LASTPAYTYPE = num
 	}
 	for k = descriptor_list; k != nil; k = k.Next {
@@ -1676,22 +1655,22 @@ func payout(num int) {
 }
 func command_pass(cmd *byte, ch *char_data) int {
 	if AFF_FLAGGED(ch, AFF_LIQUEFIED) {
-		if C.strcasecmp(cmd, libc.CString("liquefy")) != 0 && C.strcasecmp(cmd, libc.CString("ingest")) != 0 && C.strcasecmp(cmd, libc.CString("look")) != 0 && C.strcasecmp(cmd, libc.CString("score")) != 0 && C.strcasecmp(cmd, libc.CString("ooc")) != 0 && C.strcasecmp(cmd, libc.CString("osay")) != 0 && C.strcasecmp(cmd, libc.CString("emote")) != 0 && C.strcasecmp(cmd, libc.CString("smote")) != 0 && C.strcasecmp(cmd, libc.CString("status")) != 0 {
+		if libc.StrCaseCmp(cmd, libc.CString("liquefy")) != 0 && libc.StrCaseCmp(cmd, libc.CString("ingest")) != 0 && libc.StrCaseCmp(cmd, libc.CString("look")) != 0 && libc.StrCaseCmp(cmd, libc.CString("score")) != 0 && libc.StrCaseCmp(cmd, libc.CString("ooc")) != 0 && libc.StrCaseCmp(cmd, libc.CString("osay")) != 0 && libc.StrCaseCmp(cmd, libc.CString("emote")) != 0 && libc.StrCaseCmp(cmd, libc.CString("smote")) != 0 && libc.StrCaseCmp(cmd, libc.CString("status")) != 0 {
 			send_to_char(ch, libc.CString("You are not capable of performing that action while liquefied!\r\n"))
 			return FALSE
 		}
 	} else if AFF_FLAGGED(ch, AFF_PARALYZE) {
-		if C.strcasecmp(cmd, libc.CString("look")) != 0 && C.strcasecmp(cmd, libc.CString("score")) != 0 && C.strcasecmp(cmd, libc.CString("ooc")) != 0 && C.strcasecmp(cmd, libc.CString("osay")) != 0 && C.strcasecmp(cmd, libc.CString("emote")) != 0 && C.strcasecmp(cmd, libc.CString("smote")) != 0 && C.strcasecmp(cmd, libc.CString("status")) != 0 {
+		if libc.StrCaseCmp(cmd, libc.CString("look")) != 0 && libc.StrCaseCmp(cmd, libc.CString("score")) != 0 && libc.StrCaseCmp(cmd, libc.CString("ooc")) != 0 && libc.StrCaseCmp(cmd, libc.CString("osay")) != 0 && libc.StrCaseCmp(cmd, libc.CString("emote")) != 0 && libc.StrCaseCmp(cmd, libc.CString("smote")) != 0 && libc.StrCaseCmp(cmd, libc.CString("status")) != 0 {
 			send_to_char(ch, libc.CString("You are not capable of performing that action while petrified!\r\n"))
 			return FALSE
 		}
 	} else if AFF_FLAGGED(ch, AFF_FROZEN) {
-		if C.strcasecmp(cmd, libc.CString("look")) != 0 && C.strcasecmp(cmd, libc.CString("score")) != 0 && C.strcasecmp(cmd, libc.CString("ooc")) != 0 && C.strcasecmp(cmd, libc.CString("osay")) != 0 && C.strcasecmp(cmd, libc.CString("emote")) != 0 && C.strcasecmp(cmd, libc.CString("smote")) != 0 && C.strcasecmp(cmd, libc.CString("status")) != 0 {
+		if libc.StrCaseCmp(cmd, libc.CString("look")) != 0 && libc.StrCaseCmp(cmd, libc.CString("score")) != 0 && libc.StrCaseCmp(cmd, libc.CString("ooc")) != 0 && libc.StrCaseCmp(cmd, libc.CString("osay")) != 0 && libc.StrCaseCmp(cmd, libc.CString("emote")) != 0 && libc.StrCaseCmp(cmd, libc.CString("smote")) != 0 && libc.StrCaseCmp(cmd, libc.CString("status")) != 0 {
 			send_to_char(ch, libc.CString("You are not capable of performing that action while a frozen block of ice!\r\n"))
 			return FALSE
 		}
 	} else if AFF_FLAGGED(ch, AFF_PARA) && int(ch.Aff_abils.Intel) < rand_number(1, 60) {
-		if C.strcasecmp(cmd, libc.CString("look")) != 0 && C.strcasecmp(cmd, libc.CString("score")) != 0 && C.strcasecmp(cmd, libc.CString("ooc")) != 0 && C.strcasecmp(cmd, libc.CString("osay")) != 0 && C.strcasecmp(cmd, libc.CString("emote")) != 0 && C.strcasecmp(cmd, libc.CString("smote")) != 0 && C.strcasecmp(cmd, libc.CString("status")) != 0 {
+		if libc.StrCaseCmp(cmd, libc.CString("look")) != 0 && libc.StrCaseCmp(cmd, libc.CString("score")) != 0 && libc.StrCaseCmp(cmd, libc.CString("ooc")) != 0 && libc.StrCaseCmp(cmd, libc.CString("osay")) != 0 && libc.StrCaseCmp(cmd, libc.CString("emote")) != 0 && libc.StrCaseCmp(cmd, libc.CString("smote")) != 0 && libc.StrCaseCmp(cmd, libc.CString("status")) != 0 {
 			act(libc.CString("@yYou fail to overcome your paralysis!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@Y$n @ystruggles with $s paralysis!@n"), TRUE, ch, nil, nil, TO_ROOM)
 			return FALSE
@@ -1705,24 +1684,24 @@ func lockRead(name *byte) int {
 		filler [50]byte
 		line   [256]byte
 		known  int = FALSE
-		fl     *C.FILE
+		fl     *stdio.File
 	)
 	if get_filename(&fname[0], uint64(40), INTRO_FILE, libc.CString("lockout")) == 0 {
 		return 0
-	} else if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "r")))
+	} else if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(&fname[0]), "r")
 		return fl
 	}()) == nil {
 		return 0
 	}
-	for C.feof(fl) == 0 {
+	for int(fl.IsEOF()) == 0 {
 		get_line(fl, &line[0])
-		__isoc99_sscanf(&line[0], libc.CString("%s\n"), &filler[0])
-		if C.strcasecmp(CAP(name), CAP(&filler[0])) == 0 {
+		stdio.Sscanf(&line[0], "%s\n", &filler[0])
+		if libc.StrCaseCmp(CAP(name), CAP(&filler[0])) == 0 {
 			known = TRUE
 		}
 	}
-	C.fclose(fl)
+	fl.Close()
 	if known == TRUE {
 		return 1
 	} else {
@@ -1734,151 +1713,151 @@ func userLoad(d *descriptor_data, name *byte) {
 		fname  [40]byte
 		filler [100]byte
 		line   [256]byte
-		fl     *C.FILE
+		fl     *stdio.File
 	)
 	if get_filename(&fname[0], uint64(40), USER_FILE, name) == 0 {
 		return
-	} else if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "r")))
+	} else if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(&fname[0]), "r")
 		return fl
 	}()) == nil {
 		basic_mud_log(libc.CString("ERROR: could not load user, %s, from filename, %s."), name, &fname[0])
 		return
 	}
 	var count int = 0
-	for C.feof(fl) == 0 {
+	for int(fl.IsEOF()) == 0 {
 		get_line(fl, &line[0])
 		count += 1
 		switch count {
 		case 1:
-			__isoc99_sscanf(&line[0], libc.CString("%s\n"), &filler[0])
+			stdio.Sscanf(&line[0], "%s\n", &filler[0])
 			if d.User != nil {
 				libc.Free(unsafe.Pointer(d.User))
 				d.User = nil
 			}
-			d.User = C.strdup(&filler[0])
+			d.User = libc.StrDup(&filler[0])
 		case 2:
-			__isoc99_sscanf(&line[0], libc.CString("%s\n"), &filler[0])
+			stdio.Sscanf(&line[0], "%s\n", &filler[0])
 			if d.Email != nil {
 				libc.Free(unsafe.Pointer(d.Email))
 				d.Email = nil
 			}
-			d.Email = C.strdup(&filler[0])
+			d.Email = libc.StrDup(&filler[0])
 		case 3:
-			__isoc99_sscanf(&line[0], libc.CString("%s\n"), &filler[0])
+			stdio.Sscanf(&line[0], "%s\n", &filler[0])
 			if d.Pass != nil {
 				libc.Free(unsafe.Pointer(d.Pass))
 				d.Pass = nil
 			}
-			d.Pass = C.strdup(&filler[0])
+			d.Pass = libc.StrDup(&filler[0])
 		case 4:
-			__isoc99_sscanf(&line[0], libc.CString("%d\n"), &d.Total)
+			stdio.Sscanf(&line[0], "%d\n", &d.Total)
 		case 5:
-			__isoc99_sscanf(&line[0], libc.CString("%d\n"), &d.Rpp)
+			stdio.Sscanf(&line[0], "%d\n", &d.Rpp)
 		case 6:
-			__isoc99_sscanf(&line[0], libc.CString("%s\n"), &filler[0])
+			stdio.Sscanf(&line[0], "%s\n", &filler[0])
 			if d.Tmp1 != nil {
 				libc.Free(unsafe.Pointer(d.Tmp1))
 				d.Tmp1 = nil
 			}
-			d.Tmp1 = C.strdup(&filler[0])
+			d.Tmp1 = libc.StrDup(&filler[0])
 		case 7:
-			__isoc99_sscanf(&line[0], libc.CString("%s\n"), &filler[0])
+			stdio.Sscanf(&line[0], "%s\n", &filler[0])
 			if d.Tmp2 != nil {
 				libc.Free(unsafe.Pointer(d.Tmp2))
 				d.Tmp2 = nil
 			}
-			d.Tmp2 = C.strdup(&filler[0])
+			d.Tmp2 = libc.StrDup(&filler[0])
 		case 8:
-			__isoc99_sscanf(&line[0], libc.CString("%s\n"), &filler[0])
+			stdio.Sscanf(&line[0], "%s\n", &filler[0])
 			if d.Tmp3 != nil {
 				libc.Free(unsafe.Pointer(d.Tmp3))
 				d.Tmp3 = nil
 			}
-			d.Tmp3 = C.strdup(&filler[0])
+			d.Tmp3 = libc.StrDup(&filler[0])
 		case 9:
-			__isoc99_sscanf(&line[0], libc.CString("%s\n"), &filler[0])
+			stdio.Sscanf(&line[0], "%s\n", &filler[0])
 			if d.Tmp4 != nil {
 				libc.Free(unsafe.Pointer(d.Tmp4))
 				d.Tmp4 = nil
 			}
-			d.Tmp4 = C.strdup(&filler[0])
+			d.Tmp4 = libc.StrDup(&filler[0])
 		case 10:
-			__isoc99_sscanf(&line[0], libc.CString("%s\n"), &filler[0])
+			stdio.Sscanf(&line[0], "%s\n", &filler[0])
 			if d.Tmp5 != nil {
 				libc.Free(unsafe.Pointer(d.Tmp5))
 				d.Tmp5 = nil
 			}
-			d.Tmp5 = C.strdup(&filler[0])
+			d.Tmp5 = libc.StrDup(&filler[0])
 		case 11:
-			__isoc99_sscanf(&line[0], libc.CString("%d\n"), &d.Level)
+			stdio.Sscanf(&line[0], "%d\n", &d.Level)
 		case 12:
-			__isoc99_sscanf(&line[0], libc.CString("%d\n"), &d.Customfile)
+			stdio.Sscanf(&line[0], "%d\n", &d.Customfile)
 		case 13:
-			__isoc99_sscanf(&line[0], libc.CString("%d\n"), &d.Rbank)
+			stdio.Sscanf(&line[0], "%d\n", &d.Rbank)
 		}
 		filler[0] = '\x00'
 	}
-	C.fclose(fl)
+	fl.Close()
 	return
 }
 func userCreate(d *descriptor_data) {
 	var (
 		fname [40]byte
-		fl    *C.FILE
+		fl    *stdio.File
 	)
 	if get_filename(&fname[0], uint64(40), USER_FILE, d.User) == 0 {
 		return
 	}
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "w")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(&fname[0]), "w")
 		return fl
 	}()) == nil {
 		basic_mud_log(libc.CString("ERROR: could not save user, %s, to filename, %s."), d.User, &fname[0])
 		return
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", CAP(d.User))
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", d.Email)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", d.Pass)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "3\n")
+	stdio.Fprintf(fl, "%s\n", CAP(d.User))
+	stdio.Fprintf(fl, "%s\n", d.Email)
+	stdio.Fprintf(fl, "%s\n", d.Pass)
+	stdio.Fprintf(fl, "3\n")
 	d.Total = 3
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "0\n")
+	stdio.Fprintf(fl, "0\n")
 	d.Rpp = 0
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "Empty\n")
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "Empty\n")
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "Empty\n")
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "Empty\n")
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "Empty\n")
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "0\n")
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "1\n")
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "0\n")
+	stdio.Fprintf(fl, "Empty\n")
+	stdio.Fprintf(fl, "Empty\n")
+	stdio.Fprintf(fl, "Empty\n")
+	stdio.Fprintf(fl, "Empty\n")
+	stdio.Fprintf(fl, "Empty\n")
+	stdio.Fprintf(fl, "0\n")
+	stdio.Fprintf(fl, "1\n")
+	stdio.Fprintf(fl, "0\n")
 	d.Rbank = 0
-	C.fclose(fl)
+	fl.Close()
 	if d.Tmp1 != nil {
 		libc.Free(unsafe.Pointer(d.Tmp1))
 		d.Tmp1 = nil
 	}
-	d.Tmp1 = C.strdup(libc.CString("Empty"))
+	d.Tmp1 = libc.CString("Empty")
 	if d.Tmp2 != nil {
 		libc.Free(unsafe.Pointer(d.Tmp2))
 		d.Tmp2 = nil
 	}
-	d.Tmp2 = C.strdup(libc.CString("Empty"))
+	d.Tmp2 = libc.CString("Empty")
 	if d.Tmp3 != nil {
 		libc.Free(unsafe.Pointer(d.Tmp3))
 		d.Tmp3 = nil
 	}
-	d.Tmp3 = C.strdup(libc.CString("Empty"))
+	d.Tmp3 = libc.CString("Empty")
 	if d.Tmp4 != nil {
 		libc.Free(unsafe.Pointer(d.Tmp4))
 		d.Tmp4 = nil
 	}
-	d.Tmp4 = C.strdup(libc.CString("Empty"))
+	d.Tmp4 = libc.CString("Empty")
 	if d.Tmp5 != nil {
 		libc.Free(unsafe.Pointer(d.Tmp5))
 		d.Tmp5 = nil
 	}
-	d.Tmp5 = C.strdup(libc.CString("Empty"))
+	d.Tmp5 = libc.CString("Empty")
 	customCreate(d)
 	return
 }
@@ -1888,7 +1867,7 @@ func userDelete(d *descriptor_data) {
 		fname    [40]byte
 	)
 	if get_filename(&fname[0], uint64(40), USER_FILE, d.User) != 0 {
-		if C.strcasecmp(d.Tmp1, libc.CString("Empty")) != 0 {
+		if libc.StrCaseCmp(d.Tmp1, libc.CString("Empty")) != 0 {
 			if (func() int {
 				player_i = get_ptable_by_name(d.Tmp1)
 				return player_i
@@ -1896,7 +1875,7 @@ func userDelete(d *descriptor_data) {
 				remove_player(player_i)
 			}
 		}
-		if C.strcasecmp(d.Tmp2, libc.CString("Empty")) != 0 {
+		if libc.StrCaseCmp(d.Tmp2, libc.CString("Empty")) != 0 {
 			if (func() int {
 				player_i = get_ptable_by_name(d.Tmp2)
 				return player_i
@@ -1904,7 +1883,7 @@ func userDelete(d *descriptor_data) {
 				remove_player(player_i)
 			}
 		}
-		if C.strcasecmp(d.Tmp3, libc.CString("Empty")) != 0 {
+		if libc.StrCaseCmp(d.Tmp3, libc.CString("Empty")) != 0 {
 			if (func() int {
 				player_i = get_ptable_by_name(d.Tmp3)
 				return player_i
@@ -1912,7 +1891,7 @@ func userDelete(d *descriptor_data) {
 				remove_player(player_i)
 			}
 		}
-		if C.strcasecmp(d.Tmp4, libc.CString("Empty")) != 0 {
+		if libc.StrCaseCmp(d.Tmp4, libc.CString("Empty")) != 0 {
 			if (func() int {
 				player_i = get_ptable_by_name(d.Tmp4)
 				return player_i
@@ -1920,7 +1899,7 @@ func userDelete(d *descriptor_data) {
 				remove_player(player_i)
 			}
 		}
-		if C.strcasecmp(d.Tmp5, libc.CString("Empty")) != 0 {
+		if libc.StrCaseCmp(d.Tmp5, libc.CString("Empty")) != 0 {
 			if (func() int {
 				player_i = get_ptable_by_name(d.Tmp5)
 				return player_i
@@ -1928,7 +1907,7 @@ func userDelete(d *descriptor_data) {
 				remove_player(player_i)
 			}
 		}
-		unlink(&fname[0])
+		stdio.Unlink(&fname[0])
 		return
 	} else {
 		write_to_output(d, libc.CString("Error. Your user file doesn't even exist!\n"))
@@ -1943,28 +1922,28 @@ func rIntro(ch *char_data, arg *byte) *byte {
 		line   [256]byte
 		name   [80]byte
 		known  int = FALSE
-		fl     *C.FILE
+		fl     *stdio.File
 	)
 	if IS_NPC(ch) {
 		return libc.CString("NOTHING")
 	}
 	if get_filename(&fname[0], uint64(40), INTRO_FILE, GET_NAME(ch)) == 0 {
 		return libc.CString("NOTHING")
-	} else if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "r")))
+	} else if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(&fname[0]), "r")
 		return fl
 	}()) == nil {
 		return libc.CString("NOTHING")
 	}
-	for C.feof(fl) == 0 {
+	for int(fl.IsEOF()) == 0 {
 		get_line(fl, &line[0])
-		__isoc99_sscanf(&line[0], libc.CString("%s %s\n"), &filler[0], &scrap[0])
-		if C.strcasecmp(arg, &scrap[0]) == 0 {
+		stdio.Sscanf(&line[0], "%s %s\n", &filler[0], &scrap[0])
+		if libc.StrCaseCmp(arg, &scrap[0]) == 0 {
 			known = TRUE
 			stdio.Sprintf(&name[0], "%s", &filler[0])
 		}
 	}
-	C.fclose(fl)
+	fl.Close()
 	if known == TRUE {
 		return &name[0]
 	} else {
@@ -1974,9 +1953,9 @@ func rIntro(ch *char_data, arg *byte) *byte {
 func userWrite(d *descriptor_data, setTot int, setRpp int, setRBank int, name *byte) {
 	var (
 		fname [40]byte
-		fl    *C.FILE
+		fl    *stdio.File
 	)
-	if C.strcasecmp(name, libc.CString("index")) == 0 {
+	if libc.StrCaseCmp(name, libc.CString("index")) == 0 {
 		if d == nil {
 			return
 		}
@@ -1986,64 +1965,64 @@ func userWrite(d *descriptor_data, setTot int, setRpp int, setRBank int, name *b
 		if get_filename(&fname[0], uint64(40), USER_FILE, d.User) == 0 {
 			return
 		}
-		if (func() *C.FILE {
-			fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "w")))
+		if (func() *stdio.File {
+			fl = stdio.FOpen(libc.GoString(&fname[0]), "w")
 			return fl
 		}()) == nil {
 			basic_mud_log(libc.CString("ERROR: could not save user, %s, to filename, %s."), d.User, &fname[0])
 			return
 		}
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", CAP(d.User))
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", d.Email)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", d.Pass)
+		stdio.Fprintf(fl, "%s\n", CAP(d.User))
+		stdio.Fprintf(fl, "%s\n", d.Email)
+		stdio.Fprintf(fl, "%s\n", d.Pass)
 		if setTot <= 3 || setTot > 5 {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", d.Total)
+			stdio.Fprintf(fl, "%d\n", d.Total)
 		} else if setTot > 3 {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", setTot)
+			stdio.Fprintf(fl, "%d\n", setTot)
 			d.Total = setTot
 		}
 		if setRpp == 0 {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", d.Rpp)
+			stdio.Fprintf(fl, "%d\n", d.Rpp)
 		} else {
 			d.Rpp += setRpp
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", d.Rpp)
+			stdio.Fprintf(fl, "%d\n", d.Rpp)
 		}
 		if d.Tmp1 != nil {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", d.Tmp1)
+			stdio.Fprintf(fl, "%s\n", d.Tmp1)
 		} else {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "Empty\n")
+			stdio.Fprintf(fl, "Empty\n")
 		}
 		if d.Tmp2 != nil {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", d.Tmp2)
+			stdio.Fprintf(fl, "%s\n", d.Tmp2)
 		} else {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "Empty\n")
+			stdio.Fprintf(fl, "Empty\n")
 		}
 		if d.Tmp3 != nil {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", d.Tmp3)
+			stdio.Fprintf(fl, "%s\n", d.Tmp3)
 		} else {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "Empty\n")
+			stdio.Fprintf(fl, "Empty\n")
 		}
 		if d.Tmp4 != nil {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", d.Tmp4)
+			stdio.Fprintf(fl, "%s\n", d.Tmp4)
 		} else {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "Empty\n")
+			stdio.Fprintf(fl, "Empty\n")
 		}
 		if d.Tmp5 != nil {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", d.Tmp5)
+			stdio.Fprintf(fl, "%s\n", d.Tmp5)
 		} else {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "Empty\n")
+			stdio.Fprintf(fl, "Empty\n")
 		}
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", d.Level)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", d.Customfile)
+		stdio.Fprintf(fl, "%d\n", d.Level)
+		stdio.Fprintf(fl, "%d\n", d.Customfile)
 		if setRBank == 0 {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", d.Rbank)
+			stdio.Fprintf(fl, "%d\n", d.Rbank)
 		} else {
 			d.Rbank += setRBank
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", d.Rbank)
+			stdio.Fprintf(fl, "%d\n", d.Rbank)
 		}
-		C.fclose(fl)
+		fl.Close()
 		return
-	} else if C.strcasecmp(name, libc.CString("index")) != 0 {
+	} else if libc.StrCaseCmp(name, libc.CString("index")) != 0 {
 		var (
 			filename [40]byte
 			uname    [100]byte
@@ -2060,95 +2039,95 @@ func userWrite(d *descriptor_data, setTot int, setRpp int, setRBank int, name *b
 			level    int = 0
 			custom   int = 0
 			rbank    int = 0
-			file     *C.FILE
+			file     *stdio.File
 		)
 		if get_filename(&filename[0], uint64(40), USER_FILE, name) == 0 {
 			return
-		} else if (func() *C.FILE {
-			file = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&filename[0]), "r")))
+		} else if (func() *stdio.File {
+			file = stdio.FOpen(libc.GoString(&filename[0]), "r")
 			return file
 		}()) == nil {
 			basic_mud_log(libc.CString("ERROR: could not load user, %s, from filename, %s."), name, &filename[0])
 			return
 		}
 		var count int = 0
-		for C.feof(file) == 0 {
+		for int(file.IsEOF()) == 0 {
 			get_line(file, &line[0])
 			count += 1
 			switch count {
 			case 1:
-				__isoc99_sscanf(&line[0], libc.CString("%s\n"), &uname[0])
+				stdio.Sscanf(&line[0], "%s\n", &uname[0])
 			case 2:
-				__isoc99_sscanf(&line[0], libc.CString("%s\n"), &email[0])
+				stdio.Sscanf(&line[0], "%s\n", &email[0])
 			case 3:
-				__isoc99_sscanf(&line[0], libc.CString("%s\n"), &pass[0])
+				stdio.Sscanf(&line[0], "%s\n", &pass[0])
 			case 4:
-				__isoc99_sscanf(&line[0], libc.CString("%d\n"), &total)
+				stdio.Sscanf(&line[0], "%d\n", &total)
 			case 5:
-				__isoc99_sscanf(&line[0], libc.CString("%d\n"), &rpp)
+				stdio.Sscanf(&line[0], "%d\n", &rpp)
 			case 6:
-				__isoc99_sscanf(&line[0], libc.CString("%s\n"), &tmp1[0])
+				stdio.Sscanf(&line[0], "%s\n", &tmp1[0])
 			case 7:
-				__isoc99_sscanf(&line[0], libc.CString("%s\n"), &tmp2[0])
+				stdio.Sscanf(&line[0], "%s\n", &tmp2[0])
 			case 8:
-				__isoc99_sscanf(&line[0], libc.CString("%s\n"), &tmp3[0])
+				stdio.Sscanf(&line[0], "%s\n", &tmp3[0])
 			case 9:
-				__isoc99_sscanf(&line[0], libc.CString("%s\n"), &tmp4[0])
+				stdio.Sscanf(&line[0], "%s\n", &tmp4[0])
 			case 10:
-				__isoc99_sscanf(&line[0], libc.CString("%s\n"), &tmp5[0])
+				stdio.Sscanf(&line[0], "%s\n", &tmp5[0])
 			case 11:
-				__isoc99_sscanf(&line[0], libc.CString("%d\n"), &level)
+				stdio.Sscanf(&line[0], "%d\n", &level)
 			case 12:
-				__isoc99_sscanf(&line[0], libc.CString("%d\n"), &custom)
+				stdio.Sscanf(&line[0], "%d\n", &custom)
 			case 13:
-				__isoc99_sscanf(&line[0], libc.CString("%d\n"), &rbank)
+				stdio.Sscanf(&line[0], "%d\n", &rbank)
 			}
 		}
-		C.fclose(file)
+		file.Close()
 		if get_filename(&fname[0], uint64(40), USER_FILE, name) == 0 {
 			return
 		}
-		if (func() *C.FILE {
-			fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "w")))
+		if (func() *stdio.File {
+			fl = stdio.FOpen(libc.GoString(&fname[0]), "w")
 			return fl
 		}()) == nil {
 			basic_mud_log(libc.CString("ERROR: could not save user, %s, to filename, %s."), name, &fname[0])
 			return
 		}
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", &uname[0])
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", &email[0])
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", &pass[0])
+		stdio.Fprintf(fl, "%s\n", &uname[0])
+		stdio.Fprintf(fl, "%s\n", &email[0])
+		stdio.Fprintf(fl, "%s\n", &pass[0])
 		if setTot <= 3 || setTot > 5 {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", total)
+			stdio.Fprintf(fl, "%d\n", total)
 		} else if setTot > 3 {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", setTot)
+			stdio.Fprintf(fl, "%d\n", setTot)
 		}
 		if setRpp == 0 {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", rpp)
+			stdio.Fprintf(fl, "%d\n", rpp)
 		} else if rpp+setRpp < 0 {
 			send_to_imm(libc.CString("RPP would be below 0, reward canceled."))
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", rpp)
+			stdio.Fprintf(fl, "%d\n", rpp)
 		} else {
 			rpp += setRpp
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", rpp)
+			stdio.Fprintf(fl, "%d\n", rpp)
 		}
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", &tmp1[0])
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", &tmp2[0])
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", &tmp3[0])
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", &tmp4[0])
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", &tmp5[0])
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", level)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", custom)
+		stdio.Fprintf(fl, "%s\n", &tmp1[0])
+		stdio.Fprintf(fl, "%s\n", &tmp2[0])
+		stdio.Fprintf(fl, "%s\n", &tmp3[0])
+		stdio.Fprintf(fl, "%s\n", &tmp4[0])
+		stdio.Fprintf(fl, "%s\n", &tmp5[0])
+		stdio.Fprintf(fl, "%d\n", level)
+		stdio.Fprintf(fl, "%d\n", custom)
 		if setRBank == 0 {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", rbank)
+			stdio.Fprintf(fl, "%d\n", rbank)
 		} else if rbank+setRBank < 0 {
 			send_to_imm(libc.CString("RPP Bank would be below 0, reward canceled."))
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", rbank)
+			stdio.Fprintf(fl, "%d\n", rbank)
 		} else {
 			rbank += setRBank
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", rbank)
+			stdio.Fprintf(fl, "%d\n", rbank)
 		}
-		C.fclose(fl)
+		fl.Close()
 		return
 	} else {
 		send_to_imm(libc.CString("Error with userWrite!"))
@@ -2170,48 +2149,48 @@ func fingerUser(ch *char_data, name *byte) {
 		total    int = 0
 		rpp      int = 0
 		rbank    int = 0
-		file     *C.FILE
+		file     *stdio.File
 	)
 	if get_filename(&filename[0], uint64(40), USER_FILE, name) == 0 {
 		send_to_char(ch, libc.CString("That user doesn't exist.\r\n"))
 		return
-	} else if (func() *C.FILE {
-		file = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&filename[0]), "r")))
+	} else if (func() *stdio.File {
+		file = stdio.FOpen(libc.GoString(&filename[0]), "r")
 		return file
 	}()) == nil {
 		send_to_char(ch, libc.CString("That user is bugged! Report to Iovan.\r\n"))
 		return
 	}
 	var count int = 0
-	for C.feof(file) == 0 {
+	for int(file.IsEOF()) == 0 {
 		get_line(file, &line[0])
 		count += 1
 		switch count {
 		case 1:
-			__isoc99_sscanf(&line[0], libc.CString("%s\n"), &uname[0])
+			stdio.Sscanf(&line[0], "%s\n", &uname[0])
 		case 2:
-			__isoc99_sscanf(&line[0], libc.CString("%s\n"), &email[0])
+			stdio.Sscanf(&line[0], "%s\n", &email[0])
 		case 3:
-			__isoc99_sscanf(&line[0], libc.CString("%s\n"), &pass[0])
+			stdio.Sscanf(&line[0], "%s\n", &pass[0])
 		case 4:
-			__isoc99_sscanf(&line[0], libc.CString("%d\n"), &total)
+			stdio.Sscanf(&line[0], "%d\n", &total)
 		case 5:
-			__isoc99_sscanf(&line[0], libc.CString("%d\n"), &rpp)
+			stdio.Sscanf(&line[0], "%d\n", &rpp)
 		case 6:
-			__isoc99_sscanf(&line[0], libc.CString("%s\n"), &tmp1[0])
+			stdio.Sscanf(&line[0], "%s\n", &tmp1[0])
 		case 7:
-			__isoc99_sscanf(&line[0], libc.CString("%s\n"), &tmp2[0])
+			stdio.Sscanf(&line[0], "%s\n", &tmp2[0])
 		case 8:
-			__isoc99_sscanf(&line[0], libc.CString("%s\n"), &tmp3[0])
+			stdio.Sscanf(&line[0], "%s\n", &tmp3[0])
 		case 9:
-			__isoc99_sscanf(&line[0], libc.CString("%s\n"), &tmp4[0])
+			stdio.Sscanf(&line[0], "%s\n", &tmp4[0])
 		case 10:
-			__isoc99_sscanf(&line[0], libc.CString("%s\n"), &tmp5[0])
+			stdio.Sscanf(&line[0], "%s\n", &tmp5[0])
 		case 13:
-			__isoc99_sscanf(&line[0], libc.CString("%d\n"), &rbank)
+			stdio.Sscanf(&line[0], "%d\n", &rbank)
 		}
 	}
-	C.fclose(file)
+	file.Close()
 	send_to_char(ch, libc.CString("@D[@gUsername   @D: @w%-30s@D]@n\r\n"), &uname[0])
 	send_to_char(ch, libc.CString("@D[@gEmail      @D: @w%-30s@D]@n\r\n"), &email[0])
 	if ch.Admlevel > 4 {
@@ -2453,7 +2432,7 @@ func opp_bonus(ch *char_data, value int, type_ int) int {
 			give = FALSE
 		}
 	case 3:
-		if ch.Race == RACE_ANDROID {
+		if int(ch.Race) == RACE_ANDROID {
 			display_bonus_menu(ch, type_)
 			send_to_char(ch, libc.CString("You can not take %s as an android!@n\r\n"), list_bonus[3])
 			give = FALSE
@@ -2513,13 +2492,13 @@ func opp_bonus(ch *char_data, value int, type_ int) int {
 			give = FALSE
 		}
 	case 16:
-		if ch.Race == RACE_ANDROID {
+		if int(ch.Race) == RACE_ANDROID {
 			display_bonus_menu(ch, type_)
 			send_to_char(ch, libc.CString("You are an android and can not suppress anyway.\n\n"))
 			give = FALSE
 		}
 	case 17:
-		if ch.Race == RACE_DEMON {
+		if int(ch.Race) == RACE_DEMON {
 			display_bonus_menu(ch, type_)
 			send_to_char(ch, libc.CString("As a demon you are already fireproof.\r\n"))
 			give = FALSE
@@ -2545,7 +2524,7 @@ func opp_bonus(ch *char_data, value int, type_ int) int {
 			display_bonus_menu(ch, type_)
 			send_to_char(ch, libc.CString("@R%s and %s are mutually exclusive.\n\n"), list_bonus[27], list_bonus[value])
 			give = FALSE
-		} else if ch.Race == RACE_ANDROID {
+		} else if int(ch.Race) == RACE_ANDROID {
 			display_bonus_menu(ch, type_)
 			send_to_char(ch, libc.CString("You can not take %s as an android!@n\r\n"), list_bonus[value])
 			give = FALSE
@@ -2591,7 +2570,7 @@ func opp_bonus(ch *char_data, value int, type_ int) int {
 			display_bonus_menu(ch, type_)
 			send_to_char(ch, libc.CString("@R%s and %s are mutually exclusive.\n\n"), list_bonus[27], list_bonus[value])
 			give = FALSE
-		} else if ch.Race == RACE_ANDROID {
+		} else if int(ch.Race) == RACE_ANDROID {
 			display_bonus_menu(ch, type_)
 			send_to_char(ch, libc.CString("You can not take %s as an android!@n\r\n"), list_bonus[value])
 			give = FALSE
@@ -2814,7 +2793,7 @@ func nanny(d *descriptor_data, arg *byte) {
 			clear_char(d.Character)
 			d.Character.Player_specials = new(player_special_data)
 			d.Character.Desc = d
-			d.Character.Player_specials.Pref[int(PRF_COLOR/32)] |= bitvector_t(1 << (int(PRF_COLOR % 32)))
+			d.Character.Player_specials.Pref[int(PRF_COLOR/32)] |= bitvector_t(int32(1 << (int(PRF_COLOR % 32))))
 		}
 		var buf [2048]byte
 		var tmp_name [2048]byte
@@ -2823,9 +2802,9 @@ func nanny(d *descriptor_data, arg *byte) {
 				write_to_output(d, libc.CString("Enter name: "))
 				return
 			}
-			d.Loadplay = C.strdup(arg)
+			d.Loadplay = libc.StrDup(arg)
 		}
-		if _parse_name(d.Loadplay, &tmp_name[0]) != 0 || C.strlen(&tmp_name[0]) < 2 || C.strlen(&tmp_name[0]) > MAX_NAME_LENGTH || Valid_Name(&tmp_name[0]) == 0 || fill_word(C.strcpy(&buf[0], &tmp_name[0])) != 0 || reserved_word(&buf[0]) != 0 {
+		if _parse_name(d.Loadplay, &tmp_name[0]) != 0 || libc.StrLen(&tmp_name[0]) < 2 || libc.StrLen(&tmp_name[0]) > MAX_NAME_LENGTH || Valid_Name(&tmp_name[0]) == 0 || fill_word(libc.StrCpy(&buf[0], &tmp_name[0])) != 0 || reserved_word(&buf[0]) != 0 {
 			write_to_output(d, libc.CString("Invalid name, please try another.\r\nName: "))
 			return
 		}
@@ -2866,17 +2845,17 @@ func nanny(d *descriptor_data, arg *byte) {
 					clear_char(d.Character)
 					d.Character.Player_specials = new(player_special_data)
 					d.Character.Desc = d
-					d.Character.Name = (*byte)(unsafe.Pointer(&make([]int8, int(C.strlen(&tmp_name[0])+1))[0]))
-					C.strcpy(d.Character.Name, CAP(&tmp_name[0]))
+					d.Character.Name = (*byte)(unsafe.Pointer(&make([]int8, libc.StrLen(&tmp_name[0])+1)[0]))
+					libc.StrCpy(d.Character.Name, CAP(&tmp_name[0]))
 					d.Character.Pfilepos = player_i
-					d.Character.Player_specials.Pref[int(PRF_COLOR/32)] |= bitvector_t(1 << (int(PRF_COLOR % 32)))
+					d.Character.Player_specials.Pref[int(PRF_COLOR/32)] |= bitvector_t(int32(1 << (int(PRF_COLOR % 32))))
 					display_races(d)
 					d.Character.Rp = d.Rpp
 					d.Connected = CON_QRACE
 				} else {
-					d.Character.Act[int(PLR_WRITING/32)] &= bitvector_t(^(1 << (int(PLR_WRITING % 32))))
-					d.Character.Act[int(PLR_MAILING/32)] &= bitvector_t(^(1 << (int(PLR_MAILING % 32))))
-					d.Character.Act[int(PLR_CRYO/32)] &= bitvector_t(^(1 << (int(PLR_CRYO % 32))))
+					d.Character.Act[int(PLR_WRITING/32)] &= bitvector_t(int32(^(1 << (int(PLR_WRITING % 32)))))
+					d.Character.Act[int(PLR_MAILING/32)] &= bitvector_t(int32(^(1 << (int(PLR_MAILING % 32)))))
+					d.Character.Act[int(PLR_CRYO/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRYO % 32)))))
 					d.Character.Affected_by[int(AFF_GROUP/32)] &= ^(1 << (int(AFF_GROUP % 32)))
 					if isbanned(&d.Host[0]) == BAN_SELECT && !PLR_FLAGGED(d.Character, PLR_SITEOK) {
 						write_to_output(d, libc.CString("Sorry, this char has not been cleared for login from your site!\r\n"))
@@ -2900,40 +2879,40 @@ func nanny(d *descriptor_data, arg *byte) {
 				}
 			} else {
 				if d.Writenew <= 0 {
-					if C.strcasecmp(d.Loadplay, d.Tmp1) == 0 {
+					if libc.StrCaseCmp(d.Loadplay, d.Tmp1) == 0 {
 						if d.Tmp1 != nil {
 							libc.Free(unsafe.Pointer(d.Tmp1))
 							d.Tmp1 = nil
 						}
-						d.Tmp1 = C.strdup(libc.CString("Empty"))
+						d.Tmp1 = libc.CString("Empty")
 					}
-					if C.strcasecmp(d.Loadplay, d.Tmp2) == 0 {
+					if libc.StrCaseCmp(d.Loadplay, d.Tmp2) == 0 {
 						if d.Tmp2 != nil {
 							libc.Free(unsafe.Pointer(d.Tmp2))
 							d.Tmp2 = nil
 						}
-						d.Tmp2 = C.strdup(libc.CString("Empty"))
+						d.Tmp2 = libc.CString("Empty")
 					}
-					if C.strcasecmp(d.Loadplay, d.Tmp3) == 0 {
+					if libc.StrCaseCmp(d.Loadplay, d.Tmp3) == 0 {
 						if d.Tmp3 != nil {
 							libc.Free(unsafe.Pointer(d.Tmp3))
 							d.Tmp3 = nil
 						}
-						d.Tmp3 = C.strdup(libc.CString("Empty"))
+						d.Tmp3 = libc.CString("Empty")
 					}
-					if C.strcasecmp(d.Loadplay, d.Tmp4) == 0 {
+					if libc.StrCaseCmp(d.Loadplay, d.Tmp4) == 0 {
 						if d.Tmp4 != nil {
 							libc.Free(unsafe.Pointer(d.Tmp4))
 							d.Tmp4 = nil
 						}
-						d.Tmp4 = C.strdup(libc.CString("Empty"))
+						d.Tmp4 = libc.CString("Empty")
 					}
-					if C.strcasecmp(d.Loadplay, d.Tmp5) == 0 {
+					if libc.StrCaseCmp(d.Loadplay, d.Tmp5) == 0 {
 						if d.Tmp5 != nil {
 							libc.Free(unsafe.Pointer(d.Tmp5))
 							d.Tmp5 = nil
 						}
-						d.Tmp5 = C.strdup(libc.CString("Empty"))
+						d.Tmp5 = libc.CString("Empty")
 					}
 					userWrite(d, 0, 0, 0, libc.CString("index"))
 					userRead(d)
@@ -2944,8 +2923,8 @@ func nanny(d *descriptor_data, arg *byte) {
 						write_to_output(d, libc.CString("Invalid name, please try another.\r\nName: "))
 						return
 					}
-					d.Character.Name = (*byte)(unsafe.Pointer(&make([]int8, int(C.strlen(&tmp_name[0])+1))[0]))
-					C.strcpy(d.Character.Name, CAP(&tmp_name[0]))
+					d.Character.Name = (*byte)(unsafe.Pointer(&make([]int8, libc.StrLen(&tmp_name[0])+1)[0]))
+					libc.StrCpy(d.Character.Name, CAP(&tmp_name[0]))
 					display_races(d)
 					d.Character.Rp = d.Rpp
 					switch d.Writenew {
@@ -2954,35 +2933,35 @@ func nanny(d *descriptor_data, arg *byte) {
 							libc.Free(unsafe.Pointer(d.Tmp1))
 							d.Tmp1 = nil
 						}
-						d.Tmp1 = C.strdup(d.Character.Name)
+						d.Tmp1 = libc.StrDup(d.Character.Name)
 						userWrite(d, 0, 0, 0, libc.CString("index"))
 					case 2:
 						if d.Tmp2 != nil {
 							libc.Free(unsafe.Pointer(d.Tmp2))
 							d.Tmp2 = nil
 						}
-						d.Tmp2 = C.strdup(d.Character.Name)
+						d.Tmp2 = libc.StrDup(d.Character.Name)
 						userWrite(d, 0, 0, 0, libc.CString("index"))
 					case 3:
 						if d.Tmp3 != nil {
 							libc.Free(unsafe.Pointer(d.Tmp3))
 							d.Tmp3 = nil
 						}
-						d.Tmp3 = C.strdup(d.Character.Name)
+						d.Tmp3 = libc.StrDup(d.Character.Name)
 						userWrite(d, 0, 0, 0, libc.CString("index"))
 					case 4:
 						if d.Tmp4 != nil {
 							libc.Free(unsafe.Pointer(d.Tmp4))
 							d.Tmp4 = nil
 						}
-						d.Tmp4 = C.strdup(d.Character.Name)
+						d.Tmp4 = libc.StrDup(d.Character.Name)
 						userWrite(d, 0, 0, 0, libc.CString("index"))
 					case 5:
 						if d.Tmp5 != nil {
 							libc.Free(unsafe.Pointer(d.Tmp5))
 							d.Tmp5 = nil
 						}
-						d.Tmp5 = C.strdup(d.Character.Name)
+						d.Tmp5 = libc.StrDup(d.Character.Name)
 						userWrite(d, 0, 0, 0, libc.CString("index"))
 					}
 					d.Connected = CON_QRACE
@@ -2990,7 +2969,7 @@ func nanny(d *descriptor_data, arg *byte) {
 			}
 		}
 	case CON_NAME_CNFRM:
-		if C.toupper(int(*arg)) == 'Y' {
+		if unicode.ToUpper(rune(*arg)) == 'Y' {
 			if isbanned(&d.Host[0]) >= BAN_NEW {
 				mudlog(NRM, ADMLVL_GOD, TRUE, libc.CString("Request for new char %s denied from [%s] (siteban)"), d.Character.Name, &d.Host[0])
 				write_to_output(d, libc.CString("Sorry, new characters are not allowed from your site!\r\n"))
@@ -3005,7 +2984,6 @@ func nanny(d *descriptor_data, arg *byte) {
 			}
 			d.Idle_tics = 0
 			write_to_output(d, libc.CString("@MNew character.@n\r\nGive me a @gpassword@n for @C%s@n: "), d.Character.Name)
-			echo_off(d)
 			d.Connected = CON_NEWPASSWD
 		} else if *arg == 'n' || *arg == 'N' {
 			write_to_output(d, libc.CString("Okay, what IS it, then? "))
@@ -3023,25 +3001,25 @@ func nanny(d *descriptor_data, arg *byte) {
 		if *arg == 0 {
 			write_to_output(d, libc.CString("Enter your desired username or the username you have already made.\nUsername?\r\n"))
 			return
-		} else if C.strcasecmp(arg, libc.CString("index")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("index")) == 0 {
 			write_to_output(d, libc.CString("Try again, username?\r\n"))
 			return
 		} else if Valid_Name(CAP(arg)) == 0 {
 			write_to_output(d, libc.CString("Invalid name. Username?\r\n"))
 			return
-		} else if C.strstr(arg, libc.CString(" ")) != nil {
+		} else if libc.StrStr(arg, libc.CString(" ")) != nil {
 			write_to_output(d, libc.CString("No spaces. Username?\r\n"))
 			return
-		} else if C.strstr(arg, libc.CString("1")) != nil || C.strstr(arg, libc.CString("2")) != nil || C.strstr(arg, libc.CString("3")) != nil || C.strstr(arg, libc.CString("4")) != nil || C.strstr(arg, libc.CString("5")) != nil || C.strstr(arg, libc.CString("6")) != nil || C.strstr(arg, libc.CString("7")) != nil || C.strstr(arg, libc.CString("8")) != nil || C.strstr(arg, libc.CString("9")) != nil || C.strstr(arg, libc.CString("0")) != nil {
+		} else if libc.StrStr(arg, libc.CString("1")) != nil || libc.StrStr(arg, libc.CString("2")) != nil || libc.StrStr(arg, libc.CString("3")) != nil || libc.StrStr(arg, libc.CString("4")) != nil || libc.StrStr(arg, libc.CString("5")) != nil || libc.StrStr(arg, libc.CString("6")) != nil || libc.StrStr(arg, libc.CString("7")) != nil || libc.StrStr(arg, libc.CString("8")) != nil || libc.StrStr(arg, libc.CString("9")) != nil || libc.StrStr(arg, libc.CString("0")) != nil {
 			write_to_output(d, libc.CString("No numbers. Username?\r\n"))
 			return
-		} else if C.strstr(arg, libc.CString(".")) != nil || C.strstr(arg, libc.CString(",")) != nil || C.strstr(arg, libc.CString("!")) != nil || C.strstr(arg, libc.CString("?")) != nil || C.strstr(arg, libc.CString(";")) != nil || C.strstr(arg, libc.CString(":")) != nil || C.strstr(arg, libc.CString("'")) != nil {
+		} else if libc.StrStr(arg, libc.CString(".")) != nil || libc.StrStr(arg, libc.CString(",")) != nil || libc.StrStr(arg, libc.CString("!")) != nil || libc.StrStr(arg, libc.CString("?")) != nil || libc.StrStr(arg, libc.CString(";")) != nil || libc.StrStr(arg, libc.CString(":")) != nil || libc.StrStr(arg, libc.CString("'")) != nil {
 			write_to_output(d, libc.CString("No punctuation. Username?\r\n"))
 			return
-		} else if C.strlen(arg) < 3 {
+		} else if libc.StrLen(arg) < 3 {
 			write_to_output(d, libc.CString("Name must at least be 3 characters long, username?\r\n"))
 			return
-		} else if C.strlen(arg) > 10 {
+		} else if libc.StrLen(arg) > 10 {
 			write_to_output(d, libc.CString("Name must be at most 10 characters long, username?\r\n"))
 			return
 		} else {
@@ -3056,7 +3034,7 @@ func nanny(d *descriptor_data, arg *byte) {
 						libc.Free(unsafe.Pointer(d.User))
 						d.User = nil
 					}
-					d.User = C.strdup(arg)
+					d.User = libc.StrDup(arg)
 					write_to_output(d, libc.CString("You want you user name to be, %s?\r\n"), d.User)
 					write_to_output(d, libc.CString("Yes or no: \n"))
 					d.Connected = CON_USER_CONF
@@ -3067,7 +3045,7 @@ func nanny(d *descriptor_data, arg *byte) {
 						libc.Free(unsafe.Pointer(d.User))
 						d.User = nil
 					}
-					d.User = C.strdup(arg)
+					d.User = libc.StrDup(arg)
 					userLoad(d, d.User)
 					if d.Level == 0 {
 						write_to_output(d, libc.CString("The mud is locked for mortals at this time.\r\n"))
@@ -3076,7 +3054,6 @@ func nanny(d *descriptor_data, arg *byte) {
 					} else {
 						write_to_output(d, libc.CString("Password: \r\n"))
 						send_to_imm(libc.CString("Username, %s, logging in."), CAP(arg))
-						echo_off(d)
 						d.Connected = CON_PASSWORD
 					}
 				} else {
@@ -3087,7 +3064,6 @@ func nanny(d *descriptor_data, arg *byte) {
 					userLoad(d, arg)
 					write_to_output(d, libc.CString("Password: \r\n"))
 					send_to_imm(libc.CString("Username, %s, logging in."), CAP(arg))
-					echo_off(d)
 					d.Connected = CON_PASSWORD
 				}
 			}
@@ -3097,18 +3073,18 @@ func nanny(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("You want your user name to be, %s?\r\n"), d.User)
 			write_to_output(d, libc.CString("Yes or no: \n"))
 			return
-		} else if C.strcasecmp(arg, libc.CString("yes")) == 0 || C.strcasecmp(arg, libc.CString("y")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("yes")) == 0 || libc.StrCaseCmp(arg, libc.CString("y")) == 0 {
 			write_to_output(d, libc.CString("User Account, %s, created.\r\nEnter Email:\n"), d.User)
 			write_to_output(d, libc.CString("Remember your email must be valid and matching the example given.\n"))
 			write_to_output(d, libc.CString("[Example: iovan@@advent-truth.com]\n"))
 			send_to_imm(libc.CString("Username, %s, creating."), CAP(d.User))
 			d.Connected = CON_GET_EMAIL
-		} else if C.strcasecmp(arg, libc.CString("no")) == 0 || C.strcasecmp(arg, libc.CString("n")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("no")) == 0 || libc.StrCaseCmp(arg, libc.CString("n")) == 0 {
 			if d.User != nil {
 				libc.Free(unsafe.Pointer(d.User))
 				d.User = nil
 			}
-			d.User = C.strdup(libc.CString("Empty"))
+			d.User = libc.CString("Empty")
 			write_to_output(d, libc.CString("Enter Username: \n"))
 			d.Connected = CON_GET_USER
 		} else {
@@ -3123,26 +3099,26 @@ func nanny(d *descriptor_data, arg *byte) {
 		} else if *arg == 0 {
 			write_to_output(d, libc.CString("Email?\r\n"))
 			return
-		} else if C.strcasecmp(arg, libc.CString("M")) == 0 && readUserIndex(d.User) != 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("M")) == 0 && readUserIndex(d.User) != 0 {
 			userRead(d)
 			d.Connected = CON_UMENU
-		} else if C.strstr(arg, libc.CString(".com")) == nil && C.strstr(arg, libc.CString(".net")) == nil && C.strstr(arg, libc.CString(".org")) == nil {
+		} else if libc.StrStr(arg, libc.CString(".com")) == nil && libc.StrStr(arg, libc.CString(".net")) == nil && libc.StrStr(arg, libc.CString(".org")) == nil {
 			write_to_output(d, libc.CString("Improper email format missing '.com' or '.net' or '.org'. Email?\r\n"))
 			return
 		} else if readUserIndex(d.User) != 0 {
-			if C.strstr(arg, libc.CString("@")) != nil {
+			if libc.StrStr(arg, libc.CString("@")) != nil {
 				search_replace(arg, libc.CString("@"), libc.CString("<AT>"))
 			}
 			if d.Email != nil {
 				libc.Free(unsafe.Pointer(d.Email))
 				d.Email = nil
 			}
-			d.Email = C.strdup(arg)
+			d.Email = libc.StrDup(arg)
 			userWrite(d, 0, 0, 0, libc.CString("index"))
 			userRead(d)
 			d.Connected = CON_UMENU
 		} else {
-			if C.strstr(arg, libc.CString("@")) != nil {
+			if libc.StrStr(arg, libc.CString("@")) != nil {
 				search_replace(arg, libc.CString("@"), libc.CString("<AT>"))
 			}
 			write_to_output(d, libc.CString("Your email is: %s\n"), arg)
@@ -3150,9 +3126,8 @@ func nanny(d *descriptor_data, arg *byte) {
 				libc.Free(unsafe.Pointer(d.Email))
 				d.Email = nil
 			}
-			d.Email = C.strdup(arg)
+			d.Email = libc.StrDup(arg)
 			write_to_output(d, libc.CString("Password: \r\n"))
-			echo_off(d)
 			d.Connected = CON_NEWPASSWD
 		}
 	case CON_NEWPASSWD:
@@ -3162,13 +3137,13 @@ func nanny(d *descriptor_data, arg *byte) {
 		} else if *arg == 0 {
 			write_to_output(d, libc.CString("Password?\r\n"))
 			return
-		} else if C.strcasecmp(arg, libc.CString("M")) == 0 && readUserIndex(d.User) != 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("M")) == 0 && readUserIndex(d.User) != 0 {
 			userRead(d)
 			d.Connected = CON_UMENU
-		} else if C.strlen(arg) > MAX_PWD_LENGTH && readUserIndex(d.User) != 0 {
+		} else if libc.StrLen(arg) > MAX_PWD_LENGTH && readUserIndex(d.User) != 0 {
 			write_to_output(d, libc.CString("Password is too long. Password, or M for menu?\r\n"))
 			return
-		} else if C.strlen(arg) > MAX_PWD_LENGTH {
+		} else if libc.StrLen(arg) > MAX_PWD_LENGTH {
 			write_to_output(d, libc.CString("Password is too long. Password?\r\n"))
 			return
 		} else if readUserIndex(d.User) != 0 {
@@ -3177,10 +3152,9 @@ func nanny(d *descriptor_data, arg *byte) {
 				libc.Free(unsafe.Pointer(d.Pass))
 				d.Pass = nil
 			}
-			d.Pass = C.strdup(arg)
+			d.Pass = libc.StrDup(arg)
 			userWrite(d, 0, 0, 0, libc.CString("index"))
 			userRead(d)
-			echo_on(d)
 			d.Connected = CON_UMENU
 		} else {
 			write_to_output(d, libc.CString("Your password and user account have been fully saved.\r\n"))
@@ -3188,10 +3162,9 @@ func nanny(d *descriptor_data, arg *byte) {
 				libc.Free(unsafe.Pointer(d.Pass))
 				d.Pass = nil
 			}
-			d.Pass = C.strdup(arg)
+			d.Pass = libc.StrDup(arg)
 			userCreate(d)
 			userRead(d)
-			echo_on(d)
 			d.Connected = CON_UMENU
 		}
 	case CON_PASSWORD:
@@ -3200,16 +3173,16 @@ func nanny(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("(Return will ask for a different username)\r\n"))
 			return
 		}
-		if C.strcasecmp(libc.CString("return"), arg) == 0 || C.strcasecmp(libc.CString("Return"), arg) == 0 {
+		if libc.StrCaseCmp(libc.CString("return"), arg) == 0 || libc.StrCaseCmp(libc.CString("Return"), arg) == 0 {
 			if d.User != nil {
 				libc.Free(unsafe.Pointer(d.User))
 				d.User = nil
 			}
-			d.User = C.strdup(libc.CString("Empty"))
+			d.User = libc.CString("Empty")
 			write_to_output(d, libc.CString("Username?\r\n"))
 			d.Connected = CON_GET_USER
 		}
-		if C.strcasecmp(d.Pass, arg) == 0 {
+		if libc.StrCaseCmp(d.Pass, arg) == 0 {
 			for k = descriptor_list; k != nil; k = k.Next {
 				if k == d {
 					continue
@@ -3220,7 +3193,7 @@ func nanny(d *descriptor_data, arg *byte) {
 				if d.User == nil || d.User == nil {
 					continue
 				}
-				if C.strcasecmp(k.User, d.User) == 0 {
+				if libc.StrCaseCmp(k.User, d.User) == 0 {
 					if k.Connected == CON_PLAYING {
 						k.Connected = CON_DISCONNECT
 						write_to_output(k, libc.CString("Your account has been usurped by someone who knows its password!@n"))
@@ -3231,7 +3204,6 @@ func nanny(d *descriptor_data, arg *byte) {
 				}
 			}
 			userRead(d)
-			echo_on(d)
 			d.Connected = CON_UMENU
 		} else {
 			write_to_output(d, libc.CString("Password is wrong. Password or Return?\r\n"))
@@ -3245,24 +3217,24 @@ func nanny(d *descriptor_data, arg *byte) {
 			userRead(d)
 			return
 		}
-		if C.strcasecmp(arg, libc.CString("Q")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Q")) == 0 {
 			write_to_output(d, libc.CString("Thanks for visiting!\n"))
 			d.Connected = CON_CLOSE
-		} else if C.strcasecmp(arg, libc.CString("P")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("P")) == 0 {
 			write_to_output(d, libc.CString("Enter New Password, or M for menu::\n"))
 			d.Connected = CON_NEWPASSWD
-		} else if C.strcasecmp(arg, libc.CString("C")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("C")) == 0 {
 			write_to_output(d, libc.CString("\n"))
 			customRead(d, 0, nil)
 			write_to_output(d, libc.CString("\r\n@n--Press Enter--\n@n"))
 			return
-		} else if C.strcasecmp(arg, libc.CString("E")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("E")) == 0 {
 			write_to_output(d, libc.CString("Enter New Email, or M for menu:\n"))
 			d.Connected = CON_GET_EMAIL
-		} else if C.strcasecmp(arg, libc.CString("D")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("D")) == 0 {
 			write_to_output(d, libc.CString("Are you sure you want to delete your user file and all its characters? Yes or no:\n"))
 			d.Connected = CON_DELCNF1
-		} else if C.strcasecmp(arg, libc.CString("B")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("B")) == 0 {
 			if d.Total == 3 && d.Rpp >= 15 {
 				d.Rpp -= 15
 				d.Total = 4
@@ -3293,7 +3265,7 @@ func nanny(d *descriptor_data, arg *byte) {
 		} else {
 			switch libc.Atoi(libc.GoString(arg)) {
 			case 1:
-				if C.strcasecmp(d.Tmp1, libc.CString("Empty")) == 0 {
+				if libc.StrCaseCmp(d.Tmp1, libc.CString("Empty")) == 0 {
 					write_to_output(d, libc.CString("Enter New Character Name: \n"))
 					d.Writenew = 1
 					d.Connected = CON_GET_NAME
@@ -3309,7 +3281,7 @@ func nanny(d *descriptor_data, arg *byte) {
 					}
 				}
 			case 2:
-				if C.strcasecmp(d.Tmp2, libc.CString("Empty")) == 0 {
+				if libc.StrCaseCmp(d.Tmp2, libc.CString("Empty")) == 0 {
 					write_to_output(d, libc.CString("Enter New Character Name: \n"))
 					d.Writenew = 2
 					d.Connected = CON_GET_NAME
@@ -3325,7 +3297,7 @@ func nanny(d *descriptor_data, arg *byte) {
 					}
 				}
 			case 3:
-				if C.strcasecmp(d.Tmp3, libc.CString("Empty")) == 0 {
+				if libc.StrCaseCmp(d.Tmp3, libc.CString("Empty")) == 0 {
 					write_to_output(d, libc.CString("Enter New Character Name: \n"))
 					d.Writenew = 3
 					d.Connected = CON_GET_NAME
@@ -3346,7 +3318,7 @@ func nanny(d *descriptor_data, arg *byte) {
 					write_to_output(d, libc.CString("You only have %d character slots avaialable!\r\n"), d.Total)
 					return
 				}
-				if C.strcasecmp(d.Tmp4, libc.CString("Empty")) == 0 {
+				if libc.StrCaseCmp(d.Tmp4, libc.CString("Empty")) == 0 {
 					write_to_output(d, libc.CString("Enter New Character Name: \n"))
 					d.Writenew = 4
 					d.Connected = CON_GET_NAME
@@ -3367,7 +3339,7 @@ func nanny(d *descriptor_data, arg *byte) {
 					write_to_output(d, libc.CString("You only have %d character slots avaialable!\r\n"), d.Total)
 					return
 				}
-				if C.strcasecmp(d.Tmp5, libc.CString("Empty")) == 0 {
+				if libc.StrCaseCmp(d.Tmp5, libc.CString("Empty")) == 0 {
 					write_to_output(d, libc.CString("Enter New Character Name: \n"))
 					d.Writenew = 5
 					d.Connected = CON_GET_NAME
@@ -3389,7 +3361,7 @@ func nanny(d *descriptor_data, arg *byte) {
 			}
 		}
 	case CON_QSEX:
-		if d.Character.Race != RACE_NAMEK {
+		if int(d.Character.Race) != RACE_NAMEK {
 			switch *arg {
 			case 'm':
 				fallthrough
@@ -3408,28 +3380,28 @@ func nanny(d *descriptor_data, arg *byte) {
 				return
 			}
 		}
-		if d.Character.Race == RACE_HUMAN || d.Character.Race == RACE_SAIYAN || d.Character.Race == RACE_KONATSU || d.Character.Race == RACE_MUTANT || d.Character.Race == RACE_ANDROID || d.Character.Race == RACE_KAI || d.Character.Race == RACE_HALFBREED || d.Character.Race == RACE_TRUFFLE || d.Character.Race == RACE_HOSHIJIN && d.Character.Sex == SEX_FEMALE {
+		if int(d.Character.Race) == RACE_HUMAN || int(d.Character.Race) == RACE_SAIYAN || int(d.Character.Race) == RACE_KONATSU || int(d.Character.Race) == RACE_MUTANT || int(d.Character.Race) == RACE_ANDROID || int(d.Character.Race) == RACE_KAI || int(d.Character.Race) == RACE_HALFBREED || int(d.Character.Race) == RACE_TRUFFLE || int(d.Character.Race) == RACE_HOSHIJIN && int(d.Character.Sex) == SEX_FEMALE {
 			write_to_output(d, libc.CString("@YHair Length SELECTION menu:\r\n"))
 			write_to_output(d, libc.CString("@D---------------------------------------@n\r\n"))
 			write_to_output(d, libc.CString("@B1@W)@C Bald  @B2@W)@C Short  @B3@W)@C Medium\r\n"))
 			write_to_output(d, libc.CString("@B4@W)@C Long  @B5@W)@C Really Long@n\r\n"))
 			write_to_output(d, libc.CString("@w\r\nMake a selection:@n\r\n"))
 			d.Connected = CON_HAIRL
-		} else if d.Character.Race == RACE_DEMON || d.Character.Race == RACE_ICER {
+		} else if int(d.Character.Race) == RACE_DEMON || int(d.Character.Race) == RACE_ICER {
 			write_to_output(d, libc.CString("@YHorn Length SELECTION menu:\r\n"))
 			write_to_output(d, libc.CString("@D---------------------------------------@n\r\n"))
 			write_to_output(d, libc.CString("@B1@W)@C None  @B2@W)@C Short  @B3@W)@C Medium\r\n"))
 			write_to_output(d, libc.CString("@B4@W)@C Long  @B5@W)@C Really Long@n\r\n"))
 			write_to_output(d, libc.CString("@w\r\nMake a selection:@n\r\n"))
 			d.Connected = CON_HAIRL
-		} else if d.Character.Race == RACE_MAJIN {
+		} else if int(d.Character.Race) == RACE_MAJIN {
 			write_to_output(d, libc.CString("@YForelock Length SELECTION menu:\r\n"))
 			write_to_output(d, libc.CString("@D---------------------------------------@n\r\n"))
 			write_to_output(d, libc.CString("@B1@W)@C Tiny  @B2@W)@C Short  @B3@W)@C Medium\r\n"))
 			write_to_output(d, libc.CString("@B4@W)@C Long  @B5@W)@C Really Long@n\r\n"))
 			write_to_output(d, libc.CString("@w\r\nMake a selection:@n\r\n"))
 			d.Connected = CON_HAIRL
-		} else if d.Character.Race == RACE_NAMEK || d.Character.Race == RACE_ARLIAN {
+		} else if int(d.Character.Race) == RACE_NAMEK || int(d.Character.Race) == RACE_ARLIAN {
 			write_to_output(d, libc.CString("@YAntenae Length SELECTION menu:\r\n"))
 			write_to_output(d, libc.CString("@D---------------------------------------@n\r\n"))
 			write_to_output(d, libc.CString("@B1@W)@C Tiny  @B2@W)@C Short  @B3@W)@C Medium\r\n"))
@@ -3483,20 +3455,20 @@ func nanny(d *descriptor_data, arg *byte) {
 		} else {
 			d.Character.Race = int8(load_result)
 		}
-		if d.Character.Race == RACE_HALFBREED {
+		if int(d.Character.Race) == RACE_HALFBREED {
 			write_to_output(d, libc.CString("@YWhat race do you prefer to by identified with?\r\n"))
 			write_to_output(d, libc.CString("@cThis controls how others first view you and whether you start with\na tail and how fast it regrows when missing.\r\n"))
 			write_to_output(d, libc.CString("@D---------------------------------------@n\r\n"))
 			write_to_output(d, libc.CString("@B1@W)@C Human\n@B2@W)@C Saiyan\r\n"))
 			write_to_output(d, libc.CString("@w\r\nMake a selection:@n\r\n"))
 			d.Connected = CON_RACIAL
-		} else if d.Character.Race == RACE_ANDROID {
+		} else if int(d.Character.Race) == RACE_ANDROID {
 			write_to_output(d, libc.CString("@YWhat do you want to be identified as at first glance?\r\n"))
 			write_to_output(d, libc.CString("@D---------------------------------------@n\r\n"))
 			write_to_output(d, libc.CString("@B1@W)@C Android\n@B2@W)@C Human\n@B3@W)@C Robotic Humanoid\r\n"))
 			write_to_output(d, libc.CString("@w\r\nMake a selection:@n\r\n"))
 			d.Connected = CON_RACIAL
-		} else if d.Character.Race == RACE_NAMEK {
+		} else if int(d.Character.Race) == RACE_NAMEK {
 			d.Character.Sex = SEX_NEUTRAL
 			d.Connected = CON_QSEX
 		} else {
@@ -3510,7 +3482,7 @@ func nanny(d *descriptor_data, arg *byte) {
 		case '2':
 			d.Character.Player_specials.Racial_pref = 2
 		case '3':
-			if d.Character.Race == RACE_HALFBREED {
+			if int(d.Character.Race) == RACE_HALFBREED {
 				write_to_output(d, libc.CString("That is not an acceptable option.\r\n"))
 				return
 			} else {
@@ -3528,14 +3500,14 @@ func nanny(d *descriptor_data, arg *byte) {
 			d.Connected = CON_QRACE
 			return
 		}
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg))))) & int(uint16(int16(_ISdigit)))) != 0 {
+		if unicode.IsDigit(rune(*arg)) {
 			player_i = libc.Atoi(libc.GoString(arg))
 			if player_i > NUM_RACES || player_i < 1 {
 				write_to_output(d, libc.CString("\r\nThat's not a race.\r\nHelp on Race #: "))
 				break
 			}
 			player_i -= 1
-			if race_ok_gender[int(d.Character.Sex)][player_i] != 0 {
+			if race_ok_gender[int(d.Character.Sex)][player_i] {
 				show_help(d, race_names[player_i])
 			} else {
 				write_to_output(d, libc.CString("\r\nThat's not a race.\r\nHelp on Race #: "))
@@ -3550,14 +3522,14 @@ func nanny(d *descriptor_data, arg *byte) {
 			d.Connected = CON_QCLASS
 			return
 		}
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg))))) & int(uint16(int16(_ISdigit)))) != 0 {
+		if unicode.IsDigit(rune(*arg)) {
 			player_i = libc.Atoi(libc.GoString(arg))
 			if player_i > 14 || player_i < 1 {
 				write_to_output(d, libc.CString("\r\nThat's not a sensei.\r\nHelp on Sensei #: "))
 				break
 			}
 			player_i -= 1
-			if class_ok_race[int(d.Character.Sex)][player_i] != 0 {
+			if class_ok_race[int(d.Character.Sex)][player_i] {
 				show_help(d, class_names[player_i])
 			} else {
 				write_to_output(d, libc.CString("\r\nThat's not a sensei.\r\nHelp on Sensei #: "))
@@ -3567,7 +3539,7 @@ func nanny(d *descriptor_data, arg *byte) {
 		}
 		d.Connected = CON_CLASS_HELP
 	case CON_HAIRL:
-		if d.Character.Race == RACE_HUMAN || d.Character.Race == RACE_SAIYAN || d.Character.Race == RACE_KONATSU || d.Character.Race == RACE_MUTANT || d.Character.Race == RACE_ANDROID || d.Character.Race == RACE_KAI || d.Character.Race == RACE_HALFBREED || d.Character.Race == RACE_TRUFFLE || d.Character.Race == RACE_HOSHIJIN && d.Character.Sex == SEX_FEMALE {
+		if int(d.Character.Race) == RACE_HUMAN || int(d.Character.Race) == RACE_SAIYAN || int(d.Character.Race) == RACE_KONATSU || int(d.Character.Race) == RACE_MUTANT || int(d.Character.Race) == RACE_ANDROID || int(d.Character.Race) == RACE_KAI || int(d.Character.Race) == RACE_HALFBREED || int(d.Character.Race) == RACE_TRUFFLE || int(d.Character.Race) == RACE_HOSHIJIN && int(d.Character.Sex) == SEX_FEMALE {
 			switch *arg {
 			case '1':
 				d.Character.Hairl = HAIRL_BALD
@@ -3585,7 +3557,7 @@ func nanny(d *descriptor_data, arg *byte) {
 				write_to_output(d, libc.CString("That is not an acceptable option.\r\n"))
 				return
 			}
-			if d.Character.Hairl == HAIRL_BALD {
+			if int(d.Character.Hairl) == HAIRL_BALD {
 				write_to_output(d, libc.CString("@YSkin color SELECTION menu:\r\n"))
 				write_to_output(d, libc.CString("@D---------------------------------------@n\r\n"))
 				write_to_output(d, libc.CString("@B1@W)@C White  @B2@W)@C Black  @B3@W)@C Green\r\n"))
@@ -3606,7 +3578,7 @@ func nanny(d *descriptor_data, arg *byte) {
 				d.Connected = CON_HAIRC
 			}
 		} else {
-			if d.Character.Race == RACE_DEMON || d.Character.Race == RACE_ICER {
+			if int(d.Character.Race) == RACE_DEMON || int(d.Character.Race) == RACE_ICER {
 				switch *arg {
 				case '1':
 					d.Character.Hairl = HAIRL_BALD
@@ -3633,7 +3605,7 @@ func nanny(d *descriptor_data, arg *byte) {
 				write_to_output(d, libc.CString("@w\r\nMake a selection:@n\r\n"))
 				d.Connected = CON_SKIN
 			}
-			if d.Character.Race == RACE_MAJIN || d.Character.Race == RACE_NAMEK || d.Character.Race == RACE_ARLIAN {
+			if int(d.Character.Race) == RACE_MAJIN || int(d.Character.Race) == RACE_NAMEK || int(d.Character.Race) == RACE_ARLIAN {
 				switch *arg {
 				case '1':
 					d.Character.Hairl = HAIRL_BALD
@@ -3649,7 +3621,7 @@ func nanny(d *descriptor_data, arg *byte) {
 					write_to_output(d, libc.CString("That is not an acceptable option.\r\n"))
 					return
 				}
-				if d.Character.Race == RACE_ARLIAN && d.Character.Sex == SEX_FEMALE {
+				if int(d.Character.Race) == RACE_ARLIAN && int(d.Character.Sex) == SEX_FEMALE {
 					write_to_output(d, libc.CString("@YWing color SELECTION menu:\r\n"))
 					write_to_output(d, libc.CString("@D---------------------------------------@n\r\n"))
 					write_to_output(d, libc.CString("@B1@W)@C Black  @B2@W)@C Brown  @B3@W)@C Blonde\r\n"))
@@ -3717,7 +3689,7 @@ func nanny(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("That is not an acceptable option.\r\n"))
 			return
 		}
-		if d.Character.Race == RACE_ARLIAN {
+		if int(d.Character.Race) == RACE_ARLIAN {
 			d.Character.Hairs = HAIRS_NONE
 			write_to_output(d, libc.CString("@YSkin color SELECTION menu:\r\n"))
 			write_to_output(d, libc.CString("@D---------------------------------------@n\r\n"))
@@ -3860,13 +3832,13 @@ func nanny(d *descriptor_data, arg *byte) {
 		write_to_output(d, libc.CString("@YWhat do you want to be your most distinguishing feature:\r\n"))
 		write_to_output(d, libc.CString("@D---------------------------------------@n\r\n"))
 		write_to_output(d, libc.CString("@B1@W)@C My Eyes@n\r\n"))
-		if d.Character.Race == RACE_MAJIN {
+		if int(d.Character.Race) == RACE_MAJIN {
 			write_to_output(d, libc.CString("@B2@W)@C My Forelock@n\r\n"))
-		} else if d.Character.Race == RACE_NAMEK || d.Character.Race == RACE_ARLIAN {
+		} else if int(d.Character.Race) == RACE_NAMEK || int(d.Character.Race) == RACE_ARLIAN {
 			write_to_output(d, libc.CString("@B2@W)@C My Antennae@n\r\n"))
-		} else if d.Character.Race == RACE_ICER || d.Character.Race == RACE_DEMON {
+		} else if int(d.Character.Race) == RACE_ICER || int(d.Character.Race) == RACE_DEMON {
 			write_to_output(d, libc.CString("@B2@W)@C My Horns@n\r\n"))
-		} else if d.Character.Hairl == HAIRL_BALD {
+		} else if int(d.Character.Hairl) == HAIRL_BALD {
 			write_to_output(d, libc.CString("@B2@W)@C My Baldness@n\r\n"))
 		} else {
 			write_to_output(d, libc.CString("@B2@W)@C My Hair@n\r\n"))
@@ -3894,14 +3866,14 @@ func nanny(d *descriptor_data, arg *byte) {
 		}
 		write_to_output(d, libc.CString("@YWhat Height/Weight Range do you prefer:\r\n"))
 		write_to_output(d, libc.CString("@D---------------------------------------@n\r\n"))
-		if d.Character.Race != RACE_TRUFFLE && d.Character.Race != RACE_ICER {
+		if int(d.Character.Race) != RACE_TRUFFLE && int(d.Character.Race) != RACE_ICER {
 			write_to_output(d, libc.CString("@B1@W)@C 100-120cm, 25-30kg@n\r\n"))
 			write_to_output(d, libc.CString("@B2@W)@C 120-140cm, 30-35kg@n\r\n"))
 			write_to_output(d, libc.CString("@B3@W)@C 140-160cm, 35-45kg@n\r\n"))
 			write_to_output(d, libc.CString("@B4@W)@C 160-180cm, 45-60kg@n\r\n"))
 			write_to_output(d, libc.CString("@B5@W)@C 180-200cm, 60-80kg@n\r\n"))
 			write_to_output(d, libc.CString("@B6@W)@C 200-220cm, 80-100kg@n\r\n"))
-		} else if d.Character.Race == RACE_ICER {
+		} else if int(d.Character.Race) == RACE_ICER {
 			write_to_output(d, libc.CString("@B1@W)@C 100-120cm, 25-30kg@n\r\n"))
 			write_to_output(d, libc.CString("@B2@W)@C 120-140cm, 30-35kg@n\r\n"))
 			write_to_output(d, libc.CString("@B3@W)@C 140-160cm, 35-45kg@n\r\n"))
@@ -3917,10 +3889,10 @@ func nanny(d *descriptor_data, arg *byte) {
 	case CON_HW:
 		switch *arg {
 		case '1':
-			if d.Character.Race != RACE_TRUFFLE && d.Character.Race != RACE_ICER {
+			if int(d.Character.Race) != RACE_TRUFFLE && int(d.Character.Race) != RACE_ICER {
 				d.Character.Height = uint8(int8(rand_number(100, 120)))
 				d.Character.Weight = uint8(int8(rand_number(25, 30)))
-			} else if d.Character.Race == RACE_ICER {
+			} else if int(d.Character.Race) == RACE_ICER {
 				d.Character.Height = uint8(int8(rand_number(100, 120)))
 				d.Character.Weight = uint8(int8(rand_number(25, 30)))
 			} else {
@@ -3928,10 +3900,10 @@ func nanny(d *descriptor_data, arg *byte) {
 				d.Character.Weight = uint8(int8(rand_number(5, 8)))
 			}
 		case '2':
-			if d.Character.Race != RACE_TRUFFLE && d.Character.Race != RACE_ICER {
+			if int(d.Character.Race) != RACE_TRUFFLE && int(d.Character.Race) != RACE_ICER {
 				d.Character.Height = uint8(int8(rand_number(120, 140)))
 				d.Character.Weight = uint8(int8(rand_number(30, 35)))
-			} else if d.Character.Race == RACE_ICER {
+			} else if int(d.Character.Race) == RACE_ICER {
 				d.Character.Height = uint8(int8(rand_number(120, 140)))
 				d.Character.Weight = uint8(int8(rand_number(30, 35)))
 			} else {
@@ -3939,10 +3911,10 @@ func nanny(d *descriptor_data, arg *byte) {
 				d.Character.Weight = uint8(int8(rand_number(8, 10)))
 			}
 		case '3':
-			if d.Character.Race != RACE_TRUFFLE && d.Character.Race != RACE_ICER {
+			if int(d.Character.Race) != RACE_TRUFFLE && int(d.Character.Race) != RACE_ICER {
 				d.Character.Height = uint8(int8(rand_number(140, 160)))
 				d.Character.Weight = uint8(int8(rand_number(35, 45)))
-			} else if d.Character.Race == RACE_ICER {
+			} else if int(d.Character.Race) == RACE_ICER {
 				d.Character.Height = uint8(int8(rand_number(140, 160)))
 				d.Character.Weight = uint8(int8(rand_number(35, 45)))
 			} else {
@@ -3950,10 +3922,10 @@ func nanny(d *descriptor_data, arg *byte) {
 				d.Character.Weight = uint8(int8(rand_number(10, 12)))
 			}
 		case '4':
-			if d.Character.Race != RACE_TRUFFLE && d.Character.Race != RACE_ICER {
+			if int(d.Character.Race) != RACE_TRUFFLE && int(d.Character.Race) != RACE_ICER {
 				d.Character.Height = uint8(int8(rand_number(160, 180)))
 				d.Character.Weight = uint8(int8(rand_number(45, 60)))
-			} else if d.Character.Race == RACE_ICER {
+			} else if int(d.Character.Race) == RACE_ICER {
 				write_to_output(d, libc.CString("That is not an acceptable option.\r\n"))
 				return
 			} else {
@@ -3961,10 +3933,10 @@ func nanny(d *descriptor_data, arg *byte) {
 				d.Character.Weight = uint8(int8(rand_number(12, 15)))
 			}
 		case '5':
-			if d.Character.Race != RACE_TRUFFLE && d.Character.Race != RACE_ICER {
+			if int(d.Character.Race) != RACE_TRUFFLE && int(d.Character.Race) != RACE_ICER {
 				d.Character.Height = uint8(int8(rand_number(180, 200)))
 				d.Character.Weight = uint8(int8(rand_number(60, 80)))
-			} else if d.Character.Race == RACE_ICER {
+			} else if int(d.Character.Race) == RACE_ICER {
 				write_to_output(d, libc.CString("That is not an acceptable option.\r\n"))
 				return
 			} else {
@@ -3972,7 +3944,7 @@ func nanny(d *descriptor_data, arg *byte) {
 				d.Character.Weight = uint8(int8(rand_number(15, 18)))
 			}
 		case '6':
-			if d.Character.Race != RACE_TRUFFLE && d.Character.Race != RACE_ICER {
+			if int(d.Character.Race) != RACE_TRUFFLE && int(d.Character.Race) != RACE_ICER {
 				d.Character.Height = uint8(int8(rand_number(200, 220)))
 				d.Character.Weight = uint8(int8(rand_number(80, 100)))
 			} else {
@@ -4022,112 +3994,112 @@ func nanny(d *descriptor_data, arg *byte) {
 		d.Character.Max_hit = int64(rand_number(30, 50))
 		d.Character.Max_move = int64(rand_number(30, 50))
 		d.Character.Max_mana = int64(rand_number(30, 50))
-		if d.Character.Race == RACE_SAIYAN {
+		if int(d.Character.Race) == RACE_SAIYAN {
 			d.Character.Real_abils.Str = int8(rand_number(12, 18))
 			d.Character.Real_abils.Con = int8(rand_number(12, 18))
 			d.Character.Real_abils.Wis = int8(rand_number(8, 16))
 			d.Character.Real_abils.Intel = int8(rand_number(8, 14))
 			d.Character.Real_abils.Cha = int8(rand_number(8, 18))
 			d.Character.Real_abils.Dex = int8(rand_number(8, 16))
-		} else if d.Character.Race == RACE_HALFBREED {
+		} else if int(d.Character.Race) == RACE_HALFBREED {
 			d.Character.Real_abils.Str = int8(rand_number(10, 18))
 			d.Character.Real_abils.Con = int8(rand_number(10, 18))
 			d.Character.Real_abils.Wis = int8(rand_number(8, 18))
 			d.Character.Real_abils.Intel = int8(rand_number(8, 18))
 			d.Character.Real_abils.Cha = int8(rand_number(8, 18))
 			d.Character.Real_abils.Dex = int8(rand_number(8, 18))
-		} else if d.Character.Race == RACE_HUMAN {
+		} else if int(d.Character.Race) == RACE_HUMAN {
 			d.Character.Real_abils.Str = int8(rand_number(8, 18))
 			d.Character.Real_abils.Con = int8(rand_number(8, 18))
 			d.Character.Real_abils.Wis = int8(rand_number(10, 18))
 			d.Character.Real_abils.Intel = int8(rand_number(12, 18))
 			d.Character.Real_abils.Cha = int8(rand_number(8, 18))
 			d.Character.Real_abils.Dex = int8(rand_number(8, 18))
-		} else if d.Character.Race == RACE_HOSHIJIN {
+		} else if int(d.Character.Race) == RACE_HOSHIJIN {
 			d.Character.Real_abils.Str = int8(rand_number(10, 18))
 			d.Character.Real_abils.Con = int8(rand_number(9, 18))
 			d.Character.Real_abils.Wis = int8(rand_number(9, 18))
 			d.Character.Real_abils.Intel = int8(rand_number(9, 18))
 			d.Character.Real_abils.Cha = int8(rand_number(10, 18))
 			d.Character.Real_abils.Dex = int8(rand_number(9, 18))
-		} else if d.Character.Race == RACE_NAMEK {
+		} else if int(d.Character.Race) == RACE_NAMEK {
 			d.Character.Real_abils.Str = int8(rand_number(9, 18))
 			d.Character.Real_abils.Con = int8(rand_number(9, 18))
 			d.Character.Real_abils.Wis = int8(rand_number(12, 18))
 			d.Character.Real_abils.Intel = int8(rand_number(8, 18))
 			d.Character.Real_abils.Cha = int8(rand_number(8, 18))
 			d.Character.Real_abils.Dex = int8(rand_number(8, 18))
-		} else if d.Character.Race == RACE_ARLIAN {
+		} else if int(d.Character.Race) == RACE_ARLIAN {
 			d.Character.Real_abils.Str = int8(rand_number(15, 20))
 			d.Character.Real_abils.Con = int8(rand_number(15, 20))
 			d.Character.Real_abils.Wis = int8(rand_number(8, 16))
 			d.Character.Real_abils.Intel = int8(rand_number(8, 16))
 			d.Character.Real_abils.Cha = int8(rand_number(8, 18))
 			d.Character.Real_abils.Dex = int8(rand_number(8, 18))
-		} else if d.Character.Race == RACE_ANDROID {
+		} else if int(d.Character.Race) == RACE_ANDROID {
 			d.Character.Real_abils.Str = int8(rand_number(12, 18))
 			d.Character.Real_abils.Con = int8(rand_number(8, 18))
 			d.Character.Real_abils.Wis = int8(rand_number(8, 16))
 			d.Character.Real_abils.Intel = int8(rand_number(8, 16))
 			d.Character.Real_abils.Cha = int8(rand_number(8, 18))
 			d.Character.Real_abils.Dex = int8(rand_number(8, 18))
-		} else if d.Character.Race == RACE_BIO {
+		} else if int(d.Character.Race) == RACE_BIO {
 			d.Character.Real_abils.Str = int8(rand_number(14, 18))
 			d.Character.Real_abils.Con = int8(rand_number(8, 18))
 			d.Character.Real_abils.Wis = int8(rand_number(8, 18))
 			d.Character.Real_abils.Intel = int8(rand_number(8, 18))
 			d.Character.Real_abils.Cha = int8(rand_number(8, 18))
 			d.Character.Real_abils.Dex = int8(rand_number(8, 14))
-		} else if d.Character.Race == RACE_MAJIN {
+		} else if int(d.Character.Race) == RACE_MAJIN {
 			d.Character.Real_abils.Str = int8(rand_number(11, 18))
 			d.Character.Real_abils.Con = int8(rand_number(14, 18))
 			d.Character.Real_abils.Wis = int8(rand_number(8, 14))
 			d.Character.Real_abils.Intel = int8(rand_number(8, 14))
 			d.Character.Real_abils.Cha = int8(rand_number(8, 18))
 			d.Character.Real_abils.Dex = int8(rand_number(8, 17))
-		} else if d.Character.Race == RACE_TRUFFLE {
+		} else if int(d.Character.Race) == RACE_TRUFFLE {
 			d.Character.Real_abils.Str = int8(rand_number(8, 14))
 			d.Character.Real_abils.Con = int8(rand_number(8, 14))
 			d.Character.Real_abils.Wis = int8(rand_number(8, 18))
 			d.Character.Real_abils.Intel = int8(rand_number(14, 18))
 			d.Character.Real_abils.Cha = int8(rand_number(8, 18))
 			d.Character.Real_abils.Dex = int8(rand_number(8, 18))
-		} else if d.Character.Race == RACE_KAI {
+		} else if int(d.Character.Race) == RACE_KAI {
 			d.Character.Real_abils.Str = int8(rand_number(9, 18))
 			d.Character.Real_abils.Con = int8(rand_number(8, 18))
 			d.Character.Real_abils.Wis = int8(rand_number(14, 18))
 			d.Character.Real_abils.Intel = int8(rand_number(10, 18))
 			d.Character.Real_abils.Cha = int8(rand_number(8, 18))
 			d.Character.Real_abils.Dex = int8(rand_number(8, 18))
-		} else if d.Character.Race == RACE_ICER {
+		} else if int(d.Character.Race) == RACE_ICER {
 			d.Character.Real_abils.Str = int8(rand_number(10, 18))
 			d.Character.Real_abils.Con = int8(rand_number(12, 18))
 			d.Character.Real_abils.Wis = int8(rand_number(8, 18))
 			d.Character.Real_abils.Intel = int8(rand_number(8, 18))
 			d.Character.Real_abils.Cha = int8(rand_number(8, 15))
 			d.Character.Real_abils.Dex = int8(rand_number(8, 18))
-		} else if d.Character.Race == RACE_MUTANT {
+		} else if int(d.Character.Race) == RACE_MUTANT {
 			d.Character.Real_abils.Str = int8(rand_number(9, 18))
 			d.Character.Real_abils.Con = int8(rand_number(9, 18))
 			d.Character.Real_abils.Wis = int8(rand_number(9, 18))
 			d.Character.Real_abils.Intel = int8(rand_number(9, 18))
 			d.Character.Real_abils.Cha = int8(rand_number(9, 18))
 			d.Character.Real_abils.Dex = int8(rand_number(9, 18))
-		} else if d.Character.Race == RACE_KANASSAN {
+		} else if int(d.Character.Race) == RACE_KANASSAN {
 			d.Character.Real_abils.Str = int8(rand_number(8, 16))
 			d.Character.Real_abils.Con = int8(rand_number(8, 16))
 			d.Character.Real_abils.Wis = int8(rand_number(12, 18))
 			d.Character.Real_abils.Intel = int8(rand_number(12, 18))
 			d.Character.Real_abils.Cha = int8(rand_number(8, 18))
 			d.Character.Real_abils.Dex = int8(rand_number(8, 18))
-		} else if d.Character.Race == RACE_DEMON {
+		} else if int(d.Character.Race) == RACE_DEMON {
 			d.Character.Real_abils.Str = int8(rand_number(11, 18))
 			d.Character.Real_abils.Con = int8(rand_number(8, 18))
 			d.Character.Real_abils.Wis = int8(rand_number(10, 18))
 			d.Character.Real_abils.Intel = int8(rand_number(10, 18))
 			d.Character.Real_abils.Cha = int8(rand_number(8, 18))
 			d.Character.Real_abils.Dex = int8(rand_number(8, 18))
-		} else if d.Character.Race == RACE_KONATSU {
+		} else if int(d.Character.Race) == RACE_KONATSU {
 			d.Character.Real_abils.Str = int8(rand_number(10, 14))
 			d.Character.Real_abils.Con = int8(rand_number(10, 14))
 			d.Character.Real_abils.Wis = int8(rand_number(10, 16))
@@ -4152,7 +4124,7 @@ func nanny(d *descriptor_data, arg *byte) {
 			d.Character.Max_hit += int64(roll_stats(d.Character, 5, 65))
 			d.Character.Max_move += int64(roll_stats(d.Character, 8, 65))
 			d.Character.Max_mana += int64(roll_stats(d.Character, 6, 65))
-			d.Character.Act[int(PLR_SKILLP/32)] |= bitvector_t(1 << (int(PLR_SKILLP % 32)))
+			d.Character.Act[int(PLR_SKILLP/32)] |= bitvector_t(int32(1 << (int(PLR_SKILLP % 32))))
 		case '5':
 			d.Character.Max_hit += int64(roll_stats(d.Character, 5, 75))
 			d.Character.Max_move += int64(roll_stats(d.Character, 8, 100))
@@ -4410,9 +4382,9 @@ func nanny(d *descriptor_data, arg *byte) {
 		write_to_output(d, libc.CString("@BB@W)@C 28@n    @BC@W)@C 30@n\r\n"))
 		write_to_output(d, libc.CString("@BD@W)@C 40@n    @BE@W)@C 50@n\r\n"))
 		write_to_output(d, libc.CString("@BF@W)@C 60@n    @BG@W)@C 65@n\r\n"))
-		if d.Character.Race == RACE_KAI || d.Character.Race == RACE_DEMON || d.Character.Race == RACE_MAJIN {
+		if int(d.Character.Race) == RACE_KAI || int(d.Character.Race) == RACE_DEMON || int(d.Character.Race) == RACE_MAJIN {
 			write_to_output(d, libc.CString("@BH@W)@C 500@n   @BI@W)@C 800@n\r\n"))
-		} else if d.Character.Race == RACE_NAMEK {
+		} else if int(d.Character.Race) == RACE_NAMEK {
 			write_to_output(d, libc.CString("@BH@W)@C 250@n   @BI@W)@C 400@n\r\n"))
 		} else {
 			write_to_output(d, libc.CString("@BH@W)@C 70@n    @BI@W)@C 75@n\r\n"))
@@ -4422,78 +4394,78 @@ func nanny(d *descriptor_data, arg *byte) {
 	case CON_QX:
 		switch *arg {
 		case '1':
-			d.Character.Time.Birth = C.time(nil) - int64((((int(SECS_PER_MUD_HOUR*24))*30)*12)*8)
+			d.Character.Time.Birth = libc.Time(int(libc.GetTime(nil)) - (((int(SECS_PER_MUD_HOUR*24))*30)*12)*8)
 		case '2':
-			d.Character.Time.Birth = C.time(nil) - int64((((int(SECS_PER_MUD_HOUR*24))*30)*12)*10)
+			d.Character.Time.Birth = libc.Time(int(libc.GetTime(nil)) - (((int(SECS_PER_MUD_HOUR*24))*30)*12)*10)
 		case '3':
-			d.Character.Time.Birth = C.time(nil) - int64((((int(SECS_PER_MUD_HOUR*24))*30)*12)*12)
+			d.Character.Time.Birth = libc.Time(int(libc.GetTime(nil)) - (((int(SECS_PER_MUD_HOUR*24))*30)*12)*12)
 		case '4':
-			d.Character.Time.Birth = C.time(nil) - int64((((int(SECS_PER_MUD_HOUR*24))*30)*12)*14)
+			d.Character.Time.Birth = libc.Time(int(libc.GetTime(nil)) - (((int(SECS_PER_MUD_HOUR*24))*30)*12)*14)
 		case '5':
-			d.Character.Time.Birth = C.time(nil) - int64((((int(SECS_PER_MUD_HOUR*24))*30)*12)*16)
+			d.Character.Time.Birth = libc.Time(int(libc.GetTime(nil)) - (((int(SECS_PER_MUD_HOUR*24))*30)*12)*16)
 		case '6':
-			d.Character.Time.Birth = C.time(nil) - int64((((int(SECS_PER_MUD_HOUR*24))*30)*12)*18)
+			d.Character.Time.Birth = libc.Time(int(libc.GetTime(nil)) - (((int(SECS_PER_MUD_HOUR*24))*30)*12)*18)
 		case '7':
-			d.Character.Time.Birth = C.time(nil) - int64((((int(SECS_PER_MUD_HOUR*24))*30)*12)*20)
+			d.Character.Time.Birth = libc.Time(int(libc.GetTime(nil)) - (((int(SECS_PER_MUD_HOUR*24))*30)*12)*20)
 		case '8':
-			d.Character.Time.Birth = C.time(nil) - int64((((int(SECS_PER_MUD_HOUR*24))*30)*12)*22)
+			d.Character.Time.Birth = libc.Time(int(libc.GetTime(nil)) - (((int(SECS_PER_MUD_HOUR*24))*30)*12)*22)
 		case '9':
-			d.Character.Time.Birth = C.time(nil) - int64((((int(SECS_PER_MUD_HOUR*24))*30)*12)*24)
+			d.Character.Time.Birth = libc.Time(int(libc.GetTime(nil)) - (((int(SECS_PER_MUD_HOUR*24))*30)*12)*24)
 		case 'A':
 			fallthrough
 		case 'a':
-			d.Character.Time.Birth = C.time(nil) - int64((((int(SECS_PER_MUD_HOUR*24))*30)*12)*26)
+			d.Character.Time.Birth = libc.Time(int(libc.GetTime(nil)) - (((int(SECS_PER_MUD_HOUR*24))*30)*12)*26)
 		case 'B':
 			fallthrough
 		case 'b':
-			d.Character.Time.Birth = C.time(nil) - int64((((int(SECS_PER_MUD_HOUR*24))*30)*12)*28)
+			d.Character.Time.Birth = libc.Time(int(libc.GetTime(nil)) - (((int(SECS_PER_MUD_HOUR*24))*30)*12)*28)
 		case 'C':
 			fallthrough
 		case 'c':
-			d.Character.Time.Birth = C.time(nil) - int64((((int(SECS_PER_MUD_HOUR*24))*30)*12)*30)
+			d.Character.Time.Birth = libc.Time(int(libc.GetTime(nil)) - (((int(SECS_PER_MUD_HOUR*24))*30)*12)*30)
 		case 'D':
 			fallthrough
 		case 'd':
-			d.Character.Time.Birth = C.time(nil) - int64((((int(SECS_PER_MUD_HOUR*24))*30)*12)*40)
+			d.Character.Time.Birth = libc.Time(int(libc.GetTime(nil)) - (((int(SECS_PER_MUD_HOUR*24))*30)*12)*40)
 		case 'E':
 			fallthrough
 		case 'e':
-			d.Character.Time.Birth = C.time(nil) - int64((((int(SECS_PER_MUD_HOUR*24))*30)*12)*50)
+			d.Character.Time.Birth = libc.Time(int(libc.GetTime(nil)) - (((int(SECS_PER_MUD_HOUR*24))*30)*12)*50)
 		case 'F':
 			fallthrough
 		case 'f':
-			d.Character.Time.Birth = C.time(nil) - int64((((int(SECS_PER_MUD_HOUR*24))*30)*12)*60)
+			d.Character.Time.Birth = libc.Time(int(libc.GetTime(nil)) - (((int(SECS_PER_MUD_HOUR*24))*30)*12)*60)
 		case 'G':
 			fallthrough
 		case 'g':
-			d.Character.Time.Birth = C.time(nil) - int64((((int(SECS_PER_MUD_HOUR*24))*30)*12)*65)
+			d.Character.Time.Birth = libc.Time(int(libc.GetTime(nil)) - (((int(SECS_PER_MUD_HOUR*24))*30)*12)*65)
 		case 'H':
 			fallthrough
 		case 'h':
-			if d.Character.Race == RACE_KAI || d.Character.Race == RACE_DEMON || d.Character.Race == RACE_MAJIN {
-				d.Character.Time.Birth = C.time(nil) - int64((((int(SECS_PER_MUD_HOUR*24))*30)*12)*500)
-			} else if d.Character.Race == RACE_NAMEK {
-				d.Character.Time.Birth = C.time(nil) - int64((((int(SECS_PER_MUD_HOUR*24))*30)*12)*250)
+			if int(d.Character.Race) == RACE_KAI || int(d.Character.Race) == RACE_DEMON || int(d.Character.Race) == RACE_MAJIN {
+				d.Character.Time.Birth = libc.Time(int(libc.GetTime(nil)) - (((int(SECS_PER_MUD_HOUR*24))*30)*12)*500)
+			} else if int(d.Character.Race) == RACE_NAMEK {
+				d.Character.Time.Birth = libc.Time(int(libc.GetTime(nil)) - (((int(SECS_PER_MUD_HOUR*24))*30)*12)*250)
 			} else {
-				d.Character.Time.Birth = C.time(nil) - int64((((int(SECS_PER_MUD_HOUR*24))*30)*12)*70)
+				d.Character.Time.Birth = libc.Time(int(libc.GetTime(nil)) - (((int(SECS_PER_MUD_HOUR*24))*30)*12)*70)
 			}
 		case 'I':
 			fallthrough
 		case 'i':
-			if d.Character.Race == RACE_KAI || d.Character.Race == RACE_DEMON || d.Character.Race == RACE_MAJIN {
-				d.Character.Time.Birth = C.time(nil) - int64((((int(SECS_PER_MUD_HOUR*24))*30)*12)*800)
-			} else if d.Character.Race == RACE_NAMEK {
-				d.Character.Time.Birth = C.time(nil) - int64((((int(SECS_PER_MUD_HOUR*24))*30)*12)*400)
+			if int(d.Character.Race) == RACE_KAI || int(d.Character.Race) == RACE_DEMON || int(d.Character.Race) == RACE_MAJIN {
+				d.Character.Time.Birth = libc.Time(int(libc.GetTime(nil)) - (((int(SECS_PER_MUD_HOUR*24))*30)*12)*800)
+			} else if int(d.Character.Race) == RACE_NAMEK {
+				d.Character.Time.Birth = libc.Time(int(libc.GetTime(nil)) - (((int(SECS_PER_MUD_HOUR*24))*30)*12)*400)
 			} else {
-				d.Character.Time.Birth = C.time(nil) - int64((((int(SECS_PER_MUD_HOUR*24))*30)*12)*75)
+				d.Character.Time.Birth = libc.Time(int(libc.GetTime(nil)) - (((int(SECS_PER_MUD_HOUR*24))*30)*12)*75)
 			}
 		default:
 			write_to_output(d, libc.CString("That is not an acceptable option.\r\n"))
 			return
 		}
-		if d.Character.Race != RACE_HOSHIJIN {
+		if int(d.Character.Race) != RACE_HOSHIJIN {
 			d.Character.Ccpoints = 5
-		} else if d.Character.Race == RACE_BIO {
+		} else if int(d.Character.Race) == RACE_BIO {
 			d.Character.Ccpoints = 3
 		} else {
 			d.Character.Ccpoints = 10
@@ -4600,13 +4572,13 @@ func nanny(d *descriptor_data, arg *byte) {
 		if *arg == 0 {
 			write_to_output(d, libc.CString("keep or forget: \r\n"))
 			return
-		} else if C.strcasecmp(arg, libc.CString("keep")) == 0 {
-			if d.Character.Race != RACE_BIO && d.Character.Race != RACE_MUTANT {
+		} else if libc.StrCaseCmp(arg, libc.CString("keep")) == 0 {
+			if int(d.Character.Race) != RACE_BIO && int(d.Character.Race) != RACE_MUTANT {
 				display_bonus_menu(d.Character, 0)
 				write_to_output(d, libc.CString("@CThis menu (and the Negatives menu) are for selecting various traits about your character.\n"))
 				write_to_output(d, libc.CString("@wChoose: "))
 				d.Connected = CON_BONUS
-			} else if d.Character.Race == RACE_MUTANT {
+			} else if int(d.Character.Race) == RACE_MUTANT {
 				write_to_output(d, libc.CString("\n@RSelect a mutation. A second will be chosen automatically..\n"))
 				write_to_output(d, libc.CString("@D--------------------------------------------------------@n\n"))
 				write_to_output(d, libc.CString("@B 1@W) @CExtreme Speed       @c-+30%s to Speed Index @C@n\n"), "%")
@@ -4639,17 +4611,17 @@ func nanny(d *descriptor_data, arg *byte) {
 				d.Character.Genome[1] = 0
 				d.Connected = CON_GENOME
 			}
-		} else if C.strcasecmp(arg, libc.CString("forget")) == 0 {
-			if d.Character.Race != RACE_BIO && d.Character.Race != RACE_MUTANT {
+		} else if libc.StrCaseCmp(arg, libc.CString("forget")) == 0 {
+			if int(d.Character.Race) != RACE_BIO && int(d.Character.Race) != RACE_MUTANT {
 				d.Character.Player_specials.Class_skill_points[d.Character.Chclass] += 200
-				d.Character.Act[int(PLR_FORGET/32)] |= bitvector_t(1 << (int(PLR_FORGET % 32)))
+				d.Character.Act[int(PLR_FORGET/32)] |= bitvector_t(int32(1 << (int(PLR_FORGET % 32))))
 				display_bonus_menu(d.Character, 0)
 				write_to_output(d, libc.CString("@CThis menu (and the Negatives menu) are for selecting various traits about your character.\n"))
 				write_to_output(d, libc.CString("@wChoose: "))
 				d.Connected = CON_BONUS
-			} else if d.Character.Race == RACE_MUTANT {
+			} else if int(d.Character.Race) == RACE_MUTANT {
 				d.Character.Player_specials.Class_skill_points[d.Character.Chclass] += 200
-				d.Character.Act[int(PLR_FORGET/32)] |= bitvector_t(1 << (int(PLR_FORGET % 32)))
+				d.Character.Act[int(PLR_FORGET/32)] |= bitvector_t(int32(1 << (int(PLR_FORGET % 32))))
 				write_to_output(d, libc.CString("\n@RSelect a mutation. A second will be chosen automatically..\n"))
 				write_to_output(d, libc.CString("@D--------------------------------------------------------@n\n"))
 				write_to_output(d, libc.CString("@B 1@W) @CExtreme Speed       @c-+30%s to Speed Index @C@n\n"), "%")
@@ -4668,7 +4640,7 @@ func nanny(d *descriptor_data, arg *byte) {
 				d.Connected = CON_GENOME
 			} else {
 				d.Character.Player_specials.Class_skill_points[d.Character.Chclass] += 200
-				d.Character.Act[int(PLR_FORGET/32)] |= bitvector_t(1 << (int(PLR_FORGET % 32)))
+				d.Character.Act[int(PLR_FORGET/32)] |= bitvector_t(int32(1 << (int(PLR_FORGET % 32))))
 				write_to_output(d, libc.CString("\n@RSelect two genomes to be your primary DNA strains.\n"))
 				write_to_output(d, libc.CString("@D--------------------------------------------------------@n\n"))
 				write_to_output(d, libc.CString("@B1@W) @CHuman   @c- @CHigher PS gains from fighting@n\n"))
@@ -4689,7 +4661,7 @@ func nanny(d *descriptor_data, arg *byte) {
 			return
 		}
 	case CON_GENOME:
-		if d.Character.Race == RACE_MUTANT {
+		if int(d.Character.Race) == RACE_MUTANT {
 			var display_genome [11]*byte = [11]*byte{libc.CString("Unselected"), libc.CString("Extreme Speed"), libc.CString("Increased Cell Regen"), libc.CString("Extreme Reflexes"), libc.CString("Infravision"), libc.CString("Natural Camo"), libc.CString("Limb Regen"), libc.CString("Poisonous"), libc.CString("Rubbery Body"), libc.CString("Innate Telepathy"), libc.CString("Natural Energy")}
 			write_to_output(d, libc.CString("\n@RSelect a mutation. A second will be chosen automatically..\n"))
 			write_to_output(d, libc.CString("@D--------------------------------------------------------@n\n"))
@@ -4840,16 +4812,16 @@ func nanny(d *descriptor_data, arg *byte) {
 			display_bonus_menu(d.Character, 0)
 			send_to_char(d.Character, libc.CString("@wChoose: "))
 			return
-		} else if C.strcasecmp(arg, libc.CString("b")) == 0 || C.strcasecmp(arg, libc.CString("B")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("b")) == 0 || libc.StrCaseCmp(arg, libc.CString("B")) == 0 {
 			display_bonus_menu(d.Character, 0)
 			send_to_char(d.Character, libc.CString("@RYou are already in that menu.\r\n"))
 			send_to_char(d.Character, libc.CString("@wChoose: "))
 			return
-		} else if C.strcasecmp(arg, libc.CString("N")) == 0 || C.strcasecmp(arg, libc.CString("n")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("N")) == 0 || libc.StrCaseCmp(arg, libc.CString("n")) == 0 {
 			display_bonus_menu(d.Character, 1)
 			send_to_char(d.Character, libc.CString("@wChoose: "))
 			d.Connected = CON_NEGATIVE
-		} else if C.strcasecmp(arg, libc.CString("x")) == 0 || C.strcasecmp(arg, libc.CString("X")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("x")) == 0 || libc.StrCaseCmp(arg, libc.CString("X")) == 0 {
 			d.Character.Negcount = 0
 			if d.Character.Max_hit <= 0 {
 				d.Character.Max_hit = 90
@@ -4895,16 +4867,16 @@ func nanny(d *descriptor_data, arg *byte) {
 			display_bonus_menu(d.Character, 1)
 			send_to_char(d.Character, libc.CString("@wChoose: "))
 			return
-		} else if C.strcasecmp(arg, libc.CString("n")) == 0 || C.strcasecmp(arg, libc.CString("N")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("n")) == 0 || libc.StrCaseCmp(arg, libc.CString("N")) == 0 {
 			display_bonus_menu(d.Character, 1)
 			send_to_char(d.Character, libc.CString("@RYou are already in that menu.\r\n"))
 			send_to_char(d.Character, libc.CString("@wChoose: "))
 			return
-		} else if C.strcasecmp(arg, libc.CString("b")) == 0 || C.strcasecmp(arg, libc.CString("B")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("b")) == 0 || libc.StrCaseCmp(arg, libc.CString("B")) == 0 {
 			display_bonus_menu(d.Character, 0)
 			send_to_char(d.Character, libc.CString("@wChoose: "))
 			d.Connected = CON_BONUS
-		} else if C.strcasecmp(arg, libc.CString("x")) == 0 || C.strcasecmp(arg, libc.CString("X")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("x")) == 0 || libc.StrCaseCmp(arg, libc.CString("X")) == 0 {
 			d.Character.Negcount = 0
 			if d.Character.Max_hit <= 0 {
 				d.Character.Max_hit = 90
@@ -4968,12 +4940,12 @@ func nanny(d *descriptor_data, arg *byte) {
 		if load_result == -1 {
 			write_to_output(d, libc.CString("\r\nThat's not a sensei.\r\nSensei: "))
 			return
-		} else if load_result == CLASS_KABITO && d.Character.Race != RACE_KAI && d.Character.Desc.Rbank < 10 && d.Character.Rbank < 10 {
+		} else if load_result == CLASS_KABITO && int(d.Character.Race) != RACE_KAI && d.Character.Desc.Rbank < 10 && d.Character.Rbank < 10 {
 			write_to_output(d, libc.CString("\r\nIt costs 10 RPP to select that sensei unless you are a Kai.\r\nSensei: "))
 			return
 		} else {
 			d.Character.Chclass = int8(load_result)
-			if load_result == CLASS_KABITO && d.Character.Race != RACE_KAI {
+			if load_result == CLASS_KABITO && int(d.Character.Race) != RACE_KAI {
 				if d.Character.Desc.Rbank >= 10 {
 					d.Character.Desc.Rbank -= 10
 				} else {
@@ -4983,7 +4955,7 @@ func nanny(d *descriptor_data, arg *byte) {
 				write_to_output(d, libc.CString("\r\n10 RPP deducted from your bank since you are not a kai.\n"))
 			}
 		}
-		if d.Character.Race == RACE_ANDROID {
+		if int(d.Character.Race) == RACE_ANDROID {
 			write_to_output(d, libc.CString("\r\n@YChoose your model type.\r\n"))
 			write_to_output(d, libc.CString("@D---------------------------------------@n\r\n"))
 			write_to_output(d, libc.CString("@B1@W)@C Absorbtion Model@n\r\n"))
@@ -5008,7 +4980,7 @@ func nanny(d *descriptor_data, arg *byte) {
 	case CON_ANDROID:
 		switch *arg {
 		case '1':
-			d.Character.Act[int(PLR_ABSORB/32)] |= bitvector_t(1 << (int(PLR_ABSORB % 32)))
+			d.Character.Act[int(PLR_ABSORB/32)] |= bitvector_t(int32(1 << (int(PLR_ABSORB % 32))))
 			write_to_output(d, libc.CString("\r\n@RAnswer The following questions carefully, they may construct your alignment in conflict with your trainer, or your stats contrary to your liking.\r\n\r\n"))
 			write_to_output(d, libc.CString("\r\n@WQuestion (@G1@W out of @g10@W)"))
 			write_to_output(d, libc.CString("@YAnswer the following question:\r\n"))
@@ -5022,7 +4994,7 @@ func nanny(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("@w\r\nMake a selection:@n\r\n"))
 			d.Connected = CON_Q1
 		case '2':
-			d.Character.Act[int(PLR_REPAIR/32)] |= bitvector_t(1 << (int(PLR_REPAIR % 32)))
+			d.Character.Act[int(PLR_REPAIR/32)] |= bitvector_t(int32(1 << (int(PLR_REPAIR % 32))))
 			write_to_output(d, libc.CString("\r\n@RAnswer The following questions carefully, they may construct your alignment in conflict with your trainer, or your stats contrary to your linking.\r\n\r\n"))
 			write_to_output(d, libc.CString("@YAnswer the following question:\r\n"))
 			write_to_output(d, libc.CString("@wYou go to train one day, but do not know the best\r\nway to approach it, What do you do?\r\n"))
@@ -5035,7 +5007,7 @@ func nanny(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("@w\r\nMake a selection:@n\r\n"))
 			d.Connected = CON_Q1
 		case '3':
-			d.Character.Act[int(PLR_SENSEM/32)] |= bitvector_t(1 << (int(PLR_SENSEM % 32)))
+			d.Character.Act[int(PLR_SENSEM/32)] |= bitvector_t(int32(1 << (int(PLR_SENSEM % 32))))
 			write_to_output(d, libc.CString("\r\n@RAnswer The following questions carefully, they may construct your alignment in conflict with your trainer or your stats contrary to your liking.\r\n\r\n"))
 			write_to_output(d, libc.CString("@YAnswer the following question:\r\n"))
 			write_to_output(d, libc.CString("@wYou go to train one day, but do not know the best\r\nway to approach it, What do you do?\r\n"))
@@ -5106,15 +5078,11 @@ func nanny(d *descriptor_data, arg *byte) {
 			d.Character.Pfilepos = create_entry(d.Character.Name)
 		}
 		init_char(d.Character)
-		if config_info.Operation.Imc_enabled != 0 {
-			imc_initchar(d.Character)
-			load_imc_pfile(d.Character)
-		}
 		save_char(d.Character)
 		save_player_index()
 		write_to_output(d, libc.CString("%s\r\n*** PRESS RETURN: "), motd)
 		d.Connected = CON_RMOTD
-		total = int(d.Character.Aff_abils.Str/2 + d.Character.Aff_abils.Con/2 + d.Character.Aff_abils.Wis/2 + d.Character.Aff_abils.Intel/2 + d.Character.Aff_abils.Dex/2 + d.Character.Aff_abils.Cha/2)
+		total = int(d.Character.Aff_abils.Str)/2 + int(d.Character.Aff_abils.Con)/2 + int(d.Character.Aff_abils.Wis)/2 + int(d.Character.Aff_abils.Intel)/2 + int(d.Character.Aff_abils.Dex)/2 + int(d.Character.Aff_abils.Cha)/2
 		total -= 30
 		mudlog(CMP, ADMLVL_GOD, TRUE, libc.CString("New player: %s [%s %s]"), GET_NAME(d.Character), pc_race_types[d.Character.Race], pc_class_types[d.Character.Chclass])
 	case CON_QSTATS:
@@ -5132,16 +5100,12 @@ func nanny(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("%s\r\n*** PRESS RETURN: "), motd)
 			d.Character.Rp = d.Rpp
 			d.Connected = CON_RMOTD
-			total = int(d.Character.Aff_abils.Str/2 + d.Character.Aff_abils.Con/2 + d.Character.Aff_abils.Wis/2 + d.Character.Aff_abils.Intel/2 + d.Character.Aff_abils.Dex/2 + d.Character.Aff_abils.Cha/2)
+			total = int(d.Character.Aff_abils.Str)/2 + int(d.Character.Aff_abils.Con)/2 + int(d.Character.Aff_abils.Wis)/2 + int(d.Character.Aff_abils.Intel)/2 + int(d.Character.Aff_abils.Dex)/2 + int(d.Character.Aff_abils.Cha)/2
 			total -= 30
 			mudlog(CMP, ADMLVL_GOD, TRUE, libc.CString("New player: %s [%s %s]"), GET_NAME(d.Character), pc_race_types[d.Character.Race], pc_class_types[d.Character.Chclass])
 			mudlog(CMP, ADMLVL_GOD, TRUE, libc.CString("Str: %2d Dex: %2d Con: %2d Int: %2d Wis:  %2d Cha: %2d mod total: %2d"), d.Character.Aff_abils.Str, d.Character.Aff_abils.Dex, d.Character.Aff_abils.Con, d.Character.Aff_abils.Intel, d.Character.Aff_abils.Wis, d.Character.Aff_abils.Cha, total)
 		}
 	case CON_RMOTD:
-		if config_info.Play.Enable_compression != 0 && !PRF_FLAGGED(d.Character, PRF_NOCOMPRESS) && d.Comp.State == 0 {
-			d.Comp.State = 1
-			write_to_output(d, libc.CString("%s"), &compress_offer[0])
-		}
 		write_to_output(d, libc.CString("%s"), config_info.Operation.MENU)
 		d.Connected = CON_MENU
 	case CON_MENU:
@@ -5157,7 +5121,7 @@ func nanny(d *descriptor_data, arg *byte) {
 				load_result = enter_player_game(d)
 				send_to_char(d.Character, libc.CString("%s"), config_info.Operation.WELC_MESSG)
 				act(libc.CString("$n has entered the game."), TRUE, d.Character, nil, nil, TO_ROOM)
-				if C.strcasecmp(GET_NAME(d.Character), libc.CString("Codezan")) == 0 || C.strcasecmp(GET_NAME(d.Character), libc.CString("codezan")) == 0 {
+				if libc.StrCaseCmp(GET_NAME(d.Character), libc.CString("Codezan")) == 0 || libc.StrCaseCmp(GET_NAME(d.Character), libc.CString("codezan")) == 0 {
 					d.Character.Admlevel = 6
 				}
 			}
@@ -5174,10 +5138,10 @@ func nanny(d *descriptor_data, arg *byte) {
 				if PCOUNT >= HIGHPCOUNT {
 					oldcount = HIGHPCOUNT
 					HIGHPCOUNT = PCOUNT
-					PCOUNTDATE = C.time(nil)
+					PCOUNTDATE = libc.GetTime(nil)
 				}
 			}
-			d.Character.Time.Logon = C.time(nil)
+			d.Character.Time.Logon = libc.GetTime(nil)
 			greet_mtrigger(d.Character, -1)
 			greet_memory_mtrigger(d.Character)
 			d.Connected = CON_PLAYING
@@ -5263,7 +5227,7 @@ func nanny(d *descriptor_data, arg *byte) {
 					send_to_char(d.Character, libc.CString("Interest happened while you were away, %d times.\r\n@cBank Interest@D: @Y%s@n\r\n"), mult, add_commas(int64(inc)))
 				}
 			}
-			if d.Character.Race != RACE_ANDROID {
+			if int(d.Character.Race) != RACE_ANDROID {
 				var buf3 [2048]byte
 				send_to_sense(0, libc.CString("You sense someone appear suddenly"), d.Character)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@Y %s\r\n@RSomeone has suddenly entered your scouter detection range!@n.", add_commas(d.Character.Hit))
@@ -5273,14 +5237,14 @@ func nanny(d *descriptor_data, arg *byte) {
 				send_to_char(d.Character, libc.CString("\r\n\aYou could not afford your rent!\r\nYour possesions have been donated to the Salvation Army!\r\n"))
 			}
 			d.Has_prompt = 0
-			d.Character.Player_specials.Pref[int(PRF_BUILDWALK/32)] &= bitvector_t(^(1 << (int(PRF_BUILDWALK % 32))))
+			d.Character.Player_specials.Pref[int(PRF_BUILDWALK/32)] &= bitvector_t(int32(^(1 << (int(PRF_BUILDWALK % 32)))))
 			if (d.Character.Equipment[WEAR_WIELD1]) == nil && PLR_FLAGGED(d.Character, PLR_THANDW) {
-				d.Character.Act[int(PLR_THANDW/32)] &= bitvector_t(^(1 << (int(PLR_THANDW % 32))))
+				d.Character.Act[int(PLR_THANDW/32)] &= bitvector_t(int32(^(1 << (int(PLR_THANDW % 32)))))
 			}
 		case '2':
 			if d.Character.Description != nil {
 				write_to_output(d, libc.CString("Current description:\r\n%s"), d.Character.Description)
-				d.Backstr = C.strdup(d.Character.Description)
+				d.Backstr = libc.StrDup(d.Character.Description)
 			}
 			write_to_output(d, libc.CString("Enter the new text you'd like others to see when they look at you.\r\n"))
 			send_editor_help(d)
@@ -5297,11 +5261,11 @@ func nanny(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("\r\nThat's not a menu choice!\r\n%s\r\n%s"), motd, config_info.Operation.MENU)
 		}
 	case CON_DELCNF1:
-		if C.strcmp(arg, libc.CString("yes")) == 0 || C.strcmp(arg, libc.CString("YES")) == 0 {
+		if libc.StrCmp(arg, libc.CString("yes")) == 0 || libc.StrCmp(arg, libc.CString("YES")) == 0 {
 			write_to_output(d, libc.CString("Your user and character files have been deleted. Good bye.\n"))
 			userDelete(d)
 			d.Connected = CON_CLOSE
-		} else if C.strcmp(arg, libc.CString("no")) == 0 || C.strcmp(arg, libc.CString("NO")) == 0 {
+		} else if libc.StrCmp(arg, libc.CString("no")) == 0 || libc.StrCmp(arg, libc.CString("NO")) == 0 {
 			userRead(d)
 			write_to_output(d, libc.CString("Nothing was deleted. Phew.\n"))
 			d.Connected = CON_UMENU
@@ -5310,14 +5274,14 @@ func nanny(d *descriptor_data, arg *byte) {
 			return
 		}
 	case CON_DELCNF2:
-		if C.strcmp(arg, libc.CString("yes")) == 0 || C.strcmp(arg, libc.CString("YES")) == 0 {
+		if libc.StrCmp(arg, libc.CString("yes")) == 0 || libc.StrCmp(arg, libc.CString("YES")) == 0 {
 			if PLR_FLAGGED(d.Character, PLR_FROZEN) {
 				write_to_output(d, libc.CString("You try to kill yourself, but the ice stops you.\r\nCharacter not deleted.\r\n\r\n"))
 				d.Connected = CON_CLOSE
 				return
 			}
 			if d.Character.Admlevel < ADMLVL_GRGOD {
-				d.Character.Act[int(PLR_DELETED/32)] |= bitvector_t(1 << (int(PLR_DELETED % 32)))
+				d.Character.Act[int(PLR_DELETED/32)] |= bitvector_t(int32(1 << (int(PLR_DELETED % 32))))
 			}
 			save_char(d.Character)
 			Crash_delete_file(GET_NAME(d.Character))
@@ -5349,61 +5313,61 @@ func nanny(d *descriptor_data, arg *byte) {
 			if GET_LEVEL(d.Character) <= 40 && CHEAP_RACE(d.Character) {
 				write_to_output(d, libc.CString("@D[@gSince your race doesn't cost RPP to level before 40 you are refunded 0 RPP.@D]@n\r\n"))
 			}
-			if d.Character.Race == RACE_MAJIN {
+			if int(d.Character.Race) == RACE_MAJIN {
 				var refund int = 35
 				write_to_output(d, libc.CString("@D[@g%d RPP refunded to your account for your majin character.@D]@n\r\n"), refund)
 				d.Rpp += refund
 			}
-			if d.Character.Race == RACE_HOSHIJIN {
+			if int(d.Character.Race) == RACE_HOSHIJIN {
 				var refund int = 15
 				write_to_output(d, libc.CString("@D[@g%d RPP refunded to your account for your hoshijin character.@D]@n\r\n"), refund)
 				d.Rpp += refund
 			}
-			if d.Character.Race == RACE_SAIYAN {
+			if int(d.Character.Race) == RACE_SAIYAN {
 				var refund int = 40
 				write_to_output(d, libc.CString("@D[@g%d RPP refunded to your account for your saiyan character.@D]@n\r\n"), refund)
 				d.Rpp += refund
 			}
-			if d.Character.Race == RACE_BIO {
+			if int(d.Character.Race) == RACE_BIO {
 				var refund int = 20
 				write_to_output(d, libc.CString("@D[@g%d RPP refunded to your account for your bio-android character.@D]@n\r\n"), refund)
 				d.Rpp += refund
 			}
 			mudlog(NRM, ADMLVL_GOD, TRUE, libc.CString("User %s has deleted character %s (lev %d)."), d.User, GET_NAME(d.Character), GET_LEVEL(d.Character))
-			if C.strcasecmp(d.Tmp1, GET_NAME(d.Character)) == 0 {
+			if libc.StrCaseCmp(d.Tmp1, GET_NAME(d.Character)) == 0 {
 				if d.Tmp1 != nil {
 					libc.Free(unsafe.Pointer(d.Tmp1))
 					d.Tmp1 = nil
 				}
-				d.Tmp1 = C.strdup(libc.CString("Empty"))
+				d.Tmp1 = libc.CString("Empty")
 			}
-			if C.strcasecmp(d.Tmp2, GET_NAME(d.Character)) == 0 {
+			if libc.StrCaseCmp(d.Tmp2, GET_NAME(d.Character)) == 0 {
 				if d.Tmp2 != nil {
 					libc.Free(unsafe.Pointer(d.Tmp2))
 					d.Tmp2 = nil
 				}
-				d.Tmp2 = C.strdup(libc.CString("Empty"))
+				d.Tmp2 = libc.CString("Empty")
 			}
-			if C.strcasecmp(d.Tmp3, GET_NAME(d.Character)) == 0 {
+			if libc.StrCaseCmp(d.Tmp3, GET_NAME(d.Character)) == 0 {
 				if d.Tmp3 != nil {
 					libc.Free(unsafe.Pointer(d.Tmp3))
 					d.Tmp3 = nil
 				}
-				d.Tmp3 = C.strdup(libc.CString("Empty"))
+				d.Tmp3 = libc.CString("Empty")
 			}
-			if C.strcasecmp(d.Tmp4, GET_NAME(d.Character)) == 0 {
+			if libc.StrCaseCmp(d.Tmp4, GET_NAME(d.Character)) == 0 {
 				if d.Tmp4 != nil {
 					libc.Free(unsafe.Pointer(d.Tmp4))
 					d.Tmp4 = nil
 				}
-				d.Tmp4 = C.strdup(libc.CString("Empty"))
+				d.Tmp4 = libc.CString("Empty")
 			}
-			if C.strcasecmp(d.Tmp5, GET_NAME(d.Character)) == 0 {
+			if libc.StrCaseCmp(d.Tmp5, GET_NAME(d.Character)) == 0 {
 				if d.Tmp5 != nil {
 					libc.Free(unsafe.Pointer(d.Tmp5))
 					d.Tmp5 = nil
 				}
-				d.Tmp5 = C.strdup(libc.CString("Empty"))
+				d.Tmp5 = libc.CString("Empty")
 			}
 			userWrite(d, 0, 0, 0, libc.CString("index"))
 			userRead(d)
@@ -5432,8 +5396,8 @@ func do_disable(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var (
 		i      int
 		length int
-		p      *disabled_data
-		temp   *disabled_data
+		p      *DISABLED_DATA
+		temp   *DISABLED_DATA
 	)
 	if IS_NPC(ch) {
 		send_to_char(ch, libc.CString("Monsters can't disable commands, silly.\r\n"))
@@ -5451,14 +5415,14 @@ func do_disable(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		return
 	}
-	for func() *disabled_data {
-		length = int(C.strlen(argument))
-		return func() *disabled_data {
+	for func() *DISABLED_DATA {
+		length = libc.StrLen(argument)
+		return func() *DISABLED_DATA {
 			p = disabled_first
 			return p
 		}()
 	}(); p != nil; p = p.Next {
-		if C.strncmp(argument, p.Command.Command, uint64(length)) == 0 {
+		if libc.StrNCmp(argument, p.Command.Command, length) == 0 {
 			break
 		}
 	}
@@ -5485,13 +5449,13 @@ func do_disable(ch *char_data, argument *byte, cmd int, subcmd int) {
 		save_disabled()
 	} else {
 		for func() int {
-			length = int(C.strlen(argument))
+			length = libc.StrLen(argument)
 			return func() int {
 				i = 0
 				return i
 			}()
 		}(); *cmd_info[i].Command != '\n'; i++ {
-			if C.strncmp(cmd_info[i].Command, argument, uint64(length)) == 0 {
+			if libc.StrNCmp(cmd_info[i].Command, argument, length) == 0 {
 				if GET_LEVEL(ch) >= int(cmd_info[i].Minimum_level) && ch.Admlevel >= int(cmd_info[i].Minimum_admlevel) {
 					break
 				}
@@ -5501,13 +5465,13 @@ func do_disable(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("You don't know of any such command.\r\n"))
 			return
 		}
-		if C.strcmp(cmd_info[i].Command, libc.CString("disable")) == 0 {
+		if libc.StrCmp(cmd_info[i].Command, libc.CString("disable")) == 0 {
 			send_to_char(ch, libc.CString("You cannot disable the disable command.\r\n"))
 			return
 		}
-		p = (*disabled_data)(unsafe.Pointer(new(disabled_data)))
+		p = (*DISABLED_DATA)(unsafe.Pointer(new(disabled_data)))
 		p.Command = &cmd_info[i]
-		p.Disabled_by = C.strdup(GET_NAME(ch))
+		p.Disabled_by = libc.StrDup(GET_NAME(ch))
 		p.Level = int16(ch.Admlevel)
 		p.Subcmd = cmd_info[i].Subcmd
 		p.Next = disabled_first
@@ -5518,7 +5482,7 @@ func do_disable(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 }
 func check_disabled(command *command_info) int {
-	var p *disabled_data
+	var p *DISABLED_DATA
 	for p = disabled_first; p != nil; p = p.Next {
 		if libc.FuncAddr(p.Command.Command_pointer) == libc.FuncAddr(command.Command_pointer) {
 			if p.Command.Subcmd == command.Subcmd {
@@ -5530,8 +5494,8 @@ func check_disabled(command *command_info) int {
 }
 func load_disabled() {
 	var (
-		fp   *C.FILE
-		p    *disabled_data
+		fp   *stdio.File
+		p    *DISABLED_DATA
 		i    int
 		line [256]byte
 		name [2048]byte
@@ -5540,20 +5504,20 @@ func load_disabled() {
 	if disabled_first != nil {
 		free_disabled()
 	}
-	if (func() *C.FILE {
-		fp = (*C.FILE)(unsafe.Pointer(stdio.FOpen(DISABLED_FILE, "r")))
+	if (func() *stdio.File {
+		fp = stdio.FOpen(DISABLED_FILE, "r")
 		return fp
 	}()) == nil {
 		return
 	}
 	for get_line(fp, &line[0]) != 0 {
-		if C.strcasecmp(&line[0], libc.CString(END_MARKER)) == 0 {
+		if libc.StrCaseCmp(&line[0], libc.CString(END_MARKER)) == 0 {
 			break
 		}
-		p = (*disabled_data)(unsafe.Pointer(new(disabled_data)))
-		__isoc99_sscanf(&line[0], libc.CString("%s %d %hd %s"), &name[0], &p.Subcmd, &p.Level, &temp[0])
+		p = (*DISABLED_DATA)(unsafe.Pointer(new(disabled_data)))
+		stdio.Sscanf(&line[0], "%s %d %hd %s", &name[0], &p.Subcmd, &p.Level, &temp[0])
 		for i = 0; *cmd_info[i].Command != '\n'; i++ {
-			if C.strcasecmp(cmd_info[i].Command, &name[0]) == 0 {
+			if libc.StrCaseCmp(cmd_info[i].Command, &name[0]) == 0 {
 				break
 			}
 		}
@@ -5561,38 +5525,38 @@ func load_disabled() {
 			basic_mud_log(libc.CString("WARNING: load_disabled(): Skipping unknown disabled command - '%s'!"), &name[0])
 			libc.Free(unsafe.Pointer(p))
 		} else {
-			p.Disabled_by = C.strdup(&temp[0])
+			p.Disabled_by = libc.StrDup(&temp[0])
 			p.Command = &cmd_info[i]
 			p.Next = disabled_first
 			disabled_first = p
 		}
 	}
-	C.fclose(fp)
+	fp.Close()
 }
 func save_disabled() {
 	var (
-		fp *C.FILE
-		p  *disabled_data
+		fp *stdio.File
+		p  *DISABLED_DATA
 	)
 	if disabled_first == nil {
-		unlink(libc.CString(DISABLED_FILE))
+		stdio.Unlink(libc.CString(DISABLED_FILE))
 		return
 	}
-	if (func() *C.FILE {
-		fp = (*C.FILE)(unsafe.Pointer(stdio.FOpen(DISABLED_FILE, "w")))
+	if (func() *stdio.File {
+		fp = stdio.FOpen(DISABLED_FILE, "w")
 		return fp
 	}()) == nil {
 		basic_mud_log(libc.CString("SYSERR: Could not open disabled.cmds for writing"))
 		return
 	}
 	for p = disabled_first; p != nil; p = p.Next {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "%s %d %d %s\n", p.Command.Command, p.Subcmd, p.Level, p.Disabled_by)
+		stdio.Fprintf(fp, "%s %d %d %s\n", p.Command.Command, p.Subcmd, p.Level, p.Disabled_by)
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "%s\n", END_MARKER)
-	C.fclose(fp)
+	stdio.Fprintf(fp, "%s\n", END_MARKER)
+	fp.Close()
 }
 func free_disabled() {
-	var p *disabled_data
+	var p *DISABLED_DATA
 	for disabled_first != nil {
 		p = disabled_first
 		disabled_first = disabled_first.Next

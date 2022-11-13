@@ -1,9 +1,12 @@
 package main
 
 import (
+	"github.com/gotranspile/cxgo/runtime/cnet"
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
 	"math"
+	"os"
+	"unicode"
 	"unsafe"
 )
 
@@ -34,31 +37,21 @@ var no_specials int = 0
 var max_players int = 0
 var tics_passed int = 0
 var scheck int = 0
-var null_time timeval
+var null_time libc.TimeVal
 var reread_wizlist int8
 var emergency_unban int8
-var logfile *C.FILE = nil
+var logfile *stdio.File = nil
 var text_overflow *byte = libc.CString("**OVERFLOW**\r\n")
 var dg_act_check int
 var pulse uint = 0
 var fCopyOver bool
 var port uint16
-var mother_desc int
 var last_act_message *byte = nil
-
-func z_alloc(opaque unsafe.Pointer, items uInt, size uInt) unsafe.Pointer {
-	return libc.Calloc(int(items), int(size))
-}
-func z_free(opaque unsafe.Pointer, address unsafe.Pointer) {
-	return libc.Free(address)
-}
-
-var compress_offer [4]byte = [4]byte{IAC, WILL, COMPRESS2, 0}
 
 func copyover_recover() {
 	var (
 		d              *descriptor_data
-		fp             *C.FILE
+		fp             *stdio.File
 		host           [1024]byte
 		desc           int
 		player_i       int
@@ -69,28 +62,28 @@ func copyover_recover() {
 		set_loadroom   int = int(-1)
 	)
 	basic_mud_log(libc.CString("Copyover recovery initiated"))
-	PCOUNTDAY = C.time(nil) + 60
-	fp = (*C.FILE)(unsafe.Pointer(stdio.FOpen(COPYOVER_FILE, "r")))
+	PCOUNTDAY = libc.GetTime(nil) + 60
+	fp = stdio.FOpen(COPYOVER_FILE, "r")
 	if fp == nil {
-		C.perror(libc.CString("copyover_recover:fopen"))
+		perror(libc.CString("copyover_recover:fopen"))
 		basic_mud_log(libc.CString("Copyover file not found. Exitting.\n\r"))
-		C.exit(1)
+		os.Exit(1)
 	}
-	unlink(libc.CString(COPYOVER_FILE))
+	stdio.Unlink(libc.CString(COPYOVER_FILE))
 	for {
 		fOld = TRUE != 0
-		__isoc99_fscanf(fp, libc.CString("%d %s %s %d %s\n"), &desc, &name[0], &host[0], &saved_loadroom, &username[0])
+		stdio.Fscanf(fp, "%d %s %s %d %s\n", &desc, &name[0], &host[0], &saved_loadroom, &username[0])
 		if desc == -1 {
 			break
 		}
-		if write_to_descriptor(int(desc), libc.CString("\n\rFolding initiated...\n\r"), nil) < 0 {
-			close_(desc)
+		if write_to_descriptor(desc, libc.CString("\n\rFolding initiated...\n\r")) < 0 {
+			stdio.ByFD(uintptr(desc)).Close()
 			continue
 		}
 		d = new(descriptor_data)
 		*(*descriptor_data)(unsafe.Pointer((*byte)(unsafe.Pointer(d)))) = descriptor_data{}
 		init_descriptor(d, desc)
-		C.strcpy(&d.Host[0], &host[0])
+		libc.StrCpy(&d.Host[0], &host[0])
 		d.Next = descriptor_list
 		descriptor_list = d
 		d.Connected = CON_CLOSE
@@ -104,23 +97,19 @@ func copyover_recover() {
 		}()) >= 0 {
 			d.Character.Pfilepos = player_i
 			if !PLR_FLAGGED(d.Character, PLR_DELETED) {
-				d.Character.Act[int(PLR_WRITING/32)] &= bitvector_t(^(1 << (int(PLR_WRITING % 32))))
-				d.Character.Act[int(PLR_MAILING/32)] &= bitvector_t(^(1 << (int(PLR_MAILING % 32))))
-				d.Character.Act[int(PLR_CRYO/32)] &= bitvector_t(^(1 << (int(PLR_CRYO % 32))))
+				d.Character.Act[int(PLR_WRITING/32)] &= bitvector_t(int32(^(1 << (int(PLR_WRITING % 32)))))
+				d.Character.Act[int(PLR_MAILING/32)] &= bitvector_t(int32(^(1 << (int(PLR_MAILING % 32)))))
+				d.Character.Act[int(PLR_CRYO/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRYO % 32)))))
 				userLoad(d, &username[0])
 			}
 		} else {
 			fOld = FALSE != 0
 		}
 		if !fOld {
-			write_to_descriptor(int(desc), libc.CString("\n\rSomehow, your character was lost during the folding. Sorry.\n\r"), nil)
+			write_to_descriptor(desc, libc.CString("\n\rSomehow, your character was lost during the folding. Sorry.\n\r"))
 			close_socket(d)
 		} else {
-			write_to_descriptor(int(desc), libc.CString("\n\rFolding complete.\n\r"), nil)
-			if config_info.Play.Enable_compression != 0 && !PRF_FLAGGED(d.Character, PRF_NOCOMPRESS) {
-				d.Comp.State = 1
-				write_to_output(d, libc.CString("%s"), &compress_offer[0])
-			}
+			write_to_descriptor(desc, libc.CString("\n\rFolding complete.\n\r"))
 			set_loadroom = int(d.Character.Player_specials.Load_room)
 			d.Character.Player_specials.Load_room = room_vnum(saved_loadroom)
 			enter_player_game(d)
@@ -132,53 +121,44 @@ func copyover_recover() {
 			}
 		}
 	}
-	C.fclose(fp)
+	fp.Close()
 }
 func init_game(cmport uint16) {
 	touch(libc.CString(KILLSCRIPT_FILE))
-	circle_srandom(uint(C.time(nil)))
+	circle_srandom(uint(libc.GetTime(nil)))
 	basic_mud_log(libc.CString("Finding player limit."))
 	max_players = get_max_players()
 	if !fCopyOver {
 		basic_mud_log(libc.CString("Opening mother connection."))
-		mother_desc = init_socket(cmport)
 	}
 	event_init()
 	init_lookup_table()
 	boot_db()
-	if config_info.Operation.Imc_enabled != 0 {
-		imc_startup(FALSE != 0, -1, FALSE != 0)
-	}
-	var mapfile *C.FILE
+	var mapfile *stdio.File
 	var rowcounter int
 	var colcounter int
 	var vnum_read int
 	basic_mud_log(libc.CString("Signal trapping."))
 	signal_setup()
 	basic_mud_log(libc.CString("Loading Space Map. "))
-	mapfile = (*C.FILE)(unsafe.Pointer(stdio.FOpen("../lib/surface.map", "r")))
+	mapfile = stdio.FOpen("../lib/surface.map", "r")
 	for rowcounter = 0; rowcounter <= MAP_ROWS; rowcounter++ {
 		for colcounter = 0; colcounter <= MAP_COLS; colcounter++ {
-			__isoc99_fscanf(mapfile, libc.CString("%d"), &vnum_read)
+			stdio.Fscanf(mapfile, "%d", &vnum_read)
 			mapnums[rowcounter][colcounter] = int(real_room(room_vnum(vnum_read)))
 		}
 	}
-	C.fclose(mapfile)
+	mapfile.Close()
 	topLoad()
 	stdio.Remove(KILLSCRIPT_FILE)
 	if fCopyOver {
 		copyover_recover()
 	}
 	basic_mud_log(libc.CString("Entering game loop."))
-	game_loop(mother_desc)
 	Crash_save_all()
 	basic_mud_log(libc.CString("Closing all sockets."))
 	for descriptor_list != nil {
 		close_socket(descriptor_list)
-	}
-	close_(int(mother_desc))
-	if config_info.Operation.Imc_enabled != 0 {
-		imc_shutdown(FALSE != 0)
 	}
 	if circle_reboot != 2 {
 		save_all()
@@ -187,363 +167,16 @@ func init_game(cmport uint16) {
 	save_mud_time(&time_info)
 	if circle_reboot != 0 {
 		basic_mud_log(libc.CString("Rebooting."))
-		C.exit(52)
+		os.Exit(52)
 	}
 	basic_mud_log(libc.CString("Normal termination of game."))
 }
 func init_socket(cmport uint16) int {
-	var (
-		s   int
-		sa  sockaddr_in
-		opt int
-	)
-	if (func() int {
-		s = int(socket(PF_INET, SOCK_STREAM, 0))
-		return s
-	}()) < 0 {
-		C.perror(libc.CString("SYSERR: Error creating socket"))
-		C.exit(1)
-	}
-	opt = 1
-	if setsockopt(int(s), SOL_SOCKET, SO_REUSEADDR, unsafe.Pointer((*byte)(unsafe.Pointer(&opt))), int(unsafe.Sizeof(int(0)))) < 0 {
-		C.perror(libc.CString("SYSERR: setsockopt REUSEADDR"))
-		C.exit(1)
-	}
-	set_sendbuf(s)
-	{
-		var ld linger
-		ld.L_onoff = 0
-		ld.L_linger = 0
-		if setsockopt(int(s), SOL_SOCKET, SO_LINGER, unsafe.Pointer((*byte)(unsafe.Pointer(&ld))), int(unsafe.Sizeof(linger{}))) < 0 {
-			C.perror(libc.CString("SYSERR: setsockopt SO_LINGER"))
-		}
-	}
-	*(*sockaddr_in)(unsafe.Pointer((*byte)(unsafe.Pointer(&sa)))) = sockaddr_in{}
-	sa.Sin_family = PF_INET
-	sa.Sin_port = in_port_t(htons(cmport))
-	sa.Sin_addr = *get_bind_addr()
-	if bind(int(s), (*sockaddr)(unsafe.Pointer(&sa)), int(unsafe.Sizeof(sockaddr_in{}))) < 0 {
-		C.perror(libc.CString("SYSERR: bind"))
-		close_(int(s))
-		C.exit(1)
-	}
-	nonblock(s)
-	listen(int(s), 5)
-	return s
 }
 func get_max_players() int {
-	var (
-		max_descs int = 0
-		method    *byte
-	)
-	{
-		var limit rlimit
-		method = libc.CString("rlimit")
-		if getrlimit(__rlimit_resource_t(RLIMIT_NOC.FILE), &limit) < 0 {
-			C.perror(libc.CString("SYSERR: calling getrlimit"))
-			C.exit(1)
-		}
-		limit.Rlim_cur = limit.Rlim_max
-		if setrlimit(__rlimit_resource_t(RLIMIT_NOC.FILE), &limit) < 0 {
-			C.perror(libc.CString("SYSERR: calling setrlimit"))
-			C.exit(1)
-		}
-		if limit.Rlim_max == math.MaxUint64 {
-			max_descs = config_info.Operation.Max_playing + NUM_RESERVED_DESCS
-		} else {
-			max_descs = MIN(config_info.Operation.Max_playing+NUM_RESERVED_DESCS, int(limit.Rlim_max))
-		}
-	}
-	max_descs = MIN(config_info.Operation.Max_playing, max_descs-NUM_RESERVED_DESCS)
-	if max_descs <= 0 {
-		basic_mud_log(libc.CString("SYSERR: Non-positive max player limit!  (Set at %d using %s)."), max_descs, method)
-		C.exit(1)
-	}
-	basic_mud_log(libc.CString("   Setting player limit to %d using %s."), max_descs, method)
-	return max_descs
+	return 1000
 }
 func game_loop(cmmother_desc int) {
-	var (
-		input_set     fd_set
-		output_set    fd_set
-		exc_set       fd_set
-		null_set      fd_set
-		last_time     timeval
-		opt_time      timeval
-		process_time  timeval
-		temp_time     timeval
-		before_sleep  timeval
-		now           timeval
-		timeout       timeval
-		comm          [2048]byte
-		d             *descriptor_data
-		next_d        *descriptor_data
-		missed_pulses int
-		maxdesc       int
-		aliased       int
-		top_desc      int
-	)
-	null_time.Tv_sec = 0
-	null_time.Tv_usec = 0
-	opt_time.Tv_usec = OPT_USEC
-	opt_time.Tv_sec = 0
-	for {
-		{
-			var (
-				__i   uint
-				__arr *fd_set = (&null_set)
-			)
-			for __i = 0; __i < uint(unsafe.Sizeof(fd_set{})/unsafe.Sizeof(__fd_mask(0))); __i++ {
-				__arr.__fds_bits[__i] = 0
-			}
-		}
-		if true {
-			break
-		}
-	}
-	gettimeofday(&last_time, nil)
-	for circle_shutdown == 0 {
-		if descriptor_list == nil {
-			if config_info.Operation.Imc_enabled != 0 {
-				if this_imcmud != nil {
-					top_desc = MAX(int(cmmother_desc), this_imcmud.Desc)
-				} else {
-					top_desc = int(cmmother_desc)
-				}
-			} else {
-				top_desc = int(cmmother_desc)
-			}
-			if config_info.Operation.Imc_enabled == 0 {
-				basic_mud_log(libc.CString("No connections.  Going to sleep."))
-			}
-			for {
-				{
-					var (
-						__i   uint
-						__arr *fd_set = (&input_set)
-					)
-					for __i = 0; __i < uint(unsafe.Sizeof(fd_set{})/unsafe.Sizeof(__fd_mask(0))); __i++ {
-						__arr.__fds_bits[__i] = 0
-					}
-				}
-				if true {
-					break
-				}
-			}
-			input_set.__fds_bits[cmmother_desc/int(8*int(unsafe.Sizeof(__fd_mask(0))))] |= __fd_mask(1 << (cmmother_desc % int(8*int(unsafe.Sizeof(__fd_mask(0))))))
-			if config_info.Operation.Imc_enabled != 0 {
-				if this_imcmud != nil && this_imcmud.Desc != -1 {
-					input_set.__fds_bits[this_imcmud.Desc/(8*int(unsafe.Sizeof(__fd_mask(0))))] |= __fd_mask(1 << (this_imcmud.Desc % (8 * int(unsafe.Sizeof(__fd_mask(0))))))
-				}
-			}
-			if netpoll_select(top_desc+1, &input_set, nil, nil, nil) < 0 {
-				if (*__errno_location()) == EINTR {
-					basic_mud_log(libc.CString("Waking up to process signal."))
-				} else {
-					C.perror(libc.CString("SYSERR: Select coma"))
-				}
-			} else if config_info.Operation.Imc_enabled == 0 {
-				basic_mud_log(libc.CString("New connection.  Waking up."))
-			}
-			gettimeofday(&last_time, nil)
-		}
-		for {
-			{
-				var (
-					__i   uint
-					__arr *fd_set = (&input_set)
-				)
-				for __i = 0; __i < uint(unsafe.Sizeof(fd_set{})/unsafe.Sizeof(__fd_mask(0))); __i++ {
-					__arr.__fds_bits[__i] = 0
-				}
-			}
-			if true {
-				break
-			}
-		}
-		for {
-			{
-				var (
-					__i   uint
-					__arr *fd_set = (&output_set)
-				)
-				for __i = 0; __i < uint(unsafe.Sizeof(fd_set{})/unsafe.Sizeof(__fd_mask(0))); __i++ {
-					__arr.__fds_bits[__i] = 0
-				}
-			}
-			if true {
-				break
-			}
-		}
-		for {
-			{
-				var (
-					__i   uint
-					__arr *fd_set = (&exc_set)
-				)
-				for __i = 0; __i < uint(unsafe.Sizeof(fd_set{})/unsafe.Sizeof(__fd_mask(0))); __i++ {
-					__arr.__fds_bits[__i] = 0
-				}
-			}
-			if true {
-				break
-			}
-		}
-		input_set.__fds_bits[cmmother_desc/int(8*int(unsafe.Sizeof(__fd_mask(0))))] |= __fd_mask(1 << (cmmother_desc % int(8*int(unsafe.Sizeof(__fd_mask(0))))))
-		maxdesc = int(cmmother_desc)
-		for d = descriptor_list; d != nil; d = d.Next {
-			if d.Descriptor > int(maxdesc) {
-				maxdesc = int(d.Descriptor)
-			}
-			input_set.__fds_bits[d.Descriptor/int(8*int(unsafe.Sizeof(__fd_mask(0))))] |= __fd_mask(1 << (d.Descriptor % int(8*int(unsafe.Sizeof(__fd_mask(0))))))
-			output_set.__fds_bits[d.Descriptor/int(8*int(unsafe.Sizeof(__fd_mask(0))))] |= __fd_mask(1 << (d.Descriptor % int(8*int(unsafe.Sizeof(__fd_mask(0))))))
-			exc_set.__fds_bits[d.Descriptor/int(8*int(unsafe.Sizeof(__fd_mask(0))))] |= __fd_mask(1 << (d.Descriptor % int(8*int(unsafe.Sizeof(__fd_mask(0))))))
-		}
-		gettimeofday(&before_sleep, nil)
-		timediff(&process_time, &before_sleep, &last_time)
-		if process_time.Tv_sec == 0 && process_time.Tv_usec < OPT_USEC {
-			missed_pulses = 0
-		} else {
-			missed_pulses = int(process_time.Tv_sec * __time_t(int(1000000/OPT_USEC)))
-			missed_pulses += int(process_time.Tv_usec / OPT_USEC)
-			process_time.Tv_sec = 0
-			process_time.Tv_usec = process_time.Tv_usec % OPT_USEC
-		}
-		timediff(&temp_time, &opt_time, &process_time)
-		timeadd(&last_time, &before_sleep, &temp_time)
-		gettimeofday(&now, nil)
-		timediff(&timeout, &last_time, &now)
-		for {
-			circle_sleep(&timeout)
-			gettimeofday(&now, nil)
-			timediff(&timeout, &last_time, &now)
-			if timeout.Tv_usec == 0 && timeout.Tv_sec == 0 {
-				break
-			}
-		}
-		if netpoll_select(maxdesc+1, &input_set, &output_set, &exc_set, &null_time) < 0 {
-			C.perror(libc.CString("SYSERR: Select poll"))
-			return
-		}
-		if (input_set.__fds_bits[cmmother_desc/int(8*int(unsafe.Sizeof(__fd_mask(0))))] & (__fd_mask(1 << (cmmother_desc % int(8*int(unsafe.Sizeof(__fd_mask(0)))))))) != 0 {
-			new_descriptor(cmmother_desc)
-		}
-		for d = descriptor_list; d != nil; d = next_d {
-			next_d = d.Next
-			if (exc_set.__fds_bits[d.Descriptor/int(8*int(unsafe.Sizeof(__fd_mask(0))))] & (__fd_mask(1 << (d.Descriptor % int(8*int(unsafe.Sizeof(__fd_mask(0)))))))) != 0 {
-				input_set.__fds_bits[d.Descriptor/int(8*int(unsafe.Sizeof(__fd_mask(0))))] &= ^(__fd_mask(1 << (d.Descriptor % int(8*int(unsafe.Sizeof(__fd_mask(0)))))))
-				output_set.__fds_bits[d.Descriptor/int(8*int(unsafe.Sizeof(__fd_mask(0))))] &= ^(__fd_mask(1 << (d.Descriptor % int(8*int(unsafe.Sizeof(__fd_mask(0)))))))
-				close_socket(d)
-			}
-		}
-		for d = descriptor_list; d != nil; d = next_d {
-			next_d = d.Next
-			if (input_set.__fds_bits[d.Descriptor/int(8*int(unsafe.Sizeof(__fd_mask(0))))] & (__fd_mask(1 << (d.Descriptor % int(8*int(unsafe.Sizeof(__fd_mask(0)))))))) != 0 {
-				if process_input(d) < 0 {
-					close_socket(d)
-				}
-			}
-		}
-		for d = descriptor_list; d != nil; d = next_d {
-			next_d = d.Next
-			if d.Character != nil {
-				d.Character.Wait -= int(libc.BoolToInt(d.Character.Wait > 0))
-				if d.Character.Wait != 0 {
-					continue
-				}
-			}
-			if get_from_q(&d.Input, &comm[0], &aliased) == 0 {
-				continue
-			}
-			if d.Character != nil {
-				d.Character.Timer = 0
-				if d.Connected == CON_PLAYING && d.Character.Was_in_room != room_rnum(-1) {
-					if d.Character.In_room != room_rnum(-1) {
-						char_from_room(d.Character)
-					}
-					char_to_room(d.Character, d.Character.Was_in_room)
-					d.Character.Was_in_room = -1
-					act(libc.CString("$n has returned."), TRUE, d.Character, nil, nil, TO_ROOM)
-				}
-				d.Character.Wait = 1
-			}
-			d.Has_prompt = FALSE
-			if d.Showstr_count != 0 {
-				show_string(d, &comm[0])
-			} else if d.Str != nil {
-				string_add(d, &comm[0])
-			} else if d.Connected != CON_PLAYING {
-				nanny(d, &comm[0])
-			} else {
-				if aliased != 0 {
-					d.Has_prompt = TRUE
-				} else if perform_alias(d, &comm[0], uint64(2048)) != 0 {
-					get_from_q(&d.Input, &comm[0], &aliased)
-				}
-				command_interpreter(d.Character, &comm[0])
-			}
-		}
-		for d = descriptor_list; d != nil; d = next_d {
-			next_d = d.Next
-			if *d.Output != 0 && (output_set.__fds_bits[d.Descriptor/int(8*int(unsafe.Sizeof(__fd_mask(0))))]&(__fd_mask(1<<(d.Descriptor%int(8*int(unsafe.Sizeof(__fd_mask(0)))))))) != 0 {
-				if process_output(d) < 0 {
-					close_socket(d)
-					basic_mud_log(libc.CString("ERROR: Tried to send output to dead socket!"))
-				} else {
-					d.Has_prompt = 1
-				}
-			}
-		}
-		for d = descriptor_list; d != nil; d = d.Next {
-			if d.Has_prompt == 0 {
-				write_to_output(d, libc.CString("@n"))
-				d.Has_prompt = TRUE
-			}
-		}
-		for d = descriptor_list; d != nil; d = next_d {
-			next_d = d.Next
-			if d.Connected == CON_CLOSE || d.Connected == CON_DISCONNECT {
-				close_socket(d)
-			}
-		}
-		missed_pulses++
-		if missed_pulses <= 0 {
-			basic_mud_log(libc.CString("SYSERR: **BAD** MISSED_PULSES NONPOSITIVE (%d), TIME GOING BACKWARDS!!"), missed_pulses)
-			missed_pulses = 1
-		}
-		if missed_pulses > (int(1000000/OPT_USEC))*30 {
-			basic_mud_log(libc.CString("SYSERR: Missed %d seconds worth of pulses."), missed_pulses/(int(1000000/OPT_USEC)))
-			missed_pulses = (int(1000000 / OPT_USEC)) * 30
-		}
-		if config_info.Operation.Imc_enabled != 0 {
-			imc_loop()
-		}
-		for func() int {
-			p := &missed_pulses
-			x := *p
-			*p--
-			return x
-		}() != 0 {
-			heartbeat(int(func() uint {
-				p := &pulse
-				*p++
-				return *p
-			}()))
-		}
-		if reread_wizlist != 0 {
-			reread_wizlist = FALSE
-			mudlog(CMP, ADMLVL_IMMORT, TRUE, libc.CString("Signal received - rereading wizlists."))
-			reboot_wizlists()
-		}
-		if emergency_unban != 0 {
-			emergency_unban = FALSE
-			mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("Received SIGUSR2 - completely unrestricting game (emergent)"))
-			ban_list = nil
-			circle_restrict = 0
-			num_invalid = 0
-		}
-		tics_passed++
-	}
 }
 func heartbeat(heart_pulse int) {
 	var mins_since_crashsave int = 0
@@ -626,32 +259,32 @@ func heartbeat(heart_pulse int) {
 	}
 	extract_pending_chars()
 }
-func timediff(rslt *timeval, a *timeval, b *timeval) {
-	if a.Tv_sec < b.Tv_sec {
+func timediff(rslt *libc.TimeVal, a *libc.TimeVal, b *libc.TimeVal) {
+	if a.Sec < b.Sec {
 		*rslt = null_time
-	} else if a.Tv_sec == b.Tv_sec {
-		if a.Tv_usec < b.Tv_usec {
+	} else if a.Sec == b.Sec {
+		if a.USec < b.USec {
 			*rslt = null_time
 		} else {
-			rslt.Tv_sec = 0
-			rslt.Tv_usec = a.Tv_usec - b.Tv_usec
+			rslt.Sec = 0
+			rslt.USec = a.USec - b.USec
 		}
 	} else {
-		rslt.Tv_sec = a.Tv_sec - b.Tv_sec
-		if a.Tv_usec < b.Tv_usec {
-			rslt.Tv_usec = a.Tv_usec + 1000000 - b.Tv_usec
-			rslt.Tv_sec--
+		rslt.Sec = a.Sec - b.Sec
+		if a.USec < b.USec {
+			rslt.USec = a.USec + 1000000 - b.USec
+			rslt.Sec--
 		} else {
-			rslt.Tv_usec = a.Tv_usec - b.Tv_usec
+			rslt.USec = a.USec - b.USec
 		}
 	}
 }
-func timeadd(rslt *timeval, a *timeval, b *timeval) {
-	rslt.Tv_sec = a.Tv_sec + b.Tv_sec
-	rslt.Tv_usec = a.Tv_usec + b.Tv_usec
-	for rslt.Tv_usec >= 1000000 {
-		rslt.Tv_usec -= 1000000
-		rslt.Tv_sec++
+func timeadd(rslt *libc.TimeVal, a *libc.TimeVal, b *libc.TimeVal) {
+	rslt.Sec = a.Sec + b.Sec
+	rslt.USec = a.USec + b.USec
+	for rslt.USec >= 1000000 {
+		rslt.USec -= 1000000
+		rslt.Sec++
 	}
 }
 func record_usage() {
@@ -668,14 +301,6 @@ func record_usage() {
 	}
 	basic_mud_log(libc.CString("nusage: %-3d sockets connected, %-3d sockets playing"), sockets_connected, sockets_playing)
 }
-func echo_off(d *descriptor_data) {
-	var off_string [4]byte = [4]byte{IAC, WILL, TELOPT_ECHO, 0}
-	write_to_output(d, libc.CString("%s"), &off_string[0])
-}
-func echo_on(d *descriptor_data) {
-	var on_string [4]byte = [4]byte{IAC, WONT, TELOPT_ECHO, 0}
-	write_to_output(d, libc.CString("%s"), &on_string[0])
-}
 func make_prompt(d *descriptor_data) *byte {
 	var (
 		prompt  [1024]byte
@@ -686,13 +311,13 @@ func make_prompt(d *descriptor_data) *byte {
 		stdio.Snprintf(&prompt[0], int(1024), "\r\n[ Return to continue, (q)uit, (r)efresh, (b)ack, or page number (%d/%d) ]", d.Showstr_page, d.Showstr_count)
 	} else if d.Str != nil {
 		if d.Connected == CON_EXDESC {
-			C.strcpy(&prompt[0], libc.CString("Enter Description(/h for editor help)> "))
+			libc.StrCpy(&prompt[0], libc.CString("Enter Description(/h for editor help)> "))
 		} else if PLR_FLAGGED(d.Character, PLR_WRITING) && !PLR_FLAGGED(d.Character, PLR_MAILING) {
-			C.strcpy(&prompt[0], libc.CString("Enter Message(/h for editor help)> "))
+			libc.StrCpy(&prompt[0], libc.CString("Enter Message(/h for editor help)> "))
 		} else if PLR_FLAGGED(d.Character, PLR_MAILING) {
-			C.strcpy(&prompt[0], libc.CString("Enter Mail Message(/h for editor help)> "))
+			libc.StrCpy(&prompt[0], libc.CString("Enter Mail Message(/h for editor help)> "))
 		} else {
-			C.strcpy(&prompt[0], libc.CString("Enter Message> "))
+			libc.StrCpy(&prompt[0], libc.CString("Enter Message> "))
 		}
 	} else if d.Connected == CON_PLAYING && !IS_NPC(d.Character) {
 		var (
@@ -700,7 +325,7 @@ func make_prompt(d *descriptor_data) *byte {
 			len_  uint64 = 0
 		)
 		prompt[0] = '\x00'
-		if d.Character.Player_specials.Invis_level != 0 && len_ < uint64(1024) {
+		if int(d.Character.Player_specials.Invis_level) != 0 && len_ < uint64(1024) {
 			count = stdio.Snprintf(&prompt[len_], int(1024-uintptr(len_)), "i%d ", d.Character.Player_specials.Invis_level)
 			if count >= 0 {
 				len_ += uint64(count)
@@ -745,14 +370,14 @@ func make_prompt(d *descriptor_data) *byte {
 					len_ += uint64(count)
 				}
 			}
-			if d.Character.Race == RACE_HALFBREED && !PLR_FLAGGED(d.Character, PLR_FURY) && PRF_FLAGGED(d.Character, PRF_FURY) {
+			if int(d.Character.Race) == RACE_HALFBREED && !PLR_FLAGGED(d.Character, PLR_FURY) && PRF_FLAGGED(d.Character, PRF_FURY) {
 				count = stdio.Snprintf(&prompt[len_], int(1024-uintptr(len_)), "@D[@mFury@W: @r%d@D]@w", d.Character.Fury)
 				flagged = TRUE
 				if count >= 0 {
 					len_ += uint64(count)
 				}
 			}
-			if d.Character.Race == RACE_HALFBREED && PLR_FLAGGED(d.Character, PLR_FURY) && PRF_FLAGGED(d.Character, PRF_FURY) {
+			if int(d.Character.Race) == RACE_HALFBREED && PLR_FLAGGED(d.Character, PLR_FURY) && PRF_FLAGGED(d.Character, PRF_FURY) {
 				count = stdio.Snprintf(&prompt[len_], int(1024-uintptr(len_)), "@D[@mFury@W: @rENGAGED@D]@w")
 				flagged = TRUE
 				if count >= 0 {
@@ -948,7 +573,7 @@ func make_prompt(d *descriptor_data) *byte {
 					len_ += uint64(count)
 				}
 			}
-			if d.Character.Sits != nil && d.Character.Position == POS_SITTING && len_ < uint64(1024) && !PRF_FLAGGED(d.Character, PRF_NODEC) {
+			if d.Character.Sits != nil && int(d.Character.Position) == POS_SITTING && len_ < uint64(1024) && !PRF_FLAGGED(d.Character, PRF_NODEC) {
 				chair = d.Character.Sits
 				count = stdio.Snprintf(&prompt[len_], int(1024-uintptr(len_)), "Sitting on: %s\r\n", chair.Short_description)
 				flagged = TRUE
@@ -956,7 +581,7 @@ func make_prompt(d *descriptor_data) *byte {
 					len_ += uint64(count)
 				}
 			}
-			if d.Character.Sits != nil && d.Character.Position == POS_RESTING && len_ < uint64(1024) && !PRF_FLAGGED(d.Character, PRF_NODEC) {
+			if d.Character.Sits != nil && int(d.Character.Position) == POS_RESTING && len_ < uint64(1024) && !PRF_FLAGGED(d.Character, PRF_NODEC) {
 				chair = d.Character.Sits
 				count = stdio.Snprintf(&prompt[len_], int(1024-uintptr(len_)), "Resting on: %s\r\n", chair.Short_description)
 				flagged = TRUE
@@ -964,7 +589,7 @@ func make_prompt(d *descriptor_data) *byte {
 					len_ += uint64(count)
 				}
 			}
-			if d.Character.Sits != nil && d.Character.Position == POS_SLEEPING && len_ < uint64(1024) && !PRF_FLAGGED(d.Character, PRF_NODEC) {
+			if d.Character.Sits != nil && int(d.Character.Position) == POS_SLEEPING && len_ < uint64(1024) && !PRF_FLAGGED(d.Character, PRF_NODEC) {
 				chair = d.Character.Sits
 				count = stdio.Snprintf(&prompt[len_], int(1024-uintptr(len_)), "Sleeping on: %s\r\n", chair.Short_description)
 				flagged = TRUE
@@ -1515,7 +1140,7 @@ func make_prompt(d *descriptor_data) *byte {
 			}
 		}
 		if len_ < uint64(1024) && len_ < 5 {
-			C.strncat(&prompt[0], libc.CString(">\n"), uint64(1024-uintptr(len_)-1))
+			libc.StrNCat(&prompt[0], libc.CString(">\n"), int(1024-uintptr(len_)-1))
 		}
 	} else if d.Connected == CON_PLAYING && IS_NPC(d.Character) {
 		stdio.Snprintf(&prompt[0], int(1024), "%s>\n", CAP(GET_NAME(d.Character)))
@@ -1527,7 +1152,7 @@ func make_prompt(d *descriptor_data) *byte {
 func write_to_q(txt *byte, queue *txt_q, aliased int) {
 	var newt *txt_block
 	newt = new(txt_block)
-	newt.Text = C.strdup(txt)
+	newt.Text = libc.StrDup(txt)
 	newt.Aliased = aliased
 	if queue.Head == nil {
 		newt.Next = nil
@@ -1547,7 +1172,7 @@ func get_from_q(queue *txt_q, dest *byte, aliased *int) int {
 	if queue.Head == nil {
 		return 0
 	}
-	C.strcpy(dest, queue.Head.Text)
+	libc.StrCpy(dest, queue.Head.Text)
 	*aliased = queue.Head.Aliased
 	tmp = queue.Head
 	queue.Head = queue.Head.Next
@@ -1601,8 +1226,8 @@ func proc_colors(txt *byte, maxlen uint64, parse int, choices **byte) uint64 {
 		temp_color  int
 		wanted      uint64
 	)
-	if txt == nil || C.strchr(txt, '@') == nil {
-		return uint64(C.strlen(txt))
+	if txt == nil || libc.StrChr(txt, '@') == nil {
+		return uint64(libc.StrLen(txt))
 	}
 	source_char = txt
 	dest_char = (*byte)(unsafe.Pointer(&make([]int8, int(maxlen))[0]))
@@ -1647,7 +1272,7 @@ func proc_colors(txt *byte, maxlen uint64, parse int, choices **byte) uint64 {
 			}
 			if *source_char == '[' {
 				source_char = (*byte)(unsafe.Add(unsafe.Pointer(source_char), 1))
-				for *source_char != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*source_char)))))&int(uint16(int16(_ISdigit)))) != 0 {
+				for *source_char != 0 && unicode.IsDigit(rune(*source_char)) {
 					source_char = (*byte)(unsafe.Add(unsafe.Pointer(source_char), 1))
 				}
 				if *source_char == 0 {
@@ -1668,7 +1293,7 @@ func proc_colors(txt *byte, maxlen uint64, parse int, choices **byte) uint64 {
 				if choices != nil && *(**byte)(unsafe.Add(unsafe.Pointer(choices), unsafe.Sizeof((*byte)(nil))*uintptr(i))) != nil {
 					replacement = *(**byte)(unsafe.Add(unsafe.Pointer(choices), unsafe.Sizeof((*byte)(nil))*uintptr(i)))
 				}
-				for *source_char != 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*source_char)))))&int(uint16(int16(_ISdigit)))) != 0 {
+				for *source_char != 0 && unicode.IsDigit(rune(*source_char)) {
 					source_char = (*byte)(unsafe.Add(unsafe.Pointer(source_char), 1))
 				}
 				if *source_char == 0 {
@@ -1689,8 +1314,8 @@ func proc_colors(txt *byte, maxlen uint64, parse int, choices **byte) uint64 {
 			}
 		}
 		if replacement != nil {
-			if uint64(int64(uintptr(unsafe.Pointer(dest_char))-uintptr(unsafe.Pointer(save_pos))))+uint64(C.strlen(replacement))+uint64(C.strlen(libc.CString(ANSISTART)))+1 < maxlen {
-				if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*replacement))))) & int(uint16(int16(_ISdigit)))) != 0 {
+			if uint64(int64(uintptr(unsafe.Pointer(dest_char))-uintptr(unsafe.Pointer(save_pos))))+uint64(libc.StrLen(replacement))+uint64(libc.StrLen(libc.CString(ANSISTART)))+1 < maxlen {
+				if unicode.IsDigit(rune(*replacement)) {
 					for color_char = libc.CString(ANSISTART); *color_char != 0; {
 						*func() *byte {
 							p := &dest_char
@@ -1718,7 +1343,7 @@ func proc_colors(txt *byte, maxlen uint64, parse int, choices **byte) uint64 {
 						return x
 					}()
 				}
-				if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*replacement))))) & int(uint16(int16(_ISdigit)))) != 0 {
+				if unicode.IsDigit(rune(*replacement)) {
 					*func() *byte {
 						p := &dest_char
 						x := *p
@@ -1732,8 +1357,8 @@ func proc_colors(txt *byte, maxlen uint64, parse int, choices **byte) uint64 {
 		source_char = (*byte)(unsafe.Add(unsafe.Pointer(source_char), 1))
 	}
 	*dest_char = '\x00'
-	wanted = uint64(C.strlen(source_char))
-	C.strncpy(txt, save_pos, maxlen-1)
+	wanted = uint64(libc.StrLen(source_char))
+	libc.StrNCpy(txt, save_pos, int(maxlen-1))
 	libc.Free(unsafe.Pointer(save_pos))
 	return uint64(int64(uintptr(unsafe.Pointer(dest_char))-uintptr(unsafe.Pointer(save_pos)))) + wanted
 }
@@ -1774,7 +1399,7 @@ func vwrite_to_output(t *descriptor_data, format *byte, args libc.ArgList) uint6
 	}
 	if size < 0 || wantsize >= uint64(64936) {
 		size = int(64936 - 1)
-		C.strcpy((*byte)(unsafe.Add(unsafe.Pointer(&txt[size]), -C.strlen(text_overflow))), text_overflow)
+		libc.StrCpy((*byte)(unsafe.Add(unsafe.Pointer(&txt[size]), -libc.StrLen(text_overflow))), text_overflow)
 	}
 	if size+t.Bufptr+1 > (int((96*1024)-GARBAGE_SPACE) - MAX_PROMPT_LENGTH) {
 		size = (int((96*1024)-GARBAGE_SPACE) - MAX_PROMPT_LENGTH) - t.Bufptr - 1
@@ -1783,7 +1408,7 @@ func vwrite_to_output(t *descriptor_data, format *byte, args libc.ArgList) uint6
 		buf_overflows++
 	}
 	if t.Bufspace > size {
-		C.strcpy((*byte)(unsafe.Add(unsafe.Pointer(t.Output), t.Bufptr)), &txt[0])
+		libc.StrCpy((*byte)(unsafe.Add(unsafe.Pointer(t.Output), t.Bufptr)), &txt[0])
 		t.Bufspace -= size
 		t.Bufptr += size
 		return uint64(t.Bufspace)
@@ -1797,10 +1422,10 @@ func vwrite_to_output(t *descriptor_data, format *byte, args libc.ArgList) uint6
 		t.Large_outbuf.Text = (*byte)(unsafe.Pointer(&make([]int8, int((96*1024)-GARBAGE_SPACE)-MAX_PROMPT_LENGTH)[0]))
 		buf_largecount++
 	}
-	C.strcpy(t.Large_outbuf.Text, t.Output)
+	libc.StrCpy(t.Large_outbuf.Text, t.Output)
 	t.Output = t.Large_outbuf.Text
-	C.strcat(t.Output, &txt[0])
-	t.Bufptr = int(C.strlen(t.Output))
+	libc.StrCat(t.Output, &txt[0])
+	t.Bufptr = libc.StrLen(t.Output)
 	t.Bufspace = (int((96*1024)-GARBAGE_SPACE) - MAX_PROMPT_LENGTH) - 1 - t.Bufptr
 	return uint64(t.Bufspace)
 }
@@ -1815,39 +1440,17 @@ func free_bufpool() {
 		bufpool = tmp
 	}
 }
-func get_bind_addr() *in_addr {
-	var bind_addr in_addr
-	*(*in_addr)(unsafe.Pointer((*byte)(unsafe.Pointer(&bind_addr)))) = in_addr{}
-	if config_info.Operation.DFLT_IP == nil {
-		bind_addr.S_addr = in_addr_t(htonl(0))
-	} else {
-		if inet_aton(config_info.Operation.DFLT_IP, &bind_addr) == 0 {
-			basic_mud_log(libc.CString("SYSERR: DFLT_IP of %s appears to be an invalid IP address"), config_info.Operation.DFLT_IP)
-			bind_addr.S_addr = in_addr_t(htonl(0))
-		}
-	}
-	if bind_addr.S_addr == in_addr_t(htonl(0)) {
-		basic_mud_log(libc.CString("Binding to all IP interfaces on this host."))
-	} else {
-		basic_mud_log(libc.CString("Binding only to IP address %s"), inet_ntoa(bind_addr))
-	}
-	return &bind_addr
+func get_bind_addr() *cnet.Address {
 }
 func set_sendbuf(s int) int {
-	var opt int = (96 * 1024)
-	if setsockopt(int(s), SOL_SOCKET, SO_SNDBUF, unsafe.Pointer((*byte)(unsafe.Pointer(&opt))), int(unsafe.Sizeof(int(0)))) < 0 {
-		C.perror(libc.CString("SYSERR: setsockopt SNDBUF"))
-		return -1
-	}
-	return 0
 }
 func init_descriptor(newd *descriptor_data, desc int) {
 	var last_desc int = 0
-	newd.Descriptor = int(desc)
+	newd.Descriptor = desc
 	newd.Idle_tics = 0
 	newd.Output = &newd.Small_outbuf[0]
 	newd.Bufspace = int(SMALL_BUFSIZE - 1)
-	newd.Login_time = C.time(nil)
+	newd.Login_time = libc.GetTime(nil)
 	*newd.Output = '\x00'
 	newd.Bufptr = 0
 	newd.Has_prompt = 1
@@ -1861,9 +1464,6 @@ func init_descriptor(newd *descriptor_data, desc int) {
 		last_desc = 1
 	}
 	newd.Desc_num = last_desc
-	newd.Comp = new(compr)
-	newd.Comp.State = 0
-	newd.Comp.Stream = nil
 }
 func set_color(d *descriptor_data) {
 	if d.Character == nil {
@@ -1872,75 +1472,24 @@ func set_color(d *descriptor_data) {
 		d.Character.Player_specials = new(player_special_data)
 		d.Character.Desc = d
 	}
-	d.Character.Player_specials.Pref[int(PRF_COLOR/32)] |= bitvector_t(1 << (int(PRF_COLOR % 32)))
+	d.Character.Player_specials.Pref[int(PRF_COLOR/32)] |= bitvector_t(int32(1 << (int(PRF_COLOR % 32))))
 	write_to_output(d, GREETANSI)
 	write_to_output(d, libc.CString("\r\n@w                  Welcome to Dragonball Advent Truth\r\n"))
 	write_to_output(d, libc.CString("@D                 ---(@CPeak Logon Count Today@W: @w%4d@D)---@n\r\n"), PCOUNT)
 	write_to_output(d, libc.CString("@D                 ---(@CHighest Logon Count   @W: @w%4d@D)---@n\r\n"), HIGHPCOUNT)
 	write_to_output(d, libc.CString("@D                 ---(@CTotal Era %d Characters@W: @w%4s@D)---@n\r\n"), CURRENT_ERA, add_commas(int64(ERAPLAYERS)))
 	write_to_output(d, libc.CString("\r\n@cEnter your desired username or the username you have already made.\n@CEnter Username:@n\r\n"))
-	d.User = C.strdup(libc.CString("Empty"))
-	d.Pass = C.strdup(libc.CString("Empty"))
-	d.Email = C.strdup(libc.CString("Empty"))
-	d.Tmp1 = C.strdup(libc.CString("Empty"))
-	d.Tmp2 = C.strdup(libc.CString("Empty"))
-	d.Tmp3 = C.strdup(libc.CString("Empty"))
-	d.Tmp4 = C.strdup(libc.CString("Empty"))
-	d.Tmp5 = C.strdup(libc.CString("Empty"))
+	d.User = libc.CString("Empty")
+	d.Pass = libc.CString("Empty")
+	d.Email = libc.CString("Empty")
+	d.Tmp1 = libc.CString("Empty")
+	d.Tmp2 = libc.CString("Empty")
+	d.Tmp3 = libc.CString("Empty")
+	d.Tmp4 = libc.CString("Empty")
+	d.Tmp5 = libc.CString("Empty")
 	return
 }
 func new_descriptor(s int) int {
-	var (
-		desc              int
-		sockets_connected int = 0
-		i                 int
-		newd              *descriptor_data
-		peer              sockaddr_in
-		from              *hostent = nil
-	)
-	i = int(unsafe.Sizeof(sockaddr_in{}))
-	if (func() int {
-		desc = int(accept(int(s), (*sockaddr)(unsafe.Pointer(&peer)), &i))
-		return desc
-	}()) == math.MaxUint64 {
-		C.perror(libc.CString("SYSERR: accept"))
-		return -1
-	}
-	nonblock(desc)
-	if set_sendbuf(desc) < 0 {
-		close_(int(desc))
-		return 0
-	}
-	for newd = descriptor_list; newd != nil; newd = newd.Next {
-		sockets_connected++
-	}
-	if sockets_connected >= config_info.Operation.Max_playing {
-		write_to_descriptor(desc, libc.CString("Sorry, CircleMUD is full right now... please try again later!\r\n"), nil)
-		close_(int(desc))
-		return 0
-	}
-	newd = new(descriptor_data)
-	if config_info.Operation.Nameserver_is_slow != 0 || (func() *hostent {
-		from = gethostbyaddr(unsafe.Pointer((*byte)(unsafe.Pointer(&peer.Sin_addr))), __int(unsafe.Sizeof(in_addr{})), PF_INET)
-		return from
-	}()) == nil {
-		C.strncpy(&newd.Host[0], inet_ntoa(peer.Sin_addr), HOST_LENGTH)
-		newd.Host[HOST_LENGTH] = '\x00'
-	} else {
-		C.strncpy(&newd.Host[0], from.H_name, HOST_LENGTH)
-		newd.Host[HOST_LENGTH] = '\x00'
-	}
-	if isbanned(&newd.Host[0]) == BAN_ALL {
-		close_(int(desc))
-		mudlog(CMP, ADMLVL_GOD, TRUE, libc.CString("Connection attempt denied from [%s]"), &newd.Host[0])
-		libc.Free(unsafe.Pointer(newd))
-		return 0
-	}
-	init_descriptor(newd, int(desc))
-	newd.Next = descriptor_list
-	descriptor_list = newd
-	set_color(newd)
-	return 0
 }
 func process_output(t *descriptor_data) int {
 	var (
@@ -1948,15 +1497,15 @@ func process_output(t *descriptor_data) int {
 		osb    *byte = &i[2]
 		result int
 	)
-	C.strcpy(&i[0], libc.CString("\r\n"))
-	C.strcpy(osb, t.Output)
+	libc.StrCpy(&i[0], libc.CString("\r\n"))
+	libc.StrCpy(osb, t.Output)
 	if t.Bufspace == 0 {
-		C.strcat(osb, libc.CString("**OVERFLOW**\r\n"))
+		libc.StrCat(osb, libc.CString("**OVERFLOW**\r\n"))
 	}
 	if t.Connected == CON_PLAYING && t.Character != nil && !IS_NPC(t.Character) && !PRF_FLAGGED(t.Character, PRF_COMPACT) {
-		C.strcat(osb, libc.CString("\r\n"))
+		libc.StrCat(osb, libc.CString("\r\n"))
 	}
-	C.strcat(&i[0], make_prompt(t))
+	libc.StrCat(&i[0], make_prompt(t))
 	if t.Connected == CON_PLAYING {
 		proc_colors(&i[0], uint64(98304), int(libc.BoolToInt((func() int {
 			if !IS_NPC(t.Character) {
@@ -1978,12 +1527,12 @@ func process_output(t *descriptor_data) int {
 	}
 	if t.Has_prompt != 0 {
 		t.Has_prompt = FALSE
-		result = write_to_descriptor(t.Descriptor, &i[0], t.Comp)
+		result = write_to_descriptor(t.Descriptor, &i[0])
 		if result >= 2 {
 			result -= 2
 		}
 	} else {
-		result = write_to_descriptor(t.Descriptor, osb, t.Comp)
+		result = write_to_descriptor(t.Descriptor, osb)
 	}
 	if result < 0 {
 		close_socket(t)
@@ -2004,82 +1553,32 @@ func process_output(t *descriptor_data) int {
 		t.Bufspace = int(SMALL_BUFSIZE - 1)
 		t.Bufptr = 0
 		*t.Output = '\x00'
-		if uint(result) < uint(C.strlen(osb)) {
-			var savetextlen uint64 = uint64(C.strlen((*byte)(unsafe.Add(unsafe.Pointer(osb), result))))
-			C.strcat(t.Output, (*byte)(unsafe.Add(unsafe.Pointer(osb), result)))
+		if uint(result) < uint(libc.StrLen(osb)) {
+			var savetextlen uint64 = uint64(libc.StrLen((*byte)(unsafe.Add(unsafe.Pointer(osb), result))))
+			libc.StrCat(t.Output, (*byte)(unsafe.Add(unsafe.Pointer(osb), result)))
 			t.Bufptr -= int(savetextlen)
 			t.Bufspace += int(savetextlen)
 		}
 	} else {
-		C.strcpy(t.Output, (*byte)(unsafe.Add(unsafe.Pointer(t.Output), result)))
+		libc.StrCpy(t.Output, (*byte)(unsafe.Add(unsafe.Pointer(t.Output), result)))
 		t.Bufptr -= result
 		t.Bufspace += result
 	}
 	return result
 }
-func perform_socket_write(desc int, txt *byte, length uint64, comp *compr) ssize_t {
+func perform_socket_write(desc int, txt *byte, length uint64) int64 {
 	var (
-		result       ssize_t = 0
+		result       int64 = 0
 		compr_result int
-		tmp          int
-		cnt          int
-		bytes_copied int
 	)
-	if comp != nil && comp.State >= 2 {
-		if comp.Size_in+int(length) > comp.Total_in {
-			bytes_copied = comp.Total_in - comp.Size_in
-		} else {
-			bytes_copied = int(length)
-		}
-		strncpy((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Pointer(comp.Buff_in))), comp.Size_in)), txt, uint64(bytes_copied))
-		comp.Size_in += bytes_copied
-		comp.Stream.Avail_in = uInt(comp.Size_in)
-		comp.Stream.Next_in = comp.Buff_in
-		for {
-			comp.Stream.Avail_out = uInt(comp.Total_out - comp.Size_out)
-			comp.Stream.Next_out = ([]byte)(unsafe.Add(unsafe.Pointer(comp.Buff_out), comp.Size_out))
-			compr_result = deflate(comp.Stream, func() int {
-				if comp.State == 3 {
-					return Z_FINISH
-				}
-				return Z_SYNC_FLUSH
-			}())
-			if compr_result == Z_STREAM_END {
-				compr_result = 0
-			} else if compr_result == Z_OK && comp.Stream.Avail_out == 0 {
-				compr_result = 1
-			} else if compr_result < 0 {
-				result = 0
-				break
-			} else {
-				compr_result = 0
-			}
-			comp.Size_out = comp.Total_out - int(comp.Stream.Avail_out)
-			tmp = 0
-			for comp.Size_out > 0 {
-				result = write(int(desc), unsafe.Add(unsafe.Pointer(comp.Buff_out), tmp), uint64(comp.Size_out))
-				if result < 1 {
-					goto exitzlibdo
-				}
-				comp.Size_out -= int(result)
-				tmp += int(result)
-			}
-			if compr_result == 0 {
-				break
-			}
-		}
-	exitzlibdo:
-		tmp = comp.Size_in - int(comp.Stream.Avail_in)
-		for cnt = tmp; cnt < comp.Size_in; cnt++ {
-			*(([]byte)(unsafe.Add(unsafe.Pointer(comp.Buff_in), cnt-tmp))) = *(([]byte)(unsafe.Add(unsafe.Pointer(comp.Buff_in), cnt)))
-		}
-		comp.Size_in = int(comp.Stream.Avail_in)
-		if result > 0 {
-			result = ssize_t(bytes_copied)
-		}
-	} else {
-		result = write(int(desc), unsafe.Pointer(txt), length)
-	}
+	_ = compr_result
+	var tmp int
+	_ = tmp
+	var cnt int
+	_ = cnt
+	var bytes_copied int
+	_ = bytes_copied
+	result = int64(stdio.ByFD(uintptr(desc)).Write(txt, int(length)))
 	if result > 0 {
 		return result
 	}
@@ -2087,21 +1586,21 @@ func perform_socket_write(desc int, txt *byte, length uint64, comp *compr) ssize
 		basic_mud_log(libc.CString("SYSERR: Huh??  write() returned 0???  Please report this!"))
 		return -1
 	}
-	if (*__errno_location()) == EAGAIN {
+	if libc.Errno == EAGAIN {
 		return 0
 	}
 	return -1
 }
-func write_to_descriptor(desc int, txt *byte, comp *compr) int {
+func write_to_descriptor(desc int, txt *byte) int {
 	var (
-		bytes_written ssize_t
-		total         uint64 = uint64(C.strlen(txt))
+		bytes_written int64
+		total         uint64 = uint64(libc.StrLen(txt))
 		write_total   uint64 = 0
 	)
 	for total > 0 {
-		bytes_written = perform_socket_write(desc, txt, total, comp)
+		bytes_written = perform_socket_write(desc, txt, total)
 		if bytes_written < 0 {
-			C.perror(libc.CString("SYSERR: Write to socket"))
+			perror(libc.CString("SYSERR: Write to socket"))
 			return -1
 		} else if bytes_written == 0 {
 			return int(write_total)
@@ -2113,9 +1612,9 @@ func write_to_descriptor(desc int, txt *byte, comp *compr) int {
 	}
 	return int(write_total)
 }
-func perform_socket_read(desc int, read_point *byte, space_left uint64) ssize_t {
-	var ret ssize_t
-	ret = read(int(desc), unsafe.Pointer(read_point), space_left)
+func perform_socket_read(desc int, read_point *byte, space_left uint64) int64 {
+	var ret int64
+	ret = int64(stdio.ByFD(uintptr(desc)).Read(read_point, int(space_left)))
 	if ret > 0 {
 		return ret
 	}
@@ -2123,32 +1622,31 @@ func perform_socket_read(desc int, read_point *byte, space_left uint64) ssize_t 
 		basic_mud_log(libc.CString("WARNING: EOF on socket read (connection broken by peer)"))
 		return -1
 	}
-	if (*__errno_location()) == EINTR {
+	if libc.Errno == EINTR {
 		return 0
 	}
-	if (*__errno_location()) == EAGAIN {
+	if libc.Errno == EAGAIN {
 		return 0
 	}
-	if (*__errno_location()) == ECONNRESET {
+	if libc.Errno == ECONNRESET {
 		return -1
 	}
-	C.perror(libc.CString("SYSERR: perform_socket_read: about to lose connection"))
+	perror(libc.CString("SYSERR: perform_socket_read: about to lose connection"))
 	return -1
 }
 func process_input(t *descriptor_data) int {
 	var (
-		buf_length     int
-		failed_subst   int
-		bytes_read     ssize_t
-		space_left     uint64
-		ptr            *byte
-		read_point     *byte
-		write_point    *byte
-		nl_pos         *byte = nil
-		tmp            [2048]byte
-		compress_start [6]byte = [6]byte{IAC, SB, COMPRESS2, IAC, SE, 0}
+		buf_length   int
+		failed_subst int
+		bytes_read   int64
+		space_left   uint64
+		ptr          *byte
+		read_point   *byte
+		write_point  *byte
+		nl_pos       *byte = nil
+		tmp          [2048]byte
 	)
-	buf_length = int(C.strlen(&t.Inbuf[0]))
+	buf_length = libc.StrLen(&t.Inbuf[0])
 	read_point = &t.Inbuf[buf_length]
 	space_left = uint64(MAX_RAW_INPUT_LENGTH - buf_length - 1)
 	for {
@@ -2161,27 +1659,6 @@ func process_input(t *descriptor_data) int {
 			return -1
 		} else if bytes_read == 0 {
 			return 0
-		}
-		if t.Comp.State == 1 {
-			if *read_point == IAC && *((*byte)(unsafe.Add(unsafe.Pointer(read_point), 1))) == DO && *((*byte)(unsafe.Add(unsafe.Pointer(read_point), 2))) == COMPRESS2 {
-				write_to_descriptor(t.Descriptor, &compress_start[0], nil)
-				t.Comp.Stream = new(z_stream)
-				t.Comp.Stream.Zalloc = z_alloc
-				t.Comp.Stream.Zfree = z_free
-				t.Comp.Stream.Opaque = (voidpf)(unsafe.Pointer(uintptr(Z_NULL)))
-				deflateInit_(t.Comp.Stream, -1, ZLIB_VERSION, int(unsafe.Sizeof(z_stream{})))
-				t.Comp.Buff_out = &make([]Bytef, SMALL_BUFSIZE)[0]
-				t.Comp.Total_out = SMALL_BUFSIZE
-				t.Comp.Size_out = 0
-				t.Comp.Buff_in = &make([]Bytef, SMALL_BUFSIZE)[0]
-				t.Comp.Total_in = SMALL_BUFSIZE
-				t.Comp.Size_in = 0
-				t.Comp.State = 2
-				bytes_read = 0
-			} else if *read_point == IAC && *((*byte)(unsafe.Add(unsafe.Pointer(read_point), 1))) == DONT && *((*byte)(unsafe.Add(unsafe.Pointer(read_point), 2))) == COMPRESS2 {
-				t.Comp.State = 0
-				bytes_read = 0
-			}
 		}
 		*((*byte)(unsafe.Add(unsafe.Pointer(read_point), bytes_read))) = '\x00'
 		for ptr = read_point; *ptr != 0 && nl_pos == nil; ptr = (*byte)(unsafe.Add(unsafe.Pointer(ptr), 1)) {
@@ -2213,7 +1690,7 @@ func process_input(t *descriptor_data) int {
 						space_left++
 					}
 				}
-			} else if (int(*ptr) & ^int(math.MaxInt8)) == 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*ptr)))))&int(uint16(int16(_ISprint)))) != 0 {
+			} else if isascii(rune(*ptr)) && unicode.IsPrint(rune(*ptr)) {
 				if (func() byte {
 					p := (func() *byte {
 						p := &write_point
@@ -2245,7 +1722,7 @@ func process_input(t *descriptor_data) int {
 		if space_left <= 0 && uintptr(unsafe.Pointer(ptr)) < uintptr(unsafe.Pointer(nl_pos)) {
 			var buffer [2112]byte
 			stdio.Snprintf(&buffer[0], int(2112), "Line too long.  Truncated to:\r\n%s\r\n", &tmp[0])
-			if write_to_descriptor(t.Descriptor, &buffer[0], t.Comp) < 0 {
+			if write_to_descriptor(t.Descriptor, &buffer[0]) < 0 {
 				return -1
 			}
 		}
@@ -2254,7 +1731,7 @@ func process_input(t *descriptor_data) int {
 		}
 		failed_subst = 0
 		if tmp[0] == '!' && (tmp[1]) == 0 {
-			C.strcpy(&tmp[0], &t.Last_input[0])
+			libc.StrCpy(&tmp[0], &t.Last_input[0])
 		} else if tmp[0] == '!' && tmp[1] != 0 {
 			var (
 				commandln    *byte = (&tmp[1])
@@ -2269,8 +1746,8 @@ func process_input(t *descriptor_data) int {
 			skip_spaces(&commandln)
 			for ; cnt != starting_pos; cnt-- {
 				if *(**byte)(unsafe.Add(unsafe.Pointer(t.History), unsafe.Sizeof((*byte)(nil))*uintptr(cnt))) != nil && is_abbrev(commandln, *(**byte)(unsafe.Add(unsafe.Pointer(t.History), unsafe.Sizeof((*byte)(nil))*uintptr(cnt)))) != 0 {
-					C.strcpy(&tmp[0], *(**byte)(unsafe.Add(unsafe.Pointer(t.History), unsafe.Sizeof((*byte)(nil))*uintptr(cnt))))
-					C.strcpy(&t.Last_input[0], &tmp[0])
+					libc.StrCpy(&tmp[0], *(**byte)(unsafe.Add(unsafe.Pointer(t.History), unsafe.Sizeof((*byte)(nil))*uintptr(cnt))))
+					libc.StrCpy(&t.Last_input[0], &tmp[0])
 					write_to_output(t, libc.CString("%s\r\n"), &tmp[0])
 					break
 				}
@@ -2283,14 +1760,14 @@ func process_input(t *descriptor_data) int {
 				failed_subst = perform_subst(t, &t.Last_input[0], &tmp[0])
 				return failed_subst
 			}()) == 0 {
-				C.strcpy(&t.Last_input[0], &tmp[0])
+				libc.StrCpy(&t.Last_input[0], &tmp[0])
 			}
 		} else {
-			C.strcpy(&t.Last_input[0], &tmp[0])
+			libc.StrCpy(&t.Last_input[0], &tmp[0])
 			if *(**byte)(unsafe.Add(unsafe.Pointer(t.History), unsafe.Sizeof((*byte)(nil))*uintptr(t.History_pos))) != nil {
 				libc.Free(unsafe.Pointer(*(**byte)(unsafe.Add(unsafe.Pointer(t.History), unsafe.Sizeof((*byte)(nil))*uintptr(t.History_pos)))))
 			}
-			*(**byte)(unsafe.Add(unsafe.Pointer(t.History), unsafe.Sizeof((*byte)(nil))*uintptr(t.History_pos))) = C.strdup(&tmp[0])
+			*(**byte)(unsafe.Add(unsafe.Pointer(t.History), unsafe.Sizeof((*byte)(nil))*uintptr(t.History_pos))) = libc.StrDup(&tmp[0])
 			if func() int {
 				p := &t.History_pos
 				*p++
@@ -2347,7 +1824,7 @@ func perform_subst(t *descriptor_data, orig *byte, subst *byte) int {
 	)
 	first = (*byte)(unsafe.Add(unsafe.Pointer(subst), 1))
 	if (func() *byte {
-		second = C.strchr(first, '^')
+		second = libc.StrChr(first, '^')
 		return second
 	}()) == nil {
 		write_to_output(t, libc.CString("Invalid substitution.\r\n"))
@@ -2360,20 +1837,20 @@ func perform_subst(t *descriptor_data, orig *byte, subst *byte) int {
 		return x
 	}()) = '\x00'
 	if (func() *byte {
-		strpos = C.strstr(orig, first)
+		strpos = libc.StrStr(orig, first)
 		return strpos
 	}()) == nil {
 		write_to_output(t, libc.CString("Invalid substitution.\r\n"))
 		return 1
 	}
-	C.strncpy(&newsub[0], orig, uint64(int64(uintptr(unsafe.Pointer(strpos))-uintptr(unsafe.Pointer(orig)))))
+	libc.StrNCpy(&newsub[0], orig, int(int64(uintptr(unsafe.Pointer(strpos))-uintptr(unsafe.Pointer(orig)))))
 	newsub[int64(uintptr(unsafe.Pointer(strpos))-uintptr(unsafe.Pointer(orig)))] = '\x00'
-	C.strncat(&newsub[0], second, uint64(MAX_INPUT_LENGTH-C.strlen(&newsub[0])-1))
-	if ((int64(uintptr(unsafe.Pointer(strpos)) - uintptr(unsafe.Pointer(orig)))) + C.strlen(first)) < C.strlen(orig) {
-		C.strncat(&newsub[0], (*byte)(unsafe.Add(unsafe.Pointer(strpos), C.strlen(first))), uint64(MAX_INPUT_LENGTH-C.strlen(&newsub[0])-1))
+	libc.StrNCat(&newsub[0], second, MAX_INPUT_LENGTH-libc.StrLen(&newsub[0])-1)
+	if ((int64(uintptr(unsafe.Pointer(strpos)) - uintptr(unsafe.Pointer(orig)))) + int64(libc.StrLen(first))) < int64(libc.StrLen(orig)) {
+		libc.StrNCat(&newsub[0], (*byte)(unsafe.Add(unsafe.Pointer(strpos), libc.StrLen(first))), MAX_INPUT_LENGTH-libc.StrLen(&newsub[0])-1)
 	}
 	newsub[int(MAX_INPUT_LENGTH-1)] = '\x00'
-	C.strcpy(subst, &newsub[0])
+	libc.StrCpy(subst, &newsub[0])
 	return 0
 }
 func free_user(d *descriptor_data) {
@@ -2385,7 +1862,7 @@ func free_user(d *descriptor_data) {
 		return
 	}
 	d.User_freed = 1
-	if C.strcasecmp(d.User, libc.CString("Empty")) == 0 {
+	if libc.StrCaseCmp(d.User, libc.CString("Empty")) == 0 {
 		return
 	}
 	basic_mud_log(libc.CString("Freeing User: %s"), d.User)
@@ -2427,7 +1904,7 @@ func close_socket(d *descriptor_data) {
 			temp.Next = d.Next
 		}
 	}
-	close_(int(d.Descriptor))
+	stdio.ByFD(uintptr(d.Descriptor)).Close()
 	flush_queues(d)
 	if d.Snooping != nil {
 		d.Snooping.Snoop_by = nil
@@ -2513,15 +1990,6 @@ func close_socket(d *descriptor_data) {
 		cleanup_olc(d, CLEANUP_ALL)
 	default:
 	}
-	if d.Comp.Stream != nil {
-		deflateEnd(d.Comp.Stream)
-		libc.Free(unsafe.Pointer(d.Comp.Stream))
-		libc.Free(unsafe.Pointer(d.Comp.Buff_out))
-		libc.Free(unsafe.Pointer(d.Comp.Buff_in))
-	}
-	if d.Comp != nil {
-		libc.Free(unsafe.Pointer(d.Comp))
-	}
 	libc.Free(unsafe.Pointer(d))
 }
 func check_idle_passwords() {
@@ -2534,11 +2002,10 @@ func check_idle_passwords() {
 		if d.Connected != CON_PASSWORD && d.Connected != CON_GET_EMAIL && d.Connected != CON_NEWPASSWD {
 			continue
 		}
-		if d.Idle_tics == 0 {
+		if int(d.Idle_tics) == 0 {
 			d.Idle_tics++
 			continue
 		} else {
-			echo_on(d)
 			write_to_output(d, libc.CString("\r\nTimed out... goodbye.\r\n"))
 			d.Connected = CON_CLOSE
 		}
@@ -2554,25 +2021,17 @@ func check_idle_menu() {
 		if d.Connected != CON_MENU && d.Connected != CON_GET_USER && d.Connected != CON_UMENU {
 			continue
 		}
-		if d.Idle_tics == 0 {
+		if int(d.Idle_tics) == 0 {
 			d.Idle_tics++
 			write_to_output(d, libc.CString("\r\nYou are about to be disconnected due to inactivity in 60 seconds.\r\n"))
 			continue
 		} else {
-			echo_on(d)
 			write_to_output(d, libc.CString("\r\nTimed out... goodbye.\r\n"))
 			d.Connected = CON_CLOSE
 		}
 	}
 }
 func nonblock(s int) {
-	var flags int
-	flags = fcntl(int(s), F_GETFL, 0)
-	flags |= O_NONBLOCK
-	if fcntl(int(s), F_SETFL, flags) < 0 {
-		C.perror(libc.CString("SYSERR: Fatal error executing nonblock (comm.c)"))
-		C.exit(1)
-	}
 }
 func reread_wizlists(sig int) {
 	reread_wizlist = TRUE
@@ -2581,65 +2040,20 @@ func unrestrict_game(sig int) {
 	emergency_unban = TRUE
 }
 func reap(sig int) {
-	for waitpid(-1, nil, WNOHANG) > 0 {
-	}
-	signal(SIGCHLD, func(arg1 int) {
-		reap(arg1)
-	})
 }
 func checkpointing(sig int) {
 	if tics_passed == 0 {
 		basic_mud_log(libc.CString("SYSERR: CHECKPOINT shutdown: tics not updated. (Infinite loop suspected)"))
-		abort()
+		panic("abort")
 	} else {
 		tics_passed = 0
 	}
 }
 func hupsig(sig int) {
 	basic_mud_log(libc.CString("SYSERR: Received SIGHUP, SIGINT, or SIGTERM.  Shutting down..."))
-	C.exit(1)
+	os.Exit(1)
 }
 func signal_setup() {
-	var (
-		itime    itimerval
-		interval timeval
-	)
-	signal(SIGUSR1, func(arg1 int) {
-		reread_wizlists(arg1)
-	})
-	signal(SIGUSR2, func(arg1 int) {
-		unrestrict_game(arg1)
-	})
-	interval.Tv_sec = 180
-	interval.Tv_usec = 0
-	itime.It_interval = interval
-	itime.It_value = interval
-	setitimer(__itimer_which_t(ITIMER_VIRTUAL), &itime, nil)
-	signal(SIGVTALRM, func(arg1 int) {
-		checkpointing(arg1)
-	})
-	signal(SIGHUP, func(arg1 int) {
-		hupsig(arg1)
-	})
-	signal(SIGCHLD, func(arg1 int) {
-		reap(arg1)
-	})
-	signal(SIGINT, func(arg1 int) {
-		hupsig(arg1)
-	})
-	signal(SIGTERM, func(arg1 int) {
-		hupsig(arg1)
-	})
-	signal(SIGPIPE, func(arg1 int) {
-		(func(arg1 int) {
-			libc.AsFunc(1, (*func(int))(nil)).(func(int))(arg1)
-		})(arg1)
-	})
-	signal(SIGALRM, func(arg1 int) {
-		(func(arg1 int) {
-			libc.AsFunc(1, (*func(int))(nil)).(func(int))(arg1)
-		})(arg1)
-	})
 }
 func send_to_char(ch *char_data, messg *byte, _rest ...interface{}) uint64 {
 	if ch.Desc != nil && messg != nil && *messg != 0 {
@@ -2676,7 +2090,7 @@ func arena_watch(ch *char_data) int {
 		}
 	}
 	if found == FALSE {
-		ch.Player_specials.Pref[int(PRF_ARENAWATCH/32)] &= bitvector_t(^(1 << (int(PRF_ARENAWATCH % 32))))
+		ch.Player_specials.Pref[int(PRF_ARENAWATCH/32)] &= bitvector_t(int32(^(1 << (int(PRF_ARENAWATCH % 32)))))
 		ch.Arenawatch = -1
 		return -1
 	} else {
@@ -2770,7 +2184,7 @@ func send_to_planet(type_ int, planet int, messg *byte, _rest ...interface{}) {
 		if i.Connected != CON_PLAYING || i.Character == nil {
 			continue
 		}
-		if !AWAKE(i.Character) || !ROOM_FLAGGED(i.Character.In_room, bitvector_t(planet)) {
+		if !AWAKE(i.Character) || !ROOM_FLAGGED(i.Character.In_room, bitvector_t(int32(planet))) {
 			continue
 		} else {
 			if type_ == 0 {
@@ -2946,10 +2360,10 @@ func perform_act(orig *byte, ch *char_data, obj *obj_data, vict_obj unsafe.Point
 					i = fname((*byte)(vict_obj))
 				}
 			case 'u':
-				for j = buf; uintptr(unsafe.Pointer(j)) > uintptr(unsafe.Pointer(&lbuf[0])) && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*((*byte)(unsafe.Add(unsafe.Pointer(j), -1))))))))&int(uint16(int16(_ISspace)))) == 0; j = (*byte)(unsafe.Add(unsafe.Pointer(j), -1)) {
+				for j = buf; uintptr(unsafe.Pointer(j)) > uintptr(unsafe.Pointer(&lbuf[0])) && !unicode.IsSpace(rune(int(*((*byte)(unsafe.Add(unsafe.Pointer(j), -1)))))); j = (*byte)(unsafe.Add(unsafe.Pointer(j), -1)) {
 				}
 				if j != buf {
-					*j = byte(int8(C.toupper(int(*j))))
+					*j = byte(int8(unicode.ToUpper(rune(*j))))
 				}
 				i = libc.CString("")
 			case 'U':
@@ -2970,8 +2384,8 @@ func perform_act(orig *byte, ch *char_data, obj *obj_data, vict_obj unsafe.Point
 				}())
 				return *p
 			}()) != 0 {
-				if uppercasenext && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*buf)))))&int(uint16(int16(_ISspace)))) == 0 {
-					*buf = byte(int8(C.toupper(int(*buf))))
+				if uppercasenext && !unicode.IsSpace(rune(int(*buf))) {
+					*buf = byte(int8(unicode.ToUpper(rune(*buf))))
 					uppercasenext = FALSE != 0
 				}
 				buf = (*byte)(unsafe.Add(unsafe.Pointer(buf), 1))
@@ -2998,8 +2412,8 @@ func perform_act(orig *byte, ch *char_data, obj *obj_data, vict_obj unsafe.Point
 			return *p
 		}()) == 0 {
 			break
-		} else if uppercasenext && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*((*byte)(unsafe.Add(unsafe.Pointer(buf), -1))))))))&int(uint16(int16(_ISspace)))) == 0 {
-			*((*byte)(unsafe.Add(unsafe.Pointer(buf), -1))) = byte(int8(C.toupper(int(*((*byte)(unsafe.Add(unsafe.Pointer(buf), -1)))))))
+		} else if uppercasenext && !unicode.IsSpace(rune(int(*((*byte)(unsafe.Add(unsafe.Pointer(buf), -1)))))) {
+			*((*byte)(unsafe.Add(unsafe.Pointer(buf), -1))) = byte(int8(unicode.ToUpper(rune(*((*byte)(unsafe.Add(unsafe.Pointer(buf), -1)))))))
 			uppercasenext = FALSE != 0
 		}
 	}
@@ -3027,7 +2441,7 @@ func perform_act(orig *byte, ch *char_data, obj *obj_data, vict_obj unsafe.Point
 	if last_act_message != nil {
 		libc.Free(unsafe.Pointer(last_act_message))
 	}
-	last_act_message = C.strdup(&lbuf[0])
+	last_act_message = libc.StrDup(&lbuf[0])
 }
 
 var to_sleeping int = 0
@@ -3067,7 +2481,7 @@ func act(str *byte, hide_invisible int, ch *char_data, obj *obj_data, vict_obj u
 		if GET_SKILL(ch, SKILL_BALANCE) != 0 {
 			dcval += GET_SKILL(ch, SKILL_BALANCE) / 10
 		}
-		if ch.Race == RACE_MUTANT && ((ch.Genome[0]) == 5 || (ch.Genome[1]) == 5) {
+		if int(ch.Race) == RACE_MUTANT && ((ch.Genome[0]) == 5 || (ch.Genome[1]) == 5) {
 			dcval += 10
 		}
 		resskill = SKILL_SPOT
@@ -3193,8 +2607,8 @@ func act(str *byte, hide_invisible int, ch *char_data, obj *obj_data, vict_obj u
 	return last_act_message
 }
 func setup_log(filename *byte, fd int) {
-	var s_fp *C.FILE
-	s_fp = stderr
+	var s_fp *stdio.File
+	s_fp = stdio.Stderr()
 	if filename == nil || *filename == '\x00' {
 		logfile = s_fp
 		puts(libc.CString("Using file descriptor for logging."))
@@ -3210,13 +2624,13 @@ func setup_log(filename *byte, fd int) {
 		return
 	}
 	puts(libc.CString("SYSERR: Couldn't open anything to log to, giving up."))
-	C.exit(1)
+	os.Exit(1)
 }
-func open_logfile(filename *byte, stderr_fp *C.FILE) int {
+func open_logfile(filename *byte, stderr_fp *stdio.File) int {
 	if stderr_fp != nil {
 		logfile = freopen(filename, libc.CString("w"), stderr_fp)
 	} else {
-		logfile = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(filename), "w")))
+		logfile = stdio.FOpen(libc.GoString(filename), "w")
 	}
 	if logfile != nil {
 		stdio.Printf("Using log file '%s'%s.\n", filename, func() string {
@@ -3227,16 +2641,10 @@ func open_logfile(filename *byte, stderr_fp *C.FILE) int {
 		}())
 		return TRUE
 	}
-	stdio.Printf("SYSERR: Error opening file '%s': %s\n", filename, C.strerror(*__errno_location()))
+	stdio.Printf("SYSERR: Error opening file '%s': %s\n", filename, libc.StrError(libc.Errno))
 	return FALSE
 }
-func circle_sleep(timeout *timeval) {
-	if netpoll_select(0, nil, nil, nil, timeout) < 0 {
-		if (*__errno_location()) != EINTR {
-			C.perror(libc.CString("SYSERR: Select sleep"))
-			C.exit(1)
-		}
-	}
+func circle_sleep(timeout *libc.TimeVal) {
 }
 func show_help(t *descriptor_data, entry *byte) {
 	var (
@@ -3252,17 +2660,17 @@ func show_help(t *descriptor_data, entry *byte) {
 	}
 	bot = 0
 	top = top_of_helpt
-	minlen = int(C.strlen(entry))
+	minlen = libc.StrLen(entry)
 	for {
 		mid = (bot + top) / 2
 		if bot > top {
 			return
 		} else if (func() int {
-			chk = C.strncasecmp(entry, (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid)))).Keywords, uint64(minlen))
+			chk = libc.StrNCaseCmp(entry, (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid)))).Keywords, minlen)
 			return chk
 		}()) == 0 {
 			for mid > 0 && (func() int {
-				chk = C.strncasecmp(entry, (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid-1)))).Keywords, uint64(minlen))
+				chk = libc.StrNCaseCmp(entry, (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid-1)))).Keywords, minlen)
 				return chk
 			}()) == 0 {
 				mid--
@@ -3317,35 +2725,35 @@ func send_to_range(start room_vnum, finish room_vnum, messg *byte, _rest ...inte
 	}
 }
 func passcomm(ch *char_data, comm *byte) int {
-	if C.strcasecmp(comm, libc.CString("score")) == 0 {
+	if libc.StrCaseCmp(comm, libc.CString("score")) == 0 {
 		return TRUE
-	} else if C.strcasecmp(comm, libc.CString("sco")) == 0 {
+	} else if libc.StrCaseCmp(comm, libc.CString("sco")) == 0 {
 		return TRUE
-	} else if C.strcasecmp(comm, libc.CString("ooc")) == 0 {
+	} else if libc.StrCaseCmp(comm, libc.CString("ooc")) == 0 {
 		return TRUE
-	} else if C.strcasecmp(comm, libc.CString("newbie")) == 0 {
+	} else if libc.StrCaseCmp(comm, libc.CString("newbie")) == 0 {
 		return TRUE
-	} else if C.strcasecmp(comm, libc.CString("newb")) == 0 {
+	} else if libc.StrCaseCmp(comm, libc.CString("newb")) == 0 {
 		return TRUE
-	} else if C.strcasecmp(comm, libc.CString("look")) == 0 {
+	} else if libc.StrCaseCmp(comm, libc.CString("look")) == 0 {
 		return TRUE
-	} else if C.strcasecmp(comm, libc.CString("lo")) == 0 {
+	} else if libc.StrCaseCmp(comm, libc.CString("lo")) == 0 {
 		return TRUE
-	} else if C.strcasecmp(comm, libc.CString("l")) == 0 {
+	} else if libc.StrCaseCmp(comm, libc.CString("l")) == 0 {
 		return TRUE
-	} else if C.strcasecmp(comm, libc.CString("status")) == 0 {
+	} else if libc.StrCaseCmp(comm, libc.CString("status")) == 0 {
 		return TRUE
-	} else if C.strcasecmp(comm, libc.CString("stat")) == 0 {
+	} else if libc.StrCaseCmp(comm, libc.CString("stat")) == 0 {
 		return TRUE
-	} else if C.strcasecmp(comm, libc.CString("sta")) == 0 {
+	} else if libc.StrCaseCmp(comm, libc.CString("sta")) == 0 {
 		return TRUE
-	} else if C.strcasecmp(comm, libc.CString("tell")) == 0 {
+	} else if libc.StrCaseCmp(comm, libc.CString("tell")) == 0 {
 		return TRUE
-	} else if C.strcasecmp(comm, libc.CString("reply")) == 0 {
+	} else if libc.StrCaseCmp(comm, libc.CString("reply")) == 0 {
 		return TRUE
-	} else if C.strcasecmp(comm, libc.CString("say")) == 0 {
+	} else if libc.StrCaseCmp(comm, libc.CString("say")) == 0 {
 		return TRUE
-	} else if C.strcasecmp(comm, libc.CString("osay")) == 0 {
+	} else if libc.StrCaseCmp(comm, libc.CString("osay")) == 0 {
 		return TRUE
 	} else {
 		return FALSE

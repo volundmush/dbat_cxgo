@@ -1,9 +1,10 @@
 package main
 
-import "C"
 import (
+	"github.com/gotranspile/cxgo/runtime/csys"
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"unicode"
 	"unsafe"
 )
 
@@ -12,59 +13,59 @@ const TOG_ON = 1
 
 func log_imm_action(messg *byte, _rest ...interface{}) {
 	var (
-		fl       *C.FILE
+		fl       *stdio.File
 		filename *byte
-		fbuf     stat
+		fbuf     csys.StatRes
 	)
 	filename = libc.CString(LIB_MISC)
-	if C.stat(filename, &fbuf) < 0 {
-		C.perror(libc.CString("SYSERR: Can't C.stat() file"))
+	if int(csys.Stat(filename, &fbuf)) < 0 {
+		perror(libc.CString("SYSERR: Can't stat() file"))
 		return
 	}
-	if fbuf.St_size >= __off_t(config_info.Operation.Max_filesize*4) {
+	if fbuf.Size >= uint64(config_info.Operation.Max_filesize*4) {
 		return
 	}
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(filename), "a")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(filename), "a")
 		return fl
 	}()) == nil {
-		C.perror(libc.CString("SYSERR: log_imm_action"))
+		perror(libc.CString("SYSERR: log_imm_action"))
 		return
 	}
-	var ct int64 = C.time(nil)
-	var time_s *byte = C.asctime(C.localtime(&ct))
+	var ct libc.Time = libc.GetTime(nil)
+	var time_s *byte = libc.AscTime(libc.LocalTime(&ct))
 	var args libc.ArgList
 	args.Start(messg, _rest)
-	*(*byte)(unsafe.Add(unsafe.Pointer(time_s), C.strlen(time_s)-1)) = '\x00'
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%-15.15s :: ", (*byte)(unsafe.Add(unsafe.Pointer(time_s), 4)))
-	stdio.Vfprintf((*stdio.File)(unsafe.Pointer(fl)), libc.GoString(messg), args)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "\n")
+	*(*byte)(unsafe.Add(unsafe.Pointer(time_s), libc.StrLen(time_s)-1)) = '\x00'
+	stdio.Fprintf(fl, "%-15.15s :: ", (*byte)(unsafe.Add(unsafe.Pointer(time_s), 4)))
+	stdio.Vfprintf(fl, libc.GoString(messg), args)
+	stdio.Fprintf(fl, "\n")
 	args.End()
-	C.fclose(fl)
+	fl.Close()
 }
 func log_custom(d *descriptor_data, obj *obj_data) {
 	var (
-		fl       *C.FILE
+		fl       *stdio.File
 		filename *byte
-		fbuf     stat
+		fbuf     csys.StatRes
 	)
 	filename = libc.CString(LIB_MISC)
-	if C.stat(filename, &fbuf) < 0 {
-		C.perror(libc.CString("SYSERR: Can't C.stat() file"))
+	if int(csys.Stat(filename, &fbuf)) < 0 {
+		perror(libc.CString("SYSERR: Can't stat() file"))
 		return
 	}
-	if fbuf.St_size >= __off_t(config_info.Operation.Max_filesize*4) {
+	if fbuf.Size >= uint64(config_info.Operation.Max_filesize*4) {
 		return
 	}
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(filename), "a")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(filename), "a")
 		return fl
 	}()) == nil {
-		C.perror(libc.CString("SYSERR: log_custom"))
+		perror(libc.CString("SYSERR: log_custom"))
 		return
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "@D[@cUser@W: @R%-20s @cName@W: @C%-20s @cCustom@W: @Y%s@D]\n", GET_USER(d.Character), GET_NAME(d.Character), obj.Short_description)
-	C.fclose(fl)
+	stdio.Fprintf(fl, "@D[@cUser@W: @R%-20s @cName@W: @C%-20s @cCustom@W: @Y%s@D]\n", GET_USER(d.Character), GET_NAME(d.Character), obj.Short_description)
+	fl.Close()
 }
 func bring_to_cap(ch *char_data) {
 	var (
@@ -82,7 +83,7 @@ func bring_to_cap(ch *char_data) {
 	if !soft_cap(ch, 2) {
 		skipst = TRUE
 	}
-	if ch.Race == RACE_BIO {
+	if int(ch.Race) == RACE_BIO {
 		if PLR_FLAGGED(ch, PLR_TRANS1) {
 			mult = 2
 		} else if PLR_FLAGGED(ch, PLR_TRANS2) {
@@ -92,7 +93,7 @@ func bring_to_cap(ch *char_data) {
 		} else if PLR_FLAGGED(ch, PLR_TRANS4) {
 			mult = 4
 		}
-	} else if ch.Race == RACE_MAJIN {
+	} else if int(ch.Race) == RACE_MAJIN {
 		if PLR_FLAGGED(ch, PLR_TRANS1) {
 			mult = 2
 		} else if PLR_FLAGGED(ch, PLR_TRANS2) {
@@ -100,7 +101,7 @@ func bring_to_cap(ch *char_data) {
 		} else if PLR_FLAGGED(ch, PLR_TRANS3) {
 			mult = int(4.5)
 		}
-	} else if ch.Race == RACE_TRUFFLE {
+	} else if int(ch.Race) == RACE_TRUFFLE {
 		if PLR_FLAGGED(ch, PLR_TRANS1) {
 			mult = 3
 		} else if PLR_FLAGGED(ch, PLR_TRANS2) {
@@ -109,7 +110,7 @@ func bring_to_cap(ch *char_data) {
 			mult = 5
 		}
 	}
-	if ch.Race == RACE_KANASSAN || ch.Race == RACE_DEMON {
+	if int(ch.Race) == RACE_KANASSAN || int(ch.Race) == RACE_DEMON {
 		if skippl == FALSE {
 			var (
 				base int64 = ch.Basepl
@@ -504,9 +505,9 @@ func do_rpp(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return
 			} else {
 				ch.Desc.Connected = CON_POBJ
-				ch.Desc.Obj_name = C.strdup(libc.CString("Generic Armor Vest"))
-				ch.Desc.Obj_short = C.strdup(libc.CString("@cGeneric @DArmor @WVest@n"))
-				ch.Desc.Obj_long = C.strdup(libc.CString("@wA @cgeneric @Darmor @Wvest@w is lying here@n"))
+				ch.Desc.Obj_name = libc.CString("Generic Armor Vest")
+				ch.Desc.Obj_short = libc.CString("@cGeneric @DArmor @WVest@n")
+				ch.Desc.Obj_long = libc.CString("@wA @cgeneric @Darmor @Wvest@w is lying here@n")
 				ch.Desc.Obj_type = 1
 				ch.Desc.Obj_weapon = 0
 				disp_custom_menu(ch.Desc)
@@ -525,19 +526,19 @@ func do_rpp(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_char(ch, libc.CString("What do you want to change your alignment to? (evil, sorta-evil, neutral, sorta-good, good)"))
 					return
 				}
-				if C.strcasecmp(&arg2[0], libc.CString("evil")) == 0 {
+				if libc.StrCaseCmp(&arg2[0], libc.CString("evil")) == 0 {
 					send_to_char(ch, libc.CString("You change your alignment to Evil.\r\n"))
 					ch.Alignment = -750
-				} else if C.strcasecmp(&arg2[0], libc.CString("sorta-evil")) == 0 {
+				} else if libc.StrCaseCmp(&arg2[0], libc.CString("sorta-evil")) == 0 {
 					send_to_char(ch, libc.CString("You change your alignment to Sorta Evil.\r\n"))
 					ch.Alignment = -50
-				} else if C.strcasecmp(&arg2[0], libc.CString("neutral")) == 0 {
+				} else if libc.StrCaseCmp(&arg2[0], libc.CString("neutral")) == 0 {
 					send_to_char(ch, libc.CString("You change your alignment to Neutral.\r\n"))
 					ch.Alignment = 0
-				} else if C.strcasecmp(&arg2[0], libc.CString("sorta-good")) == 0 {
+				} else if libc.StrCaseCmp(&arg2[0], libc.CString("sorta-good")) == 0 {
 					send_to_char(ch, libc.CString("You change your alignment to Sorta Good.\r\n"))
 					ch.Alignment = 51
-				} else if C.strcasecmp(&arg2[0], libc.CString("good")) == 0 {
+				} else if libc.StrCaseCmp(&arg2[0], libc.CString("good")) == 0 {
 					send_to_char(ch, libc.CString("You change your alignment to Good.\r\n"))
 					ch.Alignment = 300
 				} else {
@@ -566,61 +567,61 @@ func do_rpp(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_char(ch, libc.CString("What stat? (str, con, int, wis, spd, agl)"))
 					return
 				}
-				if C.strcasecmp(&arg2[0], libc.CString("str")) == 0 {
-					if (ch.Bonuses[BONUS_WIMP]) > 0 && ch.Real_abils.Str >= 45 {
+				if libc.StrCaseCmp(&arg2[0], libc.CString("str")) == 0 {
+					if (ch.Bonuses[BONUS_WIMP]) > 0 && int(ch.Real_abils.Str) >= 45 {
 						send_to_char(ch, libc.CString("You can't because that stat maxes at 45 due to a trait negative.\r\n"))
 						return
-					} else if ch.Aff_abils.Str >= 100 {
+					} else if int(ch.Aff_abils.Str) >= 100 {
 						send_to_char(ch, libc.CString("100 is the maximum for any stat.\r\n"))
 						return
 					}
 					send_to_char(ch, libc.CString("You increase your strength by 2.\r\n"))
 					ch.Real_abils.Str += 2
-				} else if C.strcasecmp(&arg2[0], libc.CString("con")) == 0 {
-					if (ch.Bonuses[BONUS_FRAIL]) > 0 && ch.Real_abils.Con >= 45 {
+				} else if libc.StrCaseCmp(&arg2[0], libc.CString("con")) == 0 {
+					if (ch.Bonuses[BONUS_FRAIL]) > 0 && int(ch.Real_abils.Con) >= 45 {
 						send_to_char(ch, libc.CString("You can't because that stat maxes at 45 due to a trait negative.\r\n"))
 						return
-					} else if ch.Aff_abils.Con >= 100 {
+					} else if int(ch.Aff_abils.Con) >= 100 {
 						send_to_char(ch, libc.CString("100 is the maximum for any stat.\r\n"))
 						return
 					}
 					send_to_char(ch, libc.CString("You increase your constitution by 2.\r\n"))
 					ch.Real_abils.Con += 2
-				} else if C.strcasecmp(&arg2[0], libc.CString("int")) == 0 {
-					if (ch.Bonuses[BONUS_DULL]) > 0 && ch.Real_abils.Intel >= 45 {
+				} else if libc.StrCaseCmp(&arg2[0], libc.CString("int")) == 0 {
+					if (ch.Bonuses[BONUS_DULL]) > 0 && int(ch.Real_abils.Intel) >= 45 {
 						send_to_char(ch, libc.CString("You can't because that stat maxes at 45 due to a trait negative.\r\n"))
 						return
-					} else if ch.Aff_abils.Intel >= 100 {
+					} else if int(ch.Aff_abils.Intel) >= 100 {
 						send_to_char(ch, libc.CString("100 is the maximum for any stat.\r\n"))
 						return
 					}
 					send_to_char(ch, libc.CString("You increase your intelligence by 2.\r\n"))
 					ch.Real_abils.Intel += 2
-				} else if C.strcasecmp(&arg2[0], libc.CString("wis")) == 0 {
-					if (ch.Bonuses[BONUS_FOOLISH]) > 0 && ch.Real_abils.Wis >= 45 {
+				} else if libc.StrCaseCmp(&arg2[0], libc.CString("wis")) == 0 {
+					if (ch.Bonuses[BONUS_FOOLISH]) > 0 && int(ch.Real_abils.Wis) >= 45 {
 						send_to_char(ch, libc.CString("You can't because that stat maxes at 45 due to a trait negative.\r\n"))
 						return
-					} else if ch.Aff_abils.Wis >= 100 {
+					} else if int(ch.Aff_abils.Wis) >= 100 {
 						send_to_char(ch, libc.CString("100 is the maximum for any stat.\r\n"))
 						return
 					}
 					send_to_char(ch, libc.CString("You increase your wisdom by 2.\r\n"))
 					ch.Real_abils.Wis += 2
-				} else if C.strcasecmp(&arg2[0], libc.CString("spd")) == 0 {
-					if (ch.Bonuses[BONUS_SLOW]) > 0 && ch.Real_abils.Cha >= 45 {
+				} else if libc.StrCaseCmp(&arg2[0], libc.CString("spd")) == 0 {
+					if (ch.Bonuses[BONUS_SLOW]) > 0 && int(ch.Real_abils.Cha) >= 45 {
 						send_to_char(ch, libc.CString("You can't because that stat maxes at 45 due to a trait negative.\r\n"))
 						return
-					} else if ch.Aff_abils.Cha >= 100 {
+					} else if int(ch.Aff_abils.Cha) >= 100 {
 						send_to_char(ch, libc.CString("100 is the maximum for any stat.\r\n"))
 						return
 					}
 					send_to_char(ch, libc.CString("You increase your speed by 2.\r\n"))
 					ch.Real_abils.Cha += 2
-				} else if C.strcasecmp(&arg2[0], libc.CString("agl")) == 0 {
-					if (ch.Bonuses[BONUS_CLUMSY]) > 0 && ch.Real_abils.Dex >= 45 {
+				} else if libc.StrCaseCmp(&arg2[0], libc.CString("agl")) == 0 {
+					if (ch.Bonuses[BONUS_CLUMSY]) > 0 && int(ch.Real_abils.Dex) >= 45 {
 						send_to_char(ch, libc.CString("You can't because that stat maxes at 45 due to a trait negative.\r\n"))
 						return
-					} else if ch.Aff_abils.Dex >= 100 {
+					} else if int(ch.Aff_abils.Dex) >= 100 {
 						send_to_char(ch, libc.CString("100 is the maximum for any stat.\r\n"))
 						return
 					}
@@ -656,42 +657,42 @@ func do_rpp(ch *char_data, argument *byte, cmd int, subcmd int) {
 				ch.Hit = gear_pl(ch)
 				ch.Mana = ch.Max_mana
 				ch.Move = ch.Max_move
-				ch.Limb_condition[0] = 100
 				ch.Limb_condition[1] = 100
 				ch.Limb_condition[2] = 100
 				ch.Limb_condition[3] = 100
-				ch.Act[int(PLR_HEAD/32)] |= bitvector_t(1 << (int(PLR_HEAD % 32)))
-				ch.Act[int(PLR_PDEATH/32)] &= bitvector_t(^(1 << (int(PLR_PDEATH % 32))))
+				ch.Limb_condition[4] = 100
+				ch.Act[int(PLR_HEAD/32)] |= bitvector_t(int32(1 << (int(PLR_HEAD % 32))))
+				ch.Act[int(PLR_PDEATH/32)] &= bitvector_t(int32(^(1 << (int(PLR_PDEATH % 32)))))
 				char_from_room(ch)
 				if ch.Droom != room_vnum(-1) && ch.Droom != 0 && ch.Droom != 1 {
 					char_to_room(ch, real_room(ch.Droom))
-				} else if ch.Chclass == CLASS_ROSHI {
+				} else if int(ch.Chclass) == CLASS_ROSHI {
 					char_to_room(ch, real_room(1130))
-				} else if ch.Chclass == CLASS_KABITO {
+				} else if int(ch.Chclass) == CLASS_KABITO {
 					char_to_room(ch, real_room(0x2F42))
-				} else if ch.Chclass == CLASS_NAIL {
+				} else if int(ch.Chclass) == CLASS_NAIL {
 					char_to_room(ch, real_room(0x2DA3))
-				} else if ch.Chclass == CLASS_BARDOCK {
+				} else if int(ch.Chclass) == CLASS_BARDOCK {
 					char_to_room(ch, real_room(2268))
-				} else if ch.Chclass == CLASS_KRANE {
+				} else if int(ch.Chclass) == CLASS_KRANE {
 					char_to_room(ch, real_room(0x32D1))
-				} else if ch.Chclass == CLASS_TAPION {
+				} else if int(ch.Chclass) == CLASS_TAPION {
 					char_to_room(ch, real_room(8231))
-				} else if ch.Chclass == CLASS_PICCOLO {
+				} else if int(ch.Chclass) == CLASS_PICCOLO {
 					char_to_room(ch, real_room(1659))
-				} else if ch.Chclass == CLASS_ANDSIX {
+				} else if int(ch.Chclass) == CLASS_ANDSIX {
 					char_to_room(ch, real_room(1713))
-				} else if ch.Chclass == CLASS_DABURA {
+				} else if int(ch.Chclass) == CLASS_DABURA {
 					char_to_room(ch, real_room(6486))
-				} else if ch.Chclass == CLASS_FRIEZA {
+				} else if int(ch.Chclass) == CLASS_FRIEZA {
 					char_to_room(ch, real_room(4282))
-				} else if ch.Chclass == CLASS_GINYU {
+				} else if int(ch.Chclass) == CLASS_GINYU {
 					char_to_room(ch, real_room(4289))
-				} else if ch.Chclass == CLASS_JINTO {
+				} else if int(ch.Chclass) == CLASS_JINTO {
 					char_to_room(ch, real_room(3499))
-				} else if ch.Chclass == CLASS_TSUNA {
+				} else if int(ch.Chclass) == CLASS_TSUNA {
 					char_to_room(ch, real_room(15000))
-				} else if ch.Chclass == CLASS_KURZAK {
+				} else if int(ch.Chclass) == CLASS_KURZAK {
 					char_to_room(ch, real_room(16100))
 				} else {
 					char_to_room(ch, real_room(300))
@@ -711,22 +712,22 @@ func do_rpp(ch *char_data, argument *byte, cmd int, subcmd int) {
 						var spd int = -8
 						var con int = -8
 						var agl int = -8
-						if ch.Real_abils.Str <= 16 {
+						if int(ch.Real_abils.Str) <= 16 {
 							str = -4
 						}
-						if ch.Real_abils.Intel <= 16 {
+						if int(ch.Real_abils.Intel) <= 16 {
 							intel = -4
 						}
-						if ch.Real_abils.Cha <= 16 {
+						if int(ch.Real_abils.Cha) <= 16 {
 							spd = -4
 						}
-						if ch.Real_abils.Dex <= 16 {
+						if int(ch.Real_abils.Dex) <= 16 {
 							agl = -4
 						}
-						if ch.Real_abils.Wis <= 16 {
+						if int(ch.Real_abils.Wis) <= 16 {
 							wis = -4
 						}
-						if ch.Real_abils.Con <= 16 {
+						if int(ch.Real_abils.Con) <= 16 {
 							con = -4
 						}
 						assign_affect(ch, AFF_WEAKENED_STATE, SKILL_WARP, 100, str, con, intel, agl, wis, spd)
@@ -768,31 +769,31 @@ func do_rpp(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_char(ch, libc.CString("Change your aura to what? (white, blue, red, green, pink, purple, yellow, black, orange)"))
 					return
 				}
-				if C.strcasecmp(&arg2[0], libc.CString("white")) == 0 {
+				if libc.StrCaseCmp(&arg2[0], libc.CString("white")) == 0 {
 					ch.Aura = 0
 					send_to_char(ch, libc.CString("You change your aura to white.\r\n"))
-				} else if C.strcasecmp(&arg2[0], libc.CString("blue")) == 0 {
+				} else if libc.StrCaseCmp(&arg2[0], libc.CString("blue")) == 0 {
 					ch.Aura = 1
 					send_to_char(ch, libc.CString("You change your aura to blue.\r\n"))
-				} else if C.strcasecmp(&arg2[0], libc.CString("red")) == 0 {
+				} else if libc.StrCaseCmp(&arg2[0], libc.CString("red")) == 0 {
 					ch.Aura = 2
 					send_to_char(ch, libc.CString("You change your aura to red.\r\n"))
-				} else if C.strcasecmp(&arg2[0], libc.CString("green")) == 0 {
+				} else if libc.StrCaseCmp(&arg2[0], libc.CString("green")) == 0 {
 					ch.Aura = 3
 					send_to_char(ch, libc.CString("You change your aura to green.\r\n"))
-				} else if C.strcasecmp(&arg2[0], libc.CString("pink")) == 0 {
+				} else if libc.StrCaseCmp(&arg2[0], libc.CString("pink")) == 0 {
 					ch.Aura = 4
 					send_to_char(ch, libc.CString("You change your aura to pink.\r\n"))
-				} else if C.strcasecmp(&arg2[0], libc.CString("purple")) == 0 {
+				} else if libc.StrCaseCmp(&arg2[0], libc.CString("purple")) == 0 {
 					ch.Aura = 5
 					send_to_char(ch, libc.CString("You change your aura to purple.\r\n"))
-				} else if C.strcasecmp(&arg2[0], libc.CString("yellow")) == 0 {
+				} else if libc.StrCaseCmp(&arg2[0], libc.CString("yellow")) == 0 {
 					ch.Aura = 6
 					send_to_char(ch, libc.CString("You change your aura to yellow.\r\n"))
-				} else if C.strcasecmp(&arg2[0], libc.CString("black")) == 0 {
+				} else if libc.StrCaseCmp(&arg2[0], libc.CString("black")) == 0 {
 					ch.Aura = 7
 					send_to_char(ch, libc.CString("You change your aura to black.\r\n"))
-				} else if C.strcasecmp(&arg2[0], libc.CString("orange")) == 0 {
+				} else if libc.StrCaseCmp(&arg2[0], libc.CString("orange")) == 0 {
 					ch.Aura = 8
 					send_to_char(ch, libc.CString("You change your aura to orange.\r\n"))
 				} else {
@@ -809,7 +810,7 @@ func do_rpp(ch *char_data, argument *byte, cmd int, subcmd int) {
 			} else if GET_LEVEL(ch) >= 100 {
 				send_to_char(ch, libc.CString("You can't use this at level 100.\r\n"))
 				return
-			} else if ch.Race == RACE_ARLIAN {
+			} else if int(ch.Race) == RACE_ARLIAN {
 				send_to_char(ch, libc.CString("This is not available to bugs.\r\n"))
 				return
 			} else {
@@ -863,10 +864,10 @@ func do_rpp(ch *char_data, argument *byte, cmd int, subcmd int) {
 				stdio.Sprintf(&thename[0], "%s", obj.Name)
 				stdio.Sprintf(&theshort[0], "%s", obj.Short_description)
 				stdio.Sprintf(&thelong[0], "%s", obj.Description)
-				ch.Desc.Obj_name = C.strdup(&thename[0])
-				ch.Desc.Obj_was = C.strdup(&theshort[0])
-				ch.Desc.Obj_short = C.strdup(&theshort[0])
-				ch.Desc.Obj_long = C.strdup(&thelong[0])
+				ch.Desc.Obj_name = libc.StrDup(&thename[0])
+				ch.Desc.Obj_was = libc.StrDup(&theshort[0])
+				ch.Desc.Obj_short = libc.StrDup(&theshort[0])
+				ch.Desc.Obj_long = libc.StrDup(&thelong[0])
 				ch.Desc.Obj_point = obj
 				ch.Desc.Obj_type = 1
 				ch.Desc.Obj_weapon = 0
@@ -940,9 +941,9 @@ func do_rpp(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	if selection <= 2 {
 		var (
-			fl       *C.FILE
+			fl       *stdio.File
 			filename *byte
-			fbuf     stat
+			fbuf     csys.StatRes
 		)
 		filename = libc.CString(LIB_MISC)
 		if selection == 1 {
@@ -970,31 +971,31 @@ func do_rpp(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("Nice try but you don't have enough RPP for that.\r\n"))
 			return
 		}
-		if C.stat(filename, &fbuf) < 0 {
-			C.perror(libc.CString("SYSERR: Can't C.stat() file"))
+		if int(csys.Stat(filename, &fbuf)) < 0 {
+			perror(libc.CString("SYSERR: Can't stat() file"))
 			return
 		}
-		if fbuf.St_size >= __off_t(config_info.Operation.Max_filesize) {
+		if fbuf.Size >= uint64(config_info.Operation.Max_filesize) {
 			send_to_char(ch, libc.CString("Sorry, the file is full right now.. try again later.\r\n"))
 			return
 		}
-		if (func() *C.FILE {
-			fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(filename), "a")))
+		if (func() *stdio.File {
+			fl = stdio.FOpen(libc.GoString(filename), "a")
 			return fl
 		}()) == nil {
-			C.perror(libc.CString("SYSERR: do_reward_request"))
+			perror(libc.CString("SYSERR: do_reward_request"))
 			send_to_char(ch, libc.CString("Could not open the file.  Sorry.\r\n"))
 			return
 		}
 		if selection == 1 {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "@D[@cName@W: @C%-20s @cRequest@W: @Y%-20s@D]\n", GET_NAME(ch), "House")
+			stdio.Fprintf(fl, "@D[@cName@W: @C%-20s @cRequest@W: @Y%-20s@D]\n", GET_NAME(ch), "House")
 			send_to_imm(libc.CString("RPP Request: %s paid for house"), GET_NAME(ch))
-			BOARDNEWCOD = C.time(nil)
+			BOARDNEWCOD = libc.GetTime(nil)
 			save_mud_time(&time_info)
 		} else if selection == 2 {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "@D[@cName@W: @C%-20s @cRequest@W: @Y%-20s@D]\n", GET_NAME(ch), "Custom Skill")
+			stdio.Fprintf(fl, "@D[@cName@W: @C%-20s @cRequest@W: @Y%-20s@D]\n", GET_NAME(ch), "Custom Skill")
 			send_to_imm(libc.CString("RPP Request: %s paid for Custom Skill, uhoh spaggettios"), GET_NAME(ch))
-			BOARDNEWCOD = C.time(nil)
+			BOARDNEWCOD = libc.GetTime(nil)
 			save_mud_time(&time_info)
 		}
 		ch.Rp -= pay
@@ -1002,7 +1003,7 @@ func do_rpp(ch *char_data, argument *byte, cmd int, subcmd int) {
 		userWrite(ch.Desc, 0, 0, 0, libc.CString("index"))
 		save_char(ch)
 		send_to_char(ch, libc.CString("@R%d@W RPP paid for your selection. An immortal will address the request soon enough. Be patient.@n\r\n"), pay)
-		C.fclose(fl)
+		fl.Close()
 	}
 	if selection >= 4 && selection < 12 && pay > 0 {
 		ch.Rp -= pay
@@ -1182,7 +1183,7 @@ func do_grapple(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	var pass int = FALSE
 	_ = pass
-	if C.strcasecmp(libc.CString("hold"), &arg2[0]) == 0 || C.strcasecmp(libc.CString("choke"), &arg2[0]) == 0 || C.strcasecmp(libc.CString("grab"), &arg2[0]) == 0 || C.strcasecmp(libc.CString("wrap"), &arg2[0]) == 0 {
+	if libc.StrCaseCmp(libc.CString("hold"), &arg2[0]) == 0 || libc.StrCaseCmp(libc.CString("choke"), &arg2[0]) == 0 || libc.StrCaseCmp(libc.CString("grab"), &arg2[0]) == 0 || libc.StrCaseCmp(libc.CString("wrap"), &arg2[0]) == 0 {
 		pass = TRUE
 		var perc int = GET_SKILL(ch, SKILL_GRAPPLE)
 		var prob int = axion_dice(0)
@@ -1191,7 +1192,7 @@ func do_grapple(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("You do not have enough stamina to grapple!\r\n"))
 			return
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				reveal_hiding(ch, 0)
 				act(libc.CString("@C$N@c disappears, avoiding your grapple attempt before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
@@ -1249,10 +1250,10 @@ func do_grapple(ch *char_data, argument *byte, cmd int, subcmd int) {
 			improve_skill(ch, SKILL_GRAPPLE, 1)
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*4)
 			return
-		} else if !HAS_ARMS(vict) && C.strcasecmp(libc.CString("grab"), &arg2[0]) == 0 {
+		} else if !HAS_ARMS(vict) && libc.StrCaseCmp(libc.CString("grab"), &arg2[0]) == 0 {
 			send_to_char(ch, libc.CString("They don't even have an arm to grab onto!\r\n"))
 			return
-		} else if C.strcasecmp(libc.CString("hold"), &arg2[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("hold"), &arg2[0]) == 0 {
 			reveal_hiding(ch, 0)
 			act(libc.CString("@RYou rush at @r$N@R and manage to get $M in a hold from behind!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 			act(libc.CString("@r$n@R rushes at YOU and manages to get you in a hold from behind!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -1265,7 +1266,7 @@ func do_grapple(ch *char_data, argument *byte, cmd int, subcmd int) {
 			improve_skill(ch, SKILL_GRAPPLE, 1)
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*4)
 			return
-		} else if C.strcasecmp(libc.CString("choke"), &arg2[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("choke"), &arg2[0]) == 0 {
 			reveal_hiding(ch, 0)
 			act(libc.CString("@RYou rush at @r$N@R and manage to grab $S throat with both hands!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 			act(libc.CString("@r$n@R rushes at YOU and manages to grab your throat with both hands!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -1278,8 +1279,8 @@ func do_grapple(ch *char_data, argument *byte, cmd int, subcmd int) {
 			improve_skill(ch, SKILL_GRAPPLE, 1)
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*4)
 			return
-		} else if C.strcasecmp(libc.CString("wrap"), &arg2[0]) == 0 {
-			if ch.Race != RACE_MAJIN {
+		} else if libc.StrCaseCmp(libc.CString("wrap"), &arg2[0]) == 0 {
+			if int(ch.Race) != RACE_MAJIN {
 				send_to_char(ch, libc.CString("Your body is not flexible enough to wrap around a target!\r\n"))
 				return
 			}
@@ -1294,7 +1295,7 @@ func do_grapple(ch *char_data, argument *byte, cmd int, subcmd int) {
 			improve_skill(ch, SKILL_GRAPPLE, 1)
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*4)
 			return
-		} else if C.strcasecmp(libc.CString("grab"), &arg2[0]) == 0 {
+		} else if libc.StrCaseCmp(libc.CString("grab"), &arg2[0]) == 0 {
 			reveal_hiding(ch, 0)
 			act(libc.CString("@RYou rush at @r$N@R and manage to lock your arm onto $S!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 			act(libc.CString("@r$n@R rushes at YOU and manages to lock $s arm onto your's!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -1304,7 +1305,7 @@ func do_grapple(ch *char_data, argument *byte, cmd int, subcmd int) {
 			vict.Grappled = ch
 			vict.Grap = 3
 			if !PLR_FLAGGED(vict, PLR_THANDW) {
-				vict.Act[int(PLR_THANDW/32)] &= bitvector_t(^(1 << (int(PLR_THANDW % 32))))
+				vict.Act[int(PLR_THANDW/32)] &= bitvector_t(int32(^(1 << (int(PLR_THANDW % 32)))))
 			}
 			ch.Move -= int64(cost)
 			improve_skill(ch, SKILL_GRAPPLE, 1)
@@ -1356,7 +1357,7 @@ func do_trip(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("They are flying and are not on their feet!\r\n"))
 			return
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			send_to_char(ch, libc.CString("They are not on their feet!\r\n"))
 			return
 		}
@@ -1373,7 +1374,7 @@ func do_trip(ch *char_data, argument *byte, cmd int, subcmd int) {
 		} else if GET_SPEEDI(ch) < GET_SPEEDI(vict) {
 			perc -= 2
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				reveal_hiding(ch, 0)
 				act(libc.CString("@C$N@c disappears, avoiding your trip before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
@@ -1458,60 +1459,60 @@ func do_train(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var wiscap int = 5000
 	var concap int = 5000
 	var aglcap int = 5000
-	strcap += int(ch.Real_abils.Str * (-12))
-	intcap += int(ch.Real_abils.Intel * (-12))
-	wiscap += int(ch.Real_abils.Wis * (-12))
-	spdcap += int(ch.Real_abils.Cha * (-12))
-	concap += int(ch.Real_abils.Con * (-12))
-	aglcap += int(ch.Real_abils.Dex * (-12))
-	if ch.Race == RACE_HUMAN {
+	strcap += int(ch.Real_abils.Str) * 500
+	intcap += int(ch.Real_abils.Intel) * 500
+	wiscap += int(ch.Real_abils.Wis) * 500
+	spdcap += int(ch.Real_abils.Cha) * 500
+	concap += int(ch.Real_abils.Con) * 500
+	aglcap += int(ch.Real_abils.Dex) * 500
+	if int(ch.Race) == RACE_HUMAN {
 		intcap = int(float64(intcap) * 0.75)
 		wiscap = int(float64(wiscap) * 0.75)
-	} else if ch.Race == RACE_KANASSAN {
+	} else if int(ch.Race) == RACE_KANASSAN {
 		intcap = int(float64(intcap) * 0.4)
 		wiscap = int(float64(wiscap) * 0.4)
 		aglcap = int(float64(aglcap) * 0.4)
-	} else if ch.Race == RACE_HALFBREED {
+	} else if int(ch.Race) == RACE_HALFBREED {
 		intcap = int(float64(intcap) * 0.75)
 		strcap = int(float64(strcap) * 0.75)
-	} else if ch.Race == RACE_TRUFFLE {
+	} else if int(ch.Race) == RACE_TRUFFLE {
 		strcap = int(float64(strcap) * 1.5)
 		concap = int(float64(concap) * 1.5)
 	}
 	if arg[0] == 0 {
 		send_to_char(ch, libc.CString("@D-------------[ @GTraining Status @D]-------------@n\r\n"))
 		send_to_char(ch, libc.CString("  @mStrength Progress    @D: @R%6s/%6s@n\r\n"), add_commas(int64(ch.Player_specials.Trainstr)), func() string {
-			if ch.Real_abils.Str >= 80 {
+			if int(ch.Real_abils.Str) >= 80 {
 				return "@rCAPPED"
 			}
 			return libc.GoString(add_commas(int64(strcap)))
 		}())
 		send_to_char(ch, libc.CString("  @mSpeed Progress       @D: @R%6s/%6s@n\r\n"), add_commas(int64(ch.Player_specials.Trainspd)), func() string {
-			if ch.Real_abils.Cha >= 80 {
+			if int(ch.Real_abils.Cha) >= 80 {
 				return "@rCAPPED"
 			}
 			return libc.GoString(add_commas(int64(spdcap)))
 		}())
 		send_to_char(ch, libc.CString("  @mConstitution Progress@D: @R%6s/%6s@n\r\n"), add_commas(int64(ch.Player_specials.Traincon)), func() string {
-			if ch.Real_abils.Con >= 80 {
+			if int(ch.Real_abils.Con) >= 80 {
 				return "@rCAPPED"
 			}
 			return libc.GoString(add_commas(int64(concap)))
 		}())
 		send_to_char(ch, libc.CString("  @mIntelligence Progress@D: @R%6s/%6s@n\r\n"), add_commas(int64(ch.Player_specials.Trainint)), func() string {
-			if ch.Real_abils.Intel >= 80 {
+			if int(ch.Real_abils.Intel) >= 80 {
 				return "@rCAPPED"
 			}
 			return libc.GoString(add_commas(int64(intcap)))
 		}())
 		send_to_char(ch, libc.CString("  @mWisdom Progress      @D: @R%6s/%6s@n\r\n"), add_commas(int64(ch.Player_specials.Trainwis)), func() string {
-			if ch.Real_abils.Wis >= 80 {
+			if int(ch.Real_abils.Wis) >= 80 {
 				return "@rCAPPED"
 			}
 			return libc.GoString(add_commas(int64(wiscap)))
 		}())
 		send_to_char(ch, libc.CString("  @mAgility Progress     @D: @R%6s/%6s@n\r\n"), add_commas(int64(ch.Player_specials.Trainagl)), func() string {
-			if ch.Real_abils.Dex >= 80 {
+			if int(ch.Real_abils.Dex) >= 80 {
 				return "@rCAPPED"
 			}
 			return libc.GoString(add_commas(int64(aglcap)))
@@ -2079,12 +2080,12 @@ func do_train(ch *char_data, argument *byte, cmd int, subcmd int) {
 	} else if ch.Relax_count >= 116 {
 		cost *= 2
 	}
-	if C.strcasecmp(libc.CString("str"), &arg[0]) == 0 {
-		if ch.Real_abils.Str == 80 {
+	if libc.StrCaseCmp(libc.CString("str"), &arg[0]) == 0 {
+		if int(ch.Real_abils.Str) == 80 {
 			send_to_char(ch, libc.CString("Your base strength is maxed!\r\n"))
 			return
 		}
-		if ch.Real_abils.Str == 25 && (ch.Bonuses[BONUS_WIMP]) > 0 {
+		if int(ch.Real_abils.Str) == 25 && (ch.Bonuses[BONUS_WIMP]) > 0 {
 			send_to_char(ch, libc.CString("You're not able to withstand increasing your strength beyond 25.\r\n"))
 			return
 		}
@@ -2174,18 +2175,18 @@ func do_train(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Player_specials.Trainstr -= strcap
 			send_to_char(ch, libc.CString("You feel your strength improve!@n\r\n"))
 			ch.Real_abils.Str += 1
-			if ch.Chclass == CLASS_PICCOLO && ch.Race == RACE_NAMEK && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 {
+			if int(ch.Chclass) == CLASS_PICCOLO && int(ch.Race) == RACE_NAMEK && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 {
 				ch.Exp += int64(float64(level_exp(ch, GET_LEVEL(ch)+1)) * 0.25)
 				send_to_char(ch, libc.CString("You gained quite a bit of experience from that!\r\n"))
 			}
 			save_char(ch)
 		}
-	} else if C.strcasecmp(libc.CString("spd"), &arg[0]) == 0 {
-		if ch.Real_abils.Cha == 80 {
+	} else if libc.StrCaseCmp(libc.CString("spd"), &arg[0]) == 0 {
+		if int(ch.Real_abils.Cha) == 80 {
 			send_to_char(ch, libc.CString("Your base speed is maxed!\r\n"))
 			return
 		}
-		if ch.Real_abils.Cha == 25 && (ch.Bonuses[BONUS_SLOW]) > 0 {
+		if int(ch.Real_abils.Cha) == 25 && (ch.Bonuses[BONUS_SLOW]) > 0 {
 			send_to_char(ch, libc.CString("You're not able to withstand increasing your speed beyond 25.\r\n"))
 			return
 		}
@@ -2272,18 +2273,18 @@ func do_train(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Player_specials.Trainspd -= spdcap
 			send_to_char(ch, libc.CString("You feel your speed improve!@n\r\n"))
 			ch.Real_abils.Cha += 1
-			if ch.Chclass == CLASS_PICCOLO && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 {
+			if int(ch.Chclass) == CLASS_PICCOLO && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 {
 				ch.Exp += int64(float64(level_exp(ch, GET_LEVEL(ch)+1)) * 0.25)
 				send_to_char(ch, libc.CString("You gained quite a bit of experience from that!\r\n"))
 			}
 			save_char(ch)
 		}
-	} else if C.strcasecmp(libc.CString("con"), &arg[0]) == 0 {
-		if ch.Real_abils.Con == 80 {
+	} else if libc.StrCaseCmp(libc.CString("con"), &arg[0]) == 0 {
+		if int(ch.Real_abils.Con) == 80 {
 			send_to_char(ch, libc.CString("Your base constitution is maxed!\r\n"))
 			return
 		}
-		if ch.Real_abils.Con == 25 && (ch.Bonuses[BONUS_WIMP]) > 0 {
+		if int(ch.Real_abils.Con) == 25 && (ch.Bonuses[BONUS_WIMP]) > 0 {
 			send_to_char(ch, libc.CString("You're not able to withstand increasing your constitution beyond 25.\r\n"))
 			return
 		}
@@ -2370,18 +2371,18 @@ func do_train(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Player_specials.Traincon -= concap
 			send_to_char(ch, libc.CString("You feel your constitution improve!@n\r\n"))
 			ch.Real_abils.Con += 1
-			if ch.Chclass == CLASS_PICCOLO && ch.Race == RACE_NAMEK && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 {
+			if int(ch.Chclass) == CLASS_PICCOLO && int(ch.Race) == RACE_NAMEK && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 {
 				ch.Exp += int64(float64(level_exp(ch, GET_LEVEL(ch)+1)) * 0.25)
 				send_to_char(ch, libc.CString("You gained quite a bit of experience from that!\r\n"))
 			}
 			save_char(ch)
 		}
-	} else if C.strcasecmp(libc.CString("agl"), &arg[0]) == 0 {
-		if ch.Real_abils.Dex == 80 {
+	} else if libc.StrCaseCmp(libc.CString("agl"), &arg[0]) == 0 {
+		if int(ch.Real_abils.Dex) == 80 {
 			send_to_char(ch, libc.CString("Your base agility is maxed!\r\n"))
 			return
 		}
-		if ch.Real_abils.Dex == 25 && (ch.Bonuses[BONUS_CLUMSY]) > 0 {
+		if int(ch.Real_abils.Dex) == 25 && (ch.Bonuses[BONUS_CLUMSY]) > 0 {
 			send_to_char(ch, libc.CString("You're not able to withstand increasing your agility beyond 25.\r\n"))
 			return
 		}
@@ -2468,18 +2469,18 @@ func do_train(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Player_specials.Trainagl -= aglcap
 			send_to_char(ch, libc.CString("You feel your agility improve!@n\r\n"))
 			ch.Real_abils.Dex += 1
-			if ch.Chclass == CLASS_PICCOLO && ch.Race == RACE_NAMEK && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 {
+			if int(ch.Chclass) == CLASS_PICCOLO && int(ch.Race) == RACE_NAMEK && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 {
 				ch.Exp += int64(float64(level_exp(ch, GET_LEVEL(ch)+1)) * 0.25)
 				send_to_char(ch, libc.CString("You gained quite a bit of experience from that!\r\n"))
 			}
 			save_char(ch)
 		}
-	} else if C.strcasecmp(libc.CString("int"), &arg[0]) == 0 {
-		if ch.Real_abils.Intel == 80 {
+	} else if libc.StrCaseCmp(libc.CString("int"), &arg[0]) == 0 {
+		if int(ch.Real_abils.Intel) == 80 {
 			send_to_char(ch, libc.CString("Your base intelligence is maxed!\r\n"))
 			return
 		}
-		if ch.Real_abils.Intel == 25 && (ch.Bonuses[BONUS_DULL]) > 0 {
+		if int(ch.Real_abils.Intel) == 25 && (ch.Bonuses[BONUS_DULL]) > 0 {
 			send_to_char(ch, libc.CString("You're not able to withstand increasing your intelligence beyond 25.\r\n"))
 			return
 		}
@@ -2590,18 +2591,18 @@ func do_train(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Player_specials.Trainint -= intcap
 			send_to_char(ch, libc.CString("You feel your intelligence improve!@n\r\n"))
 			ch.Real_abils.Intel += 1
-			if ch.Chclass == CLASS_PICCOLO && ch.Race == RACE_NAMEK && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 {
+			if int(ch.Chclass) == CLASS_PICCOLO && int(ch.Race) == RACE_NAMEK && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 {
 				ch.Exp += int64(float64(level_exp(ch, GET_LEVEL(ch)+1)) * 0.25)
 				send_to_char(ch, libc.CString("You gained quite a bit of experience from that!\r\n"))
 			}
 			save_char(ch)
 		}
-	} else if C.strcasecmp(libc.CString("wis"), &arg[0]) == 0 {
-		if ch.Real_abils.Wis == 80 {
+	} else if libc.StrCaseCmp(libc.CString("wis"), &arg[0]) == 0 {
+		if int(ch.Real_abils.Wis) == 80 {
 			send_to_char(ch, libc.CString("Your base wisdom is maxed!\r\n"))
 			return
 		}
-		if ch.Real_abils.Wis == 25 && (ch.Bonuses[BONUS_FOOLISH]) > 0 {
+		if int(ch.Real_abils.Wis) == 25 && (ch.Bonuses[BONUS_FOOLISH]) > 0 {
 			send_to_char(ch, libc.CString("You're not able to withstand increasing your wisdom beyond 25.\r\n"))
 			return
 		}
@@ -2712,7 +2713,7 @@ func do_train(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Player_specials.Trainwis -= wiscap
 			send_to_char(ch, libc.CString("You feel your wisdom improve!@n\r\n"))
 			ch.Real_abils.Wis += 1
-			if ch.Chclass == CLASS_PICCOLO && ch.Race == RACE_NAMEK && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 {
+			if int(ch.Chclass) == CLASS_PICCOLO && int(ch.Race) == RACE_NAMEK && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 {
 				ch.Exp += int64(float64(level_exp(ch, GET_LEVEL(ch)+1)) * 0.25)
 				send_to_char(ch, libc.CString("You gained quite a bit of experience from that!\r\n"))
 			}
@@ -2747,7 +2748,7 @@ func do_rip(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("They do not have a tail to rip off!\r\n"))
 		return
 	}
-	if ch != vict && ch.Position > POS_SLEEPING {
+	if ch != vict && int(ch.Position) > POS_SLEEPING {
 		if ch.Move < ch.Max_move/20 {
 			send_to_char(ch, libc.CString("You are too tired to manage to grab their tail!\r\n"))
 			return
@@ -2758,8 +2759,8 @@ func do_rip(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@rYou rush at @R$N@r and grab $S tail! With a powerful tug you pull it off!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@R$n@r rushes at YOU and grabs your tail! With a powerful tug $e pulls it off!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@R$n@R rushes at @R$N@r and grab $S tail! With a powerful tug $e pulls it off!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				vict.Act[int(PLR_TAIL/32)] &= bitvector_t(^(1 << (int(PLR_TAIL % 32))))
-				vict.Act[int(PLR_STAIL/32)] &= bitvector_t(^(1 << (int(PLR_STAIL % 32))))
+				vict.Act[int(PLR_TAIL/32)] &= bitvector_t(int32(^(1 << (int(PLR_TAIL % 32)))))
+				vict.Act[int(PLR_STAIL/32)] &= bitvector_t(int32(^(1 << (int(PLR_STAIL % 32)))))
 				oozaru_drop(vict)
 				return
 			} else {
@@ -2781,8 +2782,8 @@ func do_rip(ch *char_data, argument *byte, cmd int, subcmd int) {
 		reveal_hiding(ch, 0)
 		act(libc.CString("@rYou grab your own tail and yank it off!@n"), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("@R$n@r grabs $s own tail and yanks it off!@n"), TRUE, ch, nil, nil, TO_ROOM)
-		ch.Act[int(PLR_TAIL/32)] &= bitvector_t(^(1 << (int(PLR_TAIL % 32))))
-		ch.Act[int(PLR_STAIL/32)] &= bitvector_t(^(1 << (int(PLR_STAIL % 32))))
+		ch.Act[int(PLR_TAIL/32)] &= bitvector_t(int32(^(1 << (int(PLR_TAIL % 32)))))
+		ch.Act[int(PLR_STAIL/32)] &= bitvector_t(int32(^(1 << (int(PLR_STAIL % 32)))))
 		oozaru_drop(vict)
 	} else {
 		if ch.Move < ch.Max_move/20 {
@@ -2794,8 +2795,8 @@ func do_rip(ch *char_data, argument *byte, cmd int, subcmd int) {
 		act(libc.CString("@rYou reach and grab @R$N's@r tail! With a powerful tug you pull it off!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 		act(libc.CString("@RYou feel your tail pulled off!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 		act(libc.CString("@R$n@R reaches and grabs @R$N's@r tail! With a powerful tug $e pulls it off!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-		vict.Act[int(PLR_TAIL/32)] &= bitvector_t(^(1 << (int(PLR_TAIL % 32))))
-		vict.Act[int(PLR_STAIL/32)] &= bitvector_t(^(1 << (int(PLR_STAIL % 32))))
+		vict.Act[int(PLR_TAIL/32)] &= bitvector_t(int32(^(1 << (int(PLR_TAIL % 32)))))
+		vict.Act[int(PLR_STAIL/32)] &= bitvector_t(int32(^(1 << (int(PLR_STAIL % 32)))))
 		oozaru_drop(vict)
 		return
 	}
@@ -2880,7 +2881,7 @@ func do_paralyze(ch *char_data, argument *byte, cmd int, subcmd int) {
 		act(libc.CString("@RYou focus ki and point both your arms at @r$N@R. Your ki flows into $S body and partially paralyzes $M!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 		act(libc.CString("@r$n @Rfocuses ki and points both $s arms at YOU! You are caught in $s paralysis technique and now can barely move!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 		act(libc.CString("@r$n @Rfocuses ki and points both $s arms at @r$N@R. @r$n's@R ki flows into @r$N@R body and partially paralyzes $M!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-		var duration int = int(ch.Aff_abils.Intel / 15)
+		var duration int = int(ch.Aff_abils.Intel) / 15
 		assign_affect(vict, AFF_PARA, SKILL_PARALYZE, duration, 0, 0, 0, 0, 0, 0)
 		ch.Mana -= vict.Hit/6 + ch.Max_mana/20
 		improve_skill(ch, SKILL_PARALYZE, 0)
@@ -2920,7 +2921,7 @@ func do_taisha(ch *char_data, argument *byte, cmd int, subcmd int) {
 		act(libc.CString("@g$n holds up $s hands while channeling ki. Suddenly a @wburst@W of calming @Cblue@W light covers the surrounding area!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		ch.Mana -= ch.Max_mana / 3
 		improve_skill(ch, SKILL_TAISHA, 1)
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] |= bitvector_t(1 << (int(ROOM_AURA % 32)))
+		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Room_flags[int(ROOM_AURA/32)] |= bitvector_t(int32(1 << (int(ROOM_AURA % 32))))
 		return
 	}
 }
@@ -2985,7 +2986,7 @@ func do_candy(ch *char_data, argument *byte, cmd int, subcmd int) {
 		arg  [2048]byte
 	)
 	one_argument(argument, &arg[0])
-	if ch.Race != RACE_MAJIN {
+	if int(ch.Race) != RACE_MAJIN {
 		send_to_char(ch, libc.CString("You are not a majin, how can you do that?\r\n"))
 		return
 	}
@@ -3054,7 +3055,7 @@ func do_candy(ch *char_data, argument *byte, cmd int, subcmd int) {
 			obj = read_object(53, VIRTUAL)
 			obj_to_char(obj, ch)
 		}
-		vict.Act[int(MOB_HUSK/32)] |= bitvector_t(1 << (int(MOB_HUSK % 32)))
+		vict.Act[int(MOB_HUSK/32)] |= bitvector_t(int32(1 << (int(MOB_HUSK % 32))))
 		die(vict, ch)
 	}
 }
@@ -3064,7 +3065,7 @@ func do_future(ch *char_data, argument *byte, cmd int, subcmd int) {
 		vict *char_data = nil
 	)
 	one_argument(argument, &arg[0])
-	if IS_NPC(ch) || ch.Race != RACE_KANASSAN {
+	if IS_NPC(ch) || int(ch.Race) != RACE_KANASSAN {
 		send_to_char(ch, libc.CString("You are incapable of this ability.\r\n"))
 		return
 	}
@@ -3096,11 +3097,11 @@ func do_future(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if vict != ch {
-		if vict.Real_abils.Cha+5 > 25 && (vict.Bonuses[BONUS_SLOW]) > 0 {
+		if int(vict.Real_abils.Cha)+5 > 25 && (vict.Bonuses[BONUS_SLOW]) > 0 {
 			send_to_char(ch, libc.CString("They can't handle having their speed increased beyond 25.\r\n"))
 			return
 		}
-		if vict.Real_abils.Intel+2 > 25 && (vict.Bonuses[BONUS_DULL]) > 0 {
+		if int(vict.Real_abils.Intel)+2 > 25 && (vict.Bonuses[BONUS_DULL]) > 0 {
 			send_to_char(ch, libc.CString("They can't handle having their intelligence increased beyond 25.\r\n"))
 			return
 		}
@@ -3116,11 +3117,11 @@ func do_future(ch *char_data, argument *byte, cmd int, subcmd int) {
 		vict.Position = POS_SLEEPING
 		save_char(vict)
 	} else {
-		if ch.Real_abils.Cha+5 > 25 && (ch.Bonuses[BONUS_SLOW]) > 0 {
+		if int(ch.Real_abils.Cha)+5 > 25 && (ch.Bonuses[BONUS_SLOW]) > 0 {
 			send_to_char(ch, libc.CString("You can't handle having your speed increased beyond 25.\r\n"))
 			return
 		}
-		if ch.Real_abils.Intel+2 > 25 && (ch.Bonuses[BONUS_DULL]) > 0 {
+		if int(ch.Real_abils.Intel)+2 > 25 && (ch.Bonuses[BONUS_DULL]) > 0 {
 			send_to_char(ch, libc.CString("You can't handle having your intelligence increased beyond 25.\r\n"))
 			return
 		}
@@ -3203,7 +3204,7 @@ func do_drag(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("They are not to be touched!\r\n"))
 		return
 	}
-	if vict.Position != POS_SLEEPING {
+	if int(vict.Position) != POS_SLEEPING {
 		reveal_hiding(ch, 0)
 		act(libc.CString("@wYou try to grab and pull @C$N@W with you, but $E resists!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 		act(libc.CString("@C$n@W tries to grab and pull you! However you resist!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -3252,7 +3253,7 @@ func do_suppress(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if IS_NPC(ch) {
 		return
 	}
-	if ch.Race == RACE_ANDROID {
+	if int(ch.Race) == RACE_ANDROID {
 		send_to_char(ch, libc.CString("You are unable to suppress your powerlevel.\r\n"))
 		return
 	}
@@ -3268,7 +3269,7 @@ func do_suppress(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You are currently concentrating on kaioken!\r\n"))
 		return
 	}
-	if IS_NONPTRANS(ch) && ch.Race != RACE_ICER && IS_TRANSFORMED(ch) {
+	if IS_NONPTRANS(ch) && int(ch.Race) != RACE_ICER && IS_TRANSFORMED(ch) {
 		send_to_char(ch, libc.CString("You must revert before you try and suppress.\r\n"))
 		return
 	}
@@ -3276,7 +3277,7 @@ func do_suppress(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Suppress to what percent?\r\nSyntax: suppress (1 - 99 | release)\r\n"))
 		return
 	}
-	if C.strcasecmp(&arg[0], libc.CString("release")) == 0 {
+	if libc.StrCaseCmp(&arg[0], libc.CString("release")) == 0 {
 		if ch.Suppression != 0 {
 			reveal_hiding(ch, 0)
 			act(libc.CString("@GYou stop suppressing your current powerlevel!@n"), TRUE, ch, nil, nil, TO_CHAR)
@@ -3410,8 +3411,8 @@ func do_implant(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You do not have a cybernetic limb to implant.\r\n"))
 		return
 	}
-	if C.strcmp(&arg[0], libc.CString("rarm")) == 0 {
-		if (vict.Limb_condition[0]) >= 1 {
+	if libc.StrCmp(&arg[0], libc.CString("rarm")) == 0 {
+		if (vict.Limb_condition[1]) >= 1 {
 			if vict != ch {
 				send_to_char(ch, libc.CString("They already have a right arm!\r\n"))
 			}
@@ -3431,13 +3432,13 @@ func do_implant(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou place the $p@W up to your body. It automaticly adjusts itself, becoming a new right arm!@n"), TRUE, ch, limb, nil, TO_CHAR)
 				act(libc.CString("@C$n@W places the $p@W up to $s body. It automaticly adjusts itself, becoming a new right arm!@n"), TRUE, ch, limb, nil, TO_ROOM)
 			}
-			vict.Act[int(PLR_CRARM/32)] |= bitvector_t(1 << (int(PLR_CRARM % 32)))
+			vict.Act[int(PLR_CRARM/32)] |= bitvector_t(int32(1 << (int(PLR_CRARM % 32))))
 			obj_from_char(limb)
 			extract_obj(limb)
 			return
 		}
-	} else if C.strcmp(&arg[0], libc.CString("larm")) == 0 {
-		if (vict.Limb_condition[1]) >= 1 {
+	} else if libc.StrCmp(&arg[0], libc.CString("larm")) == 0 {
+		if (vict.Limb_condition[2]) >= 1 {
 			if vict != ch {
 				send_to_char(ch, libc.CString("They already have a left arm!\r\n"))
 			}
@@ -3457,13 +3458,13 @@ func do_implant(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou place the $p@W up to your body. It automaticly adjusts itself, becoming a new left arm!@n"), TRUE, ch, limb, nil, TO_CHAR)
 				act(libc.CString("@C$n@W places the $p@W up to $s body. It automaticly adjusts itself, becoming a new left arm!@n"), TRUE, ch, limb, nil, TO_ROOM)
 			}
-			vict.Act[int(PLR_CLARM/32)] |= bitvector_t(1 << (int(PLR_CLARM % 32)))
+			vict.Act[int(PLR_CLARM/32)] |= bitvector_t(int32(1 << (int(PLR_CLARM % 32))))
 			obj_from_char(limb)
 			extract_obj(limb)
 			return
 		}
-	} else if C.strcmp(&arg[0], libc.CString("rleg")) == 0 {
-		if (vict.Limb_condition[2]) >= 1 {
+	} else if libc.StrCmp(&arg[0], libc.CString("rleg")) == 0 {
+		if (vict.Limb_condition[3]) >= 1 {
 			if vict != ch {
 				send_to_char(ch, libc.CString("They already have a right leg!\r\n"))
 			}
@@ -3483,13 +3484,13 @@ func do_implant(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou place the $p@W up to your body. It automaticly adjusts itself, becoming a new right leg!@n"), TRUE, ch, limb, nil, TO_CHAR)
 				act(libc.CString("@C$n@W places the $p@W up to $s body. It automaticly adjusts itself, becoming a new right leg!@n"), TRUE, ch, limb, nil, TO_ROOM)
 			}
-			vict.Act[int(PLR_CRLEG/32)] |= bitvector_t(1 << (int(PLR_CRLEG % 32)))
+			vict.Act[int(PLR_CRLEG/32)] |= bitvector_t(int32(1 << (int(PLR_CRLEG % 32))))
 			obj_from_char(limb)
 			extract_obj(limb)
 			return
 		}
-	} else if C.strcmp(&arg[0], libc.CString("lleg")) == 0 {
-		if (vict.Limb_condition[3]) >= 1 {
+	} else if libc.StrCmp(&arg[0], libc.CString("lleg")) == 0 {
+		if (vict.Limb_condition[4]) >= 1 {
 			if vict != ch {
 				send_to_char(ch, libc.CString("They already have a left leg!\r\n"))
 			}
@@ -3509,7 +3510,7 @@ func do_implant(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou place the $p@W up to your body. It automaticly adjusts itself, becoming a new left leg!@n"), TRUE, ch, limb, nil, TO_CHAR)
 				act(libc.CString("@C$n@W places the $p@W up to $s body. It automaticly adjusts itself, becoming a new left leg!@n"), TRUE, ch, limb, nil, TO_ROOM)
 			}
-			vict.Act[int(PLR_CLLEG/32)] |= bitvector_t(1 << (int(PLR_CLLEG % 32)))
+			vict.Act[int(PLR_CLLEG/32)] |= bitvector_t(int32(1 << (int(PLR_CLLEG % 32))))
 			obj_from_char(limb)
 			extract_obj(limb)
 			return
@@ -3537,11 +3538,11 @@ func do_pose(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	var prob int = GET_SKILL(ch, SKILL_POSE)
 	var perc int = rand_number(1, 70)
-	if ch.Real_abils.Str+8 > 25 && (ch.Bonuses[BONUS_WIMP]) > 0 {
+	if int(ch.Real_abils.Str)+8 > 25 && (ch.Bonuses[BONUS_WIMP]) > 0 {
 		send_to_char(ch, libc.CString("You can't handle having your strength increased beyond 25.\r\n"))
 		return
 	}
-	if ch.Real_abils.Dex+8 > 25 && (ch.Bonuses[BONUS_CLUMSY]) > 0 {
+	if int(ch.Real_abils.Dex)+8 > 25 && (ch.Bonuses[BONUS_CLUMSY]) > 0 {
 		send_to_char(ch, libc.CString("You can't handle having your agility increased beyond 25.\r\n"))
 		return
 	}
@@ -3573,7 +3574,7 @@ func do_pose(ch *char_data, argument *byte, cmd int, subcmd int) {
 		ch.Real_abils.Dex += 8
 		save_char(ch)
 		var before int64 = int64(GET_LIFEMAX(ch))
-		ch.Act[int(PLR_POSE/32)] |= bitvector_t(1 << (int(PLR_POSE % 32)))
+		ch.Act[int(PLR_POSE/32)] |= bitvector_t(int32(1 << (int(PLR_POSE % 32))))
 		ch.Lifeforce += int64(GET_LIFEMAX(ch) - int(before))
 		if ch.Lifeforce > int64(GET_LIFEMAX(ch)) {
 			ch.Lifeforce = int64(GET_LIFEMAX(ch))
@@ -3586,7 +3587,7 @@ func do_pose(ch *char_data, argument *byte, cmd int, subcmd int) {
 func do_fury(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var arg [2048]byte
 	one_argument(argument, &arg[0])
-	if ch.Race != RACE_HALFBREED || IS_NPC(ch) {
+	if int(ch.Race) != RACE_HALFBREED || IS_NPC(ch) {
 		send_to_char(ch, libc.CString("You are furious, but you'll get over it.\r\n"))
 		return
 	}
@@ -3612,7 +3613,7 @@ func do_fury(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 		}
 		ch.Fury = 0
-	} else if C.strcasecmp(&arg[0], libc.CString("attack")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("attack")) == 0 {
 		ch.Fury = 50
 	} else {
 		send_to_char(ch, libc.CString("Syntax: fury (attack) <--- this will not use up your LF to restore PL.\n        fury <--- fury by itself will do both LF to PL restore and attack boost.\r\n"))
@@ -3621,14 +3622,14 @@ func do_fury(ch *char_data, argument *byte, cmd int, subcmd int) {
 	reveal_hiding(ch, 0)
 	act(libc.CString("You release your fury! Your very next attack is guaranteed to rip your foes a new one!"), TRUE, ch, nil, nil, TO_CHAR)
 	act(libc.CString("$n screams furiously as a look of anger appears on $s face!"), TRUE, ch, nil, nil, TO_ROOM)
-	ch.Act[int(PLR_FURY/32)] |= bitvector_t(1 << (int(PLR_FURY % 32)))
+	ch.Act[int(PLR_FURY/32)] |= bitvector_t(int32(1 << (int(PLR_FURY % 32))))
 }
 func hint_system(ch *char_data, num int) {
 	var hints [22]*byte = [22]*byte{libc.CString("Remember to save often."), libc.CString("Remember to eat or drink if you want to stay alive."), libc.CString("It is a good idea to save up PS for learning skills instead of just practicing them."), libc.CString("A good way to save up money is with the bank."), libc.CString("If you want to stay alive in this rough world you will need to be mindful of your surroundings."), libc.CString("Knowing when to rest and recover can be the difference between life and death."), libc.CString("Not every battle can be won. Great warriors know how to pick their fights."), libc.CString("It is a good idea to experiment with skills fully before deciding their worth."), libc.CString("Having a well balanced repertoire of skills can help you out of any situation."), libc.CString("You can become hidden from your enemies on who and ooc with the whohide command."), libc.CString("You can value an item at a shopkeeper with the value command."), libc.CString("There are ways to earn money through jobs, try looking for a job. Bum."), libc.CString("You never know what may be hidden nearby. You should always check out anything you can."), libc.CString("You should check for a help file on any subject you can, you never know how the info may 'help' you."), libc.CString("Until you are capable of taking care of yourself for long periods of time you should stick near your sensei."), libc.CString("You shouldn't travel to other planets until you have a stable supply of money."), libc.CString("There is a vast galaxy out there that you may not be able to reach by public ship."), libc.CString("Score is used to view the various statistics about your character."), libc.CString("Status is used to view what is influencing your character and its characteristics."), libc.CString("You will need a scouter in order to use the Scouter Network (SNET)."), libc.CString("The DBAT forum is a great resource for finding out information and for conversing\r\nwith fellow players. http://advent-truth.com/forum"), libc.CString("Found a bug or have a suggestion? Log into our forums and post in the relevant section.")}
 	if num == 0 {
 		num = rand_number(0, 21)
 	}
-	if ch.Race != RACE_ANDROID && ch.Race != RACE_NAMEK {
+	if int(ch.Race) != RACE_ANDROID && int(ch.Race) != RACE_NAMEK {
 		send_to_char(ch, libc.CString("@D[@GHint@D] @G%s@n\r\n"), hints[num])
 	} else {
 		if num == 1 {
@@ -3698,7 +3699,7 @@ func do_telepathy(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You do not have enough ki to focus your mental abilities.\r\n"))
 		return
 	}
-	if C.strcmp(&arg[0], libc.CString("far")) == 0 {
+	if libc.StrCmp(&arg[0], libc.CString("far")) == 0 {
 		if IS_NPC(ch) {
 			return
 		} else if (func() *char_data {
@@ -3719,7 +3720,7 @@ func do_telepathy(ch *char_data, argument *byte, cmd int, subcmd int) {
 		} else if AFF_FLAGGED(ch, AFF_SHOCKED) {
 			send_to_char(ch, libc.CString("Your mind has been shocked by telepathic feedback! You are not able to use telepathy right now.\r\n"))
 			return
-		} else if vict.Race == RACE_ANDROID {
+		} else if int(vict.Race) == RACE_ANDROID {
 			send_to_char(ch, libc.CString("You can't touch the mind of such an artificial being.\r\n"))
 			return
 		} else if GET_SKILL(vict, SKILL_TELEPATHY)+int(vict.Aff_abils.Intel) > GET_SKILL(ch, SKILL_TELEPATHY)+int(ch.Aff_abils.Intel) {
@@ -3737,14 +3738,14 @@ func do_telepathy(ch *char_data, argument *byte, cmd int, subcmd int) {
 		} else {
 			look_at_room(vict.In_room, ch, 0)
 			send_to_char(ch, libc.CString("You see all this through their eyes!\r\n"))
-			if vict.Aff_abils.Intel > ch.Aff_abils.Intel {
+			if int(vict.Aff_abils.Intel) > int(ch.Aff_abils.Intel) {
 				send_to_char(ch, libc.CString("You feel like someone was using your mind for something...\r\n"))
 			}
 			ch.Mana -= ch.Max_mana / 40
 			return
 		}
 	}
-	if C.strcmp(&arg[0], libc.CString("link")) == 0 {
+	if libc.StrCmp(&arg[0], libc.CString("link")) == 0 {
 		if IS_NPC(ch) {
 			return
 		}
@@ -3767,7 +3768,7 @@ func do_telepathy(ch *char_data, argument *byte, cmd int, subcmd int) {
 		} else if IS_NPC(vict) {
 			send_to_char(ch, libc.CString("You can't touch the mind of such a thing.\r\n"))
 			return
-		} else if vict.Race == RACE_ANDROID {
+		} else if int(vict.Race) == RACE_ANDROID {
 			send_to_char(ch, libc.CString("You can't touch the mind of such an artificial being.\r\n"))
 			return
 		} else if GET_SKILL(vict, SKILL_TELEPATHY) != 0 {
@@ -3789,7 +3790,7 @@ func do_telepathy(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Linker = 1
 			return
 		}
-	} else if C.strcmp(&arg[0], libc.CString("read")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("read")) == 0 {
 		if (func() *char_data {
 			vict = get_char_vis(ch, &arg2[0], nil, 1<<0)
 			return vict
@@ -3799,7 +3800,7 @@ func do_telepathy(ch *char_data, argument *byte, cmd int, subcmd int) {
 		} else if vict == ch {
 			send_to_char(ch, libc.CString("Oh that makes a lot of sense...\r\n"))
 			return
-		} else if vict.Race == RACE_ANDROID {
+		} else if int(vict.Race) == RACE_ANDROID {
 			send_to_char(ch, libc.CString("You can't touch the mind of such an artificial being.\r\n"))
 			return
 		} else {
@@ -3877,7 +3878,7 @@ func do_telepathy(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if vict == ch {
 			send_to_char(ch, libc.CString("Oh that makes a lot of sense...\r\n"))
 			return
-		} else if vict.Race == RACE_ANDROID {
+		} else if int(vict.Race) == RACE_ANDROID {
 			send_to_char(ch, libc.CString("You can't touch the mind of such an artificial being.\r\n"))
 			return
 		} else {
@@ -3953,7 +3954,7 @@ func do_potential(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Their potential has already been released\r\n"))
 		return
 	}
-	if vict.Race == RACE_ANDROID {
+	if int(vict.Race) == RACE_ANDROID {
 		send_to_char(ch, libc.CString("They are a machine and have no potential to release.\r\n"))
 		return
 	}
@@ -3961,35 +3962,35 @@ func do_potential(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("They are already majinized and have no potential to release.\r\n"))
 		return
 	}
-	if vict.Race == RACE_MAJIN {
+	if int(vict.Race) == RACE_MAJIN {
 		send_to_char(ch, libc.CString("They have no potential to release...\r\n"))
 		return
 	} else {
 		boost = GET_SKILL(ch, SKILL_POTENTIAL) / 2
 		var mult float64 = 1
-		if vict.Race == RACE_TRUFFLE && PLR_FLAGGED(vict, PLR_TRANS1) {
+		if int(vict.Race) == RACE_TRUFFLE && PLR_FLAGGED(vict, PLR_TRANS1) {
 			mult = 3
-		} else if vict.Race == RACE_TRUFFLE && PLR_FLAGGED(vict, PLR_TRANS2) {
+		} else if int(vict.Race) == RACE_TRUFFLE && PLR_FLAGGED(vict, PLR_TRANS2) {
 			mult = 4
-		} else if vict.Race == RACE_TRUFFLE && PLR_FLAGGED(vict, PLR_TRANS3) {
+		} else if int(vict.Race) == RACE_TRUFFLE && PLR_FLAGGED(vict, PLR_TRANS3) {
 			mult = 5
-		} else if vict.Race == RACE_HOSHIJIN && vict.Starphase == 1 {
+		} else if int(vict.Race) == RACE_HOSHIJIN && vict.Starphase == 1 {
 			mult = 2
-		} else if vict.Race == RACE_HOSHIJIN && vict.Starphase == 2 {
+		} else if int(vict.Race) == RACE_HOSHIJIN && vict.Starphase == 2 {
 			mult = 3
-		} else if vict.Race == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS1) {
+		} else if int(vict.Race) == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS1) {
 			mult = 2
-		} else if vict.Race == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS2) {
+		} else if int(vict.Race) == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS2) {
 			mult = 3
-		} else if vict.Race == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS3) {
+		} else if int(vict.Race) == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS3) {
 			mult = 3.5
-		} else if vict.Race == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS4) {
+		} else if int(vict.Race) == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS4) {
 			mult = 4
 		}
-		vict.Act[int(PLR_PR/32)] |= bitvector_t(1 << (int(PLR_PR % 32)))
+		vict.Act[int(PLR_PR/32)] |= bitvector_t(int32(1 << (int(PLR_PR % 32))))
 		vict.Max_hit += int64(float64((vict.Basepl/100)*int64(boost)) * mult)
 		vict.Basepl += (vict.Basepl / 100) * int64(boost)
-		if vict.Race == RACE_HALFBREED {
+		if int(vict.Race) == RACE_HALFBREED {
 			vict.Max_mana += int64(float64((vict.Baseki/100)*int64(boost)) * mult)
 			vict.Baseki += (vict.Baseki / 100) * int64(boost)
 			vict.Max_move += int64(float64((vict.Basest/100)*int64(boost)) * mult)
@@ -4013,7 +4014,7 @@ func do_majinize(ch *char_data, argument *byte, cmd int, subcmd int) {
 		arg  [2048]byte
 	)
 	one_argument(argument, &arg[0])
-	if ch.Race != RACE_MAJIN {
+	if int(ch.Race) != RACE_MAJIN {
 		send_to_char(ch, libc.CString("You are not a majin and can not majinize anyone.\r\n"))
 		return
 	}
@@ -4061,29 +4062,29 @@ func do_majinize(ch *char_data, argument *byte, cmd int, subcmd int) {
 		vict.Majinize = 0
 		ch.Boosts += 1
 		var mult float64 = 1
-		if vict.Race == RACE_TRUFFLE && PLR_FLAGGED(vict, PLR_TRANS1) {
+		if int(vict.Race) == RACE_TRUFFLE && PLR_FLAGGED(vict, PLR_TRANS1) {
 			mult = 3
-		} else if vict.Race == RACE_TRUFFLE && PLR_FLAGGED(vict, PLR_TRANS2) {
+		} else if int(vict.Race) == RACE_TRUFFLE && PLR_FLAGGED(vict, PLR_TRANS2) {
 			mult = 4
-		} else if vict.Race == RACE_TRUFFLE && PLR_FLAGGED(vict, PLR_TRANS3) {
+		} else if int(vict.Race) == RACE_TRUFFLE && PLR_FLAGGED(vict, PLR_TRANS3) {
 			mult = 5
-		} else if vict.Race == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS1) {
+		} else if int(vict.Race) == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS1) {
 			mult = 2
-		} else if vict.Race == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS2) {
+		} else if int(vict.Race) == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS2) {
 			mult = 3
-		} else if vict.Race == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS3) {
+		} else if int(vict.Race) == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS3) {
 			mult = 3.5
-		} else if vict.Race == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS4) {
+		} else if int(vict.Race) == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS4) {
 			mult = 4
-		} else if vict.Race == RACE_MAJIN && PLR_FLAGGED(vict, PLR_TRANS1) {
+		} else if int(vict.Race) == RACE_MAJIN && PLR_FLAGGED(vict, PLR_TRANS1) {
 			mult = 2
-		} else if vict.Race == RACE_MAJIN && PLR_FLAGGED(vict, PLR_TRANS2) {
+		} else if int(vict.Race) == RACE_MAJIN && PLR_FLAGGED(vict, PLR_TRANS2) {
 			mult = 3
-		} else if vict.Race == RACE_MAJIN && PLR_FLAGGED(vict, PLR_TRANS3) {
+		} else if int(vict.Race) == RACE_MAJIN && PLR_FLAGGED(vict, PLR_TRANS3) {
 			mult = 4.5
-		} else if vict.Race == RACE_HOSHIJIN && vict.Starphase == 1 {
+		} else if int(vict.Race) == RACE_HOSHIJIN && vict.Starphase == 1 {
 			mult = 2
-		} else if vict.Race == RACE_HOSHIJIN && vict.Starphase == 2 {
+		} else if int(vict.Race) == RACE_HOSHIJIN && vict.Starphase == 2 {
 			mult = 3
 		}
 		if vict.Majinizer == 0 {
@@ -4120,29 +4121,29 @@ func do_majinize(ch *char_data, argument *byte, cmd int, subcmd int) {
 		vict.Majinize = int(ch.Id)
 		ch.Boosts -= 1
 		var mult float64 = 1
-		if vict.Race == RACE_TRUFFLE && PLR_FLAGGED(vict, PLR_TRANS1) {
+		if int(vict.Race) == RACE_TRUFFLE && PLR_FLAGGED(vict, PLR_TRANS1) {
 			mult = 3
-		} else if vict.Race == RACE_TRUFFLE && PLR_FLAGGED(vict, PLR_TRANS2) {
+		} else if int(vict.Race) == RACE_TRUFFLE && PLR_FLAGGED(vict, PLR_TRANS2) {
 			mult = 4
-		} else if vict.Race == RACE_TRUFFLE && PLR_FLAGGED(vict, PLR_TRANS3) {
+		} else if int(vict.Race) == RACE_TRUFFLE && PLR_FLAGGED(vict, PLR_TRANS3) {
 			mult = 5
-		} else if vict.Race == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS1) {
+		} else if int(vict.Race) == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS1) {
 			mult = 2
-		} else if vict.Race == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS2) {
+		} else if int(vict.Race) == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS2) {
 			mult = 3
-		} else if vict.Race == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS3) {
+		} else if int(vict.Race) == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS3) {
 			mult = 3.5
-		} else if vict.Race == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS4) {
+		} else if int(vict.Race) == RACE_BIO && PLR_FLAGGED(vict, PLR_TRANS4) {
 			mult = 4
-		} else if vict.Race == RACE_MAJIN && PLR_FLAGGED(vict, PLR_TRANS1) {
+		} else if int(vict.Race) == RACE_MAJIN && PLR_FLAGGED(vict, PLR_TRANS1) {
 			mult = 2
-		} else if vict.Race == RACE_MAJIN && PLR_FLAGGED(vict, PLR_TRANS2) {
+		} else if int(vict.Race) == RACE_MAJIN && PLR_FLAGGED(vict, PLR_TRANS2) {
 			mult = 3
-		} else if vict.Race == RACE_MAJIN && PLR_FLAGGED(vict, PLR_TRANS3) {
+		} else if int(vict.Race) == RACE_MAJIN && PLR_FLAGGED(vict, PLR_TRANS3) {
 			mult = 4.5
-		} else if vict.Race == RACE_HOSHIJIN && vict.Starphase == 1 {
+		} else if int(vict.Race) == RACE_HOSHIJIN && vict.Starphase == 1 {
 			mult = 2
-		} else if vict.Race == RACE_HOSHIJIN && vict.Starphase == 2 {
+		} else if int(vict.Race) == RACE_HOSHIJIN && vict.Starphase == 2 {
 			mult = 3
 		}
 		vict.Majinizer = int64(float64(vict.Basepl) * 0.4)
@@ -4202,7 +4203,7 @@ func do_spit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		improve_skill(ch, SKILL_SPIT, 1)
 		WAIT_STATE(ch, (int(1000000/OPT_USEC))*2)
 		return
-	} else if AFF_FLAGGED(vict, AFF_ZANZOKEN) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+	} else if AFF_FLAGGED(vict, AFF_ZANZOKEN) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 		ch.Mana -= int64(cost)
 		reveal_hiding(ch, 0)
 		act(libc.CString("@C$N@c disappears, avoiding your spit before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
@@ -4268,11 +4269,11 @@ func boost_obj(obj *obj_data, ch *char_data, type_ int) {
 	case 1:
 		switch boost {
 		case 30:
-			obj.Extra_flags[int(ITEM_WEAPLVL2/32)] |= bitvector_t(1 << (int(ITEM_WEAPLVL2 % 32)))
+			obj.Extra_flags[int(ITEM_WEAPLVL2/32)] |= bitvector_t(int32(1 << (int(ITEM_WEAPLVL2 % 32))))
 		case 40:
 			fallthrough
 		case 50:
-			obj.Extra_flags[int(ITEM_WEAPLVL3/32)] |= bitvector_t(1 << (int(ITEM_WEAPLVL3 % 32)))
+			obj.Extra_flags[int(ITEM_WEAPLVL3/32)] |= bitvector_t(int32(1 << (int(ITEM_WEAPLVL3 % 32))))
 		case 60:
 			fallthrough
 		case 70:
@@ -4280,11 +4281,11 @@ func boost_obj(obj *obj_data, ch *char_data, type_ int) {
 		case 80:
 			fallthrough
 		case 90:
-			obj.Extra_flags[int(ITEM_WEAPLVL4/32)] |= bitvector_t(1 << (int(ITEM_WEAPLVL4 % 32)))
+			obj.Extra_flags[int(ITEM_WEAPLVL4/32)] |= bitvector_t(int32(1 << (int(ITEM_WEAPLVL4 % 32))))
 		case 100:
-			obj.Extra_flags[int(ITEM_WEAPLVL5/32)] |= bitvector_t(1 << (int(ITEM_WEAPLVL5 % 32)))
+			obj.Extra_flags[int(ITEM_WEAPLVL5/32)] |= bitvector_t(int32(1 << (int(ITEM_WEAPLVL5 % 32))))
 		default:
-			obj.Extra_flags[int(ITEM_WEAPLVL1/32)] |= bitvector_t(1 << (int(ITEM_WEAPLVL1 % 32)))
+			obj.Extra_flags[int(ITEM_WEAPLVL1/32)] |= bitvector_t(int32(1 << (int(ITEM_WEAPLVL1 % 32))))
 		}
 		if boost != 0 {
 			obj.Level = boost
@@ -4450,7 +4451,7 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	reveal_hiding(ch, 0)
-	if C.strcmp(&arg[0], libc.CString("food")) == 0 {
+	if libc.StrCmp(&arg[0], libc.CString("food")) == 0 {
 		cost = ch.Max_mana / int64(skill/2)
 		cost *= int64(discount)
 		if ch.Mana < cost {
@@ -4461,11 +4462,11 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_char(ch, libc.CString("Making lowest quality version of object. To make a higher quality use, Syntax: create (type) (mid | high | highest)\r\n"))
 				send_to_char(ch, libc.CString("If you are capable you will make it. If not you will make a low quality version.\r\n"))
 			} else if arg2[0] != 0 {
-				if C.strcasecmp(&arg2[0], libc.CString("highest")) == 0 && skill >= 100 {
+				if libc.StrCaseCmp(&arg2[0], libc.CString("highest")) == 0 && skill >= 100 {
 					level = 4
-				} else if C.strcasecmp(&arg2[0], libc.CString("high")) == 0 && skill >= 75 {
+				} else if libc.StrCaseCmp(&arg2[0], libc.CString("high")) == 0 && skill >= 75 {
 					level = 3
-				} else if C.strcasecmp(&arg2[0], libc.CString("mid")) == 0 && skill >= 50 {
+				} else if libc.StrCaseCmp(&arg2[0], libc.CString("mid")) == 0 && skill >= 50 {
 					level = 2
 				} else {
 					level = 1
@@ -4492,7 +4493,7 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Mana -= cost
 			return
 		}
-	} else if C.strcmp(&arg[0], libc.CString("water")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("water")) == 0 {
 		cost = ch.Max_mana / int64(skill*2)
 		cost *= int64(discount)
 		if ch.Mana < cost {
@@ -4503,11 +4504,11 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_char(ch, libc.CString("Making lowest quality version of object. To make a higher quality use, Syntax: create (type) (mid | high | highest)\r\n"))
 				send_to_char(ch, libc.CString("If you are capable you will make it. If not you will make a low quality version.\r\n"))
 			} else if arg2[0] != 0 {
-				if C.strcasecmp(&arg2[0], libc.CString("highest")) == 0 && skill >= 100 {
+				if libc.StrCaseCmp(&arg2[0], libc.CString("highest")) == 0 && skill >= 100 {
 					level = 4
-				} else if C.strcasecmp(&arg2[0], libc.CString("high")) == 0 && skill >= 75 {
+				} else if libc.StrCaseCmp(&arg2[0], libc.CString("high")) == 0 && skill >= 75 {
 					level = 3
-				} else if C.strcasecmp(&arg2[0], libc.CString("mid")) == 0 && skill >= 50 {
+				} else if libc.StrCaseCmp(&arg2[0], libc.CString("mid")) == 0 && skill >= 50 {
 					level = 2
 				} else {
 					level = 1
@@ -4534,7 +4535,7 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Mana -= cost
 			return
 		}
-	} else if C.strcmp(&arg[0], libc.CString("bag")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("bag")) == 0 {
 		cost = ch.Max_mana / int64(skill*2)
 		cost *= int64(discount)
 		if bag == FALSE {
@@ -4555,7 +4556,7 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Mana -= cost
 			return
 		}
-	} else if C.strcmp(&arg[0], libc.CString("mattress")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("mattress")) == 0 {
 		cost = ch.Max_mana / int64(skill)
 		cost *= int64(discount)
 		if mattress == FALSE {
@@ -4576,7 +4577,7 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Mana -= cost
 			return
 		}
-	} else if C.strcmp(&arg[0], libc.CString("weapon")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("weapon")) == 0 {
 		cost = ch.Max_mana / 5
 		cost *= int64(discount)
 		if sword == FALSE {
@@ -4595,19 +4596,19 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_char(ch, libc.CString("Making lowest quality version of object. To make a higher quality use, Syntax: create (type) (mid | high | higher | highest)\r\n"))
 				send_to_char(ch, libc.CString("If you are capable you will make it. If not you will make a low quality version.\r\n"))
 			} else if arg3[0] != 0 {
-				if C.strcasecmp(&arg3[0], libc.CString("highest")) == 0 && skill >= 100 {
+				if libc.StrCaseCmp(&arg3[0], libc.CString("highest")) == 0 && skill >= 100 {
 					level = 5
-				} else if C.strcasecmp(&arg3[0], libc.CString("higher")) == 0 && skill >= 75 {
+				} else if libc.StrCaseCmp(&arg3[0], libc.CString("higher")) == 0 && skill >= 75 {
 					level = 4
-				} else if C.strcasecmp(&arg3[0], libc.CString("high")) == 0 && skill >= 50 {
+				} else if libc.StrCaseCmp(&arg3[0], libc.CString("high")) == 0 && skill >= 50 {
 					level = 3
-				} else if C.strcasecmp(&arg3[0], libc.CString("mid")) == 0 && skill >= 30 {
+				} else if libc.StrCaseCmp(&arg3[0], libc.CString("mid")) == 0 && skill >= 30 {
 					level = 2
 				} else {
 					level = 1
 				}
 			}
-			if C.strcasecmp(&arg2[0], libc.CString("sword")) == 0 {
+			if libc.StrCaseCmp(&arg2[0], libc.CString("sword")) == 0 {
 				if level == 5 {
 					obj = read_object(1519, VIRTUAL)
 					add_unique_id(obj)
@@ -4624,7 +4625,7 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 					obj = read_object(90, VIRTUAL)
 					add_unique_id(obj)
 				}
-			} else if C.strcasecmp(&arg2[0], libc.CString("dagger")) == 0 {
+			} else if libc.StrCaseCmp(&arg2[0], libc.CString("dagger")) == 0 {
 				if level == 5 {
 					obj = read_object(1540, VIRTUAL)
 					add_unique_id(obj)
@@ -4641,7 +4642,7 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 					obj = read_object(1536, VIRTUAL)
 					add_unique_id(obj)
 				}
-			} else if C.strcasecmp(&arg2[0], libc.CString("club")) == 0 {
+			} else if libc.StrCaseCmp(&arg2[0], libc.CString("club")) == 0 {
 				if level == 5 {
 					obj = read_object(1545, VIRTUAL)
 					add_unique_id(obj)
@@ -4658,7 +4659,7 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 					obj = read_object(1541, VIRTUAL)
 					add_unique_id(obj)
 				}
-			} else if C.strcasecmp(&arg2[0], libc.CString("spear")) == 0 {
+			} else if libc.StrCaseCmp(&arg2[0], libc.CString("spear")) == 0 {
 				if level == 5 {
 					obj = read_object(1550, VIRTUAL)
 					add_unique_id(obj)
@@ -4675,7 +4676,7 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 					obj = read_object(1546, VIRTUAL)
 					add_unique_id(obj)
 				}
-			} else if C.strcasecmp(&arg2[0], libc.CString("gun")) == 0 {
+			} else if libc.StrCaseCmp(&arg2[0], libc.CString("gun")) == 0 {
 				if level == 5 {
 					obj = read_object(1555, VIRTUAL)
 					add_unique_id(obj)
@@ -4705,7 +4706,7 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Mana -= cost
 			return
 		}
-	} else if C.strcmp(&arg[0], libc.CString("clothesbeam")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("clothesbeam")) == 0 {
 		cost = ch.Max_mana / 2
 		cost *= int64(discount)
 		if clothes == FALSE {
@@ -4765,7 +4766,7 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Mana -= cost
 			return
 		}
-	} else if C.strcmp(&arg[0], libc.CString("gi")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("gi")) == 0 {
 		cost = ch.Max_mana / 5
 		cost *= int64(discount)
 		if gi == FALSE {
@@ -4788,7 +4789,7 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Mana -= cost
 			return
 		}
-	} else if C.strcmp(&arg[0], libc.CString("shuriken")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("shuriken")) == 0 {
 		cost = ch.Max_mana / 4
 		cost *= int64(discount)
 		if shuriken == FALSE {
@@ -4802,8 +4803,8 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 			obj = read_object(0x4A6D, VIRTUAL)
 			add_unique_id(obj)
 			obj_to_char(obj, ch)
-			obj.Extra_flags[int(ITEM_NORENT/32)] |= bitvector_t(1 << (int(ITEM_NORENT % 32)))
-			obj.Extra_flags[int(ITEM_NOSELL/32)] |= bitvector_t(1 << (int(ITEM_NOSELL % 32)))
+			obj.Extra_flags[int(ITEM_NORENT/32)] |= bitvector_t(int32(1 << (int(ITEM_NORENT % 32))))
+			obj.Extra_flags[int(ITEM_NOSELL/32)] |= bitvector_t(int32(1 << (int(ITEM_NOSELL % 32))))
 			obj.Size = get_size(ch)
 			reveal_hiding(ch, 0)
 			ch.Con_cooldown = 10
@@ -4812,7 +4813,7 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Mana -= cost
 			return
 		}
-	} else if C.strcmp(&arg[0], libc.CString("pants")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("pants")) == 0 {
 		cost = ch.Max_mana / 5
 		cost *= int64(discount)
 		if pants == FALSE {
@@ -4835,7 +4836,7 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Mana -= cost
 			return
 		}
-	} else if C.strcmp(&arg[0], libc.CString("wristband")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("wristband")) == 0 {
 		cost = ch.Max_mana / 5
 		cost *= int64(discount)
 		if wrist == FALSE {
@@ -4858,7 +4859,7 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Mana -= cost
 			return
 		}
-	} else if C.strcmp(&arg[0], libc.CString("boots")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("boots")) == 0 {
 		cost = ch.Max_mana / 5
 		cost *= int64(discount)
 		if boots == FALSE {
@@ -4881,7 +4882,7 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Mana -= cost
 			return
 		}
-	} else if C.strcmp(&arg[0], libc.CString("light")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("light")) == 0 {
 		cost = ch.Max_mana / int64(skill*2)
 		cost *= int64(discount)
 		if light == FALSE {
@@ -4903,7 +4904,7 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Mana -= cost
 			return
 		}
-	} else if C.strcmp(&arg[0], libc.CString("kachin")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("kachin")) == 0 {
 		cost = ch.Max_mana - 1
 		cost *= int64(discount)
 		if kachin == FALSE {
@@ -4925,7 +4926,7 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Mana -= cost
 			return
 		}
-	} else if C.strcmp(&arg[0], libc.CString("elixir")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("elixir")) == 0 {
 		cost = ch.Max_mana - 1
 		cost *= int64(discount)
 		if boost == FALSE {
@@ -4956,7 +4957,7 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Player_specials.Class_skill_points[ch.Chclass] -= 10
 			return
 		}
-	} else if C.strcmp(&arg[0], libc.CString("senzu")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("senzu")) == 0 {
 		cost = ch.Max_mana
 		var cost2 int64 = gear_pl(ch) - 1
 		if senzu == FALSE {
@@ -4995,7 +4996,7 @@ func do_form(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 }
 func do_recharge(ch *char_data, argument *byte, cmd int, subcmd int) {
-	if IS_NPC(ch) || ch.Race != RACE_ANDROID {
+	if IS_NPC(ch) || int(ch.Race) != RACE_ANDROID {
 		send_to_char(ch, libc.CString("Only androids can use recharge\r\n"))
 		return
 	}
@@ -5033,7 +5034,7 @@ func do_recharge(ch *char_data, argument *byte, cmd int, subcmd int) {
 }
 func do_srepair(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var i int
-	if ch.Race != RACE_ANDROID {
+	if int(ch.Race) != RACE_ANDROID {
 		send_to_char(ch, libc.CString("Only androids can use repair, maybe you want 'fix' instead?\r\n"))
 		return
 	}
@@ -5071,7 +5072,7 @@ func do_srepair(ch *char_data, argument *byte, cmd int, subcmd int) {
 								(ch.Equipment[i]).Value[VAL_ALL_HEALTH] = 100
 							}
 							if OBJ_FLAGGED(ch.Equipment[i], ITEM_BROKEN) {
-								(ch.Equipment[i]).Extra_flags[int(ITEM_BROKEN/32)] &= bitvector_t(^(1 << (int(ITEM_BROKEN % 32))))
+								(ch.Equipment[i]).Extra_flags[int(ITEM_BROKEN/32)] &= bitvector_t(int32(^(1 << (int(ITEM_BROKEN % 32)))))
 							}
 							repaired = TRUE
 						}
@@ -5112,7 +5113,7 @@ func do_upgrade(ch *char_data, argument *byte, cmd int, subcmd int) {
 		arg2  [2048]byte
 	)
 	two_arguments(argument, &arg[0], &arg2[0])
-	if IS_NPC(ch) || ch.Race != RACE_ANDROID {
+	if IS_NPC(ch) || int(ch.Race) != RACE_ANDROID {
 		send_to_char(ch, libc.CString("You are not an android!\r\n"))
 		return
 	}
@@ -5123,7 +5124,7 @@ func do_upgrade(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("@cAugment @RPowerlevel\r\n@cAugment @CKi\r\n@cAugment @GStamina\r\n@WCurrent Upgrade Points @D[@y%s@D]@n\r\n"), add_commas(int64(ch.Upgrade)))
 		return
 	}
-	if C.strcasecmp(libc.CString("augment"), &arg[0]) == 0 {
+	if libc.StrCaseCmp(libc.CString("augment"), &arg[0]) == 0 {
 		var (
 			obj  *obj_data = nil
 			gain int64     = 0
@@ -5186,7 +5187,7 @@ func do_upgrade(ch *char_data, argument *byte, cmd int, subcmd int) {
 					gain = 10000000
 				}
 			}
-			if C.strcasecmp(libc.CString("powerlevel"), &arg2[0]) == 0 {
+			if libc.StrCaseCmp(libc.CString("powerlevel"), &arg2[0]) == 0 {
 				obj_from_char(obj)
 				extract_obj(obj)
 				act(libc.CString("@WYou install the circuits and upgrade your maximum powerlevel.@n"), TRUE, ch, nil, nil, TO_CHAR)
@@ -5195,7 +5196,7 @@ func do_upgrade(ch *char_data, argument *byte, cmd int, subcmd int) {
 				ch.Basepl += gain
 				send_to_char(ch, libc.CString("@gGain @D[@G+%s@D]\r\n"), add_commas(gain))
 				return
-			} else if C.strcasecmp(libc.CString("ki"), &arg2[0]) == 0 {
+			} else if libc.StrCaseCmp(libc.CString("ki"), &arg2[0]) == 0 {
 				obj_from_char(obj)
 				extract_obj(obj)
 				act(libc.CString("@WYou install the circuits and upgrade your maximum ki.@n"), TRUE, ch, nil, nil, TO_CHAR)
@@ -5204,7 +5205,7 @@ func do_upgrade(ch *char_data, argument *byte, cmd int, subcmd int) {
 				ch.Baseki += gain
 				send_to_char(ch, libc.CString("@gGain @D[@G+%s@D]\r\n"), add_commas(gain))
 				return
-			} else if C.strcasecmp(libc.CString("stamina"), &arg2[0]) == 0 {
+			} else if libc.StrCaseCmp(libc.CString("stamina"), &arg2[0]) == 0 {
 				obj_from_char(obj)
 				extract_obj(obj)
 				act(libc.CString("@WYou install the circuits and upgrade your maximum stamina.@n"), TRUE, ch, nil, nil, TO_CHAR)
@@ -5227,19 +5228,19 @@ func do_upgrade(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("@mYou are unable to spend anymore UGP right now (Softcap)@n\r\n"))
 		return
 	}
-	if arg2[0] == 0 && (C.strcasecmp(libc.CString("powerlevel"), &arg[0]) == 0 || C.strcasecmp(libc.CString("ki"), &arg[0]) == 0 || C.strcasecmp(libc.CString("stamina"), &arg[0]) == 0) {
+	if arg2[0] == 0 && (libc.StrCaseCmp(libc.CString("powerlevel"), &arg[0]) == 0 || libc.StrCaseCmp(libc.CString("ki"), &arg[0]) == 0 || libc.StrCaseCmp(libc.CString("stamina"), &arg[0]) == 0) {
 		send_to_char(ch, libc.CString("How many times do you want to increase %s?"), &arg[0])
 		return
 	}
-	if libc.Atoi(libc.GoString(&arg2[0])) <= 0 && (C.strcasecmp(libc.CString("powerlevel"), &arg[0]) == 0 || C.strcasecmp(libc.CString("ki"), &arg[0]) == 0 || C.strcasecmp(libc.CString("stamina"), &arg[0]) == 0) {
+	if libc.Atoi(libc.GoString(&arg2[0])) <= 0 && (libc.StrCaseCmp(libc.CString("powerlevel"), &arg[0]) == 0 || libc.StrCaseCmp(libc.CString("ki"), &arg[0]) == 0 || libc.StrCaseCmp(libc.CString("stamina"), &arg[0]) == 0) {
 		send_to_char(ch, libc.CString("It needs to be between 1-1000\r\n"))
 		return
 	}
-	if libc.Atoi(libc.GoString(&arg2[0])) > 1000 && (C.strcasecmp(libc.CString("powerlevel"), &arg[0]) == 0 || C.strcasecmp(libc.CString("ki"), &arg[0]) == 0 || C.strcasecmp(libc.CString("stamina"), &arg[0]) == 0) {
+	if libc.Atoi(libc.GoString(&arg2[0])) > 1000 && (libc.StrCaseCmp(libc.CString("powerlevel"), &arg[0]) == 0 || libc.StrCaseCmp(libc.CString("ki"), &arg[0]) == 0 || libc.StrCaseCmp(libc.CString("stamina"), &arg[0]) == 0) {
 		send_to_char(ch, libc.CString("It needs to be between 1-1000\r\n"))
 		return
 	}
-	if C.strcasecmp(libc.CString("powerlevel"), &arg[0]) == 0 {
+	if libc.StrCaseCmp(libc.CString("powerlevel"), &arg[0]) == 0 {
 		count = libc.Atoi(libc.GoString(&arg2[0]))
 		for count > 0 {
 			if GET_LEVEL(ch) >= 90 {
@@ -5274,7 +5275,7 @@ func do_upgrade(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Max_hit += int64(bonus)
 			ch.Basepl += int64(bonus)
 		}
-	} else if C.strcasecmp(libc.CString("ki"), &arg[0]) == 0 {
+	} else if libc.StrCaseCmp(libc.CString("ki"), &arg[0]) == 0 {
 		count = libc.Atoi(libc.GoString(&arg2[0]))
 		for count > 0 {
 			if GET_LEVEL(ch) >= 90 {
@@ -5309,7 +5310,7 @@ func do_upgrade(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Max_mana += int64(bonus)
 			ch.Baseki += int64(bonus)
 		}
-	} else if C.strcasecmp(libc.CString("stamina"), &arg[0]) == 0 {
+	} else if libc.StrCaseCmp(libc.CString("stamina"), &arg[0]) == 0 {
 		count = libc.Atoi(libc.GoString(&arg2[0]))
 		for count > 0 {
 			if GET_LEVEL(ch) >= 90 {
@@ -5350,7 +5351,7 @@ func do_upgrade(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 }
 func do_ingest(ch *char_data, argument *byte, cmd int, subcmd int) {
-	if ch.Race == RACE_MAJIN {
+	if int(ch.Race) == RACE_MAJIN {
 		var (
 			vict *char_data
 			arg  [2048]byte
@@ -5403,7 +5404,7 @@ func do_ingest(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 		reveal_hiding(ch, 0)
-		if AFF_FLAGGED(vict, AFF_ZANZOKEN) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if AFF_FLAGGED(vict, AFF_ZANZOKEN) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			act(libc.CString("@C$N@c disappears, avoiding your attempted ingestion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 			act(libc.CString("@cYou disappear, avoiding @C$n's@c attempted @ringestion@c before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 			act(libc.CString("@C$N@c disappears, avoiding @C$n's@c attempted @ringestion@c before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -5438,7 +5439,7 @@ func do_ingest(ch *char_data, argument *byte, cmd int, subcmd int) {
 					}
 					return -1
 				}())
-				vict.Act[int(PLR_ABSORBED/32)] |= bitvector_t(1 << (int(PLR_ABSORBED % 32)))
+				vict.Act[int(PLR_ABSORBED/32)] |= bitvector_t(int32(1 << (int(PLR_ABSORBED % 32))))
 			}
 			send_to_char(ch, libc.CString("@D[@mINGEST@D] @rPL@W: @D(@y%s@D) @cKi@W: @D(@y%s@D) @gSt@W: @D(@y%s@D)@n\r\n"), add_commas(pl), add_commas(ki), add_commas(stam))
 			if rand_number(1, 3) == 3 {
@@ -5485,23 +5486,23 @@ func do_absorb(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if check_skill(ch, SKILL_ABSORB) == 0 {
 		return
 	}
-	if ch.Race == RACE_ANDROID {
+	if int(ch.Race) == RACE_ANDROID {
 		if limb_ok(ch, 0) == 0 {
 			return
 		}
 	}
 	if !IS_NPC(ch) {
-		if ch.Race == RACE_BIO && !PLR_FLAGGED(ch, PLR_TAIL) {
+		if int(ch.Race) == RACE_BIO && !PLR_FLAGGED(ch, PLR_TAIL) {
 			send_to_char(ch, libc.CString("You have no tail!\r\n"))
 			return
 		}
 	}
-	if ch.Race != RACE_ANDROID && ch.Race != RACE_BIO {
+	if int(ch.Race) != RACE_ANDROID && int(ch.Race) != RACE_BIO {
 		send_to_char(ch, libc.CString("You shouldn't have this skill, you are incapable of absorbing.\r\n"))
 		send_to_imm(libc.CString("ERROR: Absorb skill on %s when they are not a bio or android."), GET_NAME(ch))
 		return
 	}
-	if ch.Fighting != nil && ch.Race != RACE_ANDROID {
+	if ch.Fighting != nil && int(ch.Race) != RACE_ANDROID {
 		send_to_char(ch, libc.CString("You are too busy fighting!\r\n"))
 		return
 	}
@@ -5523,17 +5524,17 @@ func do_absorb(ch *char_data, argument *byte, cmd int, subcmd int) {
 		ch.Absorbing.Absorbby = nil
 		ch.Absorbing = nil
 	}
-	if arg[0] == 0 && ch.Race == RACE_ANDROID {
+	if arg[0] == 0 && int(ch.Race) == RACE_ANDROID {
 		send_to_char(ch, libc.CString("Who do you want to absorb?\r\n"))
 		return
 	}
-	if ch.Race == RACE_ANDROID {
+	if int(ch.Race) == RACE_ANDROID {
 		if (func() *char_data {
 			vict = get_char_vis(ch, &arg[0], nil, 1<<0)
 			return vict
 		}()) == nil {
 			send_to_char(ch, libc.CString("Absorb %s?\r\n"), func() string {
-				if ch.Race == RACE_ANDROID {
+				if int(ch.Race) == RACE_ANDROID {
 					return "from who"
 				}
 				return "who"
@@ -5541,7 +5542,7 @@ func do_absorb(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	}
-	if ch.Race == RACE_BIO {
+	if int(ch.Race) == RACE_BIO {
 		if arg[0] == 0 {
 			send_to_char(ch, libc.CString("Syntax: absorb (swallow | extract) (target)\r\n"))
 			return
@@ -5557,7 +5558,7 @@ func do_absorb(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You can't absorb them, they have a barrier!\r\n"))
 		return
 	}
-	if ch.Race == RACE_ANDROID {
+	if int(ch.Race) == RACE_ANDROID {
 		if !IS_NPC(ch) {
 			if !PLR_FLAGGED(ch, PLR_ABSORB) {
 				send_to_char(ch, libc.CString("You are not an absorbtion model.\r\n"))
@@ -5609,7 +5610,7 @@ func do_absorb(ch *char_data, argument *byte, cmd int, subcmd int) {
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 			return
 		}
-	} else if ch.Race == RACE_BIO && C.strcmp(&arg[0], libc.CString("swallow")) == 0 {
+	} else if int(ch.Race) == RACE_BIO && libc.StrCmp(&arg[0], libc.CString("swallow")) == 0 {
 		if vict.Absorbby != nil {
 			send_to_char(ch, libc.CString("%s is already absorbing from them!"), GET_NAME(vict.Absorbby))
 			return
@@ -5656,7 +5657,7 @@ func do_absorb(ch *char_data, argument *byte, cmd int, subcmd int) {
 					}
 					return -1
 				}())
-				vict.Act[int(PLR_ABSORBED/32)] |= bitvector_t(1 << (int(PLR_ABSORBED % 32)))
+				vict.Act[int(PLR_ABSORBED/32)] |= bitvector_t(int32(1 << (int(PLR_ABSORBED % 32))))
 			}
 			var stam int64 = vict.Basest / 5
 			var ki int64 = vict.Baseki / 5
@@ -5665,7 +5666,7 @@ func do_absorb(ch *char_data, argument *byte, cmd int, subcmd int) {
 			improve_skill(ch, SKILL_ABSORB, 1)
 			die(vict, nil)
 		}
-	} else if ch.Race == RACE_BIO && C.strcmp(&arg[0], libc.CString("extract")) == 0 {
+	} else if int(ch.Race) == RACE_BIO && libc.StrCmp(&arg[0], libc.CString("extract")) == 0 {
 		var failthresh int = rand_number(1, 125)
 		if GET_LEVEL(vict) > 99 {
 			failthresh += (GET_LEVEL(vict) - 95) * 2
@@ -5754,11 +5755,11 @@ func do_absorb(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("@D[@gABSORB@D] @rPL@W: @D(@y%s@D) @cKi@W: @D(@y%s@D) @gSt@W: @D(@y%s@D)@n\r\n"), add_commas(pl), add_commas(ki), add_commas(stam))
 			improve_skill(ch, SKILL_ABSORB, 0)
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*4)
-			vict.Act[int(MOB_HUSK/32)] |= bitvector_t(1 << (int(MOB_HUSK % 32)))
+			vict.Act[int(MOB_HUSK/32)] |= bitvector_t(int32(1 << (int(MOB_HUSK % 32))))
 			die(vict, ch)
 		}
 	} else {
-		if ch.Race != RACE_BIO && ch.Race != RACE_ANDROID {
+		if int(ch.Race) != RACE_BIO && int(ch.Race) != RACE_ANDROID {
 			send_to_char(ch, libc.CString("You have the absorb skill but are incapable of absorbing. This error has been reported.\r\n"))
 			send_to_imm(libc.CString("ERROR: Absorb attempted by %s even though they are not bio or android."), GET_NAME(ch))
 		} else {
@@ -5811,7 +5812,7 @@ func do_escape(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if rand_number(1, 3) == 3 {
 				var dmg int64 = int64(float64(ch.Max_hit) * 0.025)
 				hurt(0, 0, ch, ch.Absorbby, nil, dmg, 0)
-				if ch.Absorbby.Position == POS_SLEEPING {
+				if int(ch.Absorbby.Position) == POS_SLEEPING {
 					act(libc.CString("@c$N@W manages to break loose of @C$n's@W hold!@n"), TRUE, ch.Absorbby, nil, unsafe.Pointer(ch), TO_NOTVICT)
 					act(libc.CString("@WYou manage to break loose of @C$n's@W hold!@n"), TRUE, ch.Absorbby, nil, unsafe.Pointer(ch), TO_VICT)
 					act(libc.CString("@c$N@W manages to break loose of your hold!@n"), TRUE, ch.Absorbby, nil, unsafe.Pointer(ch), TO_CHAR)
@@ -5870,7 +5871,7 @@ func do_escape(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if rand_number(1, 3) == 3 {
 				var dmg int64 = int64(float64(ch.Max_hit) * 0.025)
 				hurt(0, 0, ch, ch.Grappled, nil, dmg, 0)
-				if ch.Grappled.Position == POS_SLEEPING {
+				if int(ch.Grappled.Position) == POS_SLEEPING {
 					act(libc.CString("@c$N@W manages to break loose of @C$n's@W hold!@n"), TRUE, ch.Grappled, nil, unsafe.Pointer(ch), TO_NOTVICT)
 					act(libc.CString("@WYou manage to break loose of @C$n's@W hold!@n"), TRUE, ch.Grappled, nil, unsafe.Pointer(ch), TO_VICT)
 					act(libc.CString("@c$N@W manages to break loose of your hold!@n"), TRUE, ch.Grappled, nil, unsafe.Pointer(ch), TO_CHAR)
@@ -5932,7 +5933,7 @@ func do_regenerate(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if amt > 1 {
 		amt /= 2
 	}
-	if ch.Race == RACE_BIO {
+	if int(ch.Race) == RACE_BIO {
 		amt = int64(float64(amt) * 0.9)
 	}
 	var life int64 = int64(float64(ch.Lifeforce) - float64(amt)*0.8)
@@ -5980,44 +5981,44 @@ func do_regenerate(ch *char_data, argument *byte, cmd int, subcmd int) {
 		null_affect(ch, AFF_BURNED)
 	}
 	if !IS_NPC(ch) {
-		if (ch.Limb_condition[0]) <= 0 {
+		if (ch.Limb_condition[1]) <= 0 {
 			act(libc.CString("You regrow your right arm!"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("$n regrows $s right arm!"), TRUE, ch, nil, nil, TO_ROOM)
-			ch.Limb_condition[0] = 100
-		} else if (ch.Limb_condition[0]) >= 0 && (ch.Limb_condition[0]) < 50 {
+			ch.Limb_condition[1] = 100
+		} else if (ch.Limb_condition[1]) >= 0 && (ch.Limb_condition[1]) < 50 {
 			act(libc.CString("Your broken right arm mends itself!"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("$n regenerates $s broken right arm!"), TRUE, ch, nil, nil, TO_ROOM)
-			ch.Limb_condition[0] = 100
-		}
-		if (ch.Limb_condition[1]) <= 0 {
 			ch.Limb_condition[1] = 100
-			act(libc.CString("You regrow your left arm!"), TRUE, ch, nil, nil, TO_CHAR)
-			act(libc.CString("$n regrows $s left arm!"), TRUE, ch, nil, nil, TO_ROOM)
-		} else if (ch.Limb_condition[1]) > 0 && (ch.Limb_condition[1]) < 50 {
-			act(libc.CString("Your broken left arm mends itself!"), TRUE, ch, nil, nil, TO_CHAR)
-			act(libc.CString("$n regenerates $s broken left arm!"), TRUE, ch, nil, nil, TO_ROOM)
-			ch.Limb_condition[1] = 100
-		}
-		if (ch.Limb_condition[3]) <= 0 {
-			ch.Limb_condition[3] = 100
-			act(libc.CString("You regrow your left leg!"), TRUE, ch, nil, nil, TO_CHAR)
-			act(libc.CString("$n regrows $s left leg!"), TRUE, ch, nil, nil, TO_ROOM)
-		} else if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 {
-			act(libc.CString("Your broken left leg mends itself!"), TRUE, ch, nil, nil, TO_CHAR)
-			act(libc.CString("$n regenerates $s broken left leg!"), TRUE, ch, nil, nil, TO_ROOM)
-			ch.Limb_condition[3] = 100
 		}
 		if (ch.Limb_condition[2]) <= 0 {
 			ch.Limb_condition[2] = 100
+			act(libc.CString("You regrow your left arm!"), TRUE, ch, nil, nil, TO_CHAR)
+			act(libc.CString("$n regrows $s left arm!"), TRUE, ch, nil, nil, TO_ROOM)
+		} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 {
+			act(libc.CString("Your broken left arm mends itself!"), TRUE, ch, nil, nil, TO_CHAR)
+			act(libc.CString("$n regenerates $s broken left arm!"), TRUE, ch, nil, nil, TO_ROOM)
+			ch.Limb_condition[2] = 100
+		}
+		if (ch.Limb_condition[4]) <= 0 {
+			ch.Limb_condition[4] = 100
+			act(libc.CString("You regrow your left leg!"), TRUE, ch, nil, nil, TO_CHAR)
+			act(libc.CString("$n regrows $s left leg!"), TRUE, ch, nil, nil, TO_ROOM)
+		} else if (ch.Limb_condition[4]) > 0 && (ch.Limb_condition[4]) < 50 {
+			act(libc.CString("Your broken left leg mends itself!"), TRUE, ch, nil, nil, TO_CHAR)
+			act(libc.CString("$n regenerates $s broken left leg!"), TRUE, ch, nil, nil, TO_ROOM)
+			ch.Limb_condition[4] = 100
+		}
+		if (ch.Limb_condition[3]) <= 0 {
+			ch.Limb_condition[3] = 100
 			act(libc.CString("You regrow your right leg!"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("$n regrows $s right leg!"), TRUE, ch, nil, nil, TO_ROOM)
-		} else if (ch.Limb_condition[2]) > 0 && (ch.Limb_condition[2]) < 50 {
-			ch.Limb_condition[2] = 100
+		} else if (ch.Limb_condition[3]) > 0 && (ch.Limb_condition[3]) < 50 {
+			ch.Limb_condition[3] = 100
 			act(libc.CString("Your broken right leg mends itself!"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("$n regenerates $s broken right leg!"), TRUE, ch, nil, nil, TO_ROOM)
 		}
-		if !PLR_FLAGGED(ch, PLR_TAIL) && ch.Race == RACE_BIO {
-			ch.Act[int(PLR_TAIL/32)] |= bitvector_t(1 << (int(PLR_TAIL % 32)))
+		if !PLR_FLAGGED(ch, PLR_TAIL) && int(ch.Race) == RACE_BIO {
+			ch.Act[int(PLR_TAIL/32)] |= bitvector_t(int32(1 << (int(PLR_TAIL % 32))))
 			act(libc.CString("You regrow your tail!"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("$n regrows $s tail!"), TRUE, ch, nil, nil, TO_ROOM)
 		}
@@ -6044,7 +6045,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if AFF_FLAGGED(ch, AFF_CURSE) {
 		send_to_char(ch, libc.CString("You are cursed and can't focus!\r\n"))
 		return
-	} else if C.strcmp(&arg[0], libc.CString("tough")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("tough")) == 0 {
 		if know_skill(ch, SKILL_TSKIN) == 0 {
 			return
 		}
@@ -6062,7 +6063,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("$n focuses ki into $s skin, but fails in making it tough!"), TRUE, ch, nil, nil, TO_ROOM)
 				return
 			} else {
-				var duration int = int(ch.Aff_abils.Intel / 20)
+				var duration int = int(ch.Aff_abils.Intel) / 20
 				assign_affect(ch, AFF_STONESKIN, SKILL_TSKIN, duration, 0, 0, 0, 0, 0, 0)
 				ch.Mana -= ch.Max_mana / 20
 				reveal_hiding(ch, 0)
@@ -6113,7 +6114,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 				}
 			}
 		}
-	} else if C.strcmp(&arg[0], libc.CString("might")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("might")) == 0 {
 		if know_skill(ch, SKILL_MIGHT) == 0 {
 			return
 		}
@@ -6121,10 +6122,10 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if AFF_FLAGGED(ch, AFF_MIGHT) {
 				send_to_char(ch, libc.CString("You already have mighty muscles!\r\n"))
 				return
-			} else if (ch.Bonuses[BONUS_WIMP]) > 0 && ch.Aff_abils.Str+10 > 25 {
+			} else if (ch.Bonuses[BONUS_WIMP]) > 0 && int(ch.Aff_abils.Str)+10 > 25 {
 				send_to_char(ch, libc.CString("Your body is not able to withstand increasing its strength beyond 25.\r\n"))
 				return
-			} else if (ch.Bonuses[BONUS_FRAIL]) > 0 && ch.Aff_abils.Str+2 > 25 {
+			} else if (ch.Bonuses[BONUS_FRAIL]) > 0 && int(ch.Aff_abils.Str)+2 > 25 {
 				send_to_char(ch, libc.CString("Your body is not able to withstand increasing its strength beyond 25.\r\n"))
 				return
 			} else if ch.Mana < ch.Max_mana/20 {
@@ -6164,10 +6165,10 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if AFF_FLAGGED(vict, AFF_MIGHT) {
 					send_to_char(ch, libc.CString("They already have mighty muscles!\r\n"))
 					return
-				} else if (vict.Bonuses[BONUS_WIMP]) > 0 && vict.Aff_abils.Str+10 > 25 {
+				} else if (vict.Bonuses[BONUS_WIMP]) > 0 && int(vict.Aff_abils.Str)+10 > 25 {
 					send_to_char(ch, libc.CString("Their body is not able to withstand increasing its strength beyond 25.\r\n"))
 					return
-				} else if (vict.Bonuses[BONUS_FRAIL]) > 0 && vict.Aff_abils.Con+2 > 25 {
+				} else if (vict.Bonuses[BONUS_FRAIL]) > 0 && int(vict.Aff_abils.Con)+2 > 25 {
 					send_to_char(ch, libc.CString("Their body is not able to withstand increasing its constitution beyond 25.\r\n"))
 					return
 				} else if IS_NPC(vict) {
@@ -6195,7 +6196,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 				}
 			}
 		}
-	} else if C.strcmp(&arg[0], libc.CString("wither")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("wither")) == 0 {
 		if know_skill(ch, SKILL_WITHER) == 0 {
 			return
 		}
@@ -6238,7 +6239,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 			act(libc.CString("$n focuses ki into $N's body, and succeeds in withering it!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 			return
 		}
-	} else if C.strcmp(&arg[0], libc.CString("enlighten")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("enlighten")) == 0 {
 		if know_skill(ch, SKILL_ENLIGHTEN) == 0 {
 			return
 		}
@@ -6246,7 +6247,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if AFF_FLAGGED(ch, AFF_ENLIGHTEN) {
 				send_to_char(ch, libc.CString("You already have superior wisdom!\r\n"))
 				return
-			} else if (ch.Bonuses[BONUS_FOOLISH]) > 0 && ch.Aff_abils.Wis+10 > 25 {
+			} else if (ch.Bonuses[BONUS_FOOLISH]) > 0 && int(ch.Aff_abils.Wis)+10 > 25 {
 				send_to_char(ch, libc.CString("You're not able to withstand increasing your wisdom beyond 25.\r\n"))
 				return
 			} else if ch.Mana < ch.Max_mana/20 {
@@ -6265,7 +6266,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 				reveal_hiding(ch, 0)
 				act(libc.CString("You focus ki into your mind, awakening it to cosmic wisdom!"), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("$n focuses ki into $s mind, awakening it to cosmic wisdom!"), TRUE, ch, nil, nil, TO_ROOM)
-				if ch.Chclass == CLASS_JINTO && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 && (ch.Player_specials.Class_skill_points[ch.Chclass]) >= 15 && rand_number(1, 4) >= 3 {
+				if int(ch.Chclass) == CLASS_JINTO && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 && (ch.Player_specials.Class_skill_points[ch.Chclass]) >= 15 && rand_number(1, 4) >= 3 {
 					var gain int64 = 0
 					ch.Player_specials.Class_skill_points[ch.Chclass] -= 15
 					if GET_SKILL(ch, SKILL_ENLIGHTEN) >= 100 {
@@ -6302,7 +6303,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if AFF_FLAGGED(vict, AFF_ENLIGHTEN) {
 					send_to_char(ch, libc.CString("They already have superior wisdom!\r\n"))
 					return
-				} else if (vict.Bonuses[BONUS_FOOLISH]) > 0 && vict.Aff_abils.Wis+10 > 25 {
+				} else if (vict.Bonuses[BONUS_FOOLISH]) > 0 && int(vict.Aff_abils.Wis)+10 > 25 {
 					send_to_char(ch, libc.CString("They're not able to withstand increasing their wisdom beyond 25.\r\n"))
 					return
 				} else if IS_NPC(vict) {
@@ -6326,7 +6327,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("You focus ki into $N's mind, awakening it to cosmic wisdom!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("$n focuses ki into your mind, awakening it to cosmic wisdom!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("$n focuses ki into $N's mind, awakening it to cosmic wisdom!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-					if ch.Chclass == CLASS_JINTO && level_exp(vict, GET_LEVEL(vict)+1)-int(vict.Exp) > 0 && (ch.Player_specials.Class_skill_points[ch.Chclass]) >= 15 && rand_number(1, 4) >= 3 {
+					if int(ch.Chclass) == CLASS_JINTO && level_exp(vict, GET_LEVEL(vict)+1)-int(vict.Exp) > 0 && (ch.Player_specials.Class_skill_points[ch.Chclass]) >= 15 && rand_number(1, 4) >= 3 {
 						var gain int64 = 0
 						ch.Player_specials.Class_skill_points[ch.Chclass] -= 15
 						if GET_SKILL(ch, SKILL_ENLIGHTEN) >= 100 {
@@ -6347,7 +6348,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 				}
 			}
 		}
-	} else if C.strcmp(&arg[0], libc.CString("genius")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("genius")) == 0 {
 		if know_skill(ch, SKILL_GENIUS) == 0 {
 			return
 		}
@@ -6355,7 +6356,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if AFF_FLAGGED(ch, AFF_GENIUS) {
 				send_to_char(ch, libc.CString("You already have superior intelligence!\r\n"))
 				return
-			} else if (ch.Bonuses[BONUS_DULL]) > 0 && ch.Aff_abils.Intel+10 > 25 {
+			} else if (ch.Bonuses[BONUS_DULL]) > 0 && int(ch.Aff_abils.Intel)+10 > 25 {
 				send_to_char(ch, libc.CString("You're not able to withstand increasing your intelligence beyond 25.\r\n"))
 				return
 			} else if ch.Mana < ch.Max_mana/20 {
@@ -6394,7 +6395,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if AFF_FLAGGED(vict, AFF_GENIUS) {
 					send_to_char(ch, libc.CString("They already have superior intelligence!\r\n"))
 					return
-				} else if (vict.Bonuses[BONUS_DULL]) > 0 && vict.Aff_abils.Intel+10 > 25 {
+				} else if (vict.Bonuses[BONUS_DULL]) > 0 && int(vict.Aff_abils.Intel)+10 > 25 {
 					send_to_char(ch, libc.CString("They're not able to withstand increasing their intelligence beyond 25.\r\n"))
 					return
 				} else if IS_NPC(vict) {
@@ -6419,7 +6420,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("$n focuses ki into your mind, making it work faster!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("$n focuses ki into $N's mind, making it work faster!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 					if (vict.Master == ch || ch.Master == vict || ch.Master == vict.Master) && AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP) {
-						if ch.Race == RACE_KAI && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 && rand_number(1, 3) == 3 {
+						if int(ch.Race) == RACE_KAI && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 && rand_number(1, 3) == 3 {
 							ch.Exp += int64(float64(level_exp(ch, GET_LEVEL(ch)+1)) * 0.05)
 						}
 					}
@@ -6427,7 +6428,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 				}
 			}
 		}
-	} else if C.strcmp(&arg[0], libc.CString("flex")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("flex")) == 0 {
 		if know_skill(ch, SKILL_FLEX) == 0 {
 			return
 		}
@@ -6435,7 +6436,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if AFF_FLAGGED(ch, AFF_FLEX) {
 				send_to_char(ch, libc.CString("You already have superior agility!\r\n"))
 				return
-			} else if (ch.Bonuses[BONUS_CLUMSY]) > 0 && ch.Aff_abils.Dex+10 > 25 {
+			} else if (ch.Bonuses[BONUS_CLUMSY]) > 0 && int(ch.Aff_abils.Dex)+10 > 25 {
 				send_to_char(ch, libc.CString("You're not able to withstand increasing your agility beyond 25.\r\n"))
 				return
 			} else if ch.Mana < ch.Max_mana/20 {
@@ -6474,7 +6475,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if AFF_FLAGGED(vict, AFF_FLEX) {
 					send_to_char(ch, libc.CString("They already have superior agility!\r\n"))
 					return
-				} else if (vict.Bonuses[BONUS_CLUMSY]) > 0 && vict.Aff_abils.Dex+3 > 25 {
+				} else if (vict.Bonuses[BONUS_CLUMSY]) > 0 && int(vict.Aff_abils.Dex)+3 > 25 {
 					send_to_char(ch, libc.CString("They're not able to withstand increasing their agility beyond 25.\r\n"))
 					return
 				} else if IS_NPC(vict) {
@@ -6499,7 +6500,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("$n focuses ki into your limbs, making them more flexible!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("$n focuses ki into $N's limbs, making them more flexible!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 					if (vict.Master == ch || ch.Master == vict || ch.Master == vict.Master) && AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP) {
-						if ch.Race == RACE_KAI && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 && rand_number(1, 3) == 3 {
+						if int(ch.Race) == RACE_KAI && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 && rand_number(1, 3) == 3 {
 							ch.Exp += int64(float64(level_exp(ch, GET_LEVEL(ch)+1)) * 0.05)
 						}
 					}
@@ -6507,7 +6508,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 				}
 			}
 		}
-	} else if C.strcmp(&arg[0], libc.CString("bless")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("bless")) == 0 {
 		if know_skill(ch, SKILL_BLESS) == 0 {
 			return
 		}
@@ -6529,7 +6530,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 				assign_affect(ch, AFF_BLESS, SKILL_BLESS, duration, 0, 0, 0, 0, 0, 0)
 				ch.Mana -= ch.Max_mana / 20
 				reveal_hiding(ch, 0)
-				if ch.Chclass == CLASS_KABITO {
+				if int(ch.Chclass) == CLASS_KABITO {
 					ch.Blesslvl = GET_SKILL(ch, SKILL_BLESS)
 				} else {
 					ch.Blesslvl = 0
@@ -6578,7 +6579,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 					assign_affect(vict, AFF_BLESS, SKILL_BLESS, duration, 0, 0, 0, 0, 0, 0)
 					ch.Mana -= ch.Max_mana / 20
 					reveal_hiding(ch, 0)
-					if ch.Race == RACE_KAI {
+					if int(ch.Race) == RACE_KAI {
 						vict.Blesslvl = GET_SKILL(ch, SKILL_BLESS)
 					} else {
 						vict.Blesslvl = 0
@@ -6587,7 +6588,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("$n focuses ki while chanting spiritual words. $n then places a hand on your head, blessing you!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("$n focuses ki while chanting spiritual words. $n then places a hand on $N's head, blessing them!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 					if (vict.Master == ch || ch.Master == vict || ch.Master == vict.Master) && AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(vict, AFF_GROUP) {
-						if ch.Race == RACE_KAI && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 && rand_number(1, 3) == 3 {
+						if int(ch.Race) == RACE_KAI && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 && rand_number(1, 3) == 3 {
 							ch.Exp += int64(float64(level_exp(ch, GET_LEVEL(ch)+1)) * 0.05)
 						}
 					}
@@ -6599,7 +6600,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 				}
 			}
 		}
-	} else if C.strcmp(&arg[0], libc.CString("curse")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("curse")) == 0 {
 		if know_skill(ch, SKILL_CURSE) == 0 {
 			return
 		}
@@ -6607,7 +6608,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if AFF_FLAGGED(ch, AFF_CURSE) {
 				send_to_char(ch, libc.CString("You already are cursed!\r\n"))
 				return
-			} else if ch.Race == RACE_DEMON {
+			} else if int(ch.Race) == RACE_DEMON {
 				send_to_char(ch, libc.CString("You are immune to curses!\r\n"))
 				return
 			} else if ch.Mana < ch.Max_mana/20 {
@@ -6653,7 +6654,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 				} else if IS_NPC(vict) {
 					send_to_char(ch, libc.CString("Whatever would you waste your ki on them for?\r\n"))
 					return
-				} else if vict.Race == RACE_DEMON {
+				} else if int(vict.Race) == RACE_DEMON {
 					send_to_char(ch, libc.CString("They are immune to curses!\r\n"))
 					return
 				} else if ch.Mana < ch.Max_mana/20 {
@@ -6682,7 +6683,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 				}
 			}
 		}
-	} else if C.strcmp(&arg[0], libc.CString("yoikominminken")) == 0 || C.strcmp(&arg[0], libc.CString("yoik")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("yoikominminken")) == 0 || libc.StrCmp(&arg[0], libc.CString("yoik")) == 0 {
 		if know_skill(ch, SKILL_YOIK) == 0 {
 			return
 		}
@@ -6738,7 +6739,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return
 			}
 		}
-	} else if C.strcmp(&arg[0], libc.CString("vigor")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("vigor")) == 0 {
 		if know_skill(ch, SKILL_VIGOR) == 0 {
 			return
 		}
@@ -6818,7 +6819,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 				}
 			}
 		}
-	} else if C.strcmp(&arg[0], libc.CString("cure")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("cure")) == 0 {
 		if know_skill(ch, SKILL_CURE) == 0 {
 			return
 		}
@@ -6884,7 +6885,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 				}
 			}
 		}
-	} else if C.strcmp(&arg[0], libc.CString("poison")) == 0 {
+	} else if libc.StrCmp(&arg[0], libc.CString("poison")) == 0 {
 		if know_skill(ch, SKILL_POISON) == 0 {
 			return
 		}
@@ -6930,7 +6931,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if IS_NPC(vict) {
 					set_fighting(vict, ch)
 				}
-				if vict.Race == RACE_MUTANT && ((vict.Genome[0]) == 7 || (vict.Genome[1]) == 7) {
+				if int(vict.Race) == RACE_MUTANT && ((vict.Genome[0]) == 7 || (vict.Genome[1]) == 7) {
 					act(libc.CString("However $N seems unaffected by the poison."), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("Your natural immunity to poison prevents it from affecting you."), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("However $N seems unaffected by the poison."), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -6940,7 +6941,7 @@ func do_focus(ch *char_data, argument *byte, cmd int, subcmd int) {
 						send_to_char(ch, libc.CString("You lose your concentration and release your charged ki!\r\n"))
 						do_charge(ch, libc.CString("release"), 0, 0)
 					}
-					var duration int = int(ch.Aff_abils.Intel / 20)
+					var duration int = int(ch.Aff_abils.Intel) / 20
 					assign_affect(vict, AFF_POISON, SKILL_POISON, duration, 0, 0, 0, 0, 0, 0)
 				}
 				return
@@ -6994,7 +6995,7 @@ func do_kaioken(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if !IS_NPC(ch) {
-		if (IS_TRANSFORMED(ch) || ch.Race == RACE_HOSHIJIN && ch.Starphase > 0) && x > 5 {
+		if (IS_TRANSFORMED(ch) || int(ch.Race) == RACE_HOSHIJIN && ch.Starphase > 0) && x > 5 {
 			send_to_char(ch, libc.CString("You can not manage a kaioken level higher than 5 when transformed.\r\n"))
 			return
 		}
@@ -7163,7 +7164,7 @@ func do_kaioken(ch *char_data, argument *byte, cmd int, subcmd int) {
 	send_to_char(ch, libc.CString("@rA dark red aura bursts up around your body as you achieve Kaioken x %d!@n\r\n"), ch.Kaioken)
 	act(libc.CString("@rA dark red aura bursts up around @R$n@r as they achieve a level of Kaioken!@n"), TRUE, ch, nil, nil, TO_ROOM)
 	improve_skill(ch, SKILL_KAIOKEN, 1)
-	ch.Act[int(PLR_POWERUP/32)] &= bitvector_t(^(1 << (int(PLR_POWERUP % 32))))
+	ch.Act[int(PLR_POWERUP/32)] &= bitvector_t(int32(^(1 << (int(PLR_POWERUP % 32)))))
 	WAIT_STATE(ch, (int(1000000/OPT_USEC))*1)
 }
 func do_plant(ch *char_data, argument *byte, cmd int, subcmd int) {
@@ -7197,10 +7198,10 @@ func do_plant(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	roll = roll_skill(ch, SKILL_SLEIGHT_OF_HAND) + rand_number(1, 3)
 	fail = rand_number(1, 105)
-	if (ch.Feats[FEAT_DEFT_HANDS]) != 0 {
+	if int(ch.Feats[FEAT_DEFT_HANDS]) != 0 {
 		roll += 2
 	}
-	if vict.Position < POS_SLEEPING {
+	if int(vict.Position) < POS_SLEEPING {
 		detect = 0
 	} else {
 		detect = roll_skill(vict, SKILL_SPOT) + rand_number(1, 3)
@@ -7342,7 +7343,7 @@ func do_forgery(ch *char_data, argument *byte, cmd int, subcmd int) {
 	obj3 = read_object(obj_vnum(loadn), VIRTUAL)
 	add_unique_id(obj3)
 	obj_to_char(obj3, ch)
-	obj3.Extra_flags[int(ITEM_FORGED/32)] |= bitvector_t(1 << (int(ITEM_FORGED % 32)))
+	obj3.Extra_flags[int(ITEM_FORGED/32)] |= bitvector_t(int32(1 << (int(ITEM_FORGED % 32))))
 	obj3.Weight = int64(rand_number(int(obj3.Weight/2), int(obj3.Weight)))
 	obj_from_char(obj4)
 	extract_obj(obj4)
@@ -7399,11 +7400,11 @@ func do_appraise(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	found = FALSE
 	var displevel int = obj.Level
-	if obj.Type_flag == ITEM_WEAPON && OBJ_FLAGGED(obj, ITEM_CUSTOM) {
+	if int(obj.Type_flag) == ITEM_WEAPON && OBJ_FLAGGED(obj, ITEM_CUSTOM) {
 		displevel = 20
 	}
 	send_to_char(ch, libc.CString("%s is worth: %s\r\nMin Lvl: %d\r\n"), obj.Short_description, add_commas(int64(obj.Cost)), displevel)
-	if obj.Type_flag == ITEM_WEAPON {
+	if int(obj.Type_flag) == ITEM_WEAPON {
 		if OBJ_FLAGGED(obj, ITEM_WEAPLVL1) {
 			send_to_char(ch, libc.CString("Weapon Level: 1\nDamage Bonus: 5%s\r\n"), "%")
 		} else if OBJ_FLAGGED(obj, ITEM_WEAPLVL2) {
@@ -7481,7 +7482,7 @@ func do_disguise(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	if PLR_FLAGGED(ch, PLR_DISGUISED) {
 		send_to_char(ch, libc.CString("You stop disguising yourself.\r\n"))
-		ch.Act[int(PLR_DISGUISED/32)] &= bitvector_t(^(1 << (int(PLR_DISGUISED % 32))))
+		ch.Act[int(PLR_DISGUISED/32)] &= bitvector_t(int32(^(1 << (int(PLR_DISGUISED % 32)))))
 		act(libc.CString("@C$n @wpulls off $s disguise and reveals $mself!"), TRUE, ch, nil, nil, TO_ROOM)
 		return
 	}
@@ -7501,7 +7502,7 @@ func do_disguise(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if skill > roll {
 		send_to_char(ch, libc.CString("You managed to disguise yourself with some skilled manipulation of your headwear.\r\n"))
 		act(libc.CString("@C$n @wmanages to disguise $mself with some skilled manipulation of $s headwear."), TRUE, ch, nil, nil, TO_ROOM)
-		ch.Act[int(PLR_DISGUISED/32)] |= bitvector_t(1 << (int(PLR_DISGUISED % 32)))
+		ch.Act[int(PLR_DISGUISED/32)] |= bitvector_t(int32(1 << (int(PLR_DISGUISED % 32))))
 		return
 	} else {
 		send_to_char(ch, libc.CString("You finish attempting to disguise yourself, but realize you failed and need to try again.\r\n"))
@@ -7679,11 +7680,11 @@ func do_eyec(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if PLR_FLAGGED(ch, PLR_EYEC) {
-		ch.Act[int(PLR_EYEC/32)] &= bitvector_t(^(1 << (int(PLR_EYEC % 32))))
+		ch.Act[int(PLR_EYEC/32)] &= bitvector_t(int32(^(1 << (int(PLR_EYEC % 32)))))
 		act(libc.CString("@wYou open your eyes.@n"), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("@C$n@w opens $s eyes.@n"), TRUE, ch, nil, nil, TO_ROOM)
 	} else if !PLR_FLAGGED(ch, PLR_EYEC) {
-		ch.Act[int(PLR_EYEC/32)] |= bitvector_t(1 << (int(PLR_EYEC % 32)))
+		ch.Act[int(PLR_EYEC/32)] |= bitvector_t(int32(1 << (int(PLR_EYEC % 32))))
 		act(libc.CString("@wYou close your eyes.@n"), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("@C$n@w closes $s eyes.@n"), TRUE, ch, nil, nil, TO_ROOM)
 	}
@@ -7719,7 +7720,7 @@ func do_solar(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You do not have enough ki.\r\n"))
 		return
 	}
-	bonus = int(ch.Aff_abils.Intel / 3)
+	bonus = int(ch.Aff_abils.Intel) / 3
 	prob += bonus
 	if prob < perc {
 		act(libc.CString("@WYou raise both your hands to either side of your face, while closing your eyes, and shout '@YSolar Flare@W' but nothing happens!@n"), TRUE, ch, nil, nil, TO_CHAR)
@@ -7739,7 +7740,7 @@ func do_solar(ch *char_data, argument *byte, cmd int, subcmd int) {
 			continue
 		} else if AFF_FLAGGED(vict, AFF_BLIND) {
 			continue
-		} else if vict.Position == POS_SLEEPING {
+		} else if int(vict.Position) == POS_SLEEPING {
 			continue
 		} else {
 			var duration int = 1
@@ -7806,7 +7807,7 @@ func do_heal(ch *char_data, argument *byte, cmd int, subcmd int) {
 		heal += int64(float64(heal) * 0.1)
 	}
 	if heal < gear_pl(vict) {
-		heal += (heal / 100) * int64(ch.Aff_abils.Wis/4)
+		heal += (heal / 100) * int64(int(ch.Aff_abils.Wis)/4)
 	}
 	if ch.Mana < cost {
 		send_to_char(ch, libc.CString("You do not have enough ki.\r\n"))
@@ -7824,7 +7825,7 @@ func do_heal(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("They are already at full health.\r\n"))
 		return
 	}
-	bonus = int64((ch.Aff_abils.Intel / 2) + ch.Aff_abils.Wis/3)
+	bonus = int64((int(ch.Aff_abils.Intel) / 2) + int(ch.Aff_abils.Wis)/3)
 	prob += bonus
 	if prob < perc {
 		if vict != ch {
@@ -7858,7 +7859,7 @@ func do_heal(ch *char_data, argument *byte, cmd int, subcmd int) {
 		} else {
 			vict.Hit = gear_pl(vict)
 		}
-		if ch.Chclass == CLASS_NAIL {
+		if int(ch.Chclass) == CLASS_NAIL {
 			if GET_SKILL(ch, SKILL_HEAL) >= 100 {
 				ch.Move += int64(float64(heal) * 0.4)
 				send_to_char(vict, libc.CString("@GYou feel some of your stamina return as well!@n\r\n"))
@@ -7886,11 +7887,11 @@ func do_heal(ch *char_data, argument *byte, cmd int, subcmd int) {
 			act(libc.CString("$n@w no longer looks as if they could drink an ocean.@n"), TRUE, vict, nil, nil, TO_ROOM)
 			vict.Affected_by[int(AFF_HYDROZAP/32)] &= ^(1 << (int(AFF_HYDROZAP % 32)))
 		}
-		vict.Limb_condition[0] = 100
 		vict.Limb_condition[1] = 100
 		vict.Limb_condition[2] = 100
 		vict.Limb_condition[3] = 100
-		if float64(vict.Lifeforce) <= float64(GET_LIFEMAX(vict))*0.5 && vict.Race != RACE_ANDROID {
+		vict.Limb_condition[4] = 100
+		if float64(vict.Lifeforce) <= float64(GET_LIFEMAX(vict))*0.5 && int(vict.Race) != RACE_ANDROID {
 			vict.Lifeforce += int64(float64(GET_LIFEMAX(ch)) * 0.35)
 			if vict.Lifeforce > int64(GET_LIFEMAX(ch)) {
 				vict.Lifeforce = int64(GET_LIFEMAX(ch))
@@ -7899,7 +7900,7 @@ func do_heal(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		improve_skill(ch, SKILL_HEAL, 0)
 		if vict.Master == ch || ch.Master == vict || ch.Master == vict.Master {
-			if ch.Chclass == CLASS_NAIL && ch.Race == RACE_NAMEK && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 && float64(vict.Hit) <= float64(gear_pl(vict))*0.85 && rand_number(1, 3) == 3 {
+			if int(ch.Chclass) == CLASS_NAIL && int(ch.Race) == RACE_NAMEK && level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 && float64(vict.Hit) <= float64(gear_pl(vict))*0.85 && rand_number(1, 3) == 3 {
 				ch.Exp += int64(float64(level_exp(ch, GET_LEVEL(ch)+1)) * 0.005)
 			}
 		}
@@ -7921,7 +7922,7 @@ func do_heal(ch *char_data, argument *byte, cmd int, subcmd int) {
 			vict.Hit = (gear_pl(vict) / 100) * vict.Suppression
 			send_to_char(vict, libc.CString("@mYou are healed to your suppression limit.@n\r\n"))
 		}
-		if ch.Chclass == CLASS_NAIL {
+		if int(ch.Chclass) == CLASS_NAIL {
 			if GET_SKILL(ch, SKILL_HEAL) >= 100 {
 				ch.Move += int64(float64(heal) * 0.4)
 				send_to_char(vict, libc.CString("@GYou feel some of your stamina return as well!@n\r\n"))
@@ -7934,15 +7935,15 @@ func do_heal(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 		}
 		vict.Affected_by[int(AFF_BLIND/32)] &= ^(1 << (int(AFF_BLIND % 32)))
-		vict.Limb_condition[0] = 100
 		vict.Limb_condition[1] = 100
 		vict.Limb_condition[2] = 100
 		vict.Limb_condition[3] = 100
-		if !PLR_FLAGGED(vict, PLR_TAIL) && (vict.Race == RACE_BIO || vict.Race == RACE_ICER) {
-			vict.Act[int(PLR_TAIL/32)] |= bitvector_t(1 << (int(PLR_TAIL % 32)))
+		vict.Limb_condition[4] = 100
+		if !PLR_FLAGGED(vict, PLR_TAIL) && (int(vict.Race) == RACE_BIO || int(vict.Race) == RACE_ICER) {
+			vict.Act[int(PLR_TAIL/32)] |= bitvector_t(int32(1 << (int(PLR_TAIL % 32))))
 		}
-		if !PLR_FLAGGED(vict, PLR_STAIL) && (vict.Race == RACE_SAIYAN || vict.Race == RACE_HALFBREED) {
-			vict.Act[int(PLR_STAIL/32)] |= bitvector_t(1 << (int(PLR_STAIL % 32)))
+		if !PLR_FLAGGED(vict, PLR_STAIL) && (int(vict.Race) == RACE_SAIYAN || int(vict.Race) == RACE_HALFBREED) {
+			vict.Act[int(PLR_STAIL/32)] |= bitvector_t(int32(1 << (int(PLR_STAIL % 32))))
 		}
 		improve_skill(ch, SKILL_HEAL, 0)
 		WAIT_STATE(ch, (int(1000000/OPT_USEC))*2)
@@ -7964,13 +7965,13 @@ func do_barrier(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("[Syntax] barrier < 1-75 | release >\r\n"))
 		return
 	}
-	if AFF_FLAGGED(ch, AFF_SANCTUARY) && C.strcasecmp(libc.CString("release"), &arg[0]) == 0 {
+	if AFF_FLAGGED(ch, AFF_SANCTUARY) && libc.StrCaseCmp(libc.CString("release"), &arg[0]) == 0 {
 		act(libc.CString("@BYou dispel your barrier, releasing its energy.@n"), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("@B$n@B dispels $s barrier, releasing its energy.@n"), TRUE, ch, nil, nil, TO_ROOM)
 		ch.Barrier = 0
 		ch.Affected_by[int(AFF_SANCTUARY/32)] &= ^(1 << (int(AFF_SANCTUARY % 32)))
 		return
-	} else if C.strcasecmp(libc.CString("release"), &arg[0]) == 0 {
+	} else if libc.StrCaseCmp(libc.CString("release"), &arg[0]) == 0 {
 		send_to_char(ch, libc.CString("You don't have a barrier.\r\n"))
 		return
 	}
@@ -8052,7 +8053,7 @@ func do_instant(ch *char_data, argument *byte, cmd int, subcmd int) {
 	one_argument(argument, &arg[0])
 	if !IS_NPC(ch) {
 		if PRF_FLAGGED(ch, PRF_ARENAWATCH) {
-			ch.Player_specials.Pref[int(PRF_ARENAWATCH/32)] &= bitvector_t(^(1 << (int(PRF_ARENAWATCH % 32))))
+			ch.Player_specials.Pref[int(PRF_ARENAWATCH/32)] &= bitvector_t(int32(^(1 << (int(PRF_ARENAWATCH % 32)))))
 			ch.Arenawatch = -1
 			send_to_char(ch, libc.CString("You stop watching the arena action.\r\n"))
 		}
@@ -8105,17 +8106,17 @@ func do_instant(ch *char_data, argument *byte, cmd int, subcmd int) {
 	perc = axion_dice(0)
 	skill = GET_SKILL(ch, SKILL_INSTANTT)
 	skill_num = SKILL_INSTANTT
-	if C.strcasecmp(&arg[0], libc.CString("planet-earth")) == 0 {
+	if libc.StrCaseCmp(&arg[0], libc.CString("planet-earth")) == 0 {
 		location = 300
-	} else if C.strcasecmp(&arg[0], libc.CString("planet-namek")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("planet-namek")) == 0 {
 		location = 0x27EE
-	} else if C.strcasecmp(&arg[0], libc.CString("planet-frigid")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("planet-frigid")) == 0 {
 		location = 4017
-	} else if C.strcasecmp(&arg[0], libc.CString("planet-vegeta")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("planet-vegeta")) == 0 {
 		location = 2200
-	} else if C.strcasecmp(&arg[0], libc.CString("planet-konack")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("planet-konack")) == 0 {
 		location = 8006
-	} else if C.strcasecmp(&arg[0], libc.CString("planet-aether")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("planet-aether")) == 0 {
 		location = 0x2EF8
 	} else if (func() *char_data {
 		tar = get_char_vis(ch, &arg[0], nil, 1<<1)
@@ -8161,7 +8162,7 @@ func do_instant(ch *char_data, argument *byte, cmd int, subcmd int) {
 		} else if tar.Admlevel > 0 && ch.Admlevel < 1 {
 			send_to_char(ch, libc.CString("That immortal prevents you from reaching them.\r\n"))
 			return
-		} else if tar.Race == RACE_ANDROID || float64(tar.Hit) < (float64(ch.Hit)*0.001)+1 {
+		} else if int(tar.Race) == RACE_ANDROID || float64(tar.Hit) < (float64(ch.Hit)*0.001)+1 {
 			send_to_char(ch, libc.CString("You can't sense them well enough.\r\n"))
 			return
 		} else if !ROOM_FLAGGED(ch.In_room, ROOM_AL) && ROOM_FLAGGED(tar.In_room, ROOM_AL) {
@@ -8178,7 +8179,7 @@ func do_instant(ch *char_data, argument *byte, cmd int, subcmd int) {
 		act(libc.CString("@wPlacing two fingers on your forehead you close your eyes and concentrate. Accelerating to such a speed that you move through the molecules of the universe faster than the speed of light. You stop as you arrive at $N@w!@n"), TRUE, ch, nil, unsafe.Pointer(tar), TO_CHAR)
 		act(libc.CString("@w$n@w appears in an instant out of nowhere right next to you!@n"), TRUE, ch, nil, unsafe.Pointer(tar), TO_VICT)
 		act(libc.CString("@w$n@w places two fingers on $s forehead and disappears in an instant!@n"), TRUE, ch, nil, unsafe.Pointer(tar), TO_NOTVICT)
-		ch.Act[int(PLR_TRANSMISSION/32)] |= bitvector_t(1 << (int(PLR_TRANSMISSION % 32)))
+		ch.Act[int(PLR_TRANSMISSION/32)] |= bitvector_t(int32(1 << (int(PLR_TRANSMISSION % 32))))
 		handle_teleport(ch, tar, 0)
 		improve_skill(ch, skill_num, 2)
 	} else {
@@ -8622,7 +8623,7 @@ func handle_transform(ch *char_data, add int64, mult float64, drain float64) {
 		} else if (float64(ch.Move)+float64(add)*(cur/max))*mult > float64(ch.Max_move) {
 			ch.Move = ch.Max_move
 		}
-		if ch.Race != RACE_ANDROID {
+		if int(ch.Race) != RACE_ANDROID {
 			ch.Lifeforce = int64(float64(GET_LIFEMAX(ch)) * dapercent)
 			if ch.Lifeforce > int64(GET_LIFEMAX(ch)) {
 				ch.Lifeforce = int64(GET_LIFEMAX(ch))
@@ -8703,7 +8704,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if arg[0] == 0 {
-		if ch.Race == RACE_HUMAN {
+		if int(ch.Race) == RACE_HUMAN {
 			send_to_char(ch, libc.CString("              @YSuper @CHuman@n\r\n"))
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
 			send_to_char(ch, libc.CString("@YSuper @CHuman @WFirst  @R-@G %s BPL Req\r\n"), func() *byte {
@@ -8731,7 +8732,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return libc.CString("??????????")
 			}())
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
-		} else if ch.Race == RACE_SAIYAN && !PLR_FLAGGED(ch, PLR_LSSJ) {
+		} else if int(ch.Race) == RACE_SAIYAN && !PLR_FLAGGED(ch, PLR_LSSJ) {
 			send_to_char(ch, libc.CString("              @YSuper @CSaiyan@n\r\n"))
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
 			send_to_char(ch, libc.CString("@YSuper @CSaiyan @WFirst  @R-@G %s BPL Req\r\n"), func() *byte {
@@ -8759,7 +8760,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return libc.CString("??????????")
 			}())
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
-		} else if ch.Race == RACE_SAIYAN && PLR_FLAGGED(ch, PLR_LSSJ) {
+		} else if int(ch.Race) == RACE_SAIYAN && PLR_FLAGGED(ch, PLR_LSSJ) {
 			send_to_char(ch, libc.CString("                @YSuper @CSaiyan@n\r\n"))
 			send_to_char(ch, libc.CString("@b-------------------------------------------------@n\r\n"))
 			send_to_char(ch, libc.CString("@YSuper @CSaiyan @WFirst   @R-@G %s BPL Req\r\n"), func() *byte {
@@ -8775,7 +8776,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return libc.CString("??????????")
 			}())
 			send_to_char(ch, libc.CString("@b-------------------------------------------------@n\r\n"))
-		} else if ch.Race == RACE_HALFBREED {
+		} else if int(ch.Race) == RACE_HALFBREED {
 			send_to_char(ch, libc.CString("              @YSuper @CSaiyan@n\r\n"))
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
 			send_to_char(ch, libc.CString("@YSuper @CSaiyan @WFirst  @R-@G %s BPL Req\r\n"), func() *byte {
@@ -8797,7 +8798,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return libc.CString("??????????")
 			}())
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
-		} else if ch.Race == RACE_NAMEK {
+		} else if int(ch.Race) == RACE_NAMEK {
 			send_to_char(ch, libc.CString("              @YSuper @CNamek@n\r\n"))
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
 			send_to_char(ch, libc.CString("@YSuper @CNamek @WFirst  @R-@G %s BPL Req\r\n"), func() *byte {
@@ -8825,7 +8826,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return libc.CString("??????????")
 			}())
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
-		} else if ch.Race == RACE_ICER {
+		} else if int(ch.Race) == RACE_ICER {
 			send_to_char(ch, libc.CString("              @YTransform@n\r\n"))
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
 			send_to_char(ch, libc.CString("@YTransform @WFirst  @R-@G %s BPL Req\r\n"), func() *byte {
@@ -8853,7 +8854,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return libc.CString("??????????")
 			}())
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
-		} else if ch.Race == RACE_MUTANT {
+		} else if int(ch.Race) == RACE_MUTANT {
 			send_to_char(ch, libc.CString("              @YMutate@n\r\n"))
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
 			send_to_char(ch, libc.CString("@YMutate @WFirst  @R-@G %s BPL Req\r\n"), func() *byte {
@@ -8875,7 +8876,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return libc.CString("??????????")
 			}())
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
-		} else if ch.Race == RACE_KONATSU {
+		} else if int(ch.Race) == RACE_KONATSU {
 			send_to_char(ch, libc.CString("              @YShadow@n\r\n"))
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
 			send_to_char(ch, libc.CString("@YShadow @WFirst  @R-@G %s BPL Req\r\n"), func() *byte {
@@ -8897,7 +8898,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return libc.CString("??????????")
 			}())
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
-		} else if ch.Race == RACE_ANDROID {
+		} else if int(ch.Race) == RACE_ANDROID {
 			send_to_char(ch, libc.CString("              @YUpgrade@n\r\n"))
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
 			send_to_char(ch, libc.CString("@Y1.0 @R-@G %s BPL Req\r\n"), func() *byte {
@@ -8937,7 +8938,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return libc.CString("??????????")
 			}())
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
-		} else if ch.Race == RACE_BIO {
+		} else if int(ch.Race) == RACE_BIO {
 			send_to_char(ch, libc.CString("              @YPerfection@n\r\n"))
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
 			send_to_char(ch, libc.CString("@YMature        @R-@G %s BPL Req\r\n"), func() *byte {
@@ -8965,7 +8966,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return libc.CString("??????????")
 			}())
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
-		} else if ch.Race == RACE_TRUFFLE {
+		} else if int(ch.Race) == RACE_TRUFFLE {
 			send_to_char(ch, libc.CString("              @YAscend@n\r\n"))
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
 			send_to_char(ch, libc.CString("@YAscend @WFirst  @R-@G %s BPL Req\r\n"), func() *byte {
@@ -8987,7 +8988,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return libc.CString("??????????")
 			}())
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
-		} else if ch.Race == RACE_MAJIN {
+		} else if int(ch.Race) == RACE_MAJIN {
 			send_to_char(ch, libc.CString("              @YMorph@n\r\n"))
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
 			send_to_char(ch, libc.CString("@YMorph @WAffinity @R-@G %s BPL Req\r\n"), func() *byte {
@@ -9009,7 +9010,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return libc.CString("??????????")
 			}())
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
-		} else if ch.Race == RACE_KAI {
+		} else if int(ch.Race) == RACE_KAI {
 			send_to_char(ch, libc.CString("              @YMystic@n\r\n"))
 			send_to_char(ch, libc.CString("@b------------------------------------------------@n\r\n"))
 			send_to_char(ch, libc.CString("@YMystic @WFirst     @R-@G %s BPL Req\r\n"), func() *byte {
@@ -9045,8 +9046,8 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 		}
 		return
-	} else if C.strcasecmp(libc.CString("first"), &arg[0]) == 0 {
-		if ch.Race == RACE_HUMAN {
+	} else if libc.StrCaseCmp(libc.CString("first"), &arg[0]) == 0 {
+		if int(ch.Race) == RACE_HUMAN {
 			if PLR_FLAGGED(ch, PLR_TRANS2) || PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -9083,14 +9084,14 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				var add int = 1000000
 				var mult float64 = 2
 				handle_transform(ch, int64(add), mult, 0.1)
-				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(1 << (int(PLR_TRANS1 % 32)))
+				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS1 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_TRUFFLE {
+		if int(ch.Race) == RACE_TRUFFLE {
 			if PLR_FLAGGED(ch, PLR_TRANS2) || PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -9127,14 +9128,14 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				var add int = 1300000
 				var mult float64 = 3
 				handle_transform(ch, int64(add), mult, 0.1)
-				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(1 << (int(PLR_TRANS1 % 32)))
+				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS1 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_KAI {
+		if int(ch.Race) == RACE_KAI {
 			if PLR_FLAGGED(ch, PLR_TRANS2) || PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -9171,14 +9172,14 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				var add int = 1100000
 				var mult float64 = 3
 				handle_transform(ch, int64(add), mult, 0.1)
-				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(1 << (int(PLR_TRANS1 % 32)))
+				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS1 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_KONATSU {
+		if int(ch.Race) == RACE_KONATSU {
 			if PLR_FLAGGED(ch, PLR_TRANS2) || PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -9215,14 +9216,14 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				var add int = 1000000
 				var mult float64 = 2
 				handle_transform(ch, int64(add), mult, 0.1)
-				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(1 << (int(PLR_TRANS1 % 32)))
+				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS1 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_ICER {
+		if int(ch.Race) == RACE_ICER {
 			if PLR_FLAGGED(ch, PLR_TRANS2) || PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -9259,14 +9260,14 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				var add int = 400000
 				var mult float64 = 2
 				handle_transform(ch, int64(add), mult, 0.1)
-				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(1 << (int(PLR_TRANS1 % 32)))
+				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS1 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_MUTANT {
+		if int(ch.Race) == RACE_MUTANT {
 			if PLR_FLAGGED(ch, PLR_TRANS2) || PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -9303,14 +9304,14 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				var add int = 100000
 				var mult float64 = 2
 				handle_transform(ch, int64(add), mult, 0.1)
-				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(1 << (int(PLR_TRANS1 % 32)))
+				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS1 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_HALFBREED {
+		if int(ch.Race) == RACE_HALFBREED {
 			if PLR_FLAGGED(ch, PLR_TRANS2) || PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -9337,7 +9338,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				}
 				if !PLR_FLAGGED(ch, PLR_LSSJ) && !PLR_FLAGGED(ch, PLR_FPSSJ) && rand_number(1, 500) >= 491 && ch.Max_hit > 19200000 {
 					send_to_char(ch, libc.CString("You have mastered the super saiyan first transformation and have achieved Full Power Super Saiyan! You will now no longer use stamina while in this form.\r\n"))
-					ch.Act[int(PLR_FPSSJ/32)] |= bitvector_t(1 << (int(PLR_FPSSJ % 32)))
+					ch.Act[int(PLR_FPSSJ/32)] |= bitvector_t(int32(1 << (int(PLR_FPSSJ % 32))))
 				}
 				var zone int = 0
 				act(libc.CString("@WSomething inside your mind snaps as your rage spills over! Lightning begins to strike the ground all around you as you feel torrents of power rushing through every fiber of your being. Your hair suddenly turns golden as your eyes change to the color of emeralds. In a final rush of power a golden aura rushes up around your body! You have become a @CSuper @YSaiyan@W!@n"), TRUE, ch, nil, nil, TO_CHAR)
@@ -9351,14 +9352,14 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				var add int = 900000
 				var mult float64 = 2
 				handle_transform(ch, int64(add), mult, 0.1)
-				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(1 << (int(PLR_TRANS1 % 32)))
+				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS1 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_NAMEK {
+		if int(ch.Race) == RACE_NAMEK {
 			if PLR_FLAGGED(ch, PLR_TRANS2) || PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -9395,14 +9396,14 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				var add int = 200000
 				var mult float64 = 2
 				handle_transform(ch, int64(add), mult, 0.1)
-				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(1 << (int(PLR_TRANS1 % 32)))
+				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS1 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_SAIYAN {
+		if int(ch.Race) == RACE_SAIYAN {
 			if PLR_FLAGGED(ch, PLR_TRANS2) || PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -9429,7 +9430,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				}
 				if !PLR_FLAGGED(ch, PLR_LSSJ) && !PLR_FLAGGED(ch, PLR_FPSSJ) && rand_number(1, 500) >= 491 && ch.Max_hit > 19200000 {
 					send_to_char(ch, libc.CString("You have mastered the super saiyan first transformation and have achieved Full Power Super Saiyan! You will now no longer use stamina while in this form.\r\n"))
-					ch.Act[int(PLR_FPSSJ/32)] |= bitvector_t(1 << (int(PLR_FPSSJ % 32)))
+					ch.Act[int(PLR_FPSSJ/32)] |= bitvector_t(int32(1 << (int(PLR_FPSSJ % 32))))
 				}
 				var zone int = 0
 				act(libc.CString("@WSomething inside your mind snaps as your rage spills over! Lightning begins to strike the ground all around you as you feel torrents of power rushing through every fiber of your being. Your hair suddenly turns golden as your eyes change to the color of emeralds. In a final rush of power a golden aura rushes up around your body! You have become a @CSuper @YSaiyan@W!@n"), TRUE, ch, nil, nil, TO_CHAR)
@@ -9443,7 +9444,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				var add int = 800000
 				var mult float64 = 2
 				handle_transform(ch, int64(add), mult, 0.1)
-				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(1 << (int(PLR_TRANS1 % 32)))
+				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS1 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
@@ -9451,8 +9452,8 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 		}
 		return
-	} else if C.strcasecmp(libc.CString("second"), &arg[0]) == 0 {
-		if ch.Race == RACE_HUMAN {
+	} else if libc.StrCaseCmp(libc.CString("second"), &arg[0]) == 0 {
+		if int(ch.Race) == RACE_HUMAN {
 			if PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -9487,20 +9488,20 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 1000000, 2)
 				}
 				var add int = 12000000
 				var mult float64 = 3
 				handle_transform(ch, int64(add), mult, 0.2)
-				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(1 << (int(PLR_TRANS2 % 32)))
+				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS2 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_KAI {
+		if int(ch.Race) == RACE_KAI {
 			if PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -9535,20 +9536,20 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 1100000, 3)
 				}
 				var add int = 115000000
 				var mult float64 = 4
 				handle_transform(ch, int64(add), mult, 0.2)
-				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(1 << (int(PLR_TRANS2 % 32)))
+				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS2 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_TRUFFLE {
+		if int(ch.Race) == RACE_TRUFFLE {
 			if PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -9583,20 +9584,20 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 1300000, 3)
 				}
 				var add int = 80000000
 				var mult float64 = 4
 				handle_transform(ch, int64(add), mult, 0.2)
-				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(1 << (int(PLR_TRANS2 % 32)))
+				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS2 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_KONATSU {
+		if int(ch.Race) == RACE_KONATSU {
 			if PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -9631,20 +9632,20 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 1000000, 2)
 				}
 				var add int = 56000000
 				var mult float64 = 4
 				handle_transform(ch, int64(add), mult, 0.2)
-				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(1 << (int(PLR_TRANS2 % 32)))
+				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS2 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_MUTANT {
+		if int(ch.Race) == RACE_MUTANT {
 			if PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -9679,20 +9680,20 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 100000, 2)
 				}
 				var add int = 8500000
 				var mult float64 = 3
 				handle_transform(ch, int64(add), mult, 0.2)
-				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(1 << (int(PLR_TRANS2 % 32)))
+				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS2 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_ICER {
+		if int(ch.Race) == RACE_ICER {
 			if PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -9727,20 +9728,20 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 400000, 2)
 				}
 				var add int = 7000000
 				var mult float64 = 3
 				handle_transform(ch, int64(add), mult, 0.2)
-				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(1 << (int(PLR_TRANS2 % 32)))
+				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS2 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_HALFBREED {
+		if int(ch.Race) == RACE_HALFBREED {
 			if PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -9775,20 +9776,20 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 900000, 2)
 				}
 				var add int = 16500000
 				var mult float64 = 4
 				handle_transform(ch, int64(add), mult, 0.2)
-				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(1 << (int(PLR_TRANS2 % 32)))
+				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS2 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_NAMEK {
+		if int(ch.Race) == RACE_NAMEK {
 			if PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -9823,20 +9824,20 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 200000, 2)
 				}
 				var add int = 4000000
 				var mult float64 = 3
 				handle_transform(ch, int64(add), mult, 0.2)
-				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(1 << (int(PLR_TRANS2 % 32)))
+				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS2 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_SAIYAN {
+		if int(ch.Race) == RACE_SAIYAN {
 			if PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -9885,11 +9886,11 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					mult = 6
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 800000, 2)
 				}
 				handle_transform(ch, int64(add), mult, 0.2)
-				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(1 << (int(PLR_TRANS2 % 32)))
+				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS2 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
@@ -9897,8 +9898,8 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 		}
 		return
-	} else if C.strcasecmp(libc.CString("third"), &arg[0]) == 0 {
-		if ch.Race == RACE_HUMAN {
+	} else if libc.StrCaseCmp(libc.CString("third"), &arg[0]) == 0 {
+		if int(ch.Race) == RACE_HUMAN {
 			if PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -9933,24 +9934,24 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 1000000, 2)
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS2) {
-					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
+					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
 					handle_revert(ch, 12000000, 3)
 				}
 				var add int = 50000000
 				var mult float64 = 4
 				handle_transform(ch, int64(add), mult, 0.2)
-				ch.Act[int(PLR_TRANS3/32)] |= bitvector_t(1 << (int(PLR_TRANS3 % 32)))
+				ch.Act[int(PLR_TRANS3/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS3 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_TRUFFLE {
+		if int(ch.Race) == RACE_TRUFFLE {
 			if PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -9985,20 +9986,20 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS2) {
-					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
+					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
 					handle_revert(ch, 80000000, 4)
 				}
 				var add int = 300000000
 				var mult float64 = 5
 				handle_transform(ch, int64(add), mult, 0.2)
-				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(1 << (int(PLR_TRANS2 % 32)))
+				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS2 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_KAI {
+		if int(ch.Race) == RACE_KAI {
 			if PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -10033,24 +10034,24 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 1100000, 3)
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS2) {
-					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
+					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
 					handle_revert(ch, 115000000, 4)
 				}
 				var add int = 270000000
 				var mult float64 = 5
 				handle_transform(ch, int64(add), mult, 0.2)
-				ch.Act[int(PLR_TRANS3/32)] |= bitvector_t(1 << (int(PLR_TRANS3 % 32)))
+				ch.Act[int(PLR_TRANS3/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS3 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_MUTANT {
+		if int(ch.Race) == RACE_MUTANT {
 			if PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -10085,24 +10086,24 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 100000, 2)
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS2) {
-					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
+					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
 					handle_revert(ch, 8500000, 3)
 				}
 				var add int = 80000000
 				var mult float64 = 4
 				handle_transform(ch, int64(add), mult, 0.2)
-				ch.Act[int(PLR_TRANS3/32)] |= bitvector_t(1 << (int(PLR_TRANS3 % 32)))
+				ch.Act[int(PLR_TRANS3/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS3 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_KONATSU {
+		if int(ch.Race) == RACE_KONATSU {
 			if PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -10137,24 +10138,24 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 1000000, 2)
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
+					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
 					handle_revert(ch, 56000000, 4)
 				}
 				var add int = 290000000
 				var mult float64 = 5
 				handle_transform(ch, int64(add), mult, 0.2)
-				ch.Act[int(PLR_TRANS3/32)] |= bitvector_t(1 << (int(PLR_TRANS3 % 32)))
+				ch.Act[int(PLR_TRANS3/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS3 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_ICER {
+		if int(ch.Race) == RACE_ICER {
 			if PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -10189,24 +10190,24 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 400000, 2)
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS2) {
-					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
+					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
 					handle_revert(ch, 7000000, 3)
 				}
 				var add int = 45000000
 				var mult float64 = 4
 				handle_transform(ch, int64(add), mult, 0.2)
-				ch.Act[int(PLR_TRANS3/32)] |= bitvector_t(1 << (int(PLR_TRANS3 % 32)))
+				ch.Act[int(PLR_TRANS3/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS3 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_HALFBREED {
+		if int(ch.Race) == RACE_HALFBREED {
 			if PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -10241,24 +10242,24 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 900000, 2)
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS2) {
-					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
+					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
 					handle_revert(ch, 16500000, 4)
 				}
 				var add int = 240000000
 				var mult float64 = 5
 				handle_transform(ch, int64(add), mult, 0.2)
-				ch.Act[int(PLR_TRANS3/32)] |= bitvector_t(1 << (int(PLR_TRANS3 % 32)))
+				ch.Act[int(PLR_TRANS3/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS3 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_NAMEK {
+		if int(ch.Race) == RACE_NAMEK {
 			if PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -10293,24 +10294,24 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 200000, 2)
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS2) {
-					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
+					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
 					handle_revert(ch, 4000000, 3)
 				}
 				var add int = 65000000
 				var mult float64 = 4
 				handle_transform(ch, int64(add), mult, 0.2)
-				ch.Act[int(PLR_TRANS3/32)] |= bitvector_t(1 << (int(PLR_TRANS3 % 32)))
+				ch.Act[int(PLR_TRANS3/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS3 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_SAIYAN && !PLR_FLAGGED(ch, PLR_LSSJ) {
+		if int(ch.Race) == RACE_SAIYAN && !PLR_FLAGGED(ch, PLR_LSSJ) {
 			if PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -10347,15 +10348,15 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				var add int = 80000000
 				var mult float64 = 4
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 800000, 2)
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS2) {
-					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
+					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
 					handle_revert(ch, 20000000, 3)
 				}
 				handle_transform(ch, int64(add), mult, 0.2)
-				ch.Act[int(PLR_TRANS3/32)] |= bitvector_t(1 << (int(PLR_TRANS3 % 32)))
+				ch.Act[int(PLR_TRANS3/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS3 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
@@ -10363,8 +10364,8 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 		}
 		return
-	} else if C.strcasecmp(libc.CString("fourth"), &arg[0]) == 0 {
-		if ch.Race == RACE_HUMAN {
+	} else if libc.StrCaseCmp(libc.CString("fourth"), &arg[0]) == 0 {
+		if int(ch.Race) == RACE_HUMAN {
 			if PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already in that form! Try 'revert'.\r\n"))
 				return
@@ -10395,28 +10396,28 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 1000000, 2)
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS2) {
-					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
+					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
 					handle_revert(ch, 12000000, 3)
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS3) {
-					ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(^(1 << (int(PLR_TRANS3 % 32))))
+					ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS3 % 32)))))
 					handle_revert(ch, 50000000, 4)
 				}
 				var add int = 270000000
 				var mult float64 = 4.5
 				handle_transform(ch, int64(add), mult, 0.2)
-				ch.Act[int(PLR_TRANS4/32)] |= bitvector_t(1 << (int(PLR_TRANS4 % 32)))
+				ch.Act[int(PLR_TRANS4/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS4 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_ICER {
+		if int(ch.Race) == RACE_ICER {
 			if PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already in that form! Try 'revert'.\r\n"))
 				return
@@ -10447,28 +10448,28 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 400000, 2)
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS2) {
-					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
+					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
 					handle_revert(ch, 7000000, 3)
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS3) {
-					ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(^(1 << (int(PLR_TRANS3 % 32))))
+					ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS3 % 32)))))
 					handle_revert(ch, 45000000, 4)
 				}
 				var add int = 200000000
 				var mult float64 = 5
 				handle_transform(ch, int64(add), mult, 0.2)
-				ch.Act[int(PLR_TRANS4/32)] |= bitvector_t(1 << (int(PLR_TRANS4 % 32)))
+				ch.Act[int(PLR_TRANS4/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS4 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_NAMEK {
+		if int(ch.Race) == RACE_NAMEK {
 			if PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already in that form! Try 'revert'.\r\n"))
 				return
@@ -10499,28 +10500,28 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 200000, 2)
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS2) {
-					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
+					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
 					handle_revert(ch, 4000000, 3)
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS3) {
-					ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(^(1 << (int(PLR_TRANS3 % 32))))
+					ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS3 % 32)))))
 					handle_revert(ch, 65000000, 4)
 				}
 				var add int = 230000000
 				var mult float64 = 4.5
 				handle_transform(ch, int64(add), mult, 0.2)
-				ch.Act[int(PLR_TRANS4/32)] |= bitvector_t(1 << (int(PLR_TRANS4 % 32)))
+				ch.Act[int(PLR_TRANS4/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS4 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-		if ch.Race == RACE_SAIYAN && !PLR_FLAGGED(ch, PLR_LSSJ) {
+		if int(ch.Race) == RACE_SAIYAN && !PLR_FLAGGED(ch, PLR_LSSJ) {
 			if PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already in that form! Try 'revert'.\r\n"))
 				return
@@ -10551,21 +10552,21 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 800000, 2)
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS2) {
-					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
+					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
 					handle_revert(ch, 20000000, 3)
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS3) {
-					ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(^(1 << (int(PLR_TRANS3 % 32))))
+					ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS3 % 32)))))
 					handle_revert(ch, 80000000, 4)
 				}
 				var add int = 182000000
 				var mult float64 = 5.5
 				handle_transform(ch, int64(add), mult, 0.2)
-				ch.Act[int(PLR_TRANS4/32)] |= bitvector_t(1 << (int(PLR_TRANS4 % 32)))
+				ch.Act[int(PLR_TRANS4/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS4 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
@@ -10573,8 +10574,8 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 		}
 		return
-	} else if C.strcasecmp(libc.CString("mature"), &arg[0]) == 0 {
-		if ch.Race == RACE_BIO {
+	} else if libc.StrCaseCmp(libc.CString("mature"), &arg[0]) == 0 {
+		if int(ch.Race) == RACE_BIO {
 			if PLR_FLAGGED(ch, PLR_TRANS2) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -10615,13 +10616,13 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				var add int = 1000000
 				var mult float64 = 2
 				handle_transform(ch, int64(add), mult, 0.0)
-				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(1 << (int(PLR_TRANS1 % 32)))
+				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS1 % 32))))
 				return
 			}
 		}
 		return
-	} else if C.strcasecmp(libc.CString("semi-perfect"), &arg[0]) == 0 || C.strcasecmp(libc.CString("Semi-Perfect"), &arg[0]) == 0 {
-		if ch.Race == RACE_BIO {
+	} else if libc.StrCaseCmp(libc.CString("semi-perfect"), &arg[0]) == 0 || libc.StrCaseCmp(libc.CString("Semi-Perfect"), &arg[0]) == 0 {
+		if int(ch.Race) == RACE_BIO {
 			if PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -10660,21 +10661,21 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 1000000, 2)
 				}
 				var add int = 8000000
 				var mult float64 = 3
 				handle_transform(ch, int64(add), mult, 0.0)
-				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(1 << (int(PLR_TRANS2 % 32)))
+				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS2 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-	} else if C.strcasecmp(libc.CString("perfect"), &arg[0]) == 0 {
-		if ch.Race == RACE_BIO {
+	} else if libc.StrCaseCmp(libc.CString("perfect"), &arg[0]) == 0 {
+		if int(ch.Race) == RACE_BIO {
 			if PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -10713,25 +10714,25 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 1000000, 2)
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS2) {
-					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
+					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
 					handle_revert(ch, 8000000, 3)
 				}
 				var add int = 70000000
 				var mult float64 = 3.5
 				handle_transform(ch, int64(add), mult, 0.0)
-				ch.Act[int(PLR_TRANS3/32)] |= bitvector_t(1 << (int(PLR_TRANS3 % 32)))
+				ch.Act[int(PLR_TRANS3/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS3 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-	} else if (C.strcasecmp(libc.CString("super"), &arg[0]) == 0 || C.strcasecmp(libc.CString("super perfect"), &arg[0]) == 0) && ch.Race == RACE_BIO {
-		if ch.Race == RACE_BIO {
+	} else if (libc.StrCaseCmp(libc.CString("super"), &arg[0]) == 0 || libc.StrCaseCmp(libc.CString("super perfect"), &arg[0]) == 0) && int(ch.Race) == RACE_BIO {
+		if int(ch.Race) == RACE_BIO {
 			if PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already in that form!\r\n"))
 				return
@@ -10759,29 +10760,29 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 1000000, 2)
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS2) {
-					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
+					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
 					handle_revert(ch, 8000000, 3)
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS3) {
-					ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(^(1 << (int(PLR_TRANS3 % 32))))
+					ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS3 % 32)))))
 					handle_revert(ch, 70000000, 3.5)
 				}
 				var add int = 400000000
 				var mult float64 = 4
 				handle_transform(ch, int64(add), mult, 0.0)
-				ch.Act[int(PLR_TRANS4/32)] |= bitvector_t(1 << (int(PLR_TRANS4 % 32)))
+				ch.Act[int(PLR_TRANS4/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS4 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-	} else if C.strcasecmp(libc.CString("affinity"), &arg[0]) == 0 {
-		if ch.Race == RACE_MAJIN {
+	} else if libc.StrCaseCmp(libc.CString("affinity"), &arg[0]) == 0 {
+		if int(ch.Race) == RACE_MAJIN {
 			if PLR_FLAGGED(ch, PLR_TRANS2) || PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -10815,15 +10816,15 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				var add int = 1250000
 				var mult float64 = 2
 				handle_transform(ch, int64(add), mult, 0.0)
-				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(1 << (int(PLR_TRANS1 % 32)))
+				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS1 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-	} else if C.strcasecmp(libc.CString("super"), &arg[0]) == 0 {
-		if ch.Race == RACE_MAJIN {
+	} else if libc.StrCaseCmp(libc.CString("super"), &arg[0]) == 0 {
+		if int(ch.Race) == RACE_MAJIN {
 			if PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -10859,21 +10860,21 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 1250000, 2)
 				}
 				var add int = 15000000
 				var mult float64 = 3
 				handle_transform(ch, int64(add), mult, 0.0)
-				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(1 << (int(PLR_TRANS2 % 32)))
+				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS2 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-	} else if C.strcasecmp(libc.CString("true"), &arg[0]) == 0 {
-		if ch.Race == RACE_MAJIN {
+	} else if libc.StrCaseCmp(libc.CString("true"), &arg[0]) == 0 {
+		if int(ch.Race) == RACE_MAJIN {
 			if PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that form!\r\n"))
 				return
@@ -10905,25 +10906,25 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_zone(libc.CString("An explosion of power ripples through the surrounding area!\r\n"), zone_rnum(zone))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 1250000, 2)
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS2) {
-					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
+					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
 					handle_revert(ch, 15000000, 3)
 				}
 				var add int = 340000000
 				var mult float64 = 4.5
 				handle_transform(ch, int64(add), mult, 0.0)
-				ch.Act[int(PLR_TRANS3/32)] |= bitvector_t(1 << (int(PLR_TRANS3 % 32)))
+				ch.Act[int(PLR_TRANS3/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS3 % 32))))
 				send_to_sense(0, libc.CString("You sense a nearby power grow unbelievably!"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Transformed Powerlevel@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
 				return
 			}
 		}
-	} else if C.strcasecmp(libc.CString("1.0"), &arg[0]) == 0 {
-		if ch.Race == RACE_ANDROID {
+	} else if libc.StrCaseCmp(libc.CString("1.0"), &arg[0]) == 0 {
+		if int(ch.Race) == RACE_ANDROID {
 			if PLR_FLAGGED(ch, PLR_TRANS2) || PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that upgrade!\r\n"))
 				return
@@ -10953,12 +10954,12 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					add += 7500000
 				}
 				handle_transform(ch, int64(add), mult, 0.0)
-				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(1 << (int(PLR_TRANS1 % 32)))
+				ch.Act[int(PLR_TRANS1/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS1 % 32))))
 				return
 			}
 		}
-	} else if C.strcasecmp(libc.CString("2.0"), &arg[0]) == 0 {
-		if ch.Race == RACE_ANDROID {
+	} else if libc.StrCaseCmp(libc.CString("2.0"), &arg[0]) == 0 {
+		if int(ch.Race) == RACE_ANDROID {
 			if PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that upgrade!\r\n"))
 				return
@@ -10983,7 +10984,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou stop for a moment as the nano-machines within your body reprogram and restructure you. You are now more powerful and efficient!@n"), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("@C$n @Wstops for a moment as the nano-machines within $s body reprogram and restructure $m. $e is now more powerful and efficient!@n"), TRUE, ch, nil, nil, TO_ROOM)
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				}
 				var add int = 20000000
 				var mult float64 = 1
@@ -10991,12 +10992,12 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					add += 30000000
 				}
 				handle_transform(ch, int64(add), mult, 0.0)
-				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(1 << (int(PLR_TRANS2 % 32)))
+				ch.Act[int(PLR_TRANS2/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS2 % 32))))
 				return
 			}
 		}
-	} else if C.strcasecmp(libc.CString("3.0"), &arg[0]) == 0 {
-		if ch.Race == RACE_ANDROID {
+	} else if libc.StrCaseCmp(libc.CString("3.0"), &arg[0]) == 0 {
+		if int(ch.Race) == RACE_ANDROID {
 			if PLR_FLAGGED(ch, PLR_TRANS4) {
 				send_to_char(ch, libc.CString("You are already beyond that upgrade!\r\n"))
 				return
@@ -11025,10 +11026,10 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou stop for a moment as the nano-machines within your body reprogram and restructure you. You are now more powerful and efficient!@n"), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("@C$n @Wstops for a moment as the nano-machines within $s body reprogram and restructure $m. $e is now more powerful and efficient!@n"), TRUE, ch, nil, nil, TO_ROOM)
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS2) {
-					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
+					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
 				}
 				var add int = 125000000
 				var mult float64 = 1
@@ -11036,12 +11037,12 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					add += 187500000
 				}
 				handle_transform(ch, int64(add), mult, 0.0)
-				ch.Act[int(PLR_TRANS3/32)] |= bitvector_t(1 << (int(PLR_TRANS3 % 32)))
+				ch.Act[int(PLR_TRANS3/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS3 % 32))))
 				return
 			}
 		}
-	} else if C.strcasecmp(libc.CString("4.0"), &arg[0]) == 0 {
-		if ch.Race == RACE_ANDROID {
+	} else if libc.StrCaseCmp(libc.CString("4.0"), &arg[0]) == 0 {
+		if int(ch.Race) == RACE_ANDROID {
 			if PLR_FLAGGED(ch, PLR_TRANS5) || PLR_FLAGGED(ch, PLR_TRANS6) {
 				send_to_char(ch, libc.CString("You are already beyond that upgrade!\r\n"))
 				return
@@ -11070,13 +11071,13 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou stop for a moment as the nano-machines within your body reprogram and restructure you. You are now more powerful and efficient!@n"), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("@C$n @Wstops for a moment as the nano-machines within $s body reprogram and restructure $m. $e is now more powerful and efficient!@n"), TRUE, ch, nil, nil, TO_ROOM)
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS2) {
-					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
+					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS3) {
-					ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(^(1 << (int(PLR_TRANS3 % 32))))
+					ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS3 % 32)))))
 				}
 				var add uint64 = 1000000000
 				var mult float64 = 1
@@ -11084,12 +11085,12 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					add += 1500000000
 				}
 				handle_transform(ch, int64(add), mult, 0.0)
-				ch.Act[int(PLR_TRANS4/32)] |= bitvector_t(1 << (int(PLR_TRANS4 % 32)))
+				ch.Act[int(PLR_TRANS4/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS4 % 32))))
 				return
 			}
 		}
-	} else if C.strcasecmp(libc.CString("5.0"), &arg[0]) == 0 {
-		if ch.Race == RACE_ANDROID {
+	} else if libc.StrCaseCmp(libc.CString("5.0"), &arg[0]) == 0 {
+		if int(ch.Race) == RACE_ANDROID {
 			if PLR_FLAGGED(ch, PLR_TRANS6) {
 				send_to_char(ch, libc.CString("You are already beyond that upgrade!\r\n"))
 				return
@@ -11118,16 +11119,16 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou stop for a moment as the nano-machines within your body reprogram and restructure you. You are now more powerful and efficient!@n"), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("@C$n @Wstops for a moment as the nano-machines within $s body reprogram and restructure $m. $e is now more powerful and efficient!@n"), TRUE, ch, nil, nil, TO_ROOM)
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS2) {
-					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
+					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS3) {
-					ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(^(1 << (int(PLR_TRANS3 % 32))))
+					ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS3 % 32)))))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS4) {
-					ch.Act[int(PLR_TRANS4/32)] &= bitvector_t(^(1 << (int(PLR_TRANS4 % 32))))
+					ch.Act[int(PLR_TRANS4/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS4 % 32)))))
 				}
 				var add uint64 = 25000000000
 				var mult float64 = 1
@@ -11135,12 +11136,12 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					add += 3750000000
 				}
 				handle_transform(ch, int64(add), mult, 0.0)
-				ch.Act[int(PLR_TRANS5/32)] |= bitvector_t(1 << (int(PLR_TRANS5 % 32)))
+				ch.Act[int(PLR_TRANS5/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS5 % 32))))
 				return
 			}
 		}
-	} else if C.strcasecmp(libc.CString("6.0"), &arg[0]) == 0 {
-		if ch.Race == RACE_ANDROID {
+	} else if libc.StrCaseCmp(libc.CString("6.0"), &arg[0]) == 0 {
+		if int(ch.Race) == RACE_ANDROID {
 			if PLR_FLAGGED(ch, PLR_TRANS6) {
 				send_to_char(ch, libc.CString("You are already in that upgrade!\r\n"))
 				return
@@ -11165,19 +11166,19 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("@WYou stop for a moment as the nano-machines within your body reprogram and restructure you. You are now more powerful and efficient!@n"), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("@C$n @Wstops for a moment as the nano-machines within $s body reprogram and restructure $m. $e is now more powerful and efficient!@n"), TRUE, ch, nil, nil, TO_ROOM)
 				if PLR_FLAGGED(ch, PLR_TRANS1) {
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS2) {
-					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
+					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS3) {
-					ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(^(1 << (int(PLR_TRANS3 % 32))))
+					ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS3 % 32)))))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS4) {
-					ch.Act[int(PLR_TRANS4/32)] &= bitvector_t(^(1 << (int(PLR_TRANS4 % 32))))
+					ch.Act[int(PLR_TRANS4/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS4 % 32)))))
 				}
 				if PLR_FLAGGED(ch, PLR_TRANS5) {
-					ch.Act[int(PLR_TRANS5/32)] &= bitvector_t(^(1 << (int(PLR_TRANS5 % 32))))
+					ch.Act[int(PLR_TRANS5/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS5 % 32)))))
 				}
 				var add uint64 = 1000000000
 				add += 1000000000
@@ -11190,22 +11191,22 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					add *= 100
 				}
 				handle_transform(ch, int64(add), mult, 0.0)
-				ch.Act[int(PLR_TRANS6/32)] |= bitvector_t(1 << (int(PLR_TRANS6 % 32)))
+				ch.Act[int(PLR_TRANS6/32)] |= bitvector_t(int32(1 << (int(PLR_TRANS6 % 32))))
 				return
 			}
 		}
-	} else if C.strcasecmp(libc.CString("revert"), &arg[0]) == 0 {
-		if ch.Race == RACE_HUMAN {
+	} else if libc.StrCaseCmp(libc.CString("revert"), &arg[0]) == 0 {
+		if int(ch.Race) == RACE_HUMAN {
 			if PLR_FLAGGED(ch, PLR_TRANS4) {
 				act(libc.CString("@wYou revert from @CSuper @cHuman @GFourth@w.@n"), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("@w$n@w reverts from @CSuper @cHuman @GFourth@w.@n"), TRUE, ch, nil, nil, TO_ROOM)
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS4/32)] &= bitvector_t(^(1 << (int(PLR_TRANS4 % 32))))
-				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(^(1 << (int(PLR_TRANS3 % 32))))
-				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS4/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS4 % 32)))))
+				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS3 % 32)))))
+				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 270000000, 4.5)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11217,9 +11218,9 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(^(1 << (int(PLR_TRANS3 % 32))))
-				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS3 % 32)))))
+				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 50000000, 4)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11231,8 +11232,8 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 12000000, 3)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11244,7 +11245,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 1000000, 2)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11254,17 +11255,17 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_char(ch, libc.CString("You do not need to revert from any form!\r\n"))
 				return
 			}
-		} else if ch.Race == RACE_SAIYAN {
+		} else if int(ch.Race) == RACE_SAIYAN {
 			if PLR_FLAGGED(ch, PLR_TRANS4) {
 				act(libc.CString("@wYou revert from @CSuper @cSaiyan @GFourth@w.@n"), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("@w$n@w reverts from @CSuper @cSaiyan @GFourth@w.@n"), TRUE, ch, nil, nil, TO_ROOM)
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS4/32)] &= bitvector_t(^(1 << (int(PLR_TRANS4 % 32))))
-				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(^(1 << (int(PLR_TRANS3 % 32))))
-				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS4/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS4 % 32)))))
+				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS3 % 32)))))
+				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 182000000, 5.5)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11276,9 +11277,9 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(^(1 << (int(PLR_TRANS3 % 32))))
-				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS3 % 32)))))
+				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 80000000, 4)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11291,8 +11292,8 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					if ch.Charge > 0 {
 						do_charge(ch, libc.CString("release"), 0, 0)
 					}
-					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 20000000, 3)
 				} else {
 					act(libc.CString("@wYou revert from your @YLegendary @CSuper Saiyan@w form.@n"), TRUE, ch, nil, nil, TO_CHAR)
@@ -11300,8 +11301,8 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 					if ch.Charge > 0 {
 						do_charge(ch, libc.CString("release"), 0, 0)
 					}
-					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
-					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+					ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
+					ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 					handle_revert(ch, 185000000, 6)
 				}
 				if arg2[0] != 0 {
@@ -11314,7 +11315,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 800000, 2)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11324,16 +11325,16 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_char(ch, libc.CString("You do not need to revert from any form!\r\n"))
 				return
 			}
-		} else if ch.Race == RACE_HALFBREED {
+		} else if int(ch.Race) == RACE_HALFBREED {
 			if PLR_FLAGGED(ch, PLR_TRANS3) {
 				act(libc.CString("@wYou revert from @CSuper @cSaiyan @GThird@w.@n"), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("@w$n@w reverts from @CSuper @cSaiyan @GThird@w.@n"), TRUE, ch, nil, nil, TO_ROOM)
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(^(1 << (int(PLR_TRANS3 % 32))))
-				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS3 % 32)))))
+				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 240000000, 5)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11345,8 +11346,8 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 16500000, 4)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11358,7 +11359,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 900000, 2)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11368,17 +11369,17 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_char(ch, libc.CString("You do not need to revert from any form!\r\n"))
 				return
 			}
-		} else if ch.Race == RACE_NAMEK {
+		} else if int(ch.Race) == RACE_NAMEK {
 			if PLR_FLAGGED(ch, PLR_TRANS4) {
 				act(libc.CString("@wYou revert from @CSuper @cNamek @GFourth@w.@n"), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("@w$n@w reverts from @CSuper @cNamek @GFourth@w.@n"), TRUE, ch, nil, nil, TO_ROOM)
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS4/32)] &= bitvector_t(^(1 << (int(PLR_TRANS4 % 32))))
-				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(^(1 << (int(PLR_TRANS3 % 32))))
-				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS4/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS4 % 32)))))
+				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS3 % 32)))))
+				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 230000000, 4.5)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11390,9 +11391,9 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(^(1 << (int(PLR_TRANS3 % 32))))
-				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS3 % 32)))))
+				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 65000000, 4)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11404,8 +11405,8 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 4000000, 3)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11417,7 +11418,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 200000, 2)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11427,17 +11428,17 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_char(ch, libc.CString("You do not need to revert from any form!\r\n"))
 				return
 			}
-		} else if ch.Race == RACE_ICER {
+		} else if int(ch.Race) == RACE_ICER {
 			if PLR_FLAGGED(ch, PLR_TRANS4) {
 				act(libc.CString("@wYou revert from @CTransform @GFourth@w.@n"), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("@w$n@w reverts from @CTransform @GFourth@w.@n"), TRUE, ch, nil, nil, TO_ROOM)
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS4/32)] &= bitvector_t(^(1 << (int(PLR_TRANS4 % 32))))
-				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(^(1 << (int(PLR_TRANS3 % 32))))
-				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS4/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS4 % 32)))))
+				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS3 % 32)))))
+				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 200000000, 5)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11449,9 +11450,9 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(^(1 << (int(PLR_TRANS3 % 32))))
-				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS3 % 32)))))
+				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 45000000, 4)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11463,8 +11464,8 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 7000000, 3)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11476,7 +11477,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 400000, 2)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11486,16 +11487,16 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_char(ch, libc.CString("You do not need to revert from any form!\r\n"))
 				return
 			}
-		} else if ch.Race == RACE_MUTANT {
+		} else if int(ch.Race) == RACE_MUTANT {
 			if PLR_FLAGGED(ch, PLR_TRANS3) {
 				act(libc.CString("@wYou revert from @CMutate @GThird@w.@n"), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("@w$n@w reverts from @CMutate @GThird@w.@n"), TRUE, ch, nil, nil, TO_ROOM)
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(^(1 << (int(PLR_TRANS3 % 32))))
-				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS3 % 32)))))
+				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 80000000, 4)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11507,8 +11508,8 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 8500000, 3)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11520,7 +11521,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 100000, 2)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11530,16 +11531,16 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_char(ch, libc.CString("You do not need to revert from any form!\r\n"))
 				return
 			}
-		} else if ch.Race == RACE_KONATSU {
+		} else if int(ch.Race) == RACE_KONATSU {
 			if PLR_FLAGGED(ch, PLR_TRANS3) {
 				act(libc.CString("@wYou revert from @CShadow @GThird@w.@n"), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("@w$n@w reverts from @CShadow @GThird@w.@n"), TRUE, ch, nil, nil, TO_ROOM)
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(^(1 << (int(PLR_TRANS3 % 32))))
-				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS3 % 32)))))
+				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 290000000, 5)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11552,8 +11553,8 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 56000000, 4)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11565,7 +11566,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 1000000, 2)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11575,16 +11576,16 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_char(ch, libc.CString("You do not need to revert from any form!\r\n"))
 				return
 			}
-		} else if ch.Race == RACE_KAI {
+		} else if int(ch.Race) == RACE_KAI {
 			if PLR_FLAGGED(ch, PLR_TRANS3) {
 				act(libc.CString("@wYou revert from @CMystic @GThird@w.@n"), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("@w$n@w reverts from @CMystic @GThird@w.@n"), TRUE, ch, nil, nil, TO_ROOM)
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(^(1 << (int(PLR_TRANS3 % 32))))
-				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS3/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS3 % 32)))))
+				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 270000000, 5)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11597,8 +11598,8 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(^(1 << (int(PLR_TRANS2 % 32))))
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS2/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS2 % 32)))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 115000000, 4)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11610,7 +11611,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if ch.Charge > 0 {
 					do_charge(ch, libc.CString("release"), 0, 0)
 				}
-				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(^(1 << (int(PLR_TRANS1 % 32))))
+				ch.Act[int(PLR_TRANS1/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANS1 % 32)))))
 				handle_revert(ch, 1100000, 3)
 				if arg2[0] != 0 {
 					do_transform(ch, &arg2[0], 0, 0)
@@ -11624,7 +11625,7 @@ func do_transform(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("You do not need to revert from any form!\r\n"))
 		}
 		return
-	} else if ch.Race == RACE_KANASSAN || ch.Race == RACE_DEMON {
+	} else if int(ch.Race) == RACE_KANASSAN || int(ch.Race) == RACE_DEMON {
 		send_to_char(ch, libc.CString("You do not have a transformation.\r\n"))
 		return
 	} else {
@@ -11657,9 +11658,9 @@ func do_situp(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You are carrying someone!\r\n"))
 		return
 	}
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity != 10 && ch.Chclass == CLASS_BARDOCK || ch.Chclass != CLASS_BARDOCK {
+	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity != 10 && int(ch.Chclass) == CLASS_BARDOCK || int(ch.Chclass) != CLASS_BARDOCK {
 		cost += (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity * (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity * 2) + GET_LEVEL(ch))
-	} else if ch.Chclass == CLASS_BARDOCK {
+	} else if int(ch.Chclass) == CLASS_BARDOCK {
 		cost += (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity * GET_LEVEL(ch)
 	}
 	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 300 {
@@ -11690,7 +11691,7 @@ func do_situp(ch *char_data, argument *byte, cmd int, subcmd int) {
 	} else if ch.Relax_count >= 116 {
 		cost *= 4
 	}
-	if ch.Race == RACE_ANDROID || ch.Race == RACE_BIO || ch.Race == RACE_MAJIN || ch.Race == RACE_ARLIAN {
+	if int(ch.Race) == RACE_ANDROID || int(ch.Race) == RACE_BIO || int(ch.Race) == RACE_MAJIN || int(ch.Race) == RACE_ARLIAN {
 		send_to_char(ch, libc.CString("You will gain nothing from exercising!\r\n"))
 		return
 	}
@@ -11858,7 +11859,7 @@ func do_situp(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 		}
 		bonus += GET_LEVEL(ch) / 20
-		if ch.Race == RACE_NAMEK {
+		if int(ch.Race) == RACE_NAMEK {
 			bonus -= bonus / 4
 		}
 		if (ch.Bonuses[BONUS_HARDWORKER]) != 0 {
@@ -11868,15 +11869,15 @@ func do_situp(ch *char_data, argument *byte, cmd int, subcmd int) {
 			bonus += int(float64(bonus) * 0.1)
 		}
 		send_to_char(ch, libc.CString("You feel slightly more vigorous @D[@G+%s@D]@n.\r\n"), add_commas(int64(bonus)))
-		if ch.Race == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS1) {
+		if int(ch.Race) == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS1) {
 			ch.Max_move += int64(bonus * 3)
-		} else if ch.Race == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS2) {
+		} else if int(ch.Race) == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS2) {
 			ch.Max_move += int64(bonus * 4)
-		} else if ch.Race == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS3) {
+		} else if int(ch.Race) == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS3) {
 			ch.Max_move += int64(bonus * 5)
-		} else if ch.Race == RACE_HOSHIJIN && ch.Starphase == 1 {
+		} else if int(ch.Race) == RACE_HOSHIJIN && ch.Starphase == 1 {
 			ch.Max_move += int64(bonus * 2)
-		} else if ch.Race == RACE_HOSHIJIN && ch.Starphase == 2 {
+		} else if int(ch.Race) == RACE_HOSHIJIN && ch.Starphase == 2 {
 			ch.Max_move += int64(bonus * 3)
 		} else {
 			ch.Max_move += int64(bonus)
@@ -11923,7 +11924,7 @@ func do_meditate(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Stop fishing first.\r\n"))
 		return
 	}
-	if ch.Race == RACE_ANDROID || ch.Race == RACE_BIO || ch.Race == RACE_MAJIN || ch.Race == RACE_ARLIAN {
+	if int(ch.Race) == RACE_ANDROID || int(ch.Race) == RACE_BIO || int(ch.Race) == RACE_MAJIN || int(ch.Race) == RACE_ARLIAN {
 		send_to_char(ch, libc.CString("You will gain nothing from exercising!\r\n"))
 		return
 	}
@@ -11943,7 +11944,7 @@ func do_meditate(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You are fighting you moron!\r\n"))
 		return
 	}
-	if ch.Position != POS_SITTING {
+	if int(ch.Position) != POS_SITTING {
 		send_to_char(ch, libc.CString("You need to be sitting to meditate.\r\n"))
 		return
 	}
@@ -11951,9 +11952,9 @@ func do_meditate(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Syntax: meditate (object)\nSyntax: meditate expand\nSyntax: meditate break\r\n"))
 		return
 	}
-	if C.strcasecmp(&arg[0], libc.CString("expand")) == 0 {
+	if libc.StrCaseCmp(&arg[0], libc.CString("expand")) == 0 {
 		var cost int = 3500
-		if ch.Race == RACE_SAIYAN {
+		if int(ch.Race) == RACE_SAIYAN {
 			cost = 7000
 		}
 		if (ch.Player_specials.Class_skill_points[ch.Chclass]) < cost {
@@ -11970,7 +11971,7 @@ func do_meditate(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 		return
-	} else if C.strcasecmp(&arg[0], libc.CString("break")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("break")) == 0 {
 		if ch.Mindlink == nil {
 			send_to_char(ch, libc.CString("You are not mind linked with anyone.\r\n"))
 			return
@@ -12014,9 +12015,9 @@ func do_meditate(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if obj.Sitting != nil {
 		weight += int64(obj.Sitting.Weight)
 	}
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity != 10 && ch.Chclass == CLASS_BARDOCK || ch.Chclass != CLASS_BARDOCK {
+	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity != 10 && int(ch.Chclass) == CLASS_BARDOCK || int(ch.Chclass) != CLASS_BARDOCK {
 		cost += int64((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity * (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity * 2) + GET_LEVEL(ch)))
-	} else if ch.Chclass == CLASS_BARDOCK {
+	} else if int(ch.Chclass) == CLASS_BARDOCK {
 		cost += int64((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity * GET_LEVEL(ch))
 	}
 	cost += weight * int64(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity+1)/5)
@@ -12174,28 +12175,28 @@ func do_meditate(ch *char_data, argument *byte, cmd int, subcmd int) {
 				bonus = 6
 			}
 		}
-		if bonus != 1 && ch.Race == RACE_DEMON && rand_number(1, 100) >= 80 {
+		if bonus != 1 && int(ch.Race) == RACE_DEMON && rand_number(1, 100) >= 80 {
 			send_to_char(ch, libc.CString("Your spirit magnifies the strength of your body! @D[@G+%s@D]@n\r\n"), add_commas(bonus/2))
 			ch.Max_hit += bonus / 2
 			ch.Basepl += bonus / 2
 		}
 		bonus += int64(GET_LEVEL(ch) / 20)
-		if ch.Race == RACE_NAMEK {
+		if int(ch.Race) == RACE_NAMEK {
 			bonus += bonus / 2
 		}
 		if (ch.Bonuses[BONUS_LONER]) != 0 {
 			bonus += int64(float64(bonus) * 0.1)
 		}
 		send_to_char(ch, libc.CString("You feel your spirit grow stronger @D[@G+%s@D]@n.\r\n"), add_commas(bonus))
-		if ch.Race == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS1) {
+		if int(ch.Race) == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS1) {
 			ch.Max_mana += bonus * 3
-		} else if ch.Race == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS2) {
+		} else if int(ch.Race) == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS2) {
 			ch.Max_mana += bonus * 4
-		} else if ch.Race == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS3) {
+		} else if int(ch.Race) == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS3) {
 			ch.Max_mana += bonus * 5
-		} else if ch.Race == RACE_HOSHIJIN && ch.Starphase == 1 {
+		} else if int(ch.Race) == RACE_HOSHIJIN && ch.Starphase == 1 {
 			ch.Max_mana += bonus * 2
-		} else if ch.Race == RACE_HOSHIJIN && ch.Starphase == 2 {
+		} else if int(ch.Race) == RACE_HOSHIJIN && ch.Starphase == 2 {
 			ch.Max_mana += bonus * 3
 		} else {
 			ch.Max_mana += bonus
@@ -12241,9 +12242,9 @@ func do_pushup(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You are carrying someone!\r\n"))
 		return
 	}
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity != 10 && ch.Chclass == CLASS_BARDOCK || ch.Chclass != CLASS_BARDOCK {
+	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity != 10 && int(ch.Chclass) == CLASS_BARDOCK || int(ch.Chclass) != CLASS_BARDOCK {
 		cost += (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity * (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity * 2) + GET_LEVEL(ch))
-	} else if ch.Chclass == CLASS_BARDOCK {
+	} else if int(ch.Chclass) == CLASS_BARDOCK {
 		cost += (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity * GET_LEVEL(ch)
 	}
 	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 300 {
@@ -12274,7 +12275,7 @@ func do_pushup(ch *char_data, argument *byte, cmd int, subcmd int) {
 	} else if ch.Relax_count >= 116 {
 		cost *= 4
 	}
-	if ch.Race == RACE_ANDROID || ch.Race == RACE_BIO || ch.Race == RACE_MAJIN || ch.Race == RACE_ARLIAN {
+	if int(ch.Race) == RACE_ANDROID || int(ch.Race) == RACE_BIO || int(ch.Race) == RACE_MAJIN || int(ch.Race) == RACE_ARLIAN {
 		send_to_char(ch, libc.CString("You will gain nothing from exercising!\r\n"))
 		return
 	}
@@ -12442,7 +12443,7 @@ func do_pushup(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 		}
 		bonus += GET_LEVEL(ch) / 20
-		if ch.Race == RACE_NAMEK {
+		if int(ch.Race) == RACE_NAMEK {
 			bonus -= bonus / 4
 		}
 		if (ch.Bonuses[BONUS_HARDWORKER]) != 0 {
@@ -12452,18 +12453,18 @@ func do_pushup(ch *char_data, argument *byte, cmd int, subcmd int) {
 			bonus += int(float64(bonus) * 0.1)
 		}
 		send_to_char(ch, libc.CString("You feel slightly stronger @D[@G+%s@D]@n.\r\n"), add_commas(int64(bonus)))
-		if ch.Race == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS1) {
+		if int(ch.Race) == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS1) {
 			ch.Max_hit += int64(bonus * 3)
-		} else if ch.Race == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS2) {
+		} else if int(ch.Race) == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS2) {
 			ch.Max_hit += int64(bonus * 4)
-		} else if ch.Race == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS3) {
+		} else if int(ch.Race) == RACE_TRUFFLE && PLR_FLAGGED(ch, PLR_TRANS3) {
 			ch.Max_hit += int64(bonus * 5)
-		} else if ch.Race == RACE_HOSHIJIN && ch.Starphase == 1 {
+		} else if int(ch.Race) == RACE_HOSHIJIN && ch.Starphase == 1 {
 			ch.Max_hit += int64(bonus * 2)
-		} else if ch.Race == RACE_HOSHIJIN && ch.Starphase == 2 {
+		} else if int(ch.Race) == RACE_HOSHIJIN && ch.Starphase == 2 {
 			ch.Max_hit += int64(bonus * 3)
 		} else {
-			if ch.Race == RACE_HUMAN {
+			if int(ch.Race) == RACE_HUMAN {
 				bonus = int(float64(bonus) * 0.8)
 			}
 			ch.Max_hit += int64(bonus)
@@ -12500,7 +12501,7 @@ func do_spar(ch *char_data, argument *byte, cmd int, subcmd int) {
 			act(libc.CString("@wYou move into your sparring stance.@n"), FALSE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@C$n@w moves into $s sparring stance.@n"), FALSE, ch, nil, nil, TO_ROOM)
 		}
-		ch.Act[int(PLR_SPAR/32)] = ch.Act[int(PLR_SPAR/32)] ^ bitvector_t(1<<(int(PLR_SPAR%32)))
+		ch.Act[int(PLR_SPAR/32)] = bitvector_t(int32(int(ch.Act[int(PLR_SPAR/32)]) ^ 1<<(int(PLR_SPAR%32))))
 	}
 }
 func check_eq(ch *char_data) {
@@ -12517,13 +12518,13 @@ func check_eq(ch *char_data) {
 				perform_remove(ch, i)
 				return
 			}
-			if obj == (ch.Equipment[WEAR_WIELD1]) && (ch.Limb_condition[0]) <= 0 {
+			if obj == (ch.Equipment[WEAR_WIELD1]) && (ch.Limb_condition[1]) <= 0 {
 				act(libc.CString("@WWithout your right arm you let go of @c$p@W!@n"), FALSE, ch, obj, nil, TO_CHAR)
 				act(libc.CString("@C$n@W lets go of @c$p@W!@n"), FALSE, ch, obj, nil, TO_ROOM)
 				perform_remove(ch, i)
 				return
 			}
-			if obj == (ch.Equipment[WEAR_WIELD2]) && (ch.Limb_condition[1]) <= 0 {
+			if obj == (ch.Equipment[WEAR_WIELD2]) && (ch.Limb_condition[2]) <= 0 {
 				act(libc.CString("@WWithout your left arm you let go of @c$p@W!@n"), FALSE, ch, obj, nil, TO_CHAR)
 				act(libc.CString("@C$n@W lets go of @c$p@W!@n"), FALSE, ch, obj, nil, TO_ROOM)
 				perform_remove(ch, i)
@@ -12540,9 +12541,9 @@ func base_update() {
 		countch int = FALSE
 		pcoun   int = 0
 	)
-	if INTERESTTIME != 0 && INTERESTTIME <= C.time(nil) && C.time(nil) != 0 {
-		INTERESTTIME = C.time(nil) + 86400
-		LASTINTEREST = C.time(nil)
+	if INTERESTTIME != 0 && INTERESTTIME <= libc.GetTime(nil) && libc.GetTime(nil) != 0 {
+		INTERESTTIME = libc.GetTime(nil) + 86400
+		LASTINTEREST = libc.GetTime(nil)
 		save_mud_time(&time_info)
 		cash = TRUE
 		countch = TRUE
@@ -12560,7 +12561,7 @@ func base_update() {
 				d.Character.Absorbing.Absorbby = nil
 				d.Character.Absorbing = nil
 			}
-			if d.Character.Race == RACE_ANDROID && d.Character.Absorbing != nil && rand_number(1, 10) >= 7 {
+			if int(d.Character.Race) == RACE_ANDROID && d.Character.Absorbing != nil && rand_number(1, 10) >= 7 {
 				var (
 					drain1  int64      = int64(float64(d.Character.Max_mana) * 0.01)
 					drain2  int64      = int64(float64(d.Character.Max_move) * 0.01)
@@ -12607,7 +12608,7 @@ func base_update() {
 			d.Character.Backstabcool -= 1
 		}
 		if PLR_FLAGGED(d.Character, PLR_GOOP) && d.Character.Gooptime == 60 {
-			if d.Character.Race == RACE_BIO {
+			if int(d.Character.Race) == RACE_BIO {
 				act(libc.CString("@GConciousness slowly returns to you. You realize quickly that some of your cells have survived. You take control of your regenerative processes and focus on growing a new body!@n"), TRUE, d.Character, nil, nil, TO_CHAR)
 			} else {
 				act(libc.CString("@MSlowly you regain conciousness. The various split off chunks of your body begin to likewise stir.@n"), TRUE, d.Character, nil, nil, TO_CHAR)
@@ -12615,7 +12616,7 @@ func base_update() {
 			}
 			d.Character.Gooptime -= 1
 		} else if PLR_FLAGGED(d.Character, PLR_GOOP) && d.Character.Gooptime == 30 {
-			if d.Character.Race == RACE_BIO {
+			if int(d.Character.Race) == RACE_BIO {
 				act(libc.CString("@GFrom the collection of cells growing a crude form of your body starts to take shape!@n"), TRUE, d.Character, nil, nil, TO_CHAR)
 				act(libc.CString("@GYou start to notice a large mass of pulsing flesh growing before you!@n"), TRUE, d.Character, nil, nil, TO_ROOM)
 			} else {
@@ -12624,7 +12625,7 @@ func base_update() {
 			}
 			d.Character.Gooptime -= 1
 		} else if PLR_FLAGGED(d.Character, PLR_GOOP) && d.Character.Gooptime == 15 {
-			if d.Character.Race == RACE_BIO {
+			if int(d.Character.Race) == RACE_BIO {
 				act(libc.CString("@GYour body has almost reached its previous form! Only a little more regenerating is needed!@n"), TRUE, d.Character, nil, nil, TO_CHAR)
 				act(libc.CString("@GThe lump of flesh has now grown to the size where the likeness of @g$n@G can be seen of it! It appears that $e is regenerating $s body from what was only a few cells!@n"), TRUE, d.Character, nil, nil, TO_ROOM)
 			} else {
@@ -12633,11 +12634,11 @@ func base_update() {
 			}
 			d.Character.Gooptime -= 1
 		} else if PLR_FLAGGED(d.Character, PLR_GOOP) && d.Character.Gooptime == 0 {
-			if d.Character.Race == RACE_BIO {
+			if int(d.Character.Race) == RACE_BIO {
 				d.Character.Hit = gear_pl(d.Character)
 				act(libc.CString("@GYour body has fully regenerated! You flex your arms and legs outward with a rush of renewed strength!@n"), TRUE, d.Character, nil, nil, TO_CHAR)
 				act(libc.CString("@g$n@G's body has fully regenerated! Suddenly $e flexes $s arms and legs and a rush of power erupts from off of $s body!@n"), TRUE, d.Character, nil, nil, TO_ROOM)
-			} else if d.Character.Race == RACE_SAIYAN {
+			} else if int(d.Character.Race) == RACE_SAIYAN {
 				var (
 					zenkaiPL int
 					zenkaiKi int
@@ -12666,7 +12667,7 @@ func base_update() {
 				act(libc.CString("@MYour body has fully regenerated! You scream out in triumph and a short gust of steam erupts from your pores!@n"), TRUE, d.Character, nil, nil, TO_CHAR)
 				act(libc.CString("@m$n@M's body has fully regenerated! Suddenly $e screams out in gleeful triumph and short gust of steam erupts from $s skin pores!"), TRUE, d.Character, nil, nil, TO_ROOM)
 			}
-			d.Character.Act[int(PLR_GOOP/32)] &= bitvector_t(^(1 << (int(PLR_GOOP % 32))))
+			d.Character.Act[int(PLR_GOOP/32)] &= bitvector_t(int32(^(1 << (int(PLR_GOOP % 32)))))
 		} else {
 			d.Character.Gooptime -= 1
 		}
@@ -12702,7 +12703,7 @@ func base_update() {
 			}
 		}
 		if PLR_FLAGGED(d.Character, PLR_TRANSMISSION) {
-			d.Character.Act[int(PLR_TRANSMISSION/32)] &= bitvector_t(^(1 << (int(PLR_TRANSMISSION % 32))))
+			d.Character.Act[int(PLR_TRANSMISSION/32)] &= bitvector_t(int32(^(1 << (int(PLR_TRANSMISSION % 32)))))
 		}
 		if d.Character.Fighting == nil && AFF_FLAGGED(d.Character, AFF_POSITION) {
 			d.Character.Affected_by[int(AFF_POSITION/32)] &= ^(1 << (int(AFF_POSITION % 32)))
@@ -12726,14 +12727,14 @@ func base_update() {
 		if PLR_FLAGGED(d.Character, PLR_SELFD) && !PLR_FLAGGED(d.Character, PLR_SELFD2) {
 			if rand_number(4, 100) < GET_SKILL(d.Character, SKILL_SELFD) {
 				send_to_char(d.Character, libc.CString("You feel you are ready to self destruct!\r\n"))
-				d.Character.Act[int(PLR_SELFD2/32)] |= bitvector_t(1 << (int(PLR_SELFD2 % 32)))
+				d.Character.Act[int(PLR_SELFD2/32)] |= bitvector_t(int32(1 << (int(PLR_SELFD2 % 32))))
 			}
 		}
 		if d.Character.Fighting == nil && d.Character.Combo > -1 {
 			d.Character.Combo = -1
 			d.Character.Combhits = 0
 		}
-		if MOON_UP != 0 && (d.Character.Race == RACE_SAIYAN || d.Character.Race == RACE_HALFBREED) && !PLR_FLAGGED(d.Character, PLR_OOZARU) {
+		if MOON_UP != 0 && (int(d.Character.Race) == RACE_SAIYAN || int(d.Character.Race) == RACE_HALFBREED) && !PLR_FLAGGED(d.Character, PLR_OOZARU) {
 			oozaru_add(d.Character)
 		}
 		if cash == TRUE && d.Character.Bank_gold > 0 {
@@ -12776,7 +12777,7 @@ func base_update() {
 			d.Character.Absorbing.Absorbby = nil
 			d.Character.Absorbing = nil
 		}
-		if d.Character.Race == RACE_ANDROID && d.Character.Absorbing != nil {
+		if int(d.Character.Race) == RACE_ANDROID && d.Character.Absorbing != nil {
 			if d.Character.Absorbing.Move < (d.Character.Max_move/15) && d.Character.Absorbing.Mana < (d.Character.Max_mana/15) {
 				act(libc.CString("@WYou stop absorbing stamina and ki from @c$N as they don't have enough for you to take@W!@n"), TRUE, d.Character, nil, unsafe.Pointer(d.Character.Absorbing), TO_CHAR)
 				act(libc.CString("@C$n@W stops absorbing stamina and ki from you!@n"), TRUE, d.Character, nil, unsafe.Pointer(d.Character.Absorbing), TO_VICT)
@@ -12791,7 +12792,7 @@ func base_update() {
 				d.Character.Absorbing = nil
 			}
 		}
-		if d.Character.Race == RACE_ANDROID && d.Character.Absorbing != nil && rand_number(1, 9) >= 6 {
+		if int(d.Character.Race) == RACE_ANDROID && d.Character.Absorbing != nil && rand_number(1, 9) >= 6 {
 			if d.Character.Absorbing.Move > (d.Character.Max_move/15) || d.Character.Absorbing.Mana > (d.Character.Max_mana/15) {
 				d.Character.Move += int64(float64(d.Character.Max_move) * 0.08)
 				d.Character.Mana += int64(float64(d.Character.Max_mana) * 0.08)
@@ -12971,7 +12972,7 @@ func base_update() {
 	}
 	if countch == TRUE {
 		PCOUNT = pcoun
-		PCOUNTDAY = C.time(nil)
+		PCOUNTDAY = libc.GetTime(nil)
 	}
 	if TOPCOUNTDOWN <= 0 {
 		TOPCOUNTDOWN = 60
@@ -13048,7 +13049,7 @@ func do_snet(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("[Syntax] snet < [1-999] | check | #(scouter number) | * message | message>\r\n"))
 		return
 	}
-	if C.strstr(&arg[0], libc.CString("#")) != nil {
+	if libc.StrStr(&arg[0], libc.CString("#")) != nil {
 		search_replace(&arg[0], libc.CString("#"), libc.CString(""))
 		call = libc.Atoi(libc.GoString(&arg[0]))
 		if call <= -1 {
@@ -13056,7 +13057,7 @@ func do_snet(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	}
-	if C.strcasecmp(&arg[0], libc.CString("check")) == 0 {
+	if libc.StrCaseCmp(&arg[0], libc.CString("check")) == 0 {
 		send_to_char(ch, libc.CString("Your personal scouter number is: %d\r\n"), ch.Id)
 		return
 	}
@@ -13079,7 +13080,7 @@ func do_snet(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if obj.Scoutfreq == 0 {
 			obj.Scoutfreq = 1
 		}
-		if C.strcasecmp(&arg[0], libc.CString("*")) == 0 && call <= -1 {
+		if libc.StrCaseCmp(&arg[0], libc.CString("*")) == 0 && call <= -1 {
 			global = TRUE
 		}
 		if ch.Voice != nil {
@@ -13110,7 +13111,7 @@ func do_snet(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if !ROOM_FLAGGED(i.Character.In_room, ROOM_RHELL) && ROOM_FLAGGED(ch.In_room, ROOM_RHELL) || !ROOM_FLAGGED(i.Character.In_room, ROOM_AL) && ROOM_FLAGGED(ch.In_room, ROOM_AL) {
 				continue
 			}
-			if i.Character.Position == POS_SLEEPING {
+			if int(i.Character.Position) == POS_SLEEPING {
 				continue
 			}
 			if (func() room_vnum {
@@ -13183,7 +13184,7 @@ func do_snet(ch *char_data, argument *byte, cmd int, subcmd int) {
 						libc.Free(unsafe.Pointer(blah))
 					}
 					continue
-				} else if call > -1 && i.Character.Id == int32(call) {
+				} else if call > -1 && int(i.Character.Id) == call {
 					send_to_char(i.Character, libc.CString("@C%s is heard @W(@c%s@W), @D[@R#@W%d @Ycalling YOU@D] @G%s@n\r\n"), &voice[0], func() *byte {
 						if readIntro(i.Character, ch) == 1 {
 							return get_i_name(i.Character, ch)
@@ -13344,13 +13345,13 @@ func do_scouter(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 		reveal_hiding(ch, 3)
-		if C.strcasecmp(libc.CString("scan"), &arg[0]) == 0 {
+		if libc.StrCaseCmp(libc.CString("scan"), &arg[0]) == 0 {
 			for i = descriptor_list; i != nil; i = i.Next {
 				if i.Connected != CON_PLAYING {
 					continue
 				} else if i.Character == ch {
 					continue
-				} else if i.Character.Race == RACE_ANDROID {
+				} else if int(i.Character.Race) == RACE_ANDROID {
 					continue
 				} else if planet_check(ch, i.Character) != 0 {
 					var (
@@ -13420,7 +13421,7 @@ func do_scouter(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("They don't seem to be here.\r\n"))
 			return
 		}
-		if vict.Race == RACE_ANDROID {
+		if int(vict.Race) == RACE_ANDROID {
 			act(libc.CString("$n points $s scouter at you."), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 			act(libc.CString("$n points $s scouter at $N."), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 			send_to_char(ch, libc.CString("@D,==================================|@n\r\n"))
@@ -13693,9 +13694,9 @@ func do_quit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	if subcmd != SCMD_QUIT {
 		send_to_char(ch, libc.CString("You have to type quit--no less, to quit!\r\n"))
-	} else if ch.Position == POS_FIGHTING {
+	} else if int(ch.Position) == POS_FIGHTING {
 		send_to_char(ch, libc.CString("No way!  You're fighting for your life!\r\n"))
-	} else if ch.Position < POS_STUNNED {
+	} else if int(ch.Position) < POS_STUNNED {
 		send_to_char(ch, libc.CString("You die before your time...\r\n"))
 		die(ch, nil)
 	} else {
@@ -13918,31 +13919,31 @@ func do_steal(ch *char_data, argument *byte, cmd int, subcmd int) {
 		perc = GET_SKILL(vict, SKILL_SPOT)
 		perc += int(vict.Aff_abils.Intel)
 	} else {
-		perc = rand_number(int(vict.Aff_abils.Intel), int(vict.Aff_abils.Intel+10))
+		perc = rand_number(int(vict.Aff_abils.Intel), int(vict.Aff_abils.Intel)+10)
 		if IS_NPC(vict) {
 			perc += int(float64(GET_LEVEL(vict)) * 0.25)
 		}
 	}
-	if vict.Position == POS_SITTING {
+	if int(vict.Position) == POS_SITTING {
 		perc -= 5
 	}
-	if vict.Position == POS_RESTING {
+	if int(vict.Position) == POS_RESTING {
 		perc -= 10
 	}
-	if vict.Position <= POS_SLEEPING {
+	if int(vict.Position) <= POS_SLEEPING {
 		perc -= 25
 	}
 	prob += int(ch.Aff_abils.Dex)
 	perc += rand_number(-5, 5)
 	prob += rand_number(-5, 5)
-	if axion_dice(0) > 100 && vict.Position != POS_SLEEPING {
+	if axion_dice(0) > 100 && int(vict.Position) != POS_SLEEPING {
 		reveal_hiding(ch, 0)
 		act(libc.CString("@r$N@R just happens to glance in your direction! What terrible luck!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 		act(libc.CString("@RYou just happen to glance behind you and spot @r$n@R trying to STEAL from you!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 		act(libc.CString("@r$N@R just happens to glance in @r$n's@R direction and catches $m trying to STEAL!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 		prob = -1000
 	}
-	if prob+20 < perc && vict.Position != POS_SLEEPING {
+	if prob+20 < perc && int(vict.Position) != POS_SLEEPING {
 		reveal_hiding(ch, 0)
 		act(libc.CString("@rYou are caught trying to stick your hand in @R$N's@r possessions!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 		act(libc.CString("@rYou catch @R$n@r trying to rummage through your possessions!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -13953,7 +13954,7 @@ func do_steal(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		improve_skill(vict, SKILL_SPOT, 1)
 	} else {
-		if C.strcasecmp(&arg[0], libc.CString("zenni")) == 0 {
+		if libc.StrCaseCmp(&arg[0], libc.CString("zenni")) == 0 {
 			if prob > perc {
 				if vict.Gold > 0 {
 					if vict.Gold > 100 {
@@ -13968,7 +13969,7 @@ func do_steal(ch *char_data, argument *byte, cmd int, subcmd int) {
 					vict.Gold -= gold
 					ch.Gold += gold
 					if !IS_NPC(vict) {
-						vict.Act[int(PLR_STOLEN/32)] |= bitvector_t(1 << (int(PLR_STOLEN % 32)))
+						vict.Act[int(PLR_STOLEN/32)] |= bitvector_t(int32(1 << (int(PLR_STOLEN % 32))))
 						mudlog(NRM, MAX(ADMLVL_GRGOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("THEFT: %s has stolen %s zenni@n from %s"), GET_NAME(ch), add_commas(int64(gold)), GET_NAME(vict))
 					}
 					if gold > 1 {
@@ -14019,7 +14020,7 @@ func do_steal(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if obj == nil {
 					act(libc.CString("$E isn't wearing that item."), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					return
-				} else if vict.Position > POS_SLEEPING {
+				} else if int(vict.Position) > POS_SLEEPING {
 					send_to_char(ch, libc.CString("Steal worn equipment from them while they are awake? That's a stupid idea...\r\n"))
 					return
 				} else if give_otrigger(obj, vict, ch) == 0 || receive_mtrigger(ch, vict, obj) == 0 {
@@ -14034,7 +14035,7 @@ func do_steal(ch *char_data, argument *byte, cmd int, subcmd int) {
 				} else if GET_OBJ_VNUM(obj) >= 19100 && GET_OBJ_VNUM(obj) <= 0x4AFF {
 					send_to_char(ch, libc.CString("You can't steal that!\r\n"))
 					return
-				} else if obj.Type_flag == ITEM_KEY {
+				} else if int(obj.Type_flag) == ITEM_KEY {
 					send_to_char(ch, libc.CString("No stealing keys!\r\n"))
 					return
 				} else if OBJ_FLAGGED(obj, ITEM_NOSTEAL) {
@@ -14043,7 +14044,7 @@ func do_steal(ch *char_data, argument *byte, cmd int, subcmd int) {
 				} else if obj.Weight+int64(gear_weight(ch)) > max_carry_weight(ch) {
 					send_to_char(ch, libc.CString("You can't carry that much weight.\r\n"))
 					return
-				} else if ch.Carry_items+1 > 50 {
+				} else if int(ch.Carry_items)+1 > 50 {
 					send_to_char(ch, libc.CString("You don't have the room for it right now!\r\n"))
 					return
 				} else if prob > perc {
@@ -14083,13 +14084,13 @@ func do_steal(ch *char_data, argument *byte, cmd int, subcmd int) {
 				} else if OBJ_FLAGGED(obj, ITEM_NOSTEAL) {
 					send_to_char(ch, libc.CString("You can't steal that!\r\n"))
 					return
-				} else if obj.Type_flag == ITEM_KEY {
+				} else if int(obj.Type_flag) == ITEM_KEY {
 					send_to_char(ch, libc.CString("No stealing keys!\r\n"))
 					return
 				} else if obj.Weight+int64(gear_weight(ch)) > max_carry_weight(ch) {
 					send_to_char(ch, libc.CString("You can't carry that much weight.\r\n"))
 					return
-				} else if ch.Carry_items+1 > 50 {
+				} else if int(ch.Carry_items)+1 > 50 {
 					send_to_char(ch, libc.CString("You don't have the room for it right now!\r\n"))
 					return
 				} else if prob > perc {
@@ -14097,7 +14098,7 @@ func do_steal(ch *char_data, argument *byte, cmd int, subcmd int) {
 					obj_from_char(obj)
 					obj_to_char(obj, ch)
 					if !IS_NPC(vict) {
-						vict.Act[int(PLR_STOLEN/32)] |= bitvector_t(1 << (int(PLR_STOLEN % 32)))
+						vict.Act[int(PLR_STOLEN/32)] |= bitvector_t(int32(1 << (int(PLR_STOLEN % 32))))
 						mudlog(NRM, MAX(ADMLVL_GRGOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("THEFT: %s has stolen %s@n from %s"), GET_NAME(ch), obj.Short_description, GET_NAME(vict))
 					}
 					if axion_dice(0) > prob {
@@ -14181,9 +14182,9 @@ func do_title(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Your title is fine... go away.\r\n"))
 	} else if PLR_FLAGGED(ch, PLR_NOTITLE) {
 		send_to_char(ch, libc.CString("You can't title yourself -- you shouldn't have abused it!\r\n"))
-	} else if C.strstr(argument, libc.CString("(")) != nil || C.strstr(argument, libc.CString(")")) != nil {
+	} else if libc.StrStr(argument, libc.CString("(")) != nil || libc.StrStr(argument, libc.CString(")")) != nil {
 		send_to_char(ch, libc.CString("Titles can't contain the ( or ) characters.\r\n"))
-	} else if C.strlen(argument) > MAX_TITLE_LENGTH {
+	} else if libc.StrLen(argument) > MAX_TITLE_LENGTH {
 		send_to_char(ch, libc.CString("Sorry, titles can't be longer than %d characters.\r\n"), MAX_TITLE_LENGTH)
 	} else {
 		set_title(ch, argument)
@@ -14310,7 +14311,7 @@ func do_group(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 	}
 	var foundwas int = 0
-	if C.strcasecmp(&buf[0], libc.CString("all")) == 0 {
+	if libc.StrCaseCmp(&buf[0], libc.CString("all")) == 0 {
 		perform_group(ch, ch, GET_LEVEL(ch), GET_LEVEL(ch), highpl, lowpl)
 		for func() *follow_type {
 			found = 0
@@ -14558,11 +14559,11 @@ func do_use(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	switch subcmd {
 	case SCMD_QUAFF:
-		if mag_item.Type_flag != ITEM_POTION {
+		if int(mag_item.Type_flag) != ITEM_POTION {
 			send_to_char(ch, libc.CString("You can only swallow beans.\r\n"))
 			return
 		}
-		if ch.Race == RACE_ANDROID {
+		if int(ch.Race) == RACE_ANDROID {
 			send_to_char(ch, libc.CString("You can't swallow beans, you are an android.\r\n"))
 			return
 		}
@@ -14575,12 +14576,12 @@ func do_use(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	case SCMD_RECITE:
-		if mag_item.Type_flag != ITEM_SCROLL {
+		if int(mag_item.Type_flag) != ITEM_SCROLL {
 			send_to_char(ch, libc.CString("You can only recite scrolls.\r\n"))
 			return
 		}
 	case SCMD_USE:
-		if ch.Race == RACE_ANDROID {
+		if int(ch.Race) == RACE_ANDROID {
 			send_to_char(ch, libc.CString("You are not biological enough to use these, Tincan.\r\n"))
 			return
 		} else {
@@ -14685,7 +14686,7 @@ func do_value(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 		}
 	}
-	if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(arg[0]))))) & int(uint16(int16(_ISdigit)))) != 0 {
+	if unicode.IsDigit(rune(arg[0])) {
 		switch subcmd {
 		case SCMD_WIMPY:
 			if IS_NPC(ch) {
@@ -14727,54 +14728,54 @@ func do_display(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Usage: prompt { P | K | T | S | F | H | G | L | C | M | all/on | none/off }\r\n"))
 		return
 	}
-	if C.strcasecmp(argument, libc.CString("on")) == 0 || C.strcasecmp(argument, libc.CString("all")) == 0 {
-		ch.Player_specials.Pref[int(PRF_DISPHP/32)] |= bitvector_t(1 << (int(PRF_DISPHP % 32)))
-		ch.Player_specials.Pref[int(PRF_DISPMOVE/32)] |= bitvector_t(1 << (int(PRF_DISPMOVE % 32)))
-		ch.Player_specials.Pref[int(PRF_DISPKI/32)] |= bitvector_t(1 << (int(PRF_DISPKI % 32)))
-		ch.Player_specials.Pref[int(PRF_DISPTNL/32)] |= bitvector_t(1 << (int(PRF_DISPTNL % 32)))
-		ch.Player_specials.Pref[int(PRF_FURY/32)] |= bitvector_t(1 << (int(PRF_FURY % 32)))
-		ch.Player_specials.Pref[int(PRF_DISTIME/32)] |= bitvector_t(1 << (int(PRF_DISTIME % 32)))
-		ch.Player_specials.Pref[int(PRF_DISGOLD/32)] |= bitvector_t(1 << (int(PRF_DISGOLD % 32)))
-		ch.Player_specials.Pref[int(PRF_DISPRAC/32)] |= bitvector_t(1 << (int(PRF_DISPRAC % 32)))
-		ch.Player_specials.Pref[int(PRF_DISHUTH/32)] |= bitvector_t(1 << (int(PRF_DISHUTH % 32)))
-		ch.Player_specials.Pref[int(PRF_DISPERC/32)] |= bitvector_t(1 << (int(PRF_DISPERC % 32)))
-	} else if C.strcasecmp(argument, libc.CString("off")) == 0 || C.strcasecmp(argument, libc.CString("none")) == 0 {
-		ch.Player_specials.Pref[int(PRF_DISPHP/32)] &= bitvector_t(^(1 << (int(PRF_DISPHP % 32))))
-		ch.Player_specials.Pref[int(PRF_DISPKI/32)] &= bitvector_t(^(1 << (int(PRF_DISPKI % 32))))
-		ch.Player_specials.Pref[int(PRF_DISPMOVE/32)] &= bitvector_t(^(1 << (int(PRF_DISPMOVE % 32))))
-		ch.Player_specials.Pref[int(PRF_DISPTNL/32)] &= bitvector_t(^(1 << (int(PRF_DISPTNL % 32))))
-		ch.Player_specials.Pref[int(PRF_FURY/32)] &= bitvector_t(^(1 << (int(PRF_FURY % 32))))
-		ch.Player_specials.Pref[int(PRF_DISTIME/32)] &= bitvector_t(^(1 << (int(PRF_DISTIME % 32))))
-		ch.Player_specials.Pref[int(PRF_DISGOLD/32)] &= bitvector_t(^(1 << (int(PRF_DISGOLD % 32))))
-		ch.Player_specials.Pref[int(PRF_DISPRAC/32)] &= bitvector_t(^(1 << (int(PRF_DISPRAC % 32))))
-		ch.Player_specials.Pref[int(PRF_DISHUTH/32)] &= bitvector_t(^(1 << (int(PRF_DISHUTH % 32))))
-		ch.Player_specials.Pref[int(PRF_DISPERC/32)] &= bitvector_t(^(1 << (int(PRF_DISPERC % 32))))
+	if libc.StrCaseCmp(argument, libc.CString("on")) == 0 || libc.StrCaseCmp(argument, libc.CString("all")) == 0 {
+		ch.Player_specials.Pref[int(PRF_DISPHP/32)] |= bitvector_t(int32(1 << (int(PRF_DISPHP % 32))))
+		ch.Player_specials.Pref[int(PRF_DISPMOVE/32)] |= bitvector_t(int32(1 << (int(PRF_DISPMOVE % 32))))
+		ch.Player_specials.Pref[int(PRF_DISPKI/32)] |= bitvector_t(int32(1 << (int(PRF_DISPKI % 32))))
+		ch.Player_specials.Pref[int(PRF_DISPTNL/32)] |= bitvector_t(int32(1 << (int(PRF_DISPTNL % 32))))
+		ch.Player_specials.Pref[int(PRF_FURY/32)] |= bitvector_t(int32(1 << (int(PRF_FURY % 32))))
+		ch.Player_specials.Pref[int(PRF_DISTIME/32)] |= bitvector_t(int32(1 << (int(PRF_DISTIME % 32))))
+		ch.Player_specials.Pref[int(PRF_DISGOLD/32)] |= bitvector_t(int32(1 << (int(PRF_DISGOLD % 32))))
+		ch.Player_specials.Pref[int(PRF_DISPRAC/32)] |= bitvector_t(int32(1 << (int(PRF_DISPRAC % 32))))
+		ch.Player_specials.Pref[int(PRF_DISHUTH/32)] |= bitvector_t(int32(1 << (int(PRF_DISHUTH % 32))))
+		ch.Player_specials.Pref[int(PRF_DISPERC/32)] |= bitvector_t(int32(1 << (int(PRF_DISPERC % 32))))
+	} else if libc.StrCaseCmp(argument, libc.CString("off")) == 0 || libc.StrCaseCmp(argument, libc.CString("none")) == 0 {
+		ch.Player_specials.Pref[int(PRF_DISPHP/32)] &= bitvector_t(int32(^(1 << (int(PRF_DISPHP % 32)))))
+		ch.Player_specials.Pref[int(PRF_DISPKI/32)] &= bitvector_t(int32(^(1 << (int(PRF_DISPKI % 32)))))
+		ch.Player_specials.Pref[int(PRF_DISPMOVE/32)] &= bitvector_t(int32(^(1 << (int(PRF_DISPMOVE % 32)))))
+		ch.Player_specials.Pref[int(PRF_DISPTNL/32)] &= bitvector_t(int32(^(1 << (int(PRF_DISPTNL % 32)))))
+		ch.Player_specials.Pref[int(PRF_FURY/32)] &= bitvector_t(int32(^(1 << (int(PRF_FURY % 32)))))
+		ch.Player_specials.Pref[int(PRF_DISTIME/32)] &= bitvector_t(int32(^(1 << (int(PRF_DISTIME % 32)))))
+		ch.Player_specials.Pref[int(PRF_DISGOLD/32)] &= bitvector_t(int32(^(1 << (int(PRF_DISGOLD % 32)))))
+		ch.Player_specials.Pref[int(PRF_DISPRAC/32)] &= bitvector_t(int32(^(1 << (int(PRF_DISPRAC % 32)))))
+		ch.Player_specials.Pref[int(PRF_DISHUTH/32)] &= bitvector_t(int32(^(1 << (int(PRF_DISHUTH % 32)))))
+		ch.Player_specials.Pref[int(PRF_DISPERC/32)] &= bitvector_t(int32(^(1 << (int(PRF_DISPERC % 32)))))
 	} else {
-		for i = 0; i < uint64(C.strlen(argument)); i++ {
-			switch C.tolower(int(*(*byte)(unsafe.Add(unsafe.Pointer(argument), i)))) {
+		for i = 0; i < uint64(libc.StrLen(argument)); i++ {
+			switch unicode.ToLower(rune(*(*byte)(unsafe.Add(unsafe.Pointer(argument), i)))) {
 			case 'p':
-				ch.Player_specials.Pref[int(PRF_DISPHP/32)] = ch.Player_specials.Pref[int(PRF_DISPHP/32)] ^ bitvector_t(1<<(int(PRF_DISPHP%32)))
+				ch.Player_specials.Pref[int(PRF_DISPHP/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_DISPHP/32)]) ^ 1<<(int(PRF_DISPHP%32))))
 			case 's':
-				ch.Player_specials.Pref[int(PRF_DISPMOVE/32)] = ch.Player_specials.Pref[int(PRF_DISPMOVE/32)] ^ bitvector_t(1<<(int(PRF_DISPMOVE%32)))
+				ch.Player_specials.Pref[int(PRF_DISPMOVE/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_DISPMOVE/32)]) ^ 1<<(int(PRF_DISPMOVE%32))))
 			case 'k':
-				ch.Player_specials.Pref[int(PRF_DISPKI/32)] = ch.Player_specials.Pref[int(PRF_DISPKI/32)] ^ bitvector_t(1<<(int(PRF_DISPKI%32)))
+				ch.Player_specials.Pref[int(PRF_DISPKI/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_DISPKI/32)]) ^ 1<<(int(PRF_DISPKI%32))))
 			case 't':
-				ch.Player_specials.Pref[int(PRF_DISPTNL/32)] = ch.Player_specials.Pref[int(PRF_DISPTNL/32)] ^ bitvector_t(1<<(int(PRF_DISPTNL%32)))
+				ch.Player_specials.Pref[int(PRF_DISPTNL/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_DISPTNL/32)]) ^ 1<<(int(PRF_DISPTNL%32))))
 			case 'h':
-				ch.Player_specials.Pref[int(PRF_DISTIME/32)] = ch.Player_specials.Pref[int(PRF_DISTIME/32)] ^ bitvector_t(1<<(int(PRF_DISTIME%32)))
+				ch.Player_specials.Pref[int(PRF_DISTIME/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_DISTIME/32)]) ^ 1<<(int(PRF_DISTIME%32))))
 			case 'g':
-				ch.Player_specials.Pref[int(PRF_DISGOLD/32)] = ch.Player_specials.Pref[int(PRF_DISGOLD/32)] ^ bitvector_t(1<<(int(PRF_DISGOLD%32)))
+				ch.Player_specials.Pref[int(PRF_DISGOLD/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_DISGOLD/32)]) ^ 1<<(int(PRF_DISGOLD%32))))
 			case 'l':
-				ch.Player_specials.Pref[int(PRF_DISPRAC/32)] = ch.Player_specials.Pref[int(PRF_DISPRAC/32)] ^ bitvector_t(1<<(int(PRF_DISPRAC%32)))
+				ch.Player_specials.Pref[int(PRF_DISPRAC/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_DISPRAC/32)]) ^ 1<<(int(PRF_DISPRAC%32))))
 			case 'c':
-				ch.Player_specials.Pref[int(PRF_DISPERC/32)] = ch.Player_specials.Pref[int(PRF_DISPERC/32)] ^ bitvector_t(1<<(int(PRF_DISPERC%32)))
+				ch.Player_specials.Pref[int(PRF_DISPERC/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_DISPERC/32)]) ^ 1<<(int(PRF_DISPERC%32))))
 			case 'm':
-				ch.Player_specials.Pref[int(PRF_DISHUTH/32)] = ch.Player_specials.Pref[int(PRF_DISHUTH/32)] ^ bitvector_t(1<<(int(PRF_DISHUTH%32)))
+				ch.Player_specials.Pref[int(PRF_DISHUTH/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_DISHUTH/32)]) ^ 1<<(int(PRF_DISHUTH%32))))
 			case 'f':
-				if ch.Race != RACE_HALFBREED {
+				if int(ch.Race) != RACE_HALFBREED {
 					send_to_char(ch, libc.CString("Only halfbreeds use fury.\r\n"))
 				}
-				ch.Player_specials.Pref[int(PRF_FURY/32)] = ch.Player_specials.Pref[int(PRF_FURY/32)] ^ bitvector_t(1<<(int(PRF_FURY%32)))
+				ch.Player_specials.Pref[int(PRF_FURY/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_FURY/32)]) ^ 1<<(int(PRF_FURY%32))))
 			default:
 				send_to_char(ch, libc.CString("Usage: prompt { P | K | T | S | F | H | G | L | all/on | none/off }\r\n"))
 				return
@@ -14785,11 +14786,11 @@ func do_display(ch *char_data, argument *byte, cmd int, subcmd int) {
 }
 func do_gen_write(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var (
-		fl       *C.FILE
+		fl       *stdio.File
 		tmp      *byte
 		filename *byte
-		fbuf     stat
-		ct       int64
+		fbuf     csys.StatRes
+		ct       libc.Time
 	)
 	switch subcmd {
 	case SCMD_BUG:
@@ -14801,8 +14802,8 @@ func do_gen_write(ch *char_data, argument *byte, cmd int, subcmd int) {
 	default:
 		return
 	}
-	ct = C.time(nil)
-	tmp = C.asctime(C.localtime(&ct))
+	ct = libc.GetTime(nil)
+	tmp = libc.AscTime(libc.LocalTime(&ct))
 	if IS_NPC(ch) {
 		send_to_char(ch, libc.CString("Monsters can't have ideas - Go away.\r\n"))
 		return
@@ -14814,23 +14815,23 @@ func do_gen_write(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	send_to_imm(libc.CString("[A new %s has been filed by: %s]\r\n"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, GET_NAME(ch))
-	if C.stat(filename, &fbuf) < 0 {
-		C.perror(libc.CString("SYSERR: Can't C.stat() file"))
+	if int(csys.Stat(filename, &fbuf)) < 0 {
+		perror(libc.CString("SYSERR: Can't stat() file"))
 		return
 	}
-	if fbuf.St_size >= __off_t(config_info.Operation.Max_filesize) {
+	if fbuf.Size >= uint64(config_info.Operation.Max_filesize) {
 		send_to_char(ch, libc.CString("Sorry, the file is full right now.. try again later.\r\n"))
 		return
 	}
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(filename), "a")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(filename), "a")
 		return fl
 	}()) == nil {
-		C.perror(libc.CString("SYSERR: do_gen_write"))
+		perror(libc.CString("SYSERR: do_gen_write"))
 		send_to_char(ch, libc.CString("Could not open the file.  Sorry.\r\n"))
 		return
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "@D[@WUser: @c%-10s@D] [@WChar: @C%-10s@D] [@WRoom: @G%-4d@D] [@WDate: @Y%6.6s@D]@b \n-----------@w\n%s\n", func() *byte {
+	stdio.Fprintf(fl, "@D[@WUser: @c%-10s@D] [@WChar: @C%-10s@D] [@WRoom: @G%-4d@D] [@WDate: @Y%6.6s@D]@b \n-----------@w\n%s\n", func() *byte {
 		if GET_USER(ch) != nil {
 			return GET_USER(ch)
 		}
@@ -14841,8 +14842,8 @@ func do_gen_write(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		return -1
 	}(), (*byte)(unsafe.Add(unsafe.Pointer(tmp), 4)), argument)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "@D-------------------------------@n\n")
-	C.fclose(fl)
+	stdio.Fprintf(fl, "@D-------------------------------@n\n")
+	fl.Close()
 	send_to_char(ch, libc.CString("Okay.  Thanks!\r\n"))
 }
 func do_gen_tog(ch *char_data, argument *byte, cmd int, subcmd int) {
@@ -14855,89 +14856,89 @@ func do_gen_tog(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	switch subcmd {
 	case SCMD_NOSUMMON:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_SUMMONABLE/32)]
-			ch.Player_specials.Pref[int(PRF_SUMMONABLE/32)] = ch.Player_specials.Pref[int(PRF_SUMMONABLE/32)] ^ bitvector_t(1<<(int(PRF_SUMMONABLE%32)))
+			ch.Player_specials.Pref[int(PRF_SUMMONABLE/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_SUMMONABLE/32)]) ^ 1<<(int(PRF_SUMMONABLE%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_SUMMONABLE%32))))
+		}()) & (1 << (int(PRF_SUMMONABLE % 32)))
 	case SCMD_NOHASSLE:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_NOHASSLE/32)]
-			ch.Player_specials.Pref[int(PRF_NOHASSLE/32)] = ch.Player_specials.Pref[int(PRF_NOHASSLE/32)] ^ bitvector_t(1<<(int(PRF_NOHASSLE%32)))
+			ch.Player_specials.Pref[int(PRF_NOHASSLE/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_NOHASSLE/32)]) ^ 1<<(int(PRF_NOHASSLE%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_NOHASSLE%32))))
+		}()) & (1 << (int(PRF_NOHASSLE % 32)))
 	case SCMD_BRIEF:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_BRIEF/32)]
-			ch.Player_specials.Pref[int(PRF_BRIEF/32)] = ch.Player_specials.Pref[int(PRF_BRIEF/32)] ^ bitvector_t(1<<(int(PRF_BRIEF%32)))
+			ch.Player_specials.Pref[int(PRF_BRIEF/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_BRIEF/32)]) ^ 1<<(int(PRF_BRIEF%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_BRIEF%32))))
+		}()) & (1 << (int(PRF_BRIEF % 32)))
 	case SCMD_COMPACT:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_COMPACT/32)]
-			ch.Player_specials.Pref[int(PRF_COMPACT/32)] = ch.Player_specials.Pref[int(PRF_COMPACT/32)] ^ bitvector_t(1<<(int(PRF_COMPACT%32)))
+			ch.Player_specials.Pref[int(PRF_COMPACT/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_COMPACT/32)]) ^ 1<<(int(PRF_COMPACT%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_COMPACT%32))))
+		}()) & (1 << (int(PRF_COMPACT % 32)))
 	case SCMD_NOTELL:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_NOTELL/32)]
-			ch.Player_specials.Pref[int(PRF_NOTELL/32)] = ch.Player_specials.Pref[int(PRF_NOTELL/32)] ^ bitvector_t(1<<(int(PRF_NOTELL%32)))
+			ch.Player_specials.Pref[int(PRF_NOTELL/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_NOTELL/32)]) ^ 1<<(int(PRF_NOTELL%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_NOTELL%32))))
+		}()) & (1 << (int(PRF_NOTELL % 32)))
 	case SCMD_NOAUCTION:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_NOAUCT/32)]
-			ch.Player_specials.Pref[int(PRF_NOAUCT/32)] = ch.Player_specials.Pref[int(PRF_NOAUCT/32)] ^ bitvector_t(1<<(int(PRF_NOAUCT%32)))
+			ch.Player_specials.Pref[int(PRF_NOAUCT/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_NOAUCT/32)]) ^ 1<<(int(PRF_NOAUCT%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_NOAUCT%32))))
+		}()) & (1 << (int(PRF_NOAUCT % 32)))
 	case SCMD_DEAF:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_DEAF/32)]
-			ch.Player_specials.Pref[int(PRF_DEAF/32)] = ch.Player_specials.Pref[int(PRF_DEAF/32)] ^ bitvector_t(1<<(int(PRF_DEAF%32)))
+			ch.Player_specials.Pref[int(PRF_DEAF/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_DEAF/32)]) ^ 1<<(int(PRF_DEAF%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_DEAF%32))))
+		}()) & (1 << (int(PRF_DEAF % 32)))
 	case SCMD_NOGOSSIP:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_NOGOSS/32)]
-			ch.Player_specials.Pref[int(PRF_NOGOSS/32)] = ch.Player_specials.Pref[int(PRF_NOGOSS/32)] ^ bitvector_t(1<<(int(PRF_NOGOSS%32)))
+			ch.Player_specials.Pref[int(PRF_NOGOSS/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_NOGOSS/32)]) ^ 1<<(int(PRF_NOGOSS%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_NOGOSS%32))))
+		}()) & (1 << (int(PRF_NOGOSS % 32)))
 	case SCMD_NOGRATZ:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_NOGRATZ/32)]
-			ch.Player_specials.Pref[int(PRF_NOGRATZ/32)] = ch.Player_specials.Pref[int(PRF_NOGRATZ/32)] ^ bitvector_t(1<<(int(PRF_NOGRATZ%32)))
+			ch.Player_specials.Pref[int(PRF_NOGRATZ/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_NOGRATZ/32)]) ^ 1<<(int(PRF_NOGRATZ%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_NOGRATZ%32))))
+		}()) & (1 << (int(PRF_NOGRATZ % 32)))
 	case SCMD_NOWIZ:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_NOWIZ/32)]
-			ch.Player_specials.Pref[int(PRF_NOWIZ/32)] = ch.Player_specials.Pref[int(PRF_NOWIZ/32)] ^ bitvector_t(1<<(int(PRF_NOWIZ%32)))
+			ch.Player_specials.Pref[int(PRF_NOWIZ/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_NOWIZ/32)]) ^ 1<<(int(PRF_NOWIZ%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_NOWIZ%32))))
+		}()) & (1 << (int(PRF_NOWIZ % 32)))
 	case SCMD_QUEST:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_QUEST/32)]
-			ch.Player_specials.Pref[int(PRF_QUEST/32)] = ch.Player_specials.Pref[int(PRF_QUEST/32)] ^ bitvector_t(1<<(int(PRF_QUEST%32)))
+			ch.Player_specials.Pref[int(PRF_QUEST/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_QUEST/32)]) ^ 1<<(int(PRF_QUEST%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_QUEST%32))))
+		}()) & (1 << (int(PRF_QUEST % 32)))
 	case SCMD_ROOMFLAGS:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_ROOMFLAGS/32)]
-			ch.Player_specials.Pref[int(PRF_ROOMFLAGS/32)] = ch.Player_specials.Pref[int(PRF_ROOMFLAGS/32)] ^ bitvector_t(1<<(int(PRF_ROOMFLAGS%32)))
+			ch.Player_specials.Pref[int(PRF_ROOMFLAGS/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_ROOMFLAGS/32)]) ^ 1<<(int(PRF_ROOMFLAGS%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_ROOMFLAGS%32))))
+		}()) & (1 << (int(PRF_ROOMFLAGS % 32)))
 	case SCMD_NOREPEAT:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_NOREPEAT/32)]
-			ch.Player_specials.Pref[int(PRF_NOREPEAT/32)] = ch.Player_specials.Pref[int(PRF_NOREPEAT/32)] ^ bitvector_t(1<<(int(PRF_NOREPEAT%32)))
+			ch.Player_specials.Pref[int(PRF_NOREPEAT/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_NOREPEAT/32)]) ^ 1<<(int(PRF_NOREPEAT%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_NOREPEAT%32))))
+		}()) & (1 << (int(PRF_NOREPEAT % 32)))
 	case SCMD_HOLYLIGHT:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_HOLYLIGHT/32)]
-			ch.Player_specials.Pref[int(PRF_HOLYLIGHT/32)] = ch.Player_specials.Pref[int(PRF_HOLYLIGHT/32)] ^ bitvector_t(1<<(int(PRF_HOLYLIGHT%32)))
+			ch.Player_specials.Pref[int(PRF_HOLYLIGHT/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_HOLYLIGHT/32)]) ^ 1<<(int(PRF_HOLYLIGHT%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_HOLYLIGHT%32))))
+		}()) & (1 << (int(PRF_HOLYLIGHT % 32)))
 	case SCMD_SLOWNS:
 		result = func() int {
 			p := &config_info.Operation.Nameserver_is_slow
@@ -14945,11 +14946,11 @@ func do_gen_tog(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return *p
 		}()
 	case SCMD_AUTOEXIT:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_AUTOEXIT/32)]
-			ch.Player_specials.Pref[int(PRF_AUTOEXIT/32)] = ch.Player_specials.Pref[int(PRF_AUTOEXIT/32)] ^ bitvector_t(1<<(int(PRF_AUTOEXIT%32)))
+			ch.Player_specials.Pref[int(PRF_AUTOEXIT/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_AUTOEXIT/32)]) ^ 1<<(int(PRF_AUTOEXIT%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_AUTOEXIT%32))))
+		}()) & (1 << (int(PRF_AUTOEXIT % 32)))
 	case SCMD_TRACK:
 		result = func() int {
 			p := &config_info.Play.Track_through_doors
@@ -14957,11 +14958,11 @@ func do_gen_tog(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return *p
 		}()
 	case SCMD_AFK:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_AFK/32)]
-			ch.Player_specials.Pref[int(PRF_AFK/32)] = ch.Player_specials.Pref[int(PRF_AFK/32)] ^ bitvector_t(1<<(int(PRF_AFK%32)))
+			ch.Player_specials.Pref[int(PRF_AFK/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_AFK/32)]) ^ 1<<(int(PRF_AFK%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_AFK%32))))
+		}()) & (1 << (int(PRF_AFK % 32)))
 		if PRF_FLAGGED(ch, PRF_AFK) {
 			act(libc.CString("$n has gone AFK."), TRUE, ch, nil, nil, TO_ROOM)
 		} else {
@@ -14971,50 +14972,50 @@ func do_gen_tog(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 		}
 	case SCMD_AUTOLOOT:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_AUTOLOOT/32)]
-			ch.Player_specials.Pref[int(PRF_AUTOLOOT/32)] = ch.Player_specials.Pref[int(PRF_AUTOLOOT/32)] ^ bitvector_t(1<<(int(PRF_AUTOLOOT%32)))
+			ch.Player_specials.Pref[int(PRF_AUTOLOOT/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_AUTOLOOT/32)]) ^ 1<<(int(PRF_AUTOLOOT%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_AUTOLOOT%32))))
+		}()) & (1 << (int(PRF_AUTOLOOT % 32)))
 	case SCMD_AUTOGOLD:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_AUTOGOLD/32)]
-			ch.Player_specials.Pref[int(PRF_AUTOGOLD/32)] = ch.Player_specials.Pref[int(PRF_AUTOGOLD/32)] ^ bitvector_t(1<<(int(PRF_AUTOGOLD%32)))
+			ch.Player_specials.Pref[int(PRF_AUTOGOLD/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_AUTOGOLD/32)]) ^ 1<<(int(PRF_AUTOGOLD%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_AUTOGOLD%32))))
+		}()) & (1 << (int(PRF_AUTOGOLD % 32)))
 	case SCMD_CLS:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_CLS/32)]
-			ch.Player_specials.Pref[int(PRF_CLS/32)] = ch.Player_specials.Pref[int(PRF_CLS/32)] ^ bitvector_t(1<<(int(PRF_CLS%32)))
+			ch.Player_specials.Pref[int(PRF_CLS/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_CLS/32)]) ^ 1<<(int(PRF_CLS%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_CLS%32))))
+		}()) & (1 << (int(PRF_CLS % 32)))
 	case SCMD_BUILDWALK:
 		if ch.Admlevel < ADMLVL_IMMORT {
 			send_to_char(ch, libc.CString("Immortals only, sorry.\r\n"))
 			return
 		}
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_BUILDWALK/32)]
-			ch.Player_specials.Pref[int(PRF_BUILDWALK/32)] = ch.Player_specials.Pref[int(PRF_BUILDWALK/32)] ^ bitvector_t(1<<(int(PRF_BUILDWALK%32)))
+			ch.Player_specials.Pref[int(PRF_BUILDWALK/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_BUILDWALK/32)]) ^ 1<<(int(PRF_BUILDWALK%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_BUILDWALK%32))))
+		}()) & (1 << (int(PRF_BUILDWALK % 32)))
 		if PRF_FLAGGED(ch, PRF_BUILDWALK) {
 			mudlog(CMP, GET_LEVEL(ch), TRUE, libc.CString("OLC: %s turned buildwalk on. Allowed zone %d"), GET_NAME(ch), ch.Player_specials.Olc_zone)
 		} else {
 			mudlog(CMP, GET_LEVEL(ch), TRUE, libc.CString("OLC: %s turned buildwalk off. Allowed zone %d"), GET_NAME(ch), ch.Player_specials.Olc_zone)
 		}
 	case SCMD_AUTOSPLIT:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_AUTOSPLIT/32)]
-			ch.Player_specials.Pref[int(PRF_AUTOSPLIT/32)] = ch.Player_specials.Pref[int(PRF_AUTOSPLIT/32)] ^ bitvector_t(1<<(int(PRF_AUTOSPLIT%32)))
+			ch.Player_specials.Pref[int(PRF_AUTOSPLIT/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_AUTOSPLIT/32)]) ^ 1<<(int(PRF_AUTOSPLIT%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_AUTOSPLIT%32))))
+		}()) & (1 << (int(PRF_AUTOSPLIT % 32)))
 	case SCMD_AUTOSAC:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_AUTOSAC/32)]
-			ch.Player_specials.Pref[int(PRF_AUTOSAC/32)] = ch.Player_specials.Pref[int(PRF_AUTOSAC/32)] ^ bitvector_t(1<<(int(PRF_AUTOSAC%32)))
+			ch.Player_specials.Pref[int(PRF_AUTOSAC/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_AUTOSAC/32)]) ^ 1<<(int(PRF_AUTOSAC%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_AUTOSAC%32))))
+		}()) & (1 << (int(PRF_AUTOSAC % 32)))
 	case SCMD_SNEAK:
 		result = (func() int {
 			p := &ch.Affected_by[int(AFF_SNEAK/32)]
@@ -15047,20 +15048,20 @@ func do_gen_tog(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return *p
 		}()) & (1 << (int(AFF_HIDE % 32)))
 	case SCMD_AUTOMEM:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_AUTOMEM/32)]
-			ch.Player_specials.Pref[int(PRF_AUTOMEM/32)] = ch.Player_specials.Pref[int(PRF_AUTOMEM/32)] ^ bitvector_t(1<<(int(PRF_AUTOMEM%32)))
+			ch.Player_specials.Pref[int(PRF_AUTOMEM/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_AUTOMEM/32)]) ^ 1<<(int(PRF_AUTOMEM%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_AUTOMEM%32))))
+		}()) & (1 << (int(PRF_AUTOMEM % 32)))
 	case SCMD_VIEWORDER:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_VIEWORDER/32)]
-			ch.Player_specials.Pref[int(PRF_VIEWORDER/32)] = ch.Player_specials.Pref[int(PRF_VIEWORDER/32)] ^ bitvector_t(1<<(int(PRF_VIEWORDER%32)))
+			ch.Player_specials.Pref[int(PRF_VIEWORDER/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_VIEWORDER/32)]) ^ 1<<(int(PRF_VIEWORDER%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_VIEWORDER%32))))
+		}()) & (1 << (int(PRF_VIEWORDER % 32)))
 	case SCMD_TEST:
 		if ch.Admlevel >= 1 {
-			ch.Player_specials.Pref[int(PRF_TEST/32)] = ch.Player_specials.Pref[int(PRF_TEST/32)] ^ bitvector_t(1<<(int(PRF_TEST%32)))
+			ch.Player_specials.Pref[int(PRF_TEST/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_TEST/32)]) ^ 1<<(int(PRF_TEST%32))))
 			send_to_char(ch, libc.CString("Okay. Testing is now: %s\r\n"), func() string {
 				if PRF_FLAGGED(ch, PRF_TEST) {
 					return "On"
@@ -15077,100 +15078,100 @@ func do_gen_tog(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 	case SCMD_NOCOMPRESS:
 		if config_info.Play.Enable_compression != 0 {
-			result = int((func() bitvector_t {
+			result = int(func() bitvector_t {
 				p := &ch.Player_specials.Pref[int(PRF_NOCOMPRESS/32)]
-				ch.Player_specials.Pref[int(PRF_NOCOMPRESS/32)] = ch.Player_specials.Pref[int(PRF_NOCOMPRESS/32)] ^ bitvector_t(1<<(int(PRF_NOCOMPRESS%32)))
+				ch.Player_specials.Pref[int(PRF_NOCOMPRESS/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_NOCOMPRESS/32)]) ^ 1<<(int(PRF_NOCOMPRESS%32))))
 				return *p
-			}()) & bitvector_t(1<<(int(PRF_NOCOMPRESS%32))))
+			}()) & (1 << (int(PRF_NOCOMPRESS % 32)))
 			break
 		} else {
 			send_to_char(ch, libc.CString("Sorry, compression is globally disabled.\r\n"))
 		}
 		fallthrough
 	case SCMD_AUTOASSIST:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_AUTOASSIST/32)]
-			ch.Player_specials.Pref[int(PRF_AUTOASSIST/32)] = ch.Player_specials.Pref[int(PRF_AUTOASSIST/32)] ^ bitvector_t(1<<(int(PRF_AUTOASSIST%32)))
+			ch.Player_specials.Pref[int(PRF_AUTOASSIST/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_AUTOASSIST/32)]) ^ 1<<(int(PRF_AUTOASSIST%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_AUTOASSIST%32))))
+		}()) & (1 << (int(PRF_AUTOASSIST % 32)))
 	case SCMD_WHOHIDE:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_HIDE/32)]
-			ch.Player_specials.Pref[int(PRF_HIDE/32)] = ch.Player_specials.Pref[int(PRF_HIDE/32)] ^ bitvector_t(1<<(int(PRF_HIDE%32)))
+			ch.Player_specials.Pref[int(PRF_HIDE/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_HIDE/32)]) ^ 1<<(int(PRF_HIDE%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_HIDE%32))))
+		}()) & (1 << (int(PRF_HIDE % 32)))
 	case SCMD_NMWARN:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_NMWARN/32)]
-			ch.Player_specials.Pref[int(PRF_NMWARN/32)] = ch.Player_specials.Pref[int(PRF_NMWARN/32)] ^ bitvector_t(1<<(int(PRF_NMWARN%32)))
+			ch.Player_specials.Pref[int(PRF_NMWARN/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_NMWARN/32)]) ^ 1<<(int(PRF_NMWARN%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_NMWARN%32))))
+		}()) & (1 << (int(PRF_NMWARN % 32)))
 	case SCMD_HINTS:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_HINTS/32)]
-			ch.Player_specials.Pref[int(PRF_HINTS/32)] = ch.Player_specials.Pref[int(PRF_HINTS/32)] ^ bitvector_t(1<<(int(PRF_HINTS%32)))
+			ch.Player_specials.Pref[int(PRF_HINTS/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_HINTS/32)]) ^ 1<<(int(PRF_HINTS%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_HINTS%32))))
+		}()) & (1 << (int(PRF_HINTS % 32)))
 	case SCMD_NODEC:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_NODEC/32)]
-			ch.Player_specials.Pref[int(PRF_NODEC/32)] = ch.Player_specials.Pref[int(PRF_NODEC/32)] ^ bitvector_t(1<<(int(PRF_NODEC%32)))
+			ch.Player_specials.Pref[int(PRF_NODEC/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_NODEC/32)]) ^ 1<<(int(PRF_NODEC%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_NODEC%32))))
+		}()) & (1 << (int(PRF_NODEC % 32)))
 	case SCMD_NOEQSEE:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_NOEQSEE/32)]
-			ch.Player_specials.Pref[int(PRF_NOEQSEE/32)] = ch.Player_specials.Pref[int(PRF_NOEQSEE/32)] ^ bitvector_t(1<<(int(PRF_NOEQSEE%32)))
+			ch.Player_specials.Pref[int(PRF_NOEQSEE/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_NOEQSEE/32)]) ^ 1<<(int(PRF_NOEQSEE%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_NOEQSEE%32))))
+		}()) & (1 << (int(PRF_NOEQSEE % 32)))
 	case SCMD_NOMUSIC:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_NOMUSIC/32)]
-			ch.Player_specials.Pref[int(PRF_NOMUSIC/32)] = ch.Player_specials.Pref[int(PRF_NOMUSIC/32)] ^ bitvector_t(1<<(int(PRF_NOMUSIC%32)))
+			ch.Player_specials.Pref[int(PRF_NOMUSIC/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_NOMUSIC/32)]) ^ 1<<(int(PRF_NOMUSIC%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_NOMUSIC%32))))
+		}()) & (1 << (int(PRF_NOMUSIC % 32)))
 	case SCMD_NOPARRY:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_NOPARRY/32)]
-			ch.Player_specials.Pref[int(PRF_NOPARRY/32)] = ch.Player_specials.Pref[int(PRF_NOPARRY/32)] ^ bitvector_t(1<<(int(PRF_NOPARRY%32)))
+			ch.Player_specials.Pref[int(PRF_NOPARRY/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_NOPARRY/32)]) ^ 1<<(int(PRF_NOPARRY%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_NOPARRY%32))))
+		}()) & (1 << (int(PRF_NOPARRY % 32)))
 	case SCMD_LKEEP:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_LKEEP/32)]
-			ch.Player_specials.Pref[int(PRF_LKEEP/32)] = ch.Player_specials.Pref[int(PRF_LKEEP/32)] ^ bitvector_t(1<<(int(PRF_LKEEP%32)))
+			ch.Player_specials.Pref[int(PRF_LKEEP/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_LKEEP/32)]) ^ 1<<(int(PRF_LKEEP%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_LKEEP%32))))
+		}()) & (1 << (int(PRF_LKEEP % 32)))
 	case SCMD_CARVE:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_CARVE/32)]
-			ch.Player_specials.Pref[int(PRF_CARVE/32)] = ch.Player_specials.Pref[int(PRF_CARVE/32)] ^ bitvector_t(1<<(int(PRF_CARVE%32)))
+			ch.Player_specials.Pref[int(PRF_CARVE/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_CARVE/32)]) ^ 1<<(int(PRF_CARVE%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_CARVE%32))))
+		}()) & (1 << (int(PRF_CARVE % 32)))
 	case SCMD_NOGIVE:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_NOGIVE/32)]
-			ch.Player_specials.Pref[int(PRF_NOGIVE/32)] = ch.Player_specials.Pref[int(PRF_NOGIVE/32)] ^ bitvector_t(1<<(int(PRF_NOGIVE%32)))
+			ch.Player_specials.Pref[int(PRF_NOGIVE/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_NOGIVE/32)]) ^ 1<<(int(PRF_NOGIVE%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_NOGIVE%32))))
+		}()) & (1 << (int(PRF_NOGIVE % 32)))
 	case SCMD_INSTRUCT:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_INSTRUCT/32)]
-			ch.Player_specials.Pref[int(PRF_INSTRUCT/32)] = ch.Player_specials.Pref[int(PRF_INSTRUCT/32)] ^ bitvector_t(1<<(int(PRF_INSTRUCT%32)))
+			ch.Player_specials.Pref[int(PRF_INSTRUCT/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_INSTRUCT/32)]) ^ 1<<(int(PRF_INSTRUCT%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_INSTRUCT%32))))
+		}()) & (1 << (int(PRF_INSTRUCT % 32)))
 	case SCMD_GHEALTH:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_GHEALTH/32)]
-			ch.Player_specials.Pref[int(PRF_GHEALTH/32)] = ch.Player_specials.Pref[int(PRF_GHEALTH/32)] ^ bitvector_t(1<<(int(PRF_GHEALTH%32)))
+			ch.Player_specials.Pref[int(PRF_GHEALTH/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_GHEALTH/32)]) ^ 1<<(int(PRF_GHEALTH%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_GHEALTH%32))))
+		}()) & (1 << (int(PRF_GHEALTH % 32)))
 	case SCMD_IHEALTH:
-		result = int((func() bitvector_t {
+		result = int(func() bitvector_t {
 			p := &ch.Player_specials.Pref[int(PRF_IHEALTH/32)]
-			ch.Player_specials.Pref[int(PRF_IHEALTH/32)] = ch.Player_specials.Pref[int(PRF_IHEALTH/32)] ^ bitvector_t(1<<(int(PRF_IHEALTH%32)))
+			ch.Player_specials.Pref[int(PRF_IHEALTH/32)] = bitvector_t(int32(int(ch.Player_specials.Pref[int(PRF_IHEALTH/32)]) ^ 1<<(int(PRF_IHEALTH%32))))
 			return *p
-		}()) & bitvector_t(1<<(int(PRF_IHEALTH%32))))
+		}()) & (1 << (int(PRF_IHEALTH % 32)))
 	default:
 		basic_mud_log(libc.CString("SYSERR: Unknown subcmd %d in do_gen_toggle."), subcmd)
 		return
@@ -15184,7 +15185,7 @@ func do_gen_tog(ch *char_data, argument *byte, cmd int, subcmd int) {
 }
 func do_file(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var (
-		req_file  *C.FILE
+		req_file  *stdio.File
 		cur_line  int = 0
 		num_lines int = 0
 		req_lines int = 0
@@ -15204,7 +15205,7 @@ func do_file(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var fields [17]file_struct = [17]file_struct{{Cmd: libc.CString("none"), Level: 6, File: libc.CString("Does Nothing")}, {Cmd: libc.CString("bug"), Level: ADMLVL_IMMORT, File: libc.CString("../lib/misc/bugs")}, {Cmd: libc.CString("typo"), Level: ADMLVL_IMMORT, File: libc.CString("../lib/misc/typos")}, {Cmd: libc.CString("report"), Level: ADMLVL_IMMORT, File: libc.CString("../lib/misc/ideas")}, {Cmd: libc.CString("xnames"), Level: 4, File: libc.CString("../lib/misc/xnames")}, {Cmd: libc.CString("levels"), Level: 4, File: libc.CString("../log/levels")}, {Cmd: libc.CString("rip"), Level: 4, File: libc.CString("../log/rip")}, {Cmd: libc.CString("players"), Level: 4, File: libc.CString("../log/newplayers")}, {Cmd: libc.CString("rentgone"), Level: 4, File: libc.CString("../log/rentgone")}, {Cmd: libc.CString("errors"), Level: 4, File: libc.CString("../log/errors")}, {Cmd: libc.CString("godcmds"), Level: 4, File: libc.CString("../log/godcmds")}, {Cmd: libc.CString("syslog"), Level: ADMLVL_IMMORT, File: libc.CString("../syslog")}, {Cmd: libc.CString("crash"), Level: ADMLVL_IMMORT, File: libc.CString("../syslog.CRASH")}, {Cmd: libc.CString("immlog"), Level: ADMLVL_IMMORT, File: libc.CString("../lib/misc/request")}, {Cmd: libc.CString("customs"), Level: ADMLVL_IMMORT, File: libc.CString("../lib/misc/customs")}, {Cmd: libc.CString("todo"), Level: 5, File: libc.CString("../todo")}, {Cmd: libc.CString("\n"), Level: 0, File: libc.CString("\n")}}
 	skip_spaces(&argument)
 	if *argument == 0 {
-		C.strcpy(&buf[0], libc.CString("USAGE: file <option> <num lines>\r\n\r\nFile options:\r\n"))
+		libc.StrCpy(&buf[0], libc.CString("USAGE: file <option> <num lines>\r\n\r\nFile options:\r\n"))
 		for func() int {
 			j = 0
 			return func() int {
@@ -15213,7 +15214,7 @@ func do_file(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}()
 		}(); int(fields[i].Level) != 0; i++ {
 			if int(fields[i].Level) <= GET_LEVEL(ch) {
-				stdio.Sprintf(&buf[C.strlen(&buf[0])], "%-15s%s\r\n", fields[i].Cmd, fields[i].File)
+				stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "%-15s%s\r\n", fields[i].Cmd, fields[i].File)
 			}
 		}
 		send_to_char(ch, &buf[0])
@@ -15221,7 +15222,7 @@ func do_file(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	two_arguments(argument, &field[0], &value[0])
 	for l = 0; *fields[l].Cmd != '\n'; l++ {
-		if C.strncmp(&field[0], fields[l].Cmd, uint64(C.strlen(&field[0]))) == 0 {
+		if libc.StrNCmp(&field[0], fields[l].Cmd, libc.StrLen(&field[0])) == 0 {
 			break
 		}
 	}
@@ -15233,38 +15234,38 @@ func do_file(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You are not godly enough to view that file!\r\n"))
 		return
 	}
-	if C.strcasecmp(&field[0], libc.CString("request")) == 0 {
-		ch.Lboard[2] = C.time(nil)
+	if libc.StrCaseCmp(&field[0], libc.CString("request")) == 0 {
+		ch.Lboard[2] = libc.GetTime(nil)
 	}
 	if value[0] == 0 {
 		req_lines = 15
 	} else {
 		req_lines = libc.Atoi(libc.GoString(&value[0]))
 	}
-	if (func() *C.FILE {
-		req_file = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(fields[l].File), "r")))
+	if (func() *stdio.File {
+		req_file = stdio.FOpen(libc.GoString(fields[l].File), "r")
 		return req_file
 	}()) == nil {
 		mudlog(BRF, ADMLVL_IMPL, TRUE, libc.CString("SYSERR: Error opening file %s using 'file' command."), fields[l].File)
 		return
 	}
 	get_line(req_file, &line[0])
-	for C.feof(req_file) == 0 {
+	for int(req_file.IsEOF()) == 0 {
 		num_lines++
 		get_line(req_file, &line[0])
 	}
-	C.rewind(req_file)
+	rewind(req_file)
 	req_lines = MIN(MIN(req_lines, num_lines), 5000)
 	buf[0] = '\x00'
 	get_line(req_file, &line[0])
-	for C.feof(req_file) == 0 {
+	for int(req_file.IsEOF()) == 0 {
 		cur_line++
 		if cur_line > (num_lines - req_lines) {
-			stdio.Sprintf(&buf[C.strlen(&buf[0])], "%s\r\n", &line[0])
+			stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "%s\r\n", &line[0])
 		}
 		get_line(req_file, &line[0])
 	}
-	C.fclose(req_file)
+	req_file.Close()
 	page_string(ch.Desc, &buf[0], 1)
 }
 func do_compare(ch *char_data, argument *byte, cmd int, subcmd int) {
@@ -15293,7 +15294,7 @@ func do_compare(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	if obj1 == obj2 {
 		msg = libc.CString("You compare $p to itself.  It looks about the same.")
-	} else if obj1.Type_flag != obj2.Type_flag {
+	} else if int(obj1.Type_flag) != int(obj2.Type_flag) {
 		msg = libc.CString("You can't compare $p and $P.")
 	} else {
 		switch obj1.Type_flag {
@@ -15345,7 +15346,7 @@ func do_break(ch *char_data, argument *byte, cmd int, subcmd int) {
 	send_to_char(ch, libc.CString("You ruin %s.\r\n"), obj.Short_description)
 	act(libc.CString("$n ruins $p."), FALSE, ch, obj, nil, TO_ROOM)
 	obj.Value[VAL_ALL_HEALTH] = 0
-	obj.Extra_flags[int(ITEM_BROKEN/32)] = obj.Extra_flags[int(ITEM_BROKEN/32)] ^ bitvector_t(1<<(int(ITEM_BROKEN%32)))
+	obj.Extra_flags[int(ITEM_BROKEN/32)] = bitvector_t(int32(int(obj.Extra_flags[int(ITEM_BROKEN/32)]) ^ 1<<(int(ITEM_BROKEN%32))))
 	return
 }
 func do_fix(ch *char_data, argument *byte, cmd int, subcmd int) {
@@ -15369,8 +15370,8 @@ func do_fix(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Usually you fix SOMETHING.\r\n"))
 		return
 	}
-	if C.strcasecmp(libc.CString("self"), &arg[0]) == 0 {
-		if ch.Race != RACE_ANDROID {
+	if libc.StrCaseCmp(libc.CString("self"), &arg[0]) == 0 {
+		if int(ch.Race) != RACE_ANDROID {
 			send_to_char(ch, libc.CString("Only androids can fix their bodies with repair kits.\r\n"))
 			return
 		} else {
@@ -15442,20 +15443,20 @@ func do_fix(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("You repair %s a bit.\r\n"), obj.Short_description)
 			act(libc.CString("$n repairs $p a bit."), FALSE, ch, obj, nil, TO_ROOM)
 			obj.Value[VAL_ALL_HEALTH] += GET_SKILL(ch, SKILL_REPAIR)
-			obj.Extra_flags[int(ITEM_BROKEN/32)] &= bitvector_t(^(1 << (int(ITEM_BROKEN % 32))))
+			obj.Extra_flags[int(ITEM_BROKEN/32)] &= bitvector_t(int32(^(1 << (int(ITEM_BROKEN % 32)))))
 		} else {
 			send_to_char(ch, libc.CString("You repair %s completely.\r\n"), obj.Short_description)
 			act(libc.CString("$n repairs $p completely."), FALSE, ch, obj, nil, TO_ROOM)
 			obj.Value[VAL_ALL_HEALTH] = 100
-			obj.Extra_flags[int(ITEM_BROKEN/32)] &= bitvector_t(^(1 << (int(ITEM_BROKEN % 32))))
+			obj.Extra_flags[int(ITEM_BROKEN/32)] &= bitvector_t(int32(^(1 << (int(ITEM_BROKEN % 32)))))
 		}
 		if obj.Carried_by == nil && !PLR_FLAGGED(ch, PLR_REPLEARN) && (level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0 || GET_LEVEL(ch) >= 100) {
 			var gain int64 = int64((float64(level_exp(ch, GET_LEVEL(ch)+1)) * 0.0003) * float64(GET_SKILL(ch, SKILL_REPAIR)))
 			send_to_char(ch, libc.CString("@mYou've learned a bit from repairing it. @D[@gEXP@W: @G+%s@D]@n\r\n"), add_commas(gain))
-			ch.Act[int(PLR_REPLEARN/32)] |= bitvector_t(1 << (int(PLR_REPLEARN % 32)))
+			ch.Act[int(PLR_REPLEARN/32)] |= bitvector_t(int32(1 << (int(PLR_REPLEARN % 32))))
 			gain_exp(ch, gain)
 		} else if rand_number(2, 12) >= 10 && PLR_FLAGGED(ch, PLR_REPLEARN) {
-			ch.Act[int(PLR_REPLEARN/32)] &= bitvector_t(^(1 << (int(PLR_REPLEARN % 32))))
+			ch.Act[int(PLR_REPLEARN/32)] &= bitvector_t(int32(^(1 << (int(PLR_REPLEARN % 32)))))
 			send_to_char(ch, libc.CString("@mYou think you might be on to something...@n\r\n"))
 		}
 		improve_skill(ch, SKILL_REPAIR, 1)
@@ -15521,7 +15522,7 @@ func innate_add(ch *char_data, innate int, timer int) {
 func is_innate(ch *char_data, spellnum int) int {
 	switch spellnum {
 	case SPELL_FAERIE_FIRE:
-		if ch.Race == RACE_ANIMAL {
+		if int(ch.Race) == RACE_ANIMAL {
 			return TRUE
 		}
 	}
@@ -15639,7 +15640,7 @@ func do_resurrect(ch *char_data, argument *byte, cmd int, subcmd int) {
 	gain_exp(ch, int64(-(level_exp(ch, GET_LEVEL(ch)) - level_exp(ch, GET_LEVEL(ch)-1))))
 	for af = ch.Affected; af != nil; af = next_af {
 		next_af = af.Next
-		if af.Location == APPLY_NONE && af.Type == -1 && (af.Bitvector == AFF_SPIRIT || af.Bitvector == AFF_ETHEREAL) {
+		if af.Location == APPLY_NONE && int(af.Type) == -1 && (af.Bitvector == AFF_SPIRIT || af.Bitvector == AFF_ETHEREAL) {
 			affect_remove(ch, af)
 		}
 	}
@@ -15679,7 +15680,7 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if ch.Admlevel >= ADMLVL_IMPL {
-		if C.strcmp(&arg1[0], libc.CString("create")) == 0 {
+		if libc.StrCmp(&arg1[0], libc.CString("create")) == 0 {
 			if arg2[0] == 0 {
 				show_clan_info(ch)
 			} else if isClan(&arg2[0]) {
@@ -15690,7 +15691,7 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 				mudlog(BRF, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("(GC) %s has created a clan named %s."), GET_NAME(ch), &arg2[0])
 			}
 			return
-		} else if C.strcmp(&arg1[0], libc.CString("destroy")) == 0 {
+		} else if libc.StrCmp(&arg1[0], libc.CString("destroy")) == 0 {
 			if arg2[0] == 0 {
 				show_clan_info(ch)
 			} else if !isClan(&arg2[0]) {
@@ -15700,7 +15701,7 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 				clanDestroy(&arg2[0])
 			}
 			return
-		} else if C.strcmp(&arg1[0], libc.CString("bset")) == 0 {
+		} else if libc.StrCmp(&arg1[0], libc.CString("bset")) == 0 {
 			if arg2[0] == 0 {
 				show_clan_info(ch)
 			} else if !isClan(&arg2[0]) {
@@ -15711,7 +15712,7 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 				clanBSET(&arg2[0], ch)
 			}
 			return
-		} else if C.strcmp(&arg1[0], libc.CString("reload")) == 0 {
+		} else if libc.StrCmp(&arg1[0], libc.CString("reload")) == 0 {
 			if arg2[0] == 0 {
 				show_clan_info(ch)
 			} else if !isClan(&arg2[0]) {
@@ -15724,7 +15725,7 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	}
-	if C.strcmp(&arg1[0], libc.CString("apply")) == 0 {
+	if libc.StrCmp(&arg1[0], libc.CString("apply")) == 0 {
 		if arg2[0] == 0 {
 			show_clan_info(ch)
 		} else if !isClan(&arg2[0]) {
@@ -15742,7 +15743,7 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if ch.Clan != nil {
 					libc.Free(unsafe.Pointer(ch.Clan))
 				}
-				ch.Clan = C.strdup(libc.CString("None."))
+				ch.Clan = libc.CString("None.")
 			}
 			send_to_char(ch, libc.CString("You apply to become a member of %s.\r\n"), &arg2[0])
 			clanApply(&arg2[0], ch)
@@ -15750,14 +15751,14 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		return
 	}
-	if C.strcmp(&arg1[0], libc.CString("join")) == 0 {
+	if libc.StrCmp(&arg1[0], libc.CString("join")) == 0 {
 		if arg2[0] == 0 {
 			show_clan_info(ch)
 		} else if !isClan(&arg2[0]) {
 			send_to_char(ch, libc.CString("%s is not a valid clan.\r\n"), &arg2[0])
 		} else if clanIsMember(&arg2[0], ch) {
 			send_to_char(ch, libc.CString("You are already a member of %s.\r\n"), &arg2[0])
-		} else if ch.Clan != nil && checkCLAN(ch) == TRUE && unsafe.Pointer(C.strstr(ch.Clan, libc.CString("Applying"))) == unsafe.Pointer(uintptr(FALSE)) {
+		} else if ch.Clan != nil && checkCLAN(ch) == TRUE && unsafe.Pointer(libc.StrStr(ch.Clan, libc.CString("Applying"))) == unsafe.Pointer(uintptr(FALSE)) {
 			send_to_char(ch, libc.CString("You are already a member of %s, you need to leave it first.\r\n"), ch.Clan)
 		} else if clanOpenJoin(&arg2[0]) {
 			if ch.Clan != nil && checkCLAN(ch) == TRUE {
@@ -15767,7 +15768,7 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 				if ch.Clan != nil {
 					libc.Free(unsafe.Pointer(ch.Clan))
 				}
-				ch.Clan = C.strdup(libc.CString("None."))
+				ch.Clan = libc.CString("None.")
 			}
 			send_to_char(ch, libc.CString("You are now a member of %s.\r\n"), &arg2[0])
 			clanInduct(&arg2[0], ch)
@@ -15777,7 +15778,7 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 		return
-	} else if C.strcmp(&arg1[0], libc.CString("leave")) == 0 {
+	} else if libc.StrCmp(&arg1[0], libc.CString("leave")) == 0 {
 		if arg2[0] == 0 {
 			show_clan_info(ch)
 		} else if !isClan(&arg2[0]) {
@@ -15792,8 +15793,8 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 		return
-	} else if C.strcmp(&arg1[0], libc.CString("infow")) == 0 {
-		if ch.Clan == nil || C.strcmp(ch.Clan, libc.CString("None.")) == 0 {
+	} else if libc.StrCmp(&arg1[0], libc.CString("infow")) == 0 {
+		if ch.Clan == nil || libc.StrCmp(ch.Clan, libc.CString("None.")) == 0 {
 			send_to_char(ch, libc.CString("You are not in a clan.\r\n"))
 			return
 		} else {
@@ -15801,13 +15802,13 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_char(ch, libc.CString("You must be a moderator to edit the clan's information.\r\n"))
 			} else {
 				clanINFOW(ch.Clan, ch)
-				ch.Act[int(PLR_WRITING/32)] &= bitvector_t(^(1 << (int(PLR_WRITING % 32))))
+				ch.Act[int(PLR_WRITING/32)] &= bitvector_t(int32(^(1 << (int(PLR_WRITING % 32)))))
 			}
 			return
 		}
-	} else if C.strcmp(&arg1[0], libc.CString("deposit")) == 0 {
+	} else if libc.StrCmp(&arg1[0], libc.CString("deposit")) == 0 {
 		var bank int = 0
-		if ch.Clan == nil || C.strcmp(ch.Clan, libc.CString("None.")) == 0 {
+		if ch.Clan == nil || libc.StrCmp(ch.Clan, libc.CString("None.")) == 0 {
 			send_to_char(ch, libc.CString("You are not in a clan.\r\n"))
 			return
 		} else {
@@ -15834,8 +15835,8 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 		}
 		return
-	} else if C.strcmp(&arg1[0], libc.CString("highrank")) == 0 {
-		if ch.Clan == nil || C.strcmp(ch.Clan, libc.CString("None.")) == 0 {
+	} else if libc.StrCmp(&arg1[0], libc.CString("highrank")) == 0 {
+		if ch.Clan == nil || libc.StrCmp(ch.Clan, libc.CString("None.")) == 0 {
 			send_to_char(ch, libc.CString("You are not in a clan.\r\n"))
 			return
 		} else {
@@ -15845,10 +15846,10 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 			} else if arg2[0] == 0 {
 				send_to_char(ch, libc.CString("What name are you going to make the rank?\r\n"))
 				return
-			} else if C.strlen(&arg2[0]) > 20 {
+			} else if libc.StrLen(&arg2[0]) > 20 {
 				send_to_char(ch, libc.CString("The name length can't be longer than 20 characters.\r\n"))
 				return
-			} else if C.strstr(&arg2[0], libc.CString("@")) != nil {
+			} else if libc.StrStr(&arg2[0], libc.CString("@")) != nil {
 				send_to_char(ch, libc.CString("No colorcode allowed in the ranks.\r\n"))
 				return
 			} else {
@@ -15857,8 +15858,8 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 			return
 		}
-	} else if C.strcmp(&arg1[0], libc.CString("midrank")) == 0 {
-		if ch.Clan == nil || C.strcmp(ch.Clan, libc.CString("None.")) == 0 {
+	} else if libc.StrCmp(&arg1[0], libc.CString("midrank")) == 0 {
+		if ch.Clan == nil || libc.StrCmp(ch.Clan, libc.CString("None.")) == 0 {
 			send_to_char(ch, libc.CString("You are not in a clan.\r\n"))
 			return
 		} else {
@@ -15868,10 +15869,10 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 			} else if arg2[0] == 0 {
 				send_to_char(ch, libc.CString("What name are you going to make the rank?\r\n"))
 				return
-			} else if C.strlen(&arg2[0]) > 20 {
+			} else if libc.StrLen(&arg2[0]) > 20 {
 				send_to_char(ch, libc.CString("The name length can't be longer than 20 characters.\r\n"))
 				return
-			} else if C.strstr(&arg2[0], libc.CString("@")) != nil {
+			} else if libc.StrStr(&arg2[0], libc.CString("@")) != nil {
 				send_to_char(ch, libc.CString("No colorcode allowed in the ranks.\r\n"))
 				return
 			} else {
@@ -15880,14 +15881,14 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 			return
 		}
-	} else if C.strcmp(&arg1[0], libc.CString("rank")) == 0 {
+	} else if libc.StrCmp(&arg1[0], libc.CString("rank")) == 0 {
 		var (
 			vict *char_data = nil
 			arg3 [100]byte
 			name [100]byte
 		)
 		half_chop(&arg2[0], &name[0], &arg3[0])
-		if ch.Clan == nil || C.strcmp(ch.Clan, libc.CString("None.")) == 0 {
+		if ch.Clan == nil || libc.StrCmp(ch.Clan, libc.CString("None.")) == 0 {
 			send_to_char(ch, libc.CString("You are not in a clan.\r\n"))
 			return
 		} else {
@@ -15903,7 +15904,7 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}()) == nil {
 				send_to_char(ch, libc.CString("That person is no where to be found in the entire universe.\r\n"))
 				return
-			} else if vict.Clan == nil || C.strcmp(vict.Clan, libc.CString("None.")) == 0 {
+			} else if vict.Clan == nil || libc.StrCmp(vict.Clan, libc.CString("None.")) == 0 {
 				send_to_char(ch, libc.CString("That person is not even in a clan, let alone your's.\r\n"))
 				return
 			} else if !clanIsMember(ch.Clan, vict) {
@@ -15947,9 +15948,9 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return
 			}
 		}
-	} else if C.strcmp(&arg1[0], libc.CString("withdraw")) == 0 {
+	} else if libc.StrCmp(&arg1[0], libc.CString("withdraw")) == 0 {
 		var bank int = 0
-		if ch.Clan == nil || C.strcmp(ch.Clan, libc.CString("None.")) == 0 {
+		if ch.Clan == nil || libc.StrCmp(ch.Clan, libc.CString("None.")) == 0 {
 			send_to_char(ch, libc.CString("You are not in a clan.\r\n"))
 			return
 		} else {
@@ -15979,9 +15980,9 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 		}
 		return
-	} else if C.strcmp(&arg1[0], libc.CString("bank")) == 0 {
+	} else if libc.StrCmp(&arg1[0], libc.CString("bank")) == 0 {
 		var bank int = 0
-		if ch.Clan == nil || C.strcmp(ch.Clan, libc.CString("None.")) == 0 {
+		if ch.Clan == nil || libc.StrCmp(ch.Clan, libc.CString("None.")) == 0 {
 			send_to_char(ch, libc.CString("You are not in a clan.\r\n"))
 			return
 		} else {
@@ -15993,14 +15994,14 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("@W[ @C%-20s @W]@w has @D(@Y%s@D)@w zenni in its clan bank.\r\n"), ch.Clan, add_commas(int64(bank)))
 		}
 		return
-	} else if C.strcmp(&arg1[0], libc.CString("members")) == 0 {
-		if ch.Clan == nil || C.strcmp(ch.Clan, libc.CString("None.")) == 0 {
+	} else if libc.StrCmp(&arg1[0], libc.CString("members")) == 0 {
+		if ch.Clan == nil || libc.StrCmp(ch.Clan, libc.CString("None.")) == 0 {
 			send_to_char(ch, libc.CString("You are not even in a clan.\r\n"))
 			return
 		} else {
 			handle_clan_member_list(ch)
 		}
-	} else if C.strcmp(&arg1[0], libc.CString("expel")) == 0 {
+	} else if libc.StrCmp(&arg1[0], libc.CString("expel")) == 0 {
 		var (
 			is_file  int = FALSE
 			player_i int = 0
@@ -16072,7 +16073,7 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 		return
-	} else if C.strcmp(&arg1[0], libc.CString("decline")) == 0 {
+	} else if libc.StrCmp(&arg1[0], libc.CString("decline")) == 0 {
 		var (
 			vict *char_data
 			arg3 [100]byte
@@ -16098,7 +16099,7 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 			clanDecline(&arg3[0], vict)
 		}
 		return
-	} else if C.strcmp(&arg1[0], libc.CString("enroll")) == 0 {
+	} else if libc.StrCmp(&arg1[0], libc.CString("enroll")) == 0 {
 		var (
 			vict *char_data
 			arg3 [100]byte
@@ -16128,7 +16129,7 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 			clanInduct(&arg3[0], vict)
 		}
 		return
-	} else if C.strcmp(&arg1[0], libc.CString("makemod")) == 0 {
+	} else if libc.StrCmp(&arg1[0], libc.CString("makemod")) == 0 {
 		var (
 			vict *char_data
 			arg3 [100]byte
@@ -16152,7 +16153,7 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 			clanMakeModerator(&arg3[0], vict)
 		}
 		return
-	} else if C.strcmp(&arg1[0], libc.CString("setleave")) == 0 {
+	} else if libc.StrCmp(&arg1[0], libc.CString("setleave")) == 0 {
 		var (
 			name    [100]byte
 			setting [100]byte
@@ -16164,17 +16165,17 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("%s is not a valid clan.\r\n"), &name[0])
 		} else if !clanIsModerator(&name[0], ch) && ch.Admlevel < ADMLVL_IMPL {
 			send_to_char(ch, libc.CString("Only leaders can change that.\r\n"))
-		} else if C.strcmp(&setting[0], libc.CString("free")) == 0 {
+		} else if libc.StrCmp(&setting[0], libc.CString("free")) == 0 {
 			send_to_char(ch, libc.CString("Members of %s are free to leave as they please.\r\n"), &name[0])
 			clanSetOpenLeave(&name[0], TRUE)
-		} else if C.strcmp(&setting[0], libc.CString("restricted")) == 0 {
+		} else if libc.StrCmp(&setting[0], libc.CString("restricted")) == 0 {
 			send_to_char(ch, libc.CString("Members of %s can no longer leave as they please.\r\n"), &name[0])
 			clanSetOpenLeave(&name[0], FALSE)
 		} else {
 			send_to_char(ch, libc.CString("Leave access may only be set to free or restricted.\r\n"))
 		}
 		return
-	} else if C.strcmp(&arg1[0], libc.CString("setjoin")) == 0 {
+	} else if libc.StrCmp(&arg1[0], libc.CString("setjoin")) == 0 {
 		var (
 			name    [100]byte
 			setting [100]byte
@@ -16186,19 +16187,19 @@ func do_clan(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("%s is not a valid clan.\r\n"), &name[0])
 		} else if !clanIsModerator(&name[0], ch) && ch.Admlevel < ADMLVL_IMPL {
 			send_to_char(ch, libc.CString("Only leaders can change that.\r\n"))
-		} else if C.strcmp(&setting[0], libc.CString("free")) == 0 {
+		} else if libc.StrCmp(&setting[0], libc.CString("free")) == 0 {
 			send_to_char(ch, libc.CString("People may now freely join %s.\r\n"), &name[0])
 			clanSetOpenJoin(&name[0], TRUE)
-		} else if C.strcmp(&setting[0], libc.CString("restricted")) == 0 {
+		} else if libc.StrCmp(&setting[0], libc.CString("restricted")) == 0 {
 			send_to_char(ch, libc.CString("People must be enrolled into %s to join.\r\n"), &name[0])
 			clanSetOpenJoin(&name[0], FALSE)
 		} else {
 			send_to_char(ch, libc.CString("Leave access my only be set to free or restricted.\r\n"))
 		}
 		return
-	} else if C.strcmp(&arg1[0], libc.CString("list")) == 0 {
+	} else if libc.StrCmp(&arg1[0], libc.CString("list")) == 0 {
 		listClans(ch)
-	} else if C.strcmp(&arg1[0], libc.CString("info")) == 0 {
+	} else if libc.StrCmp(&arg1[0], libc.CString("info")) == 0 {
 		if arg2[0] == 0 {
 			show_clan_info(ch)
 		} else {
@@ -16255,16 +16256,16 @@ func do_aid(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("        aid formula-82\r\n"))
 		return
 	}
-	if C.strcasecmp(&arg[0], libc.CString("adrenex")) == 0 {
+	if libc.StrCaseCmp(&arg[0], libc.CString("adrenex")) == 0 {
 		num = 380
 		num2 = 381
-	} else if C.strcasecmp(&arg[0], libc.CString("antitoxin")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("antitoxin")) == 0 {
 		num = 380
 		num2 = 383
-	} else if C.strcasecmp(&arg[0], libc.CString("salve")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("salve")) == 0 {
 		num = 380
 		num2 = 382
-	} else if C.strcasecmp(&arg[0], libc.CString("formula-82")) == 0 {
+	} else if libc.StrCaseCmp(&arg[0], libc.CString("formula-82")) == 0 {
 		num = 380
 		num2 = 385
 	}
@@ -16293,7 +16294,7 @@ func do_aid(ch *char_data, argument *byte, cmd int, subcmd int) {
 		} else if IS_NPC(vict) {
 			send_to_char(ch, libc.CString("What ever for?\r\n"))
 			return
-		} else if vict.Race == RACE_ANDROID {
+		} else if int(vict.Race) == RACE_ANDROID {
 			send_to_char(ch, libc.CString("They are an android!\r\n"))
 			return
 		}
@@ -16305,7 +16306,7 @@ func do_aid(ch *char_data, argument *byte, cmd int, subcmd int) {
 			dc = axion_dice(0)
 			if (GET_SKILL(ch, SKILL_FIRST_AID) + 1) > dc {
 				send_to_char(ch, libc.CString("You bandage %s's wounds.\r\n"), GET_NAME(vict))
-				var roll int64 = int64(float64((gear_pl(vict)/100)*int64(ch.Aff_abils.Wis/4)) + float64(gear_pl(vict))*0.25)
+				var roll int64 = int64(float64((gear_pl(vict)/100)*int64(int(ch.Aff_abils.Wis)/4)) + float64(gear_pl(vict))*0.25)
 				if (ch.Bonuses[BONUS_HEALER]) > 0 {
 					roll += int64(float64(roll) * 0.1)
 				}
@@ -16319,7 +16320,7 @@ func do_aid(ch *char_data, argument *byte, cmd int, subcmd int) {
 				}
 				send_to_char(vict, libc.CString("Your wounds are bandaged by %s!\r\n"), GET_NAME(ch))
 				act(libc.CString("$n's wounds are stablized by $N!"), TRUE, vict, nil, unsafe.Pointer(ch), TO_NOTVICT)
-				vict.Act[int(PLR_BANDAGED/32)] |= bitvector_t(1 << (int(PLR_BANDAGED % 32)))
+				vict.Act[int(PLR_BANDAGED/32)] |= bitvector_t(int32(1 << (int(PLR_BANDAGED % 32))))
 				extract_obj(aid_obj)
 			} else {
 				if vict != ch {
@@ -16434,7 +16435,7 @@ func do_aura(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You are busy powering up!\r\n"))
 		return
 	}
-	if C.strcasecmp(&arg[0], libc.CString("light")) == 0 {
+	if libc.StrCaseCmp(&arg[0], libc.CString("light")) == 0 {
 		if GET_SKILL(ch, SKILL_FOCUS) != 0 && GET_SKILL(ch, SKILL_CONCENTRATION) < 75 {
 			send_to_char(ch, libc.CString("You need at least a skill level of 75 in Focus and Concentration to use this.\r\n"))
 			return
@@ -16442,7 +16443,7 @@ func do_aura(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if PLR_FLAGGED(ch, PLR_AURALIGHT) {
 				send_to_char(ch, libc.CString("Your aura fades as you stop shining light.\r\n"))
 				act(libc.CString("$n's aura fades as they stop shining light on the area."), TRUE, ch, nil, nil, TO_ROOM)
-				ch.Act[int(PLR_AURALIGHT/32)] &= bitvector_t(^(1 << (int(PLR_AURALIGHT % 32))))
+				ch.Act[int(PLR_AURALIGHT/32)] &= bitvector_t(int32(^(1 << (int(PLR_AURALIGHT % 32)))))
 				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Light--
 			} else if float64(ch.Mana) > float64(ch.Max_mana)*0.12 {
 				if ch.In_room != room_rnum(-1) {
@@ -16454,7 +16455,7 @@ func do_aura(ch *char_data, argument *byte, cmd int, subcmd int) {
 				var bloom [2048]byte
 				stdio.Sprintf(&bloom[0], "@wA %s aura flashes up brightly around $n@w as they provide light to the area.@n", aura_types[ch.Aura])
 				act(&bloom[0], TRUE, ch, nil, nil, TO_ROOM)
-				ch.Act[int(PLR_AURALIGHT/32)] |= bitvector_t(1 << (int(PLR_AURALIGHT % 32)))
+				ch.Act[int(PLR_AURALIGHT/32)] |= bitvector_t(int32(1 << (int(PLR_AURALIGHT % 32))))
 			} else {
 				send_to_char(ch, libc.CString("You don't have enough KI to do that.\r\n"))
 				return

@@ -3,11 +3,9 @@ package main
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"unicode"
 	"unsafe"
 )
-
-const NO = 0
-const YES = 1
 
 func do_oasis_cedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var (
@@ -26,10 +24,10 @@ func do_oasis_cedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		cedit_setup(d)
 		d.Connected = CON_CEDIT
 		act(libc.CString("$n starts using OLC."), TRUE, d.Character, nil, nil, TO_ROOM)
-		ch.Act[int(PLR_WRITING/32)] |= bitvector_t(1 << (int(PLR_WRITING % 32)))
+		ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
 		mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing the game configuration."), GET_NAME(ch))
 		return
-	} else if C.strcasecmp(libc.CString("save"), &buf1[0]) != 0 {
+	} else if libc.StrCaseCmp(libc.CString("save"), &buf1[0]) != 0 {
 		send_to_char(ch, libc.CString("Yikes!  Stop that, someone will get hurt!\r\n"))
 		return
 	}
@@ -95,32 +93,32 @@ func cedit_setup(d *descriptor_data) {
 	d.Olc.Config.Play.NOPERSON = str_udup(config_info.Play.NOPERSON)
 	d.Olc.Config.Play.NOEFFECT = str_udup(config_info.Play.NOEFFECT)
 	if config_info.Operation.DFLT_IP != nil {
-		d.Olc.Config.Operation.DFLT_IP = C.strdup(config_info.Operation.DFLT_IP)
+		d.Olc.Config.Operation.DFLT_IP = libc.StrDup(config_info.Operation.DFLT_IP)
 	} else {
 		d.Olc.Config.Operation.DFLT_IP = nil
 	}
 	if config_info.Operation.DFLT_DIR != nil {
-		d.Olc.Config.Operation.DFLT_DIR = C.strdup(config_info.Operation.DFLT_DIR)
+		d.Olc.Config.Operation.DFLT_DIR = libc.StrDup(config_info.Operation.DFLT_DIR)
 	} else {
 		d.Olc.Config.Operation.DFLT_DIR = nil
 	}
 	if config_info.Operation.LOGNAME != nil {
-		d.Olc.Config.Operation.LOGNAME = C.strdup(config_info.Operation.LOGNAME)
+		d.Olc.Config.Operation.LOGNAME = libc.StrDup(config_info.Operation.LOGNAME)
 	} else {
 		d.Olc.Config.Operation.LOGNAME = nil
 	}
 	if config_info.Operation.MENU != nil {
-		d.Olc.Config.Operation.MENU = C.strdup(config_info.Operation.MENU)
+		d.Olc.Config.Operation.MENU = libc.StrDup(config_info.Operation.MENU)
 	} else {
 		d.Olc.Config.Operation.MENU = nil
 	}
 	if config_info.Operation.WELC_MESSG != nil {
-		d.Olc.Config.Operation.WELC_MESSG = C.strdup(config_info.Operation.WELC_MESSG)
+		d.Olc.Config.Operation.WELC_MESSG = libc.StrDup(config_info.Operation.WELC_MESSG)
 	} else {
 		d.Olc.Config.Operation.WELC_MESSG = nil
 	}
 	if config_info.Operation.START_MESSG != nil {
-		d.Olc.Config.Operation.START_MESSG = C.strdup(config_info.Operation.START_MESSG)
+		d.Olc.Config.Operation.START_MESSG = libc.StrDup(config_info.Operation.START_MESSG)
 	} else {
 		d.Olc.Config.Operation.START_MESSG = nil
 	}
@@ -187,14 +185,6 @@ func cedit_save_internally(d *descriptor_data) {
 	config_info.Operation.Use_new_socials = d.Olc.Config.Operation.Use_new_socials
 	config_info.Operation.Nameserver_is_slow = d.Olc.Config.Operation.Nameserver_is_slow
 	config_info.Operation.Auto_save_olc = d.Olc.Config.Operation.Auto_save_olc
-	if config_info.Operation.Imc_enabled != d.Olc.Config.Operation.Imc_enabled {
-		copyover_needed = TRUE != 0
-		if d.Olc.Config.Operation.Imc_enabled != 0 {
-			imc_startup(FALSE != 0, -1, FALSE != 0)
-		} else {
-			imc_shutdown(FALSE != 0)
-		}
-	}
 	config_info.Operation.Imc_enabled = d.Olc.Config.Operation.Imc_enabled
 	config_info.Autowiz.Use_autowiz = d.Olc.Config.Autowiz.Use_autowiz
 	config_info.Autowiz.Min_wizlist_lev = d.Olc.Config.Autowiz.Min_wizlist_lev
@@ -216,7 +206,7 @@ func cedit_save_internally(d *descriptor_data) {
 		libc.Free(unsafe.Pointer(config_info.Operation.DFLT_IP))
 	}
 	if d.Olc.Config.Operation.DFLT_IP != nil {
-		config_info.Operation.DFLT_IP = C.strdup(d.Olc.Config.Operation.DFLT_IP)
+		config_info.Operation.DFLT_IP = libc.StrDup(d.Olc.Config.Operation.DFLT_IP)
 	} else {
 		config_info.Operation.DFLT_IP = nil
 	}
@@ -224,7 +214,7 @@ func cedit_save_internally(d *descriptor_data) {
 		libc.Free(unsafe.Pointer(config_info.Operation.DFLT_DIR))
 	}
 	if d.Olc.Config.Operation.DFLT_DIR != nil {
-		config_info.Operation.DFLT_DIR = C.strdup(d.Olc.Config.Operation.DFLT_DIR)
+		config_info.Operation.DFLT_DIR = libc.StrDup(d.Olc.Config.Operation.DFLT_DIR)
 	} else {
 		config_info.Operation.DFLT_DIR = nil
 	}
@@ -232,7 +222,7 @@ func cedit_save_internally(d *descriptor_data) {
 		libc.Free(unsafe.Pointer(config_info.Operation.LOGNAME))
 	}
 	if d.Olc.Config.Operation.LOGNAME != nil {
-		config_info.Operation.LOGNAME = C.strdup(d.Olc.Config.Operation.LOGNAME)
+		config_info.Operation.LOGNAME = libc.StrDup(d.Olc.Config.Operation.LOGNAME)
 	} else {
 		config_info.Operation.LOGNAME = nil
 	}
@@ -240,7 +230,7 @@ func cedit_save_internally(d *descriptor_data) {
 		libc.Free(unsafe.Pointer(config_info.Operation.MENU))
 	}
 	if d.Olc.Config.Operation.MENU != nil {
-		config_info.Operation.MENU = C.strdup(d.Olc.Config.Operation.MENU)
+		config_info.Operation.MENU = libc.StrDup(d.Olc.Config.Operation.MENU)
 	} else {
 		config_info.Operation.MENU = nil
 	}
@@ -248,7 +238,7 @@ func cedit_save_internally(d *descriptor_data) {
 		libc.Free(unsafe.Pointer(config_info.Operation.WELC_MESSG))
 	}
 	if d.Olc.Config.Operation.WELC_MESSG != nil {
-		config_info.Operation.WELC_MESSG = C.strdup(d.Olc.Config.Operation.WELC_MESSG)
+		config_info.Operation.WELC_MESSG = libc.StrDup(d.Olc.Config.Operation.WELC_MESSG)
 	} else {
 		config_info.Operation.WELC_MESSG = nil
 	}
@@ -256,7 +246,7 @@ func cedit_save_internally(d *descriptor_data) {
 		libc.Free(unsafe.Pointer(config_info.Operation.START_MESSG))
 	}
 	if d.Olc.Config.Operation.START_MESSG != nil {
-		config_info.Operation.START_MESSG = C.strdup(d.Olc.Config.Operation.START_MESSG)
+		config_info.Operation.START_MESSG = libc.StrDup(d.Olc.Config.Operation.START_MESSG)
 	} else {
 		config_info.Operation.START_MESSG = nil
 	}
@@ -281,65 +271,65 @@ func cedit_save_to_disk() {
 }
 func save_config(nowhere int64) int {
 	var (
-		fl  *C.FILE
+		fl  *stdio.File
 		buf [64936]byte
 	)
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(config_info.CONFC.FILE), "w")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(config_info.CONFFILE), "w")
 		return fl
 	}()) == nil {
-		C.perror(libc.CString("SYSERR: save_config"))
+		perror(libc.CString("SYSERR: save_config"))
 		return FALSE
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* This file is autogenerated by OasisOLC (CEdit).\n* Please note the following information about this file's format.\n*\n* - If variable is a yes/no or true/false based variable, use 1's and 0's\n*   where YES or TRUE = 1 and NO or FALSE = 0.\n* - Variable names in this file are case-insensitive.  Variable values\n*   are not case-insensitive.\n* -----------------------------------------------------------------------\n* Lines starting with * are comments, and are not parsed.\n* -----------------------------------------------------------------------\n\n* [ Game Play Options ]\n")
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Is player killing allowed on the mud?\npk_allowed = %d\n\n", config_info.Play.Pk_allowed)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Is player thieving allowed on the mud?\npt_allowed = %d\n\n", config_info.Play.Pt_allowed)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* What is the minimum level a player can shout/gossip/etc?\nlevel_can_shout = %d\n\n", config_info.Play.Level_can_shout)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* How many movement points does shouting cost the player?\nholler_move_cost = %d\n\n", config_info.Play.Holler_move_cost)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* How many players can fit in a tunnel?\ntunnel_size = %d\n\n", config_info.Play.Tunnel_size)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Maximum experience gainable per kill?\nmax_exp_gain = %d\n\n", config_info.Play.Max_exp_gain)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Maximum experience loseable per death?\nmax_exp_loss = %d\n\n", config_info.Play.Max_exp_loss)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Number of tics before NPC corpses decompose.\nmax_npc_corpse_time = %d\n\n", config_info.Play.Max_npc_corpse_time)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Number of tics before PC corpses decompose.\nmax_pc_corpse_time = %d\n\n", config_info.Play.Max_pc_corpse_time)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Number of tics before a PC is sent to the void.\nidle_void = %d\n\n", config_info.Play.Idle_void)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Number of tics before a PC is autorented.\nidle_rent_time = %d\n\n", config_info.Play.Idle_rent_time)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Admin level and above of players whom are immune to idle penalties.\nidle_max_level = %d\n\n", config_info.Play.Idle_max_level)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Should the items in death traps be junked automatically?\ndts_are_dumps = %d\n\n", config_info.Play.Dts_are_dumps)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* When an immortal loads an object, should it load into their inventory?\nload_into_inventory = %d\n\n", config_info.Play.Load_into_inventory)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Should PC's be able to track through hidden or closed doors?\ntrack_through_doors = %d\n\n", config_info.Play.Track_through_doors)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* What is the level that cannot be attained?\nlevel_cap = %d\n\n", config_info.Play.Level_cap)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Stack mobiles when showing contents of rooms?\nstack_mobs = %d\n\n", config_info.Play.Stack_mobs)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Stack objects when showing contents of rooms?\nstack_objs = %d\n\n", config_info.Play.Stack_objs)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Allow aggressive mobs to attack other mobs?\nmob_fighting = %d\n\n", config_info.Play.Mob_fighting)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Should closed doors be shown on autoexit / exit?\ndisp_closed_doors = %d\n\n", config_info.Play.Disp_closed_doors)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Should players be able to reroll stats at creation?\nreroll_stats = %d\n\n", config_info.Play.Reroll_player)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* How many points in players initial points pool if using point pool creation?\ninitial_points = %d\n\n", config_info.Play.Initial_points)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Should compression be used if the client supports it?\ncompression = %d\n\n", config_info.Play.Enable_compression)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Should spoken languages be used?\nenable_languages = %d\n\n", config_info.Play.Enable_languages)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Should all items be treated as unique?\nall_items_unique = %d\n\n", config_info.Play.All_items_unique)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Amount of in game experience multiplier.\nexp_multiplier = %.2f\n\n", config_info.Play.Exp_multiplier)
-	C.strcpy(&buf[0], config_info.Play.OK)
+	stdio.Fprintf(fl, "* This file is autogenerated by OasisOLC (CEdit).\n* Please note the following information about this file's format.\n*\n* - If variable is a yes/no or true/false based variable, use 1's and 0's\n*   where YES or TRUE = 1 and NO or FALSE = 0.\n* - Variable names in this file are case-insensitive.  Variable values\n*   are not case-insensitive.\n* -----------------------------------------------------------------------\n* Lines starting with * are comments, and are not parsed.\n* -----------------------------------------------------------------------\n\n* [ Game Play Options ]\n")
+	stdio.Fprintf(fl, "* Is player killing allowed on the mud?\npk_allowed = %d\n\n", config_info.Play.Pk_allowed)
+	stdio.Fprintf(fl, "* Is player thieving allowed on the mud?\npt_allowed = %d\n\n", config_info.Play.Pt_allowed)
+	stdio.Fprintf(fl, "* What is the minimum level a player can shout/gossip/etc?\nlevel_can_shout = %d\n\n", config_info.Play.Level_can_shout)
+	stdio.Fprintf(fl, "* How many movement points does shouting cost the player?\nholler_move_cost = %d\n\n", config_info.Play.Holler_move_cost)
+	stdio.Fprintf(fl, "* How many players can fit in a tunnel?\ntunnel_size = %d\n\n", config_info.Play.Tunnel_size)
+	stdio.Fprintf(fl, "* Maximum experience gainable per kill?\nmax_exp_gain = %d\n\n", config_info.Play.Max_exp_gain)
+	stdio.Fprintf(fl, "* Maximum experience loseable per death?\nmax_exp_loss = %d\n\n", config_info.Play.Max_exp_loss)
+	stdio.Fprintf(fl, "* Number of tics before NPC corpses decompose.\nmax_npc_corpse_time = %d\n\n", config_info.Play.Max_npc_corpse_time)
+	stdio.Fprintf(fl, "* Number of tics before PC corpses decompose.\nmax_pc_corpse_time = %d\n\n", config_info.Play.Max_pc_corpse_time)
+	stdio.Fprintf(fl, "* Number of tics before a PC is sent to the void.\nidle_void = %d\n\n", config_info.Play.Idle_void)
+	stdio.Fprintf(fl, "* Number of tics before a PC is autorented.\nidle_rent_time = %d\n\n", config_info.Play.Idle_rent_time)
+	stdio.Fprintf(fl, "* Admin level and above of players whom are immune to idle penalties.\nidle_max_level = %d\n\n", config_info.Play.Idle_max_level)
+	stdio.Fprintf(fl, "* Should the items in death traps be junked automatically?\ndts_are_dumps = %d\n\n", config_info.Play.Dts_are_dumps)
+	stdio.Fprintf(fl, "* When an immortal loads an object, should it load into their inventory?\nload_into_inventory = %d\n\n", config_info.Play.Load_into_inventory)
+	stdio.Fprintf(fl, "* Should PC's be able to track through hidden or closed doors?\ntrack_through_doors = %d\n\n", config_info.Play.Track_through_doors)
+	stdio.Fprintf(fl, "* What is the level that cannot be attained?\nlevel_cap = %d\n\n", config_info.Play.Level_cap)
+	stdio.Fprintf(fl, "* Stack mobiles when showing contents of rooms?\nstack_mobs = %d\n\n", config_info.Play.Stack_mobs)
+	stdio.Fprintf(fl, "* Stack objects when showing contents of rooms?\nstack_objs = %d\n\n", config_info.Play.Stack_objs)
+	stdio.Fprintf(fl, "* Allow aggressive mobs to attack other mobs?\nmob_fighting = %d\n\n", config_info.Play.Mob_fighting)
+	stdio.Fprintf(fl, "* Should closed doors be shown on autoexit / exit?\ndisp_closed_doors = %d\n\n", config_info.Play.Disp_closed_doors)
+	stdio.Fprintf(fl, "* Should players be able to reroll stats at creation?\nreroll_stats = %d\n\n", config_info.Play.Reroll_player)
+	stdio.Fprintf(fl, "* How many points in players initial points pool if using point pool creation?\ninitial_points = %d\n\n", config_info.Play.Initial_points)
+	stdio.Fprintf(fl, "* Should compression be used if the client supports it?\ncompression = %d\n\n", config_info.Play.Enable_compression)
+	stdio.Fprintf(fl, "* Should spoken languages be used?\nenable_languages = %d\n\n", config_info.Play.Enable_languages)
+	stdio.Fprintf(fl, "* Should all items be treated as unique?\nall_items_unique = %d\n\n", config_info.Play.All_items_unique)
+	stdio.Fprintf(fl, "* Amount of in game experience multiplier.\nexp_multiplier = %.2f\n\n", config_info.Play.Exp_multiplier)
+	libc.StrCpy(&buf[0], config_info.Play.OK)
 	strip_cr(&buf[0])
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Text sent to players when OK is all that is needed.\nok = %s\n\n", &buf[0])
-	C.strcpy(&buf[0], config_info.Play.NOPERSON)
+	stdio.Fprintf(fl, "* Text sent to players when OK is all that is needed.\nok = %s\n\n", &buf[0])
+	libc.StrCpy(&buf[0], config_info.Play.NOPERSON)
 	strip_cr(&buf[0])
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Text sent to players when noone is available.\nnoperson = %s\n\n", &buf[0])
-	C.strcpy(&buf[0], config_info.Play.NOEFFECT)
+	stdio.Fprintf(fl, "* Text sent to players when noone is available.\nnoperson = %s\n\n", &buf[0])
+	libc.StrCpy(&buf[0], config_info.Play.NOEFFECT)
 	strip_cr(&buf[0])
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Text sent to players when an effect fails.\nnoeffect = %s\n", &buf[0])
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "\n\n\n* [ Rent/Crashsave Options ]\n")
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Should the MUD allow you to 'rent' for free?  (i.e. if you just quit,\n* your objects are saved at no cost, as in Merc-type MUDs.)\nfree_rent = %d\n\n", config_info.Csd.Free_rent)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Maximum number of items players are allowed to rent.\nmax_obj_save = %d\n\n", config_info.Csd.Max_obj_save)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Receptionist's surcharge on top of item costs.\nmin_rent_cost = %d\n\n", config_info.Csd.Min_rent_cost)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Should the game automatically save people?\nauto_save = %d\n\n", config_info.Csd.Auto_save)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* If auto_save = 1, how often (in minutes) should the game save people's objects?\nautosave_time = %d\n\n", config_info.Csd.Autosave_time)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Lifetime of crashfiles and force-rent (idlesave) files in days.\ncrash_file_timeout = %d\n\n", config_info.Csd.Crash_file_timeout)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Lifetime of normal rent files in days.\nrent_file_timeout = %d\n\n", config_info.Csd.Rent_file_timeout)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "\n\n\n* [ Room Numbers ]\n")
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* The virtual number of the room that mortals should enter at.\nmortal_start_room = %d\n\n", config_info.Room_nums.Mortal_start_room)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* The virtual number of the room that immorts should enter at.\nimmort_start_room = %d\n\n", config_info.Room_nums.Immort_start_room)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* The virtual number of the room that frozen people should enter at.\nfrozen_start_room = %d\n\n", config_info.Room_nums.Frozen_start_room)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* The virtual numbers of the donation rooms.  Note: Add donation rooms\n* sequentially (1 & 2 before 3). If you don't, you might not be able to\n* donate. Use -1 for 'no such room'.\ndonation_room_1 = %d\ndonation_room_2 = %d\ndonation_room_3 = %d\n\n", func() room_vnum {
+	stdio.Fprintf(fl, "* Text sent to players when an effect fails.\nnoeffect = %s\n", &buf[0])
+	stdio.Fprintf(fl, "\n\n\n* [ Rent/Crashsave Options ]\n")
+	stdio.Fprintf(fl, "* Should the MUD allow you to 'rent' for free?  (i.e. if you just quit,\n* your objects are saved at no cost, as in Merc-type MUDs.)\nfree_rent = %d\n\n", config_info.Csd.Free_rent)
+	stdio.Fprintf(fl, "* Maximum number of items players are allowed to rent.\nmax_obj_save = %d\n\n", config_info.Csd.Max_obj_save)
+	stdio.Fprintf(fl, "* Receptionist's surcharge on top of item costs.\nmin_rent_cost = %d\n\n", config_info.Csd.Min_rent_cost)
+	stdio.Fprintf(fl, "* Should the game automatically save people?\nauto_save = %d\n\n", config_info.Csd.Auto_save)
+	stdio.Fprintf(fl, "* If auto_save = 1, how often (in minutes) should the game save people's objects?\nautosave_time = %d\n\n", config_info.Csd.Autosave_time)
+	stdio.Fprintf(fl, "* Lifetime of crashfiles and force-rent (idlesave) files in days.\ncrash_file_timeout = %d\n\n", config_info.Csd.Crash_file_timeout)
+	stdio.Fprintf(fl, "* Lifetime of normal rent files in days.\nrent_file_timeout = %d\n\n", config_info.Csd.Rent_file_timeout)
+	stdio.Fprintf(fl, "\n\n\n* [ Room Numbers ]\n")
+	stdio.Fprintf(fl, "* The virtual number of the room that mortals should enter at.\nmortal_start_room = %d\n\n", config_info.Room_nums.Mortal_start_room)
+	stdio.Fprintf(fl, "* The virtual number of the room that immorts should enter at.\nimmort_start_room = %d\n\n", config_info.Room_nums.Immort_start_room)
+	stdio.Fprintf(fl, "* The virtual number of the room that frozen people should enter at.\nfrozen_start_room = %d\n\n", config_info.Room_nums.Frozen_start_room)
+	stdio.Fprintf(fl, "* The virtual numbers of the donation rooms.  Note: Add donation rooms\n* sequentially (1 & 2 before 3). If you don't, you might not be able to\n* donate. Use -1 for 'no such room'.\ndonation_room_1 = %d\ndonation_room_2 = %d\ndonation_room_3 = %d\n\n", func() room_vnum {
 		if config_info.Room_nums.Donation_room_1 != room_vnum(-1) {
 			return config_info.Room_nums.Donation_room_1
 		}
@@ -355,64 +345,64 @@ func save_config(nowhere int64) int {
 		}
 		return -1
 	}())
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "\n\n\n* [ Game Operation Options ]\n")
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* This is the default port on which the game should run if no port is\n* given on the command-line.  NOTE WELL: If you're using the\n* 'autorun' script, the port number there will override this setting.\n* Change the PORT= line in autorun instead of (or in addition to)\n* changing this.\nDFLT_PORT = %d\n\n", config_info.Operation.DFLT_PORT)
+	stdio.Fprintf(fl, "\n\n\n* [ Game Operation Options ]\n")
+	stdio.Fprintf(fl, "* This is the default port on which the game should run if no port is\n* given on the command-line.  NOTE WELL: If you're using the\n* 'autorun' script, the port number there will override this setting.\n* Change the PORT= line in autorun instead of (or in addition to)\n* changing this.\nDFLT_PORT = %d\n\n", config_info.Operation.DFLT_PORT)
 	if config_info.Operation.DFLT_IP != nil {
-		C.strcpy(&buf[0], config_info.Operation.DFLT_IP)
+		libc.StrCpy(&buf[0], config_info.Operation.DFLT_IP)
 		strip_cr(&buf[0])
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* IP address to which the MUD should bind.\nDFLT_IP = %s\n\n", &buf[0])
+		stdio.Fprintf(fl, "* IP address to which the MUD should bind.\nDFLT_IP = %s\n\n", &buf[0])
 	}
 	if config_info.Operation.DFLT_DIR != nil {
-		C.strcpy(&buf[0], config_info.Operation.DFLT_DIR)
+		libc.StrCpy(&buf[0], config_info.Operation.DFLT_DIR)
 		strip_cr(&buf[0])
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* default directory to use as data directory.\nDFLT_DIR = %s\n\n", &buf[0])
+		stdio.Fprintf(fl, "* default directory to use as data directory.\nDFLT_DIR = %s\n\n", &buf[0])
 	}
 	if config_info.Operation.LOGNAME != nil {
-		C.strcpy(&buf[0], config_info.Operation.LOGNAME)
+		libc.StrCpy(&buf[0], config_info.Operation.LOGNAME)
 		strip_cr(&buf[0])
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* What file to log messages to (ex: 'log/syslog').\nLOGNAME = %s\n\n", &buf[0])
+		stdio.Fprintf(fl, "* What file to log messages to (ex: 'log/syslog').\nLOGNAME = %s\n\n", &buf[0])
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Maximum number of players allowed before game starts to turn people away.\nmax_playing = %d\n\n", config_info.Operation.Max_playing)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Maximum size of bug, typo, and idea files in bytes (to prevent bombing).\nmax_filesize = %d\n\n", config_info.Operation.Max_filesize)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Maximum number of password attempts before disconnection.\nmax_bad_pws = %d\n\n", config_info.Operation.Max_bad_pws)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Is the site ok for everyone except those that are banned?\nsiteok_everyone = %d\n\n", config_info.Operation.Siteok_everyone)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* If you want to use the original social file format\n* and disable Aedit, set to 0, otherwise, 1.\nuse_new_socials = %d\n\n", config_info.Operation.Use_new_socials)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* If the nameserver is fast, set to 0, otherwise, 1.\nnameserver_is_slow = %d\n\n", config_info.Operation.Nameserver_is_slow)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Should OLC autosave to disk (1) or save internally (0).\nauto_save_olc = %d\n\n", config_info.Operation.Auto_save_olc)
+	stdio.Fprintf(fl, "* Maximum number of players allowed before game starts to turn people away.\nmax_playing = %d\n\n", config_info.Operation.Max_playing)
+	stdio.Fprintf(fl, "* Maximum size of bug, typo, and idea files in bytes (to prevent bombing).\nmax_filesize = %d\n\n", config_info.Operation.Max_filesize)
+	stdio.Fprintf(fl, "* Maximum number of password attempts before disconnection.\nmax_bad_pws = %d\n\n", config_info.Operation.Max_bad_pws)
+	stdio.Fprintf(fl, "* Is the site ok for everyone except those that are banned?\nsiteok_everyone = %d\n\n", config_info.Operation.Siteok_everyone)
+	stdio.Fprintf(fl, "* If you want to use the original social file format\n* and disable Aedit, set to 0, otherwise, 1.\nuse_new_socials = %d\n\n", config_info.Operation.Use_new_socials)
+	stdio.Fprintf(fl, "* If the nameserver is fast, set to 0, otherwise, 1.\nnameserver_is_slow = %d\n\n", config_info.Operation.Nameserver_is_slow)
+	stdio.Fprintf(fl, "* Should OLC autosave to disk (1) or save internally (0).\nauto_save_olc = %d\n\n", config_info.Operation.Auto_save_olc)
 	if config_info.Operation.MENU != nil {
-		C.strcpy(&buf[0], config_info.Operation.MENU)
+		libc.StrCpy(&buf[0], config_info.Operation.MENU)
 		strip_cr(&buf[0])
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* The entrance/exit menu.\nMENU = \n%s~\n\n", &buf[0])
+		stdio.Fprintf(fl, "* The entrance/exit menu.\nMENU = \n%s~\n\n", &buf[0])
 	}
 	if config_info.Operation.WELC_MESSG != nil {
-		C.strcpy(&buf[0], config_info.Operation.WELC_MESSG)
+		libc.StrCpy(&buf[0], config_info.Operation.WELC_MESSG)
 		strip_cr(&buf[0])
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* The welcome message.\nWELC_MESSG = \n%s~\n\n", &buf[0])
+		stdio.Fprintf(fl, "* The welcome message.\nWELC_MESSG = \n%s~\n\n", &buf[0])
 	}
 	if config_info.Operation.START_MESSG != nil {
-		C.strcpy(&buf[0], config_info.Operation.START_MESSG)
+		libc.StrCpy(&buf[0], config_info.Operation.START_MESSG)
 		strip_cr(&buf[0])
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* NEWBIE start message.\nSTART_MESSG = \n%s~\n\n", &buf[0])
+		stdio.Fprintf(fl, "* NEWBIE start message.\nSTART_MESSG = \n%s~\n\n", &buf[0])
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Is the IMC global channel enabled (1) or not (0).\nimc_enabled = %d\n\n", config_info.Operation.Imc_enabled)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "\n\n\n* [ Autowiz Options ]\n")
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Should the game automatically create a new wizlist/immlist every time\n* someone immorts, or is promoted to a higher (or lower) god level?\nuse_autowiz = %d\n\n", config_info.Autowiz.Use_autowiz)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* If yes, what is the lowest level which should be on the wizlist?\nmin_wizlist_lev = %d\n\n", config_info.Autowiz.Min_wizlist_lev)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "\n\n\n* [ Character Advancement Options ]\n")
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Should characters be allowed to advance in multiple classes?\nallow_multiclass = %d\n\n", config_info.Advance.Allow_multiclass)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "* Should characters be allowed to advance in prestige classes?\nallow_prestige = %d\n\n", config_info.Advance.Allow_prestige)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "\n\n\n* [ Game Speed Options ]\n")
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "*Speed of Violence system. 0 - 10 (10) being the slowest.\npulse_viol = %d\n\n", config_info.Ticks.Pulse_violence)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "*Speed of Mobile actions. 0 - 20 (20) being the slowest.\npulse_mobile = %d\n\n", config_info.Ticks.Pulse_mobile)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "*Zone updates. 0 - 20 (20) being the slowest.\npulse_zone = %d\n\n", config_info.Ticks.Pulse_zone)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "*Autosave. 0 - 100 (100) being the slowest.\npulse_autosave = %d\n\n", config_info.Ticks.Pulse_autosave)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "*Idling passwords. 0 - 30 (30) being the slowest.\npulse_idlepwd = %d\n\n", config_info.Ticks.Pulse_idlepwd)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "*Sanity check time.. 0 - 50 (50) being the slowest.\npulse_sanity = %d\n\n", config_info.Ticks.Pulse_sanity)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "*Usage time.  0 - 10 (10) being the slowest in minutes.\npulse_usage = %d\n\n", config_info.Ticks.Pulse_usage)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "*Timesaving. 0 - 50 (50) being the slowest in minutes.\npulse_timesave = %d\n\n", config_info.Ticks.Pulse_timesave)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "*Current update time. 0 - 30 (30) being the slowest.\npulse_current = %d\n\n", config_info.Ticks.Pulse_current)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "*Character creation method.\nmethod = %d\n\n", config_info.Creation.Method)
-	C.fclose(fl)
+	stdio.Fprintf(fl, "* Is the IMC global channel enabled (1) or not (0).\nimc_enabled = %d\n\n", config_info.Operation.Imc_enabled)
+	stdio.Fprintf(fl, "\n\n\n* [ Autowiz Options ]\n")
+	stdio.Fprintf(fl, "* Should the game automatically create a new wizlist/immlist every time\n* someone immorts, or is promoted to a higher (or lower) god level?\nuse_autowiz = %d\n\n", config_info.Autowiz.Use_autowiz)
+	stdio.Fprintf(fl, "* If yes, what is the lowest level which should be on the wizlist?\nmin_wizlist_lev = %d\n\n", config_info.Autowiz.Min_wizlist_lev)
+	stdio.Fprintf(fl, "\n\n\n* [ Character Advancement Options ]\n")
+	stdio.Fprintf(fl, "* Should characters be allowed to advance in multiple classes?\nallow_multiclass = %d\n\n", config_info.Advance.Allow_multiclass)
+	stdio.Fprintf(fl, "* Should characters be allowed to advance in prestige classes?\nallow_prestige = %d\n\n", config_info.Advance.Allow_prestige)
+	stdio.Fprintf(fl, "\n\n\n* [ Game Speed Options ]\n")
+	stdio.Fprintf(fl, "*Speed of Violence system. 0 - 10 (10) being the slowest.\npulse_viol = %d\n\n", config_info.Ticks.Pulse_violence)
+	stdio.Fprintf(fl, "*Speed of Mobile actions. 0 - 20 (20) being the slowest.\npulse_mobile = %d\n\n", config_info.Ticks.Pulse_mobile)
+	stdio.Fprintf(fl, "*Zone updates. 0 - 20 (20) being the slowest.\npulse_zone = %d\n\n", config_info.Ticks.Pulse_zone)
+	stdio.Fprintf(fl, "*Autosave. 0 - 100 (100) being the slowest.\npulse_autosave = %d\n\n", config_info.Ticks.Pulse_autosave)
+	stdio.Fprintf(fl, "*Idling passwords. 0 - 30 (30) being the slowest.\npulse_idlepwd = %d\n\n", config_info.Ticks.Pulse_idlepwd)
+	stdio.Fprintf(fl, "*Sanity check time.. 0 - 50 (50) being the slowest.\npulse_sanity = %d\n\n", config_info.Ticks.Pulse_sanity)
+	stdio.Fprintf(fl, "*Usage time.  0 - 10 (10) being the slowest in minutes.\npulse_usage = %d\n\n", config_info.Ticks.Pulse_usage)
+	stdio.Fprintf(fl, "*Timesaving. 0 - 50 (50) being the slowest in minutes.\npulse_timesave = %d\n\n", config_info.Ticks.Pulse_timesave)
+	stdio.Fprintf(fl, "*Current update time. 0 - 30 (30) being the slowest.\npulse_current = %d\n\n", config_info.Ticks.Pulse_current)
+	stdio.Fprintf(fl, "*Character creation method.\nmethod = %d\n\n", config_info.Creation.Method)
+	fl.Close()
 	if in_save_list(zone_vnum(-1), SL_CFG) != 0 {
 		remove_from_save_list(zone_vnum(-1), SL_CFG)
 	}
@@ -1075,7 +1065,7 @@ func cedit_parse(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("Enter the new MENU :\r\n\r\n"))
 			if d.Olc.Config.Operation.MENU != nil {
 				write_to_output(d, libc.CString("%s"), d.Olc.Config.Operation.MENU)
-				oldtext = C.strdup(d.Olc.Config.Operation.MENU)
+				oldtext = libc.StrDup(d.Olc.Config.Operation.MENU)
 			}
 			string_write(d, &d.Olc.Config.Operation.MENU, MAX_INPUT_LENGTH, 0, unsafe.Pointer(oldtext))
 			return
@@ -1101,7 +1091,7 @@ func cedit_parse(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("Enter the new newbie start message :\r\n\r\n"))
 			if d.Olc.Config.Operation.START_MESSG != nil {
 				write_to_output(d, libc.CString("%s"), d.Olc.Config.Operation.START_MESSG)
-				oldtext = C.strdup(d.Olc.Config.Operation.START_MESSG)
+				oldtext = libc.StrDup(d.Olc.Config.Operation.START_MESSG)
 			}
 			string_write(d, &d.Olc.Config.Operation.START_MESSG, MAX_INPUT_LENGTH, 0, unsafe.Pointer(oldtext))
 			return
@@ -1324,7 +1314,7 @@ func cedit_parse(d *descriptor_data, arg *byte) {
 			libc.Free(unsafe.Pointer(d.Olc.Config.Play.OK))
 		}
 		d.Olc.Config.Play.OK = str_udup(arg)
-		C.strcat(d.Olc.Config.Play.OK, libc.CString("\r\n"))
+		libc.StrCat(d.Olc.Config.Play.OK, libc.CString("\r\n"))
 		cedit_disp_game_play_options(d)
 	case CEDIT_NOPERSON:
 		if genolc_checkstring(d, arg) == 0 {
@@ -1334,7 +1324,7 @@ func cedit_parse(d *descriptor_data, arg *byte) {
 			libc.Free(unsafe.Pointer(d.Olc.Config.Play.NOPERSON))
 		}
 		d.Olc.Config.Play.NOPERSON = str_udup(arg)
-		C.strcat(d.Olc.Config.Play.NOPERSON, libc.CString("\r\n"))
+		libc.StrCat(d.Olc.Config.Play.NOPERSON, libc.CString("\r\n"))
 		cedit_disp_game_play_options(d)
 	case CEDIT_NOEFFECT:
 		if genolc_checkstring(d, arg) == 0 {
@@ -1344,7 +1334,7 @@ func cedit_parse(d *descriptor_data, arg *byte) {
 			libc.Free(unsafe.Pointer(d.Olc.Config.Play.NOEFFECT))
 		}
 		d.Olc.Config.Play.NOEFFECT = str_udup(arg)
-		C.strcat(d.Olc.Config.Play.NOEFFECT, libc.CString("\r\n"))
+		libc.StrCat(d.Olc.Config.Play.NOEFFECT, libc.CString("\r\n"))
 		cedit_disp_game_play_options(d)
 	case CEDIT_MAX_OBJ_SAVE:
 		if *arg == 0 {
@@ -1476,7 +1466,7 @@ func cedit_parse(d *descriptor_data, arg *byte) {
 			cedit_disp_autowiz_options(d)
 		}
 	case CEDIT_PULSE_VIOLENCE:
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg)))))&int(uint16(int16(_ISdigit)))) == 0 || libc.Atoi(libc.GoString(arg)) < 0 || libc.Atoi(libc.GoString(arg)) > 10 {
+		if !unicode.IsDigit(rune(*arg)) || libc.Atoi(libc.GoString(arg)) < 0 || libc.Atoi(libc.GoString(arg)) > 10 {
 			write_to_output(d, libc.CString("Please enter a number between 0 - 10.\r\n"))
 			cedit_disp_ticks_menu(d)
 		} else {
@@ -1484,7 +1474,7 @@ func cedit_parse(d *descriptor_data, arg *byte) {
 			cedit_disp_ticks_menu(d)
 		}
 	case CEDIT_PULSE_MOBILE:
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg)))))&int(uint16(int16(_ISdigit)))) == 0 || libc.Atoi(libc.GoString(arg)) < 0 || libc.Atoi(libc.GoString(arg)) > 20 {
+		if !unicode.IsDigit(rune(*arg)) || libc.Atoi(libc.GoString(arg)) < 0 || libc.Atoi(libc.GoString(arg)) > 20 {
 			write_to_output(d, libc.CString("Please enter a number between 0 - 20.\r\n"))
 			cedit_disp_ticks_menu(d)
 		} else {
@@ -1492,7 +1482,7 @@ func cedit_parse(d *descriptor_data, arg *byte) {
 			cedit_disp_ticks_menu(d)
 		}
 	case CEDIT_PULSE_IDLEPWD:
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg)))))&int(uint16(int16(_ISdigit)))) == 0 || libc.Atoi(libc.GoString(arg)) < 0 || libc.Atoi(libc.GoString(arg)) > 30 {
+		if !unicode.IsDigit(rune(*arg)) || libc.Atoi(libc.GoString(arg)) < 0 || libc.Atoi(libc.GoString(arg)) > 30 {
 			write_to_output(d, libc.CString("Please enter a number between 0 - 30.\r\n"))
 			cedit_disp_ticks_menu(d)
 		} else {
@@ -1500,7 +1490,7 @@ func cedit_parse(d *descriptor_data, arg *byte) {
 			cedit_disp_ticks_menu(d)
 		}
 	case CEDIT_PULSE_ZONE:
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg)))))&int(uint16(int16(_ISdigit)))) == 0 || libc.Atoi(libc.GoString(arg)) < 0 || libc.Atoi(libc.GoString(arg)) > 20 {
+		if !unicode.IsDigit(rune(*arg)) || libc.Atoi(libc.GoString(arg)) < 0 || libc.Atoi(libc.GoString(arg)) > 20 {
 			write_to_output(d, libc.CString("Please enter a number between 0 - 20.\r\n"))
 			cedit_disp_ticks_menu(d)
 		} else {
@@ -1508,7 +1498,7 @@ func cedit_parse(d *descriptor_data, arg *byte) {
 			cedit_disp_ticks_menu(d)
 		}
 	case CEDIT_PULSE_AUTOSAVE:
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg)))))&int(uint16(int16(_ISdigit)))) == 0 || libc.Atoi(libc.GoString(arg)) < 0 || libc.Atoi(libc.GoString(arg)) > 100 {
+		if !unicode.IsDigit(rune(*arg)) || libc.Atoi(libc.GoString(arg)) < 0 || libc.Atoi(libc.GoString(arg)) > 100 {
 			write_to_output(d, libc.CString("Please enter a number between 0 - 100.\r\n"))
 			cedit_disp_ticks_menu(d)
 		} else {
@@ -1516,7 +1506,7 @@ func cedit_parse(d *descriptor_data, arg *byte) {
 			cedit_disp_ticks_menu(d)
 		}
 	case CEDIT_PULSE_CURRENT:
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg)))))&int(uint16(int16(_ISdigit)))) == 0 || libc.Atoi(libc.GoString(arg)) < 0 || libc.Atoi(libc.GoString(arg)) > 30 {
+		if !unicode.IsDigit(rune(*arg)) || libc.Atoi(libc.GoString(arg)) < 0 || libc.Atoi(libc.GoString(arg)) > 30 {
 			write_to_output(d, libc.CString("Please enter a number between 0 - 30.\r\n"))
 			cedit_disp_ticks_menu(d)
 		} else {
@@ -1524,7 +1514,7 @@ func cedit_parse(d *descriptor_data, arg *byte) {
 			cedit_disp_ticks_menu(d)
 		}
 	case CEDIT_PULSE_SANITY:
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg)))))&int(uint16(int16(_ISdigit)))) == 0 || libc.Atoi(libc.GoString(arg)) < 0 || libc.Atoi(libc.GoString(arg)) > 50 {
+		if !unicode.IsDigit(rune(*arg)) || libc.Atoi(libc.GoString(arg)) < 0 || libc.Atoi(libc.GoString(arg)) > 50 {
 			write_to_output(d, libc.CString("Please enter a number between 0 - 50.\r\n"))
 			cedit_disp_ticks_menu(d)
 		} else {
@@ -1532,7 +1522,7 @@ func cedit_parse(d *descriptor_data, arg *byte) {
 			cedit_disp_ticks_menu(d)
 		}
 	case CEDIT_PULSE_USAGE:
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg)))))&int(uint16(int16(_ISdigit)))) == 0 || libc.Atoi(libc.GoString(arg)) < 0 || libc.Atoi(libc.GoString(arg)) > 10 {
+		if !unicode.IsDigit(rune(*arg)) || libc.Atoi(libc.GoString(arg)) < 0 || libc.Atoi(libc.GoString(arg)) > 10 {
 			write_to_output(d, libc.CString("Please enter a number between 0 - 10.\r\n"))
 			cedit_disp_ticks_menu(d)
 		} else {
@@ -1576,7 +1566,7 @@ func cedit_parse(d *descriptor_data, arg *byte) {
 		}
 		return
 	case CEDIT_CREATION_MENU:
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg)))))&int(uint16(int16(_ISdigit)))) == 0 || libc.Atoi(libc.GoString(arg)) < 0 || libc.Atoi(libc.GoString(arg)) > int(NUM_CREATION_METHODS-1) {
+		if !unicode.IsDigit(rune(*arg)) || libc.Atoi(libc.GoString(arg)) < 0 || libc.Atoi(libc.GoString(arg)) > int(NUM_CREATION_METHODS-1) {
 			write_to_output(d, libc.CString("Please enter a number between 0 - %d.\r\n"), int(NUM_CREATION_METHODS-1))
 			cedit_disp_creation_menu(d)
 		} else {
@@ -1584,7 +1574,7 @@ func cedit_parse(d *descriptor_data, arg *byte) {
 			cedit_disp_creation_options(d)
 		}
 	case CEDIT_POINTS_MENU:
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg)))))&int(uint16(int16(_ISdigit)))) == 0 || libc.Atoi(libc.GoString(arg)) < 0 {
+		if !unicode.IsDigit(rune(*arg)) || libc.Atoi(libc.GoString(arg)) < 0 {
 			write_to_output(d, libc.CString("Please enter a number 0 or higher.\r\n"))
 			cedit_disp_points_menu(d)
 		} else {

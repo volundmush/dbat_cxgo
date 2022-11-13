@@ -1,6 +1,9 @@
 package main
 
-import "github.com/gotranspile/cxgo/runtime/libc"
+import (
+	"github.com/gotranspile/cxgo/runtime/libc"
+	"unicode"
+)
 
 func parse_stats(d *descriptor_data, arg *byte) int {
 	var ch *char_data
@@ -42,7 +45,7 @@ func stats_disp_menu(d *descriptor_data) int {
 	return 1
 }
 func parse_stat_menu(d *descriptor_data, arg *byte) int {
-	*arg = byte(int8(C.tolower(int(*arg))))
+	*arg = byte(int8(unicode.ToLower(rune(*arg))))
 	switch *arg {
 	case 's':
 		d.Olc.Mode = STAT_GET_STR

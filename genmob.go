@@ -153,19 +153,19 @@ func delete_mobile(refpt mob_rnum) int {
 }
 func copy_mobile_strings(t *char_data, f *char_data) int {
 	if f.Name != nil {
-		t.Name = C.strdup(f.Name)
+		t.Name = libc.StrDup(f.Name)
 	}
 	if f.Title != nil {
-		t.Title = C.strdup(f.Title)
+		t.Title = libc.StrDup(f.Title)
 	}
 	if f.Short_descr != nil {
-		t.Short_descr = C.strdup(f.Short_descr)
+		t.Short_descr = libc.StrDup(f.Short_descr)
 	}
 	if f.Long_descr != nil {
-		t.Long_descr = C.strdup(f.Long_descr)
+		t.Long_descr = libc.StrDup(f.Long_descr)
 	}
 	if f.Description != nil {
-		t.Description = C.strdup(f.Description)
+		t.Description = libc.StrDup(f.Description)
 	}
 	return TRUE
 }
@@ -247,7 +247,7 @@ func free_mobile(mob *char_data) int {
 }
 func save_mobiles(zone_num zone_rnum) int {
 	var (
-		mobfd     *C.FILE
+		mobfd     *stdio.File
 		i         room_vnum
 		rmob      mob_rnum
 		written   int
@@ -259,8 +259,8 @@ func save_mobiles(zone_num zone_rnum) int {
 		return FALSE
 	}
 	stdio.Snprintf(&mobfname[0], int(64), "%s%d.new", LIB_WORLD, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number)
-	if (func() *C.FILE {
-		mobfd = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&mobfname[0]), "w")))
+	if (func() *stdio.File {
+		mobfd = stdio.FOpen(libc.GoString(&mobfname[0]), "w")
 		return mobfd
 	}()) == nil {
 		mudlog(BRF, ADMLVL_GOD, TRUE, libc.CString("SYSERR: GenOLC: Cannot open mob file for writing."))
@@ -278,9 +278,9 @@ func save_mobiles(zone_num zone_rnum) int {
 			basic_mud_log(libc.CString("SYSERR: GenOLC: Error writing mobile #%d."), i)
 		}
 	}
-	fputs(libc.CString("$\n"), mobfd)
-	written = ftell(mobfd)
-	C.fclose(mobfd)
+	mobfd.PutS(libc.CString("$\n"))
+	written = int(mobfd.Tell())
+	mobfd.Close()
 	stdio.Snprintf(&usedfname[0], int(64), "%s%d.mob", LIB_WORLD, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number)
 	stdio.Remove(libc.GoString(&usedfname[0]))
 	stdio.Rename(libc.GoString(&mobfname[0]), libc.GoString(&usedfname[0]))
@@ -291,75 +291,75 @@ func save_mobiles(zone_num zone_rnum) int {
 	}
 	return written
 }
-func write_mobile_espec(mvnum mob_vnum, mob *char_data, fd *C.FILE) int {
+func write_mobile_espec(mvnum mob_vnum, mob *char_data, fd *stdio.File) int {
 	var (
 		aff *affected_type
 		i   int
 	)
 	if get_size(mob) != race_def_sizetable[mob.Race] {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fd)), "Size: %d\n", get_size(mob))
+		stdio.Fprintf(fd, "Size: %d\n", get_size(mob))
 	}
-	if mob.Mob_specials.Attack_type != 0 {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fd)), "BareHandAttack: %d\n", mob.Mob_specials.Attack_type)
+	if int(mob.Mob_specials.Attack_type) != 0 {
+		stdio.Fprintf(fd, "BareHandAttack: %d\n", mob.Mob_specials.Attack_type)
 	}
-	if mob.Aff_abils.Str != 0 {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fd)), "Str: %d\n", mob.Aff_abils.Str)
+	if int(mob.Aff_abils.Str) != 0 {
+		stdio.Fprintf(fd, "Str: %d\n", mob.Aff_abils.Str)
 	}
-	if mob.Aff_abils.Dex != 0 {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fd)), "Dex: %d\n", mob.Aff_abils.Dex)
+	if int(mob.Aff_abils.Dex) != 0 {
+		stdio.Fprintf(fd, "Dex: %d\n", mob.Aff_abils.Dex)
 	}
-	if mob.Aff_abils.Intel != 0 {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fd)), "Int: %d\n", mob.Aff_abils.Intel)
+	if int(mob.Aff_abils.Intel) != 0 {
+		stdio.Fprintf(fd, "Int: %d\n", mob.Aff_abils.Intel)
 	}
-	if mob.Aff_abils.Wis != 0 {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fd)), "Wis: %d\n", mob.Aff_abils.Wis)
+	if int(mob.Aff_abils.Wis) != 0 {
+		stdio.Fprintf(fd, "Wis: %d\n", mob.Aff_abils.Wis)
 	}
-	if mob.Aff_abils.Con != 0 {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fd)), "Con: %d\n", mob.Aff_abils.Con)
+	if int(mob.Aff_abils.Con) != 0 {
+		stdio.Fprintf(fd, "Con: %d\n", mob.Aff_abils.Con)
 	}
-	if mob.Aff_abils.Cha != 0 {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fd)), "Cha: %d\n", mob.Aff_abils.Cha)
+	if int(mob.Aff_abils.Cha) != 0 {
+		stdio.Fprintf(fd, "Cha: %d\n", mob.Aff_abils.Cha)
 	}
 	if (*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(real_mobile(mvnum)))) != mob {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fd)), "Hit: %lld\nMaxHit: %lld\nMana: %lld\nMaxMana: %lld\nMoves: %lld\nMaxMoves: %lld\n", mob.Hit, mob.Max_hit, mob.Mana, mob.Max_mana, mob.Move, mob.Max_move)
+		stdio.Fprintf(fd, "Hit: %lld\nMaxHit: %lld\nMana: %lld\nMaxMana: %lld\nMoves: %lld\nMaxMoves: %lld\n", mob.Hit, mob.Max_hit, mob.Mana, mob.Max_mana, mob.Move, mob.Max_move)
 		for aff = mob.Affected; aff != nil; aff = aff.Next {
-			if aff.Type != 0 {
-				stdio.Fprintf((*stdio.File)(unsafe.Pointer(fd)), "Affect: %d %d %d %d %d %d\n", aff.Type, aff.Duration, aff.Modifier, aff.Location, int(aff.Bitvector), aff.Specific)
+			if int(aff.Type) != 0 {
+				stdio.Fprintf(fd, "Affect: %d %d %d %d %d %d\n", aff.Type, aff.Duration, aff.Modifier, aff.Location, int(aff.Bitvector), aff.Specific)
 			}
 		}
 		for aff = mob.Affectedv; aff != nil; aff = aff.Next {
-			if aff.Type != 0 {
-				stdio.Fprintf((*stdio.File)(unsafe.Pointer(fd)), "AffectV: %d %d %d %d %d %d\n", aff.Type, aff.Duration, aff.Modifier, aff.Location, int(aff.Bitvector), aff.Specific)
+			if int(aff.Type) != 0 {
+				stdio.Fprintf(fd, "AffectV: %d %d %d %d %d %d\n", aff.Type, aff.Duration, aff.Modifier, aff.Location, int(aff.Bitvector), aff.Specific)
 			}
 		}
 	}
 	for i = 0; i <= NUM_FEATS_DEFINED; i++ {
-		if (mob.Feats[i]) != 0 {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fd)), "Feat: %d %d\n", i, mob.Feats[i])
+		if int(mob.Feats[i]) != 0 {
+			stdio.Fprintf(fd, "Feat: %d %d\n", i, mob.Feats[i])
 		}
 	}
 	for i = 0; i < SKILL_TABLE_SIZE; i++ {
-		if (mob.Skills[i]) != 0 {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fd)), "Skill: %d %d\n", i, mob.Feats[i])
+		if int(mob.Skills[i]) != 0 {
+			stdio.Fprintf(fd, "Skill: %d %d\n", i, mob.Feats[i])
 		}
 	}
 	for i = 0; i <= NUM_FEATS_DEFINED; i++ {
-		if (mob.Skillmods[i]) != 0 {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fd)), "SkillMod: %d %d\n", i, mob.Feats[i])
+		if int(mob.Skillmods[i]) != 0 {
+			stdio.Fprintf(fd, "SkillMod: %d %d\n", i, mob.Feats[i])
 		}
 	}
 	for i = 0; i < NUM_CLASSES; i++ {
 		if (mob.Chclasses[i]) != 0 {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fd)), "Class: %d %d\n", i, mob.Chclasses[i])
+			stdio.Fprintf(fd, "Class: %d %d\n", i, mob.Chclasses[i])
 		}
 		if (mob.Epicclasses[i]) != 0 {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(fd)), "EpicClass: %d %d\n", i, mob.Epicclasses[i])
+			stdio.Fprintf(fd, "EpicClass: %d %d\n", i, mob.Epicclasses[i])
 		}
 	}
-	fputs(libc.CString("E\n"), fd)
+	fd.PutS(libc.CString("E\n"))
 	return TRUE
 }
-func write_mobile_record(mvnum mob_vnum, mob *char_data, fd *C.FILE) int {
+func write_mobile_record(mvnum mob_vnum, mob *char_data, fd *stdio.File) int {
 	var (
 		ldesc [64936]byte
 		ddesc [64936]byte
@@ -374,19 +374,19 @@ func write_mobile_record(mvnum mob_vnum, mob *char_data, fd *C.FILE) int {
 	)
 	ldesc[int(MAX_STRING_LENGTH-1)] = '\x00'
 	ddesc[int(MAX_STRING_LENGTH-1)] = '\x00'
-	strip_cr(C.strncpy(&ldesc[0], mob.Long_descr, uint64(int(MAX_STRING_LENGTH-1))))
-	strip_cr(C.strncpy(&ddesc[0], mob.Description, uint64(int(MAX_STRING_LENGTH-1))))
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fd)), "#%d\n%s%c\n%s%c\n%s%c\n%s%c\n", mvnum, mob.Name, STRING_TERMINATOR, mob.Short_descr, STRING_TERMINATOR, &ldesc[0], STRING_TERMINATOR, &ddesc[0], STRING_TERMINATOR)
+	strip_cr(libc.StrNCpy(&ldesc[0], mob.Long_descr, int(MAX_STRING_LENGTH-1)))
+	strip_cr(libc.StrNCpy(&ddesc[0], mob.Description, int(MAX_STRING_LENGTH-1)))
+	stdio.Fprintf(fd, "#%d\n%s%c\n%s%c\n%s%c\n%s%c\n", mvnum, mob.Name, STRING_TERMINATOR, mob.Short_descr, STRING_TERMINATOR, &ldesc[0], STRING_TERMINATOR, &ddesc[0], STRING_TERMINATOR)
 	sprintascii(&fbuf1[0], mob.Act[0])
 	sprintascii(&fbuf2[0], mob.Act[1])
 	sprintascii(&fbuf3[0], mob.Act[2])
 	sprintascii(&fbuf4[0], mob.Act[3])
-	sprintascii(&abuf1[0], bitvector_t(mob.Affected_by[0]))
-	sprintascii(&abuf2[0], bitvector_t(mob.Affected_by[1]))
-	sprintascii(&abuf3[0], bitvector_t(mob.Affected_by[2]))
-	sprintascii(&abuf4[0], bitvector_t(mob.Affected_by[3]))
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fd)), "%s %s %s %s %s %s %s %s %d E\n%d %d %d %lldd%lld+%lld %dd%d+%d\n", &fbuf1[0], &fbuf2[0], &fbuf3[0], &fbuf4[0], &abuf1[0], &abuf2[0], &abuf3[0], &abuf4[0], mob.Alignment, mob.Race_level, mob.Accuracy_mod, 10-mob.Armor/10, mob.Hit, mob.Mana, mob.Move, mob.Mob_specials.Damnodice, mob.Mob_specials.Damsizedice, mob.Damage_mod)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fd)), "%d 0 %d %d\n%d %d %d\n", mob.Gold, mob.Race, mob.Chclass, mob.Position, mob.Mob_specials.Default_pos, mob.Sex)
+	sprintascii(&abuf1[0], bitvector_t(int32(mob.Affected_by[0])))
+	sprintascii(&abuf2[0], bitvector_t(int32(mob.Affected_by[1])))
+	sprintascii(&abuf3[0], bitvector_t(int32(mob.Affected_by[2])))
+	sprintascii(&abuf4[0], bitvector_t(int32(mob.Affected_by[3])))
+	stdio.Fprintf(fd, "%s %s %s %s %s %s %s %s %d E\n%d %d %d %lldd%lld+%lld %dd%d+%d\n", &fbuf1[0], &fbuf2[0], &fbuf3[0], &fbuf4[0], &abuf1[0], &abuf2[0], &abuf3[0], &abuf4[0], mob.Alignment, mob.Race_level, mob.Accuracy_mod, 10-mob.Armor/10, mob.Hit, mob.Mana, mob.Move, mob.Mob_specials.Damnodice, mob.Mob_specials.Damsizedice, mob.Damage_mod)
+	stdio.Fprintf(fd, "%d 0 %d %d\n%d %d %d\n", mob.Gold, mob.Race, mob.Chclass, mob.Position, mob.Mob_specials.Default_pos, mob.Sex)
 	if write_mobile_espec(mvnum, mob, fd) < 0 {
 		basic_mud_log(libc.CString("SYSERR: GenOLC: Error writing E-specs for mobile #%d."), mvnum)
 	}
@@ -408,6 +408,6 @@ func check_mobile_string(i mob_vnum, string_ **byte, dscr *byte) {
 		if *string_ != nil {
 			libc.Free(unsafe.Pointer(*string_))
 		}
-		*string_ = C.strdup(libc.CString("An undefined string."))
+		*string_ = libc.CString("An undefined string.")
 	}
 }

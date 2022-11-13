@@ -99,7 +99,7 @@ func damage_weapon(ch *char_data, obj *obj_data, vict *char_data) {
 			act(libc.CString("@RYour @C$p@R shatters on @r$N's@R body!@n"), TRUE, ch, obj, unsafe.Pointer(vict), TO_CHAR)
 			act(libc.CString("@r$n's@R @C$p@R shatters on YOUR body!@n"), TRUE, ch, obj, unsafe.Pointer(vict), TO_VICT)
 			act(libc.CString("@r$n's@R @C$p@R shatters on @r$N's@R body!@n"), TRUE, ch, obj, unsafe.Pointer(vict), TO_NOTVICT)
-			obj.Extra_flags[int(ITEM_BROKEN/32)] |= bitvector_t(1 << (int(ITEM_BROKEN % 32)))
+			obj.Extra_flags[int(ITEM_BROKEN/32)] |= bitvector_t(int32(1 << (int(ITEM_BROKEN % 32))))
 			perform_remove(vict, 16)
 			perform_remove(vict, 17)
 		} else if result >= 8 {
@@ -134,10 +134,10 @@ func handle_multihit(ch *char_data, vict *char_data) {
 	} else if ch.Throws == -1 {
 		ch.Throws = 0
 	}
-	if ch.Race == RACE_KONATSU {
+	if int(ch.Race) == RACE_KONATSU {
 		perc *= int(1.5)
 	}
-	if ch.Race == RACE_BIO && ((ch.Genome[0]) == 8 || (ch.Genome[1]) == 8) {
+	if int(ch.Race) == RACE_BIO && ((ch.Genome[0]) == 8 || (ch.Genome[1]) == 8) {
 		perc *= int(1.4)
 	}
 	if IS_NPC(ch) {
@@ -167,7 +167,7 @@ func handle_multihit(ch *char_data, vict *char_data) {
 		act(libc.CString("@Y...in a lightning flash of speed @y$n@Y attacks YOU again!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 		act(libc.CString("@Y...in a lightning flash of speed @y$n@Y attacks @y$N@Y again!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 		ch.Throws += 1
-		ch.Act[int(PLR_MULTIHIT/32)] |= bitvector_t(1 << (int(PLR_MULTIHIT % 32)))
+		ch.Act[int(PLR_MULTIHIT/32)] |= bitvector_t(int32(1 << (int(PLR_MULTIHIT % 32))))
 		if ch.Combo > -1 {
 			switch ch.Combo {
 			case 0:
@@ -232,12 +232,12 @@ func handle_defender(vict *char_data, ch *char_data) int {
 			defnum int64      = int64((float64(GET_SPEEDI(def)) * 0.01) * float64(rand_number(-10, 10)))
 			chnum  int64      = int64((float64(GET_SPEEDI(ch)) * 0.01) * float64(rand_number(-5, 10)))
 		)
-		if GET_SPEEDI(def)+int(defnum) > GET_SPEEDI(ch)+int(chnum) && def.In_room == vict.In_room && def.Position > POS_SITTING {
+		if GET_SPEEDI(def)+int(defnum) > GET_SPEEDI(ch)+int(chnum) && def.In_room == vict.In_room && int(def.Position) > POS_SITTING {
 			act(libc.CString("@YYou move to and manage to intercept the attack aimed at @y$N@Y!@n"), TRUE, def, nil, unsafe.Pointer(vict), TO_CHAR)
 			act(libc.CString("@y$n@Y moves to and manages to intercept the attack aimed at YOU!@n"), TRUE, def, nil, unsafe.Pointer(vict), TO_VICT)
 			act(libc.CString("@y$n@Y moves to and manages to intercept the attack aimed at @y$N@Y!@n"), TRUE, def, nil, unsafe.Pointer(vict), TO_NOTVICT)
 			result = TRUE
-		} else if def.In_room == vict.In_room && def.Position > POS_SITTING {
+		} else if def.In_room == vict.In_room && int(def.Position) > POS_SITTING {
 			act(libc.CString("@YYou move to intercept the attack aimed at @y$N@Y, but just not fast enough!@n"), TRUE, def, nil, unsafe.Pointer(vict), TO_CHAR)
 			act(libc.CString("@y$n@Y moves to intercept the attack aimed at YOU, but $e wasn't fast enough!@n"), TRUE, def, nil, unsafe.Pointer(vict), TO_VICT)
 			act(libc.CString("@y$n@Y moves to intercept the attack aimed at @y$N@Y, but $e wasn't fast enough!@n"), TRUE, def, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -251,19 +251,19 @@ func handle_disarm(ch *char_data, vict *char_data) {
 		roll2   int = rand_number(-10, 10)
 		handled int = FALSE
 	)
-	roll1 += int(ch.Aff_abils.Str + ch.Aff_abils.Dex)
-	roll2 += int(vict.Aff_abils.Str + vict.Aff_abils.Dex)
+	roll1 += int(ch.Aff_abils.Str) + int(ch.Aff_abils.Dex)
+	roll2 += int(vict.Aff_abils.Str) + int(vict.Aff_abils.Dex)
 	if !IS_NPC(ch) {
 		if PLR_FLAGGED(ch, PLR_THANDW) {
 			roll1 += 5
 		}
 	}
-	if rand_number(1, 100) <= 50 && ch.Race != RACE_KONATSU {
+	if rand_number(1, 100) <= 50 && int(ch.Race) != RACE_KONATSU {
 		roll1 = -500
 	} else if rand_number(1, 100) <= 75 {
 		roll1 *= int(1.5)
 	}
-	if vict.Race == RACE_KONATSU {
+	if int(vict.Race) == RACE_KONATSU {
 		roll1 *= int(0.75)
 	}
 	if GET_SKILL(ch, SKILL_HANDLING) >= axion_dice(10) {
@@ -457,22 +457,22 @@ func combine_attacks(ch *char_data, vict *char_data) {
 	}
 	attsk = attavg / totalmem
 	if ch.Combine != 5 {
-		if attspd+attsk < GET_SKILL(vict, SKILL_DODGE)+int(ch.Aff_abils.Cha/10) {
+		if attspd+attsk < GET_SKILL(vict, SKILL_DODGE)+int(ch.Aff_abils.Cha)/10 {
 			act(libc.CString("@GYou manage to dodge nimbly through the combined attack of your enemies!@n"), TRUE, vict, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@G manages to dodge nimbly through the combined attack!@n"), TRUE, vict, nil, nil, TO_ROOM)
 			return
-		} else if blockable == TRUE && attspd+attsk < GET_SKILL(vict, SKILL_BLOCK)+int(ch.Aff_abils.Str/10) {
+		} else if blockable == TRUE && attspd+attsk < GET_SKILL(vict, SKILL_BLOCK)+int(ch.Aff_abils.Str)/10 {
 			act(libc.CString("@GYou manage to effectivly block the combined attack of your enemies with the help of your great strength!@n"), TRUE, vict, nil, nil, TO_CHAR)
 			act(libc.CString("@r$n@G manages to dodge nimbly through the combined attack!@n"), TRUE, vict, nil, nil, TO_ROOM)
 			return
 		}
 	}
 	if burn == TRUE {
-		if !AFF_FLAGGED(vict, AFF_BURNED) && rand_number(1, 4) == 3 && vict.Race != RACE_DEMON && (vict.Bonuses[BONUS_FIREPROOF]) == 0 {
+		if !AFF_FLAGGED(vict, AFF_BURNED) && rand_number(1, 4) == 3 && int(vict.Race) != RACE_DEMON && (vict.Bonuses[BONUS_FIREPROOF]) == 0 {
 			send_to_char(vict, libc.CString("@RYou are burned by the attack!@n\r\n"))
 			send_to_char(ch, libc.CString("@RThey are burned by the attack!@n\r\n"))
 			vict.Affected_by[int(AFF_BURNED/32)] |= 1 << (int(AFF_BURNED % 32))
-		} else if (vict.Bonuses[BONUS_FIREPROOF]) != 0 || vict.Race == RACE_DEMON {
+		} else if (vict.Bonuses[BONUS_FIREPROOF]) != 0 || int(vict.Race) == RACE_DEMON {
 			send_to_char(ch, libc.CString("@RThey appear to be fireproof!@n\r\n"))
 		} else if (vict.Bonuses[BONUS_FIREPRONE]) != 0 {
 			send_to_char(vict, libc.CString("@RYou are extremely flammable and are burned by the attack!@n\r\n"))
@@ -774,19 +774,19 @@ func cut_limb(ch *char_data, vict *char_data, wlvl int, hitspot int) {
 	} else {
 		if !IS_NPC(vict) {
 			if HAS_ARMS(vict) && rand_number(1, 2) == 2 {
-				if (vict.Limb_condition[1]) > 0 {
-					vict.Limb_condition[1] = 0
+				if (vict.Limb_condition[2]) > 0 {
+					vict.Limb_condition[2] = 0
 					if PLR_FLAGGED(vict, PLR_CLARM) {
-						vict.Act[int(PLR_CLARM/32)] &= bitvector_t(^(1 << (int(PLR_CLARM % 32))))
+						vict.Act[int(PLR_CLARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLARM % 32)))))
 					}
 					act(libc.CString("@R$N@r loses $s left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@RYOU lose your left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@R$N@r loses $s left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 					remove_limb(vict, 2)
-				} else if (vict.Limb_condition[0]) > 0 {
-					vict.Limb_condition[0] = 100
+				} else if (vict.Limb_condition[1]) > 0 {
+					vict.Limb_condition[1] = 100
 					if PLR_FLAGGED(vict, PLR_CRARM) {
-						vict.Act[int(PLR_CRARM/32)] &= bitvector_t(^(1 << (int(PLR_CRARM % 32))))
+						vict.Act[int(PLR_CRARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRARM % 32)))))
 					}
 					act(libc.CString("@R$N@r loses $s right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@RYOU lose your right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -794,19 +794,19 @@ func cut_limb(ch *char_data, vict *char_data, wlvl int, hitspot int) {
 					remove_limb(vict, 1)
 				}
 			} else {
-				if (vict.Limb_condition[3]) > 0 {
-					vict.Limb_condition[3] = 100
+				if (vict.Limb_condition[4]) > 0 {
+					vict.Limb_condition[4] = 100
 					if PLR_FLAGGED(vict, PLR_CLLEG) {
-						vict.Act[int(PLR_CLLEG/32)] &= bitvector_t(^(1 << (int(PLR_CLLEG % 32))))
+						vict.Act[int(PLR_CLLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLLEG % 32)))))
 					}
 					act(libc.CString("@R$N@r loses $s left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@RYOU lose your left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@R$N@r loses $s left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 					remove_limb(vict, 4)
-				} else if (vict.Limb_condition[2]) > 0 {
-					vict.Limb_condition[2] = 100
+				} else if (vict.Limb_condition[3]) > 0 {
+					vict.Limb_condition[3] = 100
 					if PLR_FLAGGED(vict, PLR_CRLEG) {
-						vict.Act[int(PLR_CRLEG/32)] &= bitvector_t(^(1 << (int(PLR_CRLEG % 32))))
+						vict.Act[int(PLR_CRLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRLEG % 32)))))
 					}
 					act(libc.CString("@R$N@r loses $s right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@RYOU lose your right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -817,13 +817,13 @@ func cut_limb(ch *char_data, vict *char_data, wlvl int, hitspot int) {
 		} else {
 			if HAS_ARMS(vict) && rand_number(1, 2) == 2 {
 				if MOB_FLAGGED(vict, MOB_LARM) {
-					vict.Act[int(MOB_LARM/32)] &= bitvector_t(^(1 << (int(MOB_LARM % 32))))
+					vict.Act[int(MOB_LARM/32)] &= bitvector_t(int32(^(1 << (int(MOB_LARM % 32)))))
 					remove_limb(vict, 2)
 					act(libc.CString("@R$N@r loses $s left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@RYOU lose your left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@R$N@r loses $s left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				} else if MOB_FLAGGED(vict, MOB_RARM) {
-					vict.Act[int(MOB_RARM/32)] &= bitvector_t(^(1 << (int(MOB_RARM % 32))))
+					vict.Act[int(MOB_RARM/32)] &= bitvector_t(int32(^(1 << (int(MOB_RARM % 32)))))
 					remove_limb(vict, 1)
 					act(libc.CString("@R$N@r loses $s right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@RYOU lose your right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -831,13 +831,13 @@ func cut_limb(ch *char_data, vict *char_data, wlvl int, hitspot int) {
 				}
 			} else {
 				if MOB_FLAGGED(vict, MOB_LLEG) {
-					vict.Act[int(MOB_LLEG/32)] &= bitvector_t(^(1 << (int(MOB_LLEG % 32))))
+					vict.Act[int(MOB_LLEG/32)] &= bitvector_t(int32(^(1 << (int(MOB_LLEG % 32)))))
 					remove_limb(vict, 4)
 					act(libc.CString("@R$N@r loses $s left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@RYOU lose your left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@R$N@r loses $s left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				} else if MOB_FLAGGED(vict, MOB_RLEG) {
-					vict.Act[int(MOB_RLEG/32)] &= bitvector_t(^(1 << (int(MOB_RLEG % 32))))
+					vict.Act[int(MOB_RLEG/32)] &= bitvector_t(int32(^(1 << (int(MOB_RLEG % 32)))))
 					remove_limb(vict, 3)
 					act(libc.CString("@R$N@r loses $s right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@RYOU lose your right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -1028,8 +1028,8 @@ func roll_hitloc(ch *char_data, vict *char_data, skill int) int {
 			skill = rand_number(GET_LEVEL(ch), 100)
 		}
 	}
-	if ch.Chclass == CLASS_DABURA && !IS_NPC(ch) {
-		if (ch.Skills[SKILL_STYLE]) >= 75 {
+	if int(ch.Chclass) == CLASS_DABURA && !IS_NPC(ch) {
+		if int(ch.Skills[SKILL_STYLE]) >= 75 {
 			critmax -= 200
 		}
 	}
@@ -1046,13 +1046,13 @@ func roll_hitloc(ch *char_data, vict *char_data, skill int) int {
 		location = rand_number(4, 5)
 	}
 	if !IS_NPC(vict) {
-		if location == 4 && (vict.Limb_condition[0]) <= 0 && (vict.Limb_condition[1]) <= 0 {
+		if location == 4 && (vict.Limb_condition[1]) <= 0 && (vict.Limb_condition[2]) <= 0 {
 			location = 5
 		}
-		if location == 5 && (vict.Limb_condition[2]) <= 0 && (vict.Limb_condition[3]) <= 0 {
+		if location == 5 && (vict.Limb_condition[3]) <= 0 && (vict.Limb_condition[4]) <= 0 {
 			location = 4
 		}
-		if location == 4 && (vict.Limb_condition[0]) <= 0 && (vict.Limb_condition[1]) <= 0 {
+		if location == 4 && (vict.Limb_condition[1]) <= 0 && (vict.Limb_condition[2]) <= 0 {
 			location = 1
 		}
 	}
@@ -1175,7 +1175,7 @@ func chance_to_hit(ch *char_data) int {
 	if IS_NPC(ch) {
 		return num
 	}
-	if (ch.Player_specials.Conditions[DRUNK]) > 4 {
+	if int(ch.Player_specials.Conditions[DRUNK]) > 4 {
 		num += int(ch.Player_specials.Conditions[DRUNK])
 	}
 	return num
@@ -1236,73 +1236,73 @@ func hurt_limb(ch *char_data, vict *char_data, chance int, area int, power int64
 	}
 	if !is_sparring(ch) {
 		if area == 0 {
-			if (vict.Limb_condition[1])-dmg <= 0 {
+			if (vict.Limb_condition[2])-dmg <= 0 {
 				act(libc.CString("@RYour attack @YDESTROYS @r$N's@R left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@r$n's@R attack @YDESTROYS@R YOUR left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@r$n's@R attack @YDESTROYS @r$N's@R left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				vict.Limb_condition[1] = 0
+				vict.Limb_condition[2] = 0
 				if PLR_FLAGGED(vict, PLR_THANDW) {
-					vict.Act[int(PLR_THANDW/32)] &= bitvector_t(^(1 << (int(PLR_THANDW % 32))))
+					vict.Act[int(PLR_THANDW/32)] &= bitvector_t(int32(^(1 << (int(PLR_THANDW % 32)))))
 				}
 				if PLR_FLAGGED(vict, PLR_CLARM) {
-					vict.Act[int(PLR_CLARM/32)] &= bitvector_t(^(1 << (int(PLR_CLARM % 32))))
+					vict.Act[int(PLR_CLARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLARM % 32)))))
+				}
+				remove_limb(vict, 2)
+			} else if (vict.Limb_condition[2]) > 0 {
+				vict.Limb_condition[2] -= dmg
+				act(libc.CString("@RYour attack hurts @r$N's@R left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
+				act(libc.CString("@r$n's@R attack hurts YOUR left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
+				act(libc.CString("@r$n's@R attack hurts @r$N's@R left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
+			} else if (vict.Limb_condition[1])-dmg <= 0 {
+				act(libc.CString("@RYour attack @YDESTROYS @r$N's@R right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
+				act(libc.CString("@r$n's@R attack @YDESTROYS@R YOUR right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
+				act(libc.CString("@r$n's@R attack @YDESTROYS @r$N's@R right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
+				vict.Limb_condition[1] = 0
+				if PLR_FLAGGED(vict, PLR_THANDW) {
+					vict.Act[int(PLR_THANDW/32)] &= bitvector_t(int32(^(1 << (int(PLR_THANDW % 32)))))
+				}
+				if PLR_FLAGGED(vict, PLR_CLARM) {
+					vict.Act[int(PLR_CRARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRARM % 32)))))
 				}
 				remove_limb(vict, 2)
 			} else if (vict.Limb_condition[1]) > 0 {
 				vict.Limb_condition[1] -= dmg
-				act(libc.CString("@RYour attack hurts @r$N's@R left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
-				act(libc.CString("@r$n's@R attack hurts YOUR left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
-				act(libc.CString("@r$n's@R attack hurts @r$N's@R left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-			} else if (vict.Limb_condition[0])-dmg <= 0 {
-				act(libc.CString("@RYour attack @YDESTROYS @r$N's@R right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
-				act(libc.CString("@r$n's@R attack @YDESTROYS@R YOUR right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
-				act(libc.CString("@r$n's@R attack @YDESTROYS @r$N's@R right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				vict.Limb_condition[0] = 0
-				if PLR_FLAGGED(vict, PLR_THANDW) {
-					vict.Act[int(PLR_THANDW/32)] &= bitvector_t(^(1 << (int(PLR_THANDW % 32))))
-				}
-				if PLR_FLAGGED(vict, PLR_CLARM) {
-					vict.Act[int(PLR_CRARM/32)] &= bitvector_t(^(1 << (int(PLR_CRARM % 32))))
-				}
-				remove_limb(vict, 2)
-			} else if (vict.Limb_condition[0]) > 0 {
-				vict.Limb_condition[0] -= dmg
 				act(libc.CString("@RYour attack hurts @r$N's@R right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@r$n's@R attack hurts YOUR right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@r$n's@R attack hurts @r$N's@R right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 			}
 		} else if area == 1 {
-			if (vict.Limb_condition[3])-dmg <= 0 {
+			if (vict.Limb_condition[4])-dmg <= 0 {
 				act(libc.CString("@RYour attack @YDESTROYS @r$N's@R left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@r$n's@R attack @YDESTROYS@R YOUR left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@r$n's@R attack @YDESTROYS @r$N's@R left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				vict.Limb_condition[3] = 0
+				vict.Limb_condition[4] = 0
 				if PLR_FLAGGED(vict, PLR_THANDW) {
-					vict.Act[int(PLR_THANDW/32)] &= bitvector_t(^(1 << (int(PLR_THANDW % 32))))
+					vict.Act[int(PLR_THANDW/32)] &= bitvector_t(int32(^(1 << (int(PLR_THANDW % 32)))))
 				}
 				if PLR_FLAGGED(vict, PLR_CLLEG) {
-					vict.Act[int(PLR_CLLEG/32)] &= bitvector_t(^(1 << (int(PLR_CLLEG % 32))))
+					vict.Act[int(PLR_CLLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLLEG % 32)))))
+				}
+				remove_limb(vict, 2)
+			} else if (vict.Limb_condition[4]) > 0 {
+				vict.Limb_condition[4] -= dmg
+				act(libc.CString("@RYour attack hurts @r$N's@R left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
+				act(libc.CString("@r$n's@R attack hurts YOUR left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
+				act(libc.CString("@r$n's@R attack hurts @r$N's@R left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
+			} else if (vict.Limb_condition[3])-dmg <= 0 {
+				act(libc.CString("@RYour attack @YDESTROYS @r$N's@R right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
+				act(libc.CString("@r$n's@R attack @YDESTROYS@R YOUR right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
+				act(libc.CString("@r$n's@R attack @YDESTROYS @r$N's@R right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
+				vict.Limb_condition[3] = 0
+				if PLR_FLAGGED(vict, PLR_THANDW) {
+					vict.Act[int(PLR_THANDW/32)] &= bitvector_t(int32(^(1 << (int(PLR_THANDW % 32)))))
+				}
+				if PLR_FLAGGED(vict, PLR_CLLEG) {
+					vict.Act[int(PLR_CLLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLLEG % 32)))))
 				}
 				remove_limb(vict, 2)
 			} else if (vict.Limb_condition[3]) > 0 {
 				vict.Limb_condition[3] -= dmg
-				act(libc.CString("@RYour attack hurts @r$N's@R left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
-				act(libc.CString("@r$n's@R attack hurts YOUR left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
-				act(libc.CString("@r$n's@R attack hurts @r$N's@R left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-			} else if (vict.Limb_condition[2])-dmg <= 0 {
-				act(libc.CString("@RYour attack @YDESTROYS @r$N's@R right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
-				act(libc.CString("@r$n's@R attack @YDESTROYS@R YOUR right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
-				act(libc.CString("@r$n's@R attack @YDESTROYS @r$N's@R right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				vict.Limb_condition[2] = 0
-				if PLR_FLAGGED(vict, PLR_THANDW) {
-					vict.Act[int(PLR_THANDW/32)] &= bitvector_t(^(1 << (int(PLR_THANDW % 32))))
-				}
-				if PLR_FLAGGED(vict, PLR_CLLEG) {
-					vict.Act[int(PLR_CLLEG/32)] &= bitvector_t(^(1 << (int(PLR_CLLEG % 32))))
-				}
-				remove_limb(vict, 2)
-			} else if (vict.Limb_condition[2]) > 0 {
-				vict.Limb_condition[2] -= dmg
 				act(libc.CString("@RYour attack hurts @r$N's@R right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@r$n's@R attack hurts YOUR right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@r$n's@R attack hurts @r$N's@R right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -1402,7 +1402,7 @@ func damage_eq(vict *char_data, location int) {
 		eq.Value[VAL_ALL_HEALTH] -= loss
 		if (eq.Value[VAL_ALL_HEALTH]) <= 0 {
 			eq.Value[VAL_ALL_HEALTH] = 0
-			eq.Extra_flags[int(ITEM_BROKEN/32)] |= bitvector_t(1 << (int(ITEM_BROKEN % 32)))
+			eq.Extra_flags[int(ITEM_BROKEN/32)] |= bitvector_t(int32(1 << (int(ITEM_BROKEN % 32))))
 			act(libc.CString("@WYour $p@W completely breaks!@n"), FALSE, nil, eq, unsafe.Pointer(vict), TO_VICT)
 			act(libc.CString("@C$N's@W $p@W completely breaks!@n"), FALSE, nil, eq, unsafe.Pointer(vict), TO_NOTVICT)
 			perform_remove(vict, location)
@@ -1443,7 +1443,7 @@ func update_mob_absorb() {
 		if !IS_NPC(i) {
 			continue
 		}
-		if i.Race != RACE_ANDROID {
+		if int(i.Race) != RACE_ANDROID {
 			continue
 		}
 		if !MOB_FLAGGED(i, MOB_ABSORB) {
@@ -1515,7 +1515,7 @@ func huge_update() {
 		next_v *char_data
 	)
 	for k = object_list; k != nil; k = k.Next {
-		if k.Aucter > 0 && k.AucTime+604800 <= C.time(nil) {
+		if int(k.Aucter) > 0 && k.AucTime+604800 <= libc.GetTime(nil) {
 			if k.In_room != 0 && (func() room_vnum {
 				if k.In_room != room_rnum(-1) && k.In_room <= top_of_world {
 					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k.In_room)))).Number
@@ -1523,7 +1523,7 @@ func huge_update() {
 				return -1
 			}()) == 80 {
 				var inroom room_vnum = room_vnum(k.In_room)
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(inroom)))).Room_flags[int(ROOM_HOUSE_CRASH/32)] &= bitvector_t(^(1 << (int(ROOM_HOUSE_CRASH % 32))))
+				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(inroom)))).Room_flags[int(ROOM_HOUSE_CRASH/32)] &= bitvector_t(int32(^(1 << (int(ROOM_HOUSE_CRASH % 32)))))
 				extract_obj(k)
 				continue
 			}
@@ -1587,7 +1587,7 @@ func huge_update() {
 								continue
 							}
 							dge = handle_dodge(vict)
-							if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+							if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 								act(libc.CString("@C$N@c disappears, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 								act(libc.CString("@cYou disappear, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 								act(libc.CString("@C$N@c disappears, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -1673,7 +1673,7 @@ func huge_update() {
 							continue
 						}
 						dge = handle_dodge(vict)
-						if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+						if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 							act(libc.CString("@C$N@c disappears, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 							act(libc.CString("@cYou disappear, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 							act(libc.CString("@C$N@c disappears, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -1767,7 +1767,7 @@ func huge_update() {
 								continue
 							}
 							dge = handle_dodge(vict)
-							if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+							if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 								act(libc.CString("@C$N@c disappears, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 								act(libc.CString("@cYou disappear, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 								act(libc.CString("@C$N@c disappears, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -1852,7 +1852,7 @@ func huge_update() {
 							continue
 						}
 						dge = handle_dodge(vict)
-						if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+						if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 							act(libc.CString("@C$N@c disappears, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 							act(libc.CString("@cYou disappear, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 							act(libc.CString("@C$N@c disappears, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -1973,7 +1973,7 @@ func homing_update() {
 							hurt(0, 0, ch, vict, nil, dmg, 1)
 						} else if GET_OBJ_VNUM(k) == 84 {
 							var dmg int64 = k.Kicharge
-							if dmg > vict.Max_hit/5 && (vict.Race != RACE_MAJIN && vict.Race != RACE_BIO) {
+							if dmg > vict.Max_hit/5 && (int(vict.Race) != RACE_MAJIN && int(vict.Race) != RACE_BIO) {
 								act(libc.CString("@R$N@r is cut in half by the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 								act(libc.CString("@rYou are cut in half by the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 								act(libc.CString("@R$N@r is cut in half by the attack!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -1989,14 +1989,14 @@ func homing_update() {
 								if !IS_NPC(ch) && ch != vict && PRF_FLAGGED(ch, PRF_AUTOLOOT) {
 									do_get(ch, libc.CString("all corpse"), 0, 0)
 								}
-							} else if dmg > vict.Max_hit/5 && (vict.Race == RACE_MAJIN || vict.Race == RACE_BIO) {
+							} else if dmg > vict.Max_hit/5 && (int(vict.Race) == RACE_MAJIN || int(vict.Race) == RACE_BIO) {
 								if GET_SKILL(vict, SKILL_REGENERATE) > rand_number(1, 101) && vict.Mana >= vict.Max_mana/40 {
 									act(libc.CString("@R$N@r is cut in half by the attack but regenerates a moment later!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 									act(libc.CString("@rYou are cut in half by the attack but regenerate a moment later!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 									act(libc.CString("@R$N@r is cut in half by the attack but regenerates a moment later!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 									vict.Mana -= vict.Max_mana / 40
 									hurt(0, 0, ch, vict, nil, dmg, 1)
-								} else if dmg > vict.Max_hit/5 && (vict.Race == RACE_MAJIN || vict.Race == RACE_BIO) {
+								} else if dmg > vict.Max_hit/5 && (int(vict.Race) == RACE_MAJIN || int(vict.Race) == RACE_BIO) {
 									if GET_SKILL(vict, SKILL_REGENERATE) > rand_number(1, 101) && vict.Mana >= vict.Max_mana/40 {
 										act(libc.CString("@R$N@r is cut in half by the attack but regenerates a moment later!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 										act(libc.CString("@rYou are cut in half by the attack but regenerate a moment later!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -2141,18 +2141,18 @@ func handle_block(ch *char_data) int {
 			return 0
 		} else {
 			var num int = GET_SKILL(ch, SKILL_BLOCK)
-			if ch.Race == RACE_MUTANT && ((ch.Genome[0]) == 3 || (ch.Genome[1]) == 3) {
+			if int(ch.Race) == RACE_MUTANT && ((ch.Genome[0]) == 3 || (ch.Genome[1]) == 3) {
 				num += 10
 			}
-			if (ch.Skills[SKILL_STYLE]) >= 100 {
+			if int(ch.Skills[SKILL_STYLE]) >= 100 {
 				num += 5
-			} else if (ch.Skills[SKILL_STYLE]) >= 80 {
+			} else if int(ch.Skills[SKILL_STYLE]) >= 80 {
 				num += 4
-			} else if (ch.Skills[SKILL_STYLE]) >= 60 {
+			} else if int(ch.Skills[SKILL_STYLE]) >= 60 {
 				num += 3
-			} else if (ch.Skills[SKILL_STYLE]) >= 40 {
+			} else if int(ch.Skills[SKILL_STYLE]) >= 40 {
 				num += 2
-			} else if (ch.Skills[SKILL_STYLE]) >= 20 {
+			} else if int(ch.Skills[SKILL_STYLE]) >= 20 {
 				num += 1
 			}
 			return num
@@ -2194,36 +2194,36 @@ func handle_dodge(ch *char_data) int {
 			return 0
 		} else {
 			var num int = GET_SKILL(ch, SKILL_DODGE)
-			if ch.Race == RACE_MUTANT && ((ch.Genome[0]) == 3 || (ch.Genome[1]) == 3) {
+			if int(ch.Race) == RACE_MUTANT && ((ch.Genome[0]) == 3 || (ch.Genome[1]) == 3) {
 				num += 10
 			}
-			if (ch.Skills[SKILL_STYLE]) >= 100 {
+			if int(ch.Skills[SKILL_STYLE]) >= 100 {
 				num += 5
-			} else if (ch.Skills[SKILL_STYLE]) >= 80 {
+			} else if int(ch.Skills[SKILL_STYLE]) >= 80 {
 				num += 4
-			} else if (ch.Skills[SKILL_STYLE]) >= 60 {
+			} else if int(ch.Skills[SKILL_STYLE]) >= 60 {
 				num += 3
-			} else if (ch.Skills[SKILL_STYLE]) >= 40 {
+			} else if int(ch.Skills[SKILL_STYLE]) >= 40 {
 				num += 2
-			} else if (ch.Skills[SKILL_STYLE]) >= 20 {
+			} else if int(ch.Skills[SKILL_STYLE]) >= 20 {
 				num += 1
 			}
-			if (ch.Skills[SKILL_SURVIVAL]) >= 100 {
+			if int(ch.Skills[SKILL_SURVIVAL]) >= 100 {
 				num += 3
-			} else if (ch.Skills[SKILL_SURVIVAL]) >= 75 {
+			} else if int(ch.Skills[SKILL_SURVIVAL]) >= 75 {
 				num += 2
-			} else if (ch.Skills[SKILL_SURVIVAL]) >= 50 {
+			} else if int(ch.Skills[SKILL_SURVIVAL]) >= 50 {
 				num += 1
 			}
-			if (ch.Skills[SKILL_ROLL]) >= 100 {
+			if int(ch.Skills[SKILL_ROLL]) >= 100 {
 				num += 5
-			} else if (ch.Skills[SKILL_SURVIVAL]) >= 80 {
+			} else if int(ch.Skills[SKILL_SURVIVAL]) >= 80 {
 				num += 4
-			} else if (ch.Skills[SKILL_SURVIVAL]) >= 60 {
+			} else if int(ch.Skills[SKILL_SURVIVAL]) >= 60 {
 				num += 3
-			} else if (ch.Skills[SKILL_SURVIVAL]) >= 40 {
+			} else if int(ch.Skills[SKILL_SURVIVAL]) >= 40 {
 				num += 2
-			} else if (ch.Skills[SKILL_SURVIVAL]) >= 20 {
+			} else if int(ch.Skills[SKILL_SURVIVAL]) >= 20 {
 				num += 1
 			}
 			if group_bonus(ch, 2) == 8 {
@@ -2681,7 +2681,7 @@ func dodge_ki(ch *char_data, vict *char_data, type_ int, type2 int, skill int, s
 			act(libc.CString("@RIt fails to follow after @r$N@R!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 		}
 	}
-	if type_ == 2 && (skill2 != 481 || ch.Chclass == CLASS_FRIEZA) {
+	if type_ == 2 && (skill2 != 481 || int(ch.Chclass) == CLASS_FRIEZA) {
 		if skill2 == 481 {
 			var (
 				chance int = rand_number(25, 50)
@@ -2743,7 +2743,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			dam += int64(float64(ch.Aff_abils.Str) * (float64(dam) * 0.005))
 			if AFF_FLAGGED(ch, AFF_HASS) && !PLR_FLAGGED(ch, PLR_THANDW) {
 				dam *= 2
-				if ch.Chclass == CLASS_KRANE {
+				if int(ch.Chclass) == CLASS_KRANE {
 					if GET_SKILL(ch, SKILL_HASSHUKEN) >= 100 {
 						dam += int64(float64(dam) * 0.3)
 					} else if GET_SKILL(ch, SKILL_HASSHUKEN) >= 60 {
@@ -2754,7 +2754,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 				}
 			} else if AFF_FLAGGED(ch, AFF_INFUSE) {
 				dam += (dam / 100) * int64(GET_SKILL(ch, SKILL_INFUSE)/2)
-				if ch.Chclass == CLASS_JINTO {
+				if int(ch.Chclass) == CLASS_JINTO {
 					if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
 						dam += int64(((float64(dam) * 0.01) * float64(GET_SKILL(ch, SKILL_INFUSE)/2)) * 0.5)
 					} else if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
@@ -2785,12 +2785,12 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			cou2 = int64(((skill / 4) * int((ch.Hit/1300)+int64(ch.Aff_abils.Str))) + 15)
 			dam = large_rand(cou1, cou2)
 			dam += int64(float64(ch.Aff_abils.Str) * (float64(dam) * 0.005))
-			if ch.Race == RACE_ARLIAN {
+			if int(ch.Race) == RACE_ARLIAN {
 				dam += int64(float64(dam) * 0.02)
 			}
 			if AFF_FLAGGED(ch, AFF_HASS) {
 				dam *= 2
-				if ch.Chclass == CLASS_KRANE {
+				if int(ch.Chclass) == CLASS_KRANE {
 					if GET_SKILL(ch, SKILL_HASSHUKEN) >= 100 {
 						dam += int64(float64(dam) * 0.3)
 					} else if GET_SKILL(ch, SKILL_HASSHUKEN) >= 60 {
@@ -2801,7 +2801,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 				}
 			} else if AFF_FLAGGED(ch, AFF_INFUSE) {
 				dam += (dam / 100) * int64(GET_SKILL(ch, SKILL_INFUSE)/2)
-				if ch.Chclass == CLASS_JINTO {
+				if int(ch.Chclass) == CLASS_JINTO {
 					if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
 						dam += int64(((float64(dam) * 0.01) * float64(GET_SKILL(ch, SKILL_INFUSE)/2)) * 0.5)
 					} else if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
@@ -2814,12 +2814,12 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if (ch.Bonuses[BONUS_BRAWLER]) > 0 {
 				dam += int64(float64(dam) * 0.2)
 			}
-			if ch.Chclass == CLASS_ROSHI {
-				if (ch.Skills[SKILL_STYLE]) >= 75 {
+			if int(ch.Chclass) == CLASS_ROSHI {
+				if int(ch.Skills[SKILL_STYLE]) >= 75 {
 					dam += int64(float64(dam) * 0.2)
 				}
-			} else if ch.Chclass == CLASS_ANDSIX {
-				if (ch.Skills[SKILL_STYLE]) >= 75 {
+			} else if int(ch.Chclass) == CLASS_ANDSIX {
+				if int(ch.Skills[SKILL_STYLE]) >= 75 {
 					dam += int64(float64(dam) * 0.1)
 				}
 			}
@@ -2833,12 +2833,12 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			cou2 = int64(((skill / 4) * int((ch.Hit/1000)+int64(ch.Aff_abils.Str))) + 40)
 			dam = large_rand(cou1, cou2)
 			dam += int64(float64(ch.Aff_abils.Str) * (float64(dam) * 0.005))
-			if ch.Race == RACE_ARLIAN {
+			if int(ch.Race) == RACE_ARLIAN {
 				dam += int64(float64(dam) * 0.02)
 			}
 			if AFF_FLAGGED(ch, AFF_INFUSE) {
 				dam += (dam / 100) * int64(GET_SKILL(ch, SKILL_INFUSE)/2)
-				if ch.Chclass == CLASS_JINTO {
+				if int(ch.Chclass) == CLASS_JINTO {
 					if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
 						dam += int64(((float64(dam) * 0.01) * float64(GET_SKILL(ch, SKILL_INFUSE)/2)) * 0.5)
 					} else if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
@@ -2848,13 +2848,13 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 					}
 				}
 			}
-			if ch.Chclass == CLASS_ANDSIX {
-				if (ch.Skills[SKILL_STYLE]) >= 75 {
+			if int(ch.Chclass) == CLASS_ANDSIX {
+				if int(ch.Skills[SKILL_STYLE]) >= 75 {
 					dam += int64(float64(dam) * 0.1)
 				}
 			}
-			if ch.Chclass == CLASS_KRANE {
-				if (ch.Skills[SKILL_STYLE]) >= 75 {
+			if int(ch.Chclass) == CLASS_KRANE {
+				if int(ch.Skills[SKILL_STYLE]) >= 75 {
 					dam += int64(float64(dam) * 0.2)
 				}
 			}
@@ -2868,12 +2868,12 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			cou2 = int64(((skill / 4) * int((ch.Hit/1050)+int64(ch.Aff_abils.Str))) + 100)
 			dam = large_rand(cou1, cou2)
 			dam += int64(float64(ch.Aff_abils.Str) * (float64(dam) * 0.005))
-			if ch.Race == RACE_ARLIAN {
+			if int(ch.Race) == RACE_ARLIAN {
 				dam += int64(float64(dam) * 0.02)
 			}
 			if AFF_FLAGGED(ch, AFF_HASS) {
 				dam *= 2
-				if ch.Chclass == CLASS_KRANE {
+				if int(ch.Chclass) == CLASS_KRANE {
 					if GET_SKILL(ch, SKILL_HASSHUKEN) >= 100 {
 						dam += int64(float64(dam) * 0.3)
 					} else if GET_SKILL(ch, SKILL_HASSHUKEN) >= 60 {
@@ -2884,7 +2884,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 				}
 			} else if AFF_FLAGGED(ch, AFF_INFUSE) {
 				dam += (dam / 100) * int64(GET_SKILL(ch, SKILL_INFUSE)/2)
-				if ch.Chclass == CLASS_JINTO {
+				if int(ch.Chclass) == CLASS_JINTO {
 					if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
 						dam += int64(((float64(dam) * 0.01) * float64(GET_SKILL(ch, SKILL_INFUSE)/2)) * 0.5)
 					} else if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
@@ -2897,8 +2897,8 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if (ch.Bonuses[BONUS_BRAWLER]) > 0 {
 				dam += int64(float64(dam) * 0.2)
 			}
-			if ch.Chclass == CLASS_ANDSIX {
-				if (ch.Skills[SKILL_STYLE]) >= 75 {
+			if int(ch.Chclass) == CLASS_ANDSIX {
+				if int(ch.Skills[SKILL_STYLE]) >= 75 {
 					dam += int64(float64(dam) * 0.1)
 				}
 			}
@@ -2912,12 +2912,12 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			cou2 = int64(((skill / 4) * int((ch.Hit/1000)+int64(ch.Aff_abils.Str))) + 150)
 			dam = large_rand(cou1, cou2)
 			dam += int64(float64(ch.Aff_abils.Str) * (float64(dam) * 0.005))
-			if ch.Race == RACE_ARLIAN {
+			if int(ch.Race) == RACE_ARLIAN {
 				dam += int64(float64(dam) * 0.02)
 			}
 			if AFF_FLAGGED(ch, AFF_INFUSE) {
 				dam += (dam / 100) * int64(GET_SKILL(ch, SKILL_INFUSE)/2)
-				if ch.Chclass == CLASS_JINTO {
+				if int(ch.Chclass) == CLASS_JINTO {
 					if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
 						dam += int64(((float64(dam) * 0.01) * float64(GET_SKILL(ch, SKILL_INFUSE)/2)) * 0.5)
 					} else if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
@@ -2927,8 +2927,8 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 					}
 				}
 			}
-			if ch.Chclass == CLASS_ANDSIX {
-				if (ch.Skills[SKILL_STYLE]) >= 75 {
+			if int(ch.Chclass) == CLASS_ANDSIX {
+				if int(ch.Skills[SKILL_STYLE]) >= 75 {
 					dam += int64(float64(dam) * 0.1)
 				}
 			}
@@ -2942,12 +2942,12 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			cou2 = int64(((skill / 4) * int((ch.Hit/800)+int64(ch.Aff_abils.Str))) + 500)
 			dam = large_rand(cou1, cou2)
 			dam += int64(float64(ch.Aff_abils.Str) * (float64(dam) * 0.005))
-			if ch.Race == RACE_ARLIAN {
+			if int(ch.Race) == RACE_ARLIAN {
 				dam += int64(float64(dam) * 0.02)
 			}
 			if AFF_FLAGGED(ch, AFF_INFUSE) {
 				dam += (dam / 100) * int64(GET_SKILL(ch, SKILL_INFUSE)/2)
-				if ch.Chclass == CLASS_JINTO {
+				if int(ch.Chclass) == CLASS_JINTO {
 					if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
 						dam += int64(((float64(dam) * 0.01) * float64(GET_SKILL(ch, SKILL_INFUSE)/2)) * 0.5)
 					} else if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
@@ -2960,8 +2960,8 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if (ch.Bonuses[BONUS_BRAWLER]) > 0 {
 				dam += int64(float64(dam) * 0.2)
 			}
-			if ch.Chclass == CLASS_ANDSIX {
-				if (ch.Skills[SKILL_STYLE]) >= 75 {
+			if int(ch.Chclass) == CLASS_ANDSIX {
+				if int(ch.Skills[SKILL_STYLE]) >= 75 {
 					dam += int64(float64(dam) * 0.1)
 				}
 			}
@@ -2975,12 +2975,12 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			cou2 = int64(((skill / 4) * int((ch.Hit/900)+int64(ch.Aff_abils.Str))) + 350)
 			dam = large_rand(cou1, cou2)
 			dam += int64(float64(ch.Aff_abils.Str) * (float64(dam) * 0.005))
-			if ch.Race == RACE_ARLIAN {
+			if int(ch.Race) == RACE_ARLIAN {
 				dam += int64(float64(dam) * 0.02)
 			}
 			if AFF_FLAGGED(ch, AFF_HASS) {
 				dam *= 2
-				if ch.Chclass == CLASS_KRANE {
+				if int(ch.Chclass) == CLASS_KRANE {
 					if GET_SKILL(ch, SKILL_HASSHUKEN) >= 100 {
 						dam += int64(float64(dam) * 0.3)
 					} else if GET_SKILL(ch, SKILL_HASSHUKEN) >= 60 {
@@ -2991,7 +2991,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 				}
 			} else if AFF_FLAGGED(ch, AFF_INFUSE) {
 				dam += (dam / 100) * int64(GET_SKILL(ch, SKILL_INFUSE)/2)
-				if ch.Chclass == CLASS_JINTO {
+				if int(ch.Chclass) == CLASS_JINTO {
 					if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
 						dam += int64(((float64(dam) * 0.01) * float64(GET_SKILL(ch, SKILL_INFUSE)/2)) * 0.5)
 					} else if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
@@ -3004,8 +3004,8 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if (ch.Bonuses[BONUS_BRAWLER]) > 0 {
 				dam += int64(float64(dam) * 0.2)
 			}
-			if ch.Chclass == CLASS_ANDSIX {
-				if (ch.Skills[SKILL_STYLE]) >= 75 {
+			if int(ch.Chclass) == CLASS_ANDSIX {
+				if int(ch.Skills[SKILL_STYLE]) >= 75 {
 					dam += int64(float64(dam) * 0.1)
 				}
 			}
@@ -3019,12 +3019,12 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			cou2 = int64(((skill / 4) * int((ch.Hit/500)+int64(ch.Aff_abils.Str))) + 8000)
 			dam = large_rand(cou1, cou2)
 			dam += int64(float64(ch.Aff_abils.Str) * (float64(dam) * 0.005))
-			if ch.Race == RACE_ARLIAN {
+			if int(ch.Race) == RACE_ARLIAN {
 				dam += int64(float64(dam) * 0.02)
 			}
 			if AFF_FLAGGED(ch, AFF_INFUSE) {
 				dam += (dam / 100) * int64(GET_SKILL(ch, SKILL_INFUSE)/2)
-				if ch.Chclass == CLASS_JINTO {
+				if int(ch.Chclass) == CLASS_JINTO {
 					if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
 						dam += int64(((float64(dam) * 0.01) * float64(GET_SKILL(ch, SKILL_INFUSE)/2)) * 0.5)
 					} else if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
@@ -3037,8 +3037,8 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if (ch.Bonuses[BONUS_BRAWLER]) > 0 {
 				dam += int64(float64(dam) * 0.2)
 			}
-			if ch.Chclass == CLASS_ANDSIX {
-				if (ch.Skills[SKILL_STYLE]) >= 75 {
+			if int(ch.Chclass) == CLASS_ANDSIX {
+				if int(ch.Skills[SKILL_STYLE]) >= 75 {
 					dam += int64(float64(dam) * 0.1)
 				}
 			}
@@ -3053,7 +3053,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 1000)
 			}
-			if ch.Race == RACE_HUMAN {
+			if int(ch.Race) == RACE_HUMAN {
 				dam += (dam / 100) * 25
 			}
 		case 8:
@@ -3061,12 +3061,12 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			cou2 = int64(((skill / 4) * int((ch.Hit/400)+int64(ch.Aff_abils.Str))) + 12500)
 			dam = large_rand(cou1, cou2)
 			dam += int64(float64(ch.Aff_abils.Str) * (float64(dam) * 0.005))
-			if ch.Race == RACE_ARLIAN {
+			if int(ch.Race) == RACE_ARLIAN {
 				dam += int64(float64(dam) * 0.02)
 			}
 			if AFF_FLAGGED(ch, AFF_INFUSE) {
 				dam += (dam / 100) * int64(GET_SKILL(ch, SKILL_INFUSE)/2)
-				if ch.Chclass == CLASS_JINTO {
+				if int(ch.Chclass) == CLASS_JINTO {
 					if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
 						dam += int64(((float64(dam) * 0.01) * float64(GET_SKILL(ch, SKILL_INFUSE)/2)) * 0.5)
 					} else if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
@@ -3079,8 +3079,8 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if (ch.Bonuses[BONUS_BRAWLER]) > 0 {
 				dam += int64(float64(dam) * 0.2)
 			}
-			if ch.Chclass == CLASS_ANDSIX {
-				if (ch.Skills[SKILL_STYLE]) >= 75 {
+			if int(ch.Chclass) == CLASS_ANDSIX {
+				if int(ch.Skills[SKILL_STYLE]) >= 75 {
 					dam += int64(float64(dam) * 0.1)
 				}
 			}
@@ -3095,7 +3095,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 500)
 			}
-			if ch.Race == RACE_HUMAN {
+			if int(ch.Race) == RACE_HUMAN {
 				dam += (dam / 100) * 25
 			}
 		case 10:
@@ -3104,7 +3104,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_HUMAN {
+			if int(ch.Race) == RACE_HUMAN {
 				dam += (dam / 100) * 25
 			}
 		case 11:
@@ -3114,7 +3114,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_HUMAN {
+			if int(ch.Race) == RACE_HUMAN {
 				dam += (dam / 100) * 25
 			}
 		case 12:
@@ -3124,7 +3124,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_HUMAN {
+			if int(ch.Race) == RACE_HUMAN {
 				dam += (dam / 100) * 25
 			}
 		case 13:
@@ -3134,7 +3134,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += int64((float64(dam) * 0.005) * float64(focus))
 			}
-			if ch.Race == RACE_HUMAN {
+			if int(ch.Race) == RACE_HUMAN {
 				dam += (dam / 100) * 15
 				if skill == 101 {
 					dam = int64(float64(dam) * 1.1)
@@ -3151,7 +3151,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_HUMAN {
+			if int(ch.Race) == RACE_HUMAN {
 				dam += (dam / 100) * 15
 				if skill == 101 {
 					dam = int64(float64(dam) * 1.1)
@@ -3168,7 +3168,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_HUMAN {
+			if int(ch.Race) == RACE_HUMAN {
 				dam += (dam / 100) * 15
 				if skill == 101 {
 					dam = int64(float64(dam) * 1.1)
@@ -3185,7 +3185,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_HUMAN {
+			if int(ch.Race) == RACE_HUMAN {
 				dam += (dam / 100) * 15
 				if skill == 101 {
 					dam = int64(float64(dam) * 1.1)
@@ -3202,7 +3202,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_HUMAN {
+			if int(ch.Race) == RACE_HUMAN {
 				dam += (dam / 100) * 15
 				if skill == 101 {
 					dam = int64(float64(dam) * 1.1)
@@ -3219,7 +3219,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_HUMAN {
+			if int(ch.Race) == RACE_HUMAN {
 				dam += (dam / 100) * 15
 				if skill == 101 {
 					dam = int64(float64(dam) * 1.1)
@@ -3236,7 +3236,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_HUMAN {
+			if int(ch.Race) == RACE_HUMAN {
 				dam += (dam / 100) * 15
 				if skill == 101 {
 					dam = int64(float64(dam) * 1.1)
@@ -3253,7 +3253,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_HUMAN {
+			if int(ch.Race) == RACE_HUMAN {
 				dam += (dam / 100) * 15
 				if skill == 101 {
 					dam = int64(float64(dam) * 1.1)
@@ -3270,7 +3270,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_HUMAN {
+			if int(ch.Race) == RACE_HUMAN {
 				dam += (dam / 100) * 15
 				if skill == 101 {
 					dam = int64(float64(dam) * 1.1)
@@ -3298,11 +3298,11 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if (ch.Bonuses[BONUS_BRAWLER]) > 0 {
 				dam += int64(float64(dam) * 0.2)
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 24:
@@ -3312,14 +3312,14 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_HUMAN {
+			if int(ch.Race) == RACE_HUMAN {
 				dam += (dam / 100) * 15
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 25:
@@ -3329,14 +3329,14 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_SAIYAN {
+			if int(ch.Race) == RACE_SAIYAN {
 				dam += (dam / 100) * 20
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 26:
@@ -3370,14 +3370,14 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 					dam += focus * (dam / 200)
 				}
 			}
-			if ch.Race == RACE_SAIYAN {
+			if int(ch.Race) == RACE_SAIYAN {
 				dam += (dam / 100) * 20
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 27:
@@ -3388,14 +3388,14 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_SAIYAN {
+			if int(ch.Race) == RACE_SAIYAN {
 				dam += (dam / 100) * 20
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 28:
@@ -3405,14 +3405,14 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_SAIYAN {
+			if int(ch.Race) == RACE_SAIYAN {
 				dam += (dam / 100) * 20
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 29:
@@ -3422,11 +3422,11 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 30:
@@ -3436,14 +3436,14 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_SAIYAN {
+			if int(ch.Race) == RACE_SAIYAN {
 				dam += (dam / 100) * 20
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 31:
@@ -3453,14 +3453,14 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_SAIYAN {
+			if int(ch.Race) == RACE_SAIYAN {
 				dam += (dam / 100) * 20
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 32:
@@ -3470,11 +3470,11 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 33:
@@ -3484,7 +3484,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_SAIYAN {
+			if int(ch.Race) == RACE_SAIYAN {
 				dam += (dam / 100) * 20
 			}
 		case 34:
@@ -3494,14 +3494,14 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_ICER || ch.Race == RACE_BIO && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) {
+			if int(ch.Race) == RACE_ICER || int(ch.Race) == RACE_BIO && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) {
 				dam += (dam / 100) * 20
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 35:
@@ -3511,14 +3511,14 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_ICER || ch.Race == RACE_BIO && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) {
+			if int(ch.Race) == RACE_ICER || int(ch.Race) == RACE_BIO && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) {
 				dam += (dam / 100) * 20
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 36:
@@ -3528,14 +3528,14 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_ICER || ch.Race == RACE_BIO && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) {
+			if int(ch.Race) == RACE_ICER || int(ch.Race) == RACE_BIO && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) {
 				dam += (dam / 100) * 20
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 37:
@@ -3545,14 +3545,14 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_ICER || ch.Race == RACE_BIO && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) {
+			if int(ch.Race) == RACE_ICER || int(ch.Race) == RACE_BIO && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) {
 				dam += (dam / 100) * 20
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 38:
@@ -3562,14 +3562,14 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_ICER || ch.Race == RACE_BIO && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) {
+			if int(ch.Race) == RACE_ICER || int(ch.Race) == RACE_BIO && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) {
 				dam += (dam / 100) * 20
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 39:
@@ -3579,14 +3579,14 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_ICER || ch.Race == RACE_BIO && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) {
+			if int(ch.Race) == RACE_ICER || int(ch.Race) == RACE_BIO && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) {
 				dam += (dam / 100) * 20
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 40:
@@ -3596,14 +3596,14 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_KAI {
+			if int(ch.Race) == RACE_KAI {
 				dam += (dam / 100) * 20
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 41:
@@ -3613,14 +3613,14 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_KAI {
+			if int(ch.Race) == RACE_KAI {
 				dam += (dam / 100) * 20
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 42:
@@ -3630,11 +3630,11 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 43:
@@ -3644,11 +3644,11 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 44:
@@ -3658,11 +3658,11 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 45:
@@ -3672,11 +3672,11 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 46:
@@ -3735,14 +3735,14 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			dam = large_rand(cou1, cou2)
 			dam += int64(GET_LEVEL(ch) * 100)
 			dam += int64(float64(ch.Aff_abils.Str) * (float64(dam) * 0.005))
-			if ch.Race == RACE_ARLIAN {
+			if int(ch.Race) == RACE_ARLIAN {
 				dam += int64(float64(dam) * 0.02)
 			}
 			if (ch.Bonuses[BONUS_BRAWLER]) > 0 {
 				dam += int64(float64(dam) * 0.2)
 			}
-			if ch.Chclass == CLASS_ANDSIX {
-				if (ch.Skills[SKILL_STYLE]) >= 75 {
+			if int(ch.Chclass) == CLASS_ANDSIX {
+				if int(ch.Skills[SKILL_STYLE]) >= 75 {
 					dam += int64(float64(dam) * 0.1)
 				}
 			}
@@ -3753,7 +3753,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			}
 			if AFF_FLAGGED(ch, AFF_INFUSE) {
 				dam += (dam / 100) * int64(GET_SKILL(ch, SKILL_INFUSE)/2)
-				if ch.Chclass == CLASS_JINTO {
+				if int(ch.Chclass) == CLASS_JINTO {
 					if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
 						dam += int64(((float64(dam) * 0.01) * float64(GET_SKILL(ch, SKILL_INFUSE)/2)) * 0.5)
 					} else if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
@@ -3769,14 +3769,14 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			dam = large_rand(cou1, cou2)
 			dam += int64(GET_LEVEL(ch) * 100)
 			dam += int64(float64(ch.Aff_abils.Str) * (float64(dam) * 0.005))
-			if ch.Race == RACE_ARLIAN {
+			if int(ch.Race) == RACE_ARLIAN {
 				dam += int64(float64(dam) * 0.02)
 			}
 			if (ch.Bonuses[BONUS_BRAWLER]) > 0 {
 				dam += int64(float64(dam) * 0.2)
 			}
-			if ch.Chclass == CLASS_ANDSIX {
-				if (ch.Skills[SKILL_STYLE]) >= 75 {
+			if int(ch.Chclass) == CLASS_ANDSIX {
+				if int(ch.Skills[SKILL_STYLE]) >= 75 {
 					dam += int64(float64(dam) * 0.1)
 				}
 			}
@@ -3787,7 +3787,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			}
 			if AFF_FLAGGED(ch, AFF_INFUSE) {
 				dam += (dam / 100) * int64(GET_SKILL(ch, SKILL_INFUSE)/2)
-				if ch.Chclass == CLASS_JINTO {
+				if int(ch.Chclass) == CLASS_JINTO {
 					if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
 						dam += int64(((float64(dam) * 0.01) * float64(GET_SKILL(ch, SKILL_INFUSE)/2)) * 0.5)
 					} else if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
@@ -3804,7 +3804,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_HUMAN {
+			if int(ch.Race) == RACE_HUMAN {
 				dam += (dam / 100) * 15
 			}
 		case 54:
@@ -3814,14 +3814,14 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_SAIYAN {
+			if int(ch.Race) == RACE_SAIYAN {
 				dam += (dam / 100) * 20
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 55:
@@ -3831,11 +3831,11 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
-			if ch.Race == RACE_HUMAN && skill == 101 {
+			if int(ch.Race) == RACE_HUMAN && skill == 101 {
 				dam = int64(float64(dam) * 1.1)
-			} else if ch.Race == RACE_HUMAN && skill == 102 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 102 {
 				dam = int64(float64(dam) * 1.2)
-			} else if ch.Race == RACE_HUMAN && skill == 103 {
+			} else if int(ch.Race) == RACE_HUMAN && skill == 103 {
 				dam = int64(float64(dam) * 1.3)
 			}
 		case 56:
@@ -3846,7 +3846,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			dam += int64(float64(ch.Aff_abils.Str) * (float64(dam) * 0.005))
 			if AFF_FLAGGED(ch, AFF_INFUSE) {
 				dam += (dam / 100) * int64(GET_SKILL(ch, SKILL_INFUSE)/2)
-				if ch.Chclass == CLASS_JINTO {
+				if int(ch.Chclass) == CLASS_JINTO {
 					if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
 						dam += int64(((float64(dam) * 0.01) * float64(GET_SKILL(ch, SKILL_INFUSE)/2)) * 0.5)
 					} else if GET_SKILL(ch, SKILL_INFUSE) >= 100 {
@@ -3900,7 +3900,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		} else if mobperc <= 29 {
 			dam = int64(float64(dam) * 0.6)
 		}
-		if ch.Chclass != CLASS_NPC_COMMONER {
+		if int(ch.Chclass) != CLASS_NPC_COMMONER {
 			dam += int64(float64(dam) * 0.3)
 		}
 	}
@@ -3913,13 +3913,13 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		act(libc.CString("Swirling energy flows around $n as $e releases $s rage in the attack!"), TRUE, ch, nil, nil, TO_ROOM)
 		if rand_number(1, 10) >= 7 {
 			send_to_char(ch, libc.CString("You feel less angry.\r\n"))
-			ch.Act[int(PLR_FURY/32)] &= bitvector_t(^(1 << (int(PLR_FURY % 32))))
+			ch.Act[int(PLR_FURY/32)] &= bitvector_t(int32(^(1 << (int(PLR_FURY % 32)))))
 		}
 	} else if PLR_FLAGGED(ch, PLR_FURY) {
 		dam *= 2
 		act(libc.CString("Your rage magnifies your attack power!"), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("Swirling energy flows around $n as $e releases $s rage in the attack!"), TRUE, ch, nil, nil, TO_ROOM)
-		ch.Act[int(PLR_FURY/32)] &= bitvector_t(^(1 << (int(PLR_FURY % 32))))
+		ch.Act[int(PLR_FURY/32)] &= bitvector_t(int32(^(1 << (int(PLR_FURY % 32)))))
 	}
 	if type_ == -1 || type_ == 0 || type_ == 1 || type_ == 2 || type_ == 3 || type_ == 4 || type_ == 5 || type_ == 6 || type_ == 8 {
 		if !IS_NPC(ch) {
@@ -3966,7 +3966,7 @@ func saiyan_gain(ch *char_data, vict *char_data) {
 		gain += rand_number(GET_LEVEL(ch)*5, GET_LEVEL(ch)*8)
 	} else {
 	}
-	if ch.Race == RACE_BIO && ((ch.Genome[0]) == 2 || (ch.Genome[1]) == 2) {
+	if int(ch.Race) == RACE_BIO && ((ch.Genome[0]) == 2 || (ch.Genome[1]) == 2) {
 		gain /= 2
 	}
 	if rand_number(1, 22) >= 18 && (GET_LEVEL(ch) == 100 || level_exp(ch, GET_LEVEL(ch)+1)-int(ch.Exp) > 0) {
@@ -4128,13 +4128,13 @@ func spar_gain(ch *char_data, vict *char_data, type_ int, dmg int64) {
 					}
 				}
 			}
-			if ch.Race == RACE_SAIYAN {
+			if int(ch.Race) == RACE_SAIYAN {
 				gaincalc = int64(float64(gaincalc) + float64(gaincalc)*0.5)
 			}
-			if ch.Race == RACE_HALFBREED {
+			if int(ch.Race) == RACE_HALFBREED {
 				gaincalc = int64(float64(gaincalc) + float64(gaincalc)*0.4)
 			}
-			if ch.Race == RACE_ICER || ch.Race == RACE_BIO && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) {
+			if int(ch.Race) == RACE_ICER || int(ch.Race) == RACE_BIO && ((ch.Genome[0]) == 4 || (ch.Genome[1]) == 4) {
 				gaincalc = int64(float64(gaincalc) - float64(gaincalc)*0.2)
 			}
 			if ROOM_FLAGGED(ch.In_room, ROOM_WORKOUT) || ROOM_FLAGGED(ch.In_room, ROOM_HBTC) {
@@ -4272,10 +4272,10 @@ func spar_gain(ch *char_data, vict *char_data, type_ int, dmg int64) {
 			} else if difference >= 10 {
 				gain = int64(float64(gain) * 0.5)
 			}
-			if vict.Race == RACE_SAIYAN || vict.Race == RACE_HALFBREED {
+			if int(vict.Race) == RACE_SAIYAN || int(vict.Race) == RACE_HALFBREED {
 				gain = int64(float64(gain) + float64(gain)*0.3)
 			}
-			if vict.Race == RACE_ICER {
+			if int(vict.Race) == RACE_ICER {
 				gain = int64(float64(gain) - float64(gain)*0.1)
 			}
 			if ROOM_FLAGGED(ch.In_room, ROOM_WORKOUT) || ROOM_FLAGGED(ch.In_room, ROOM_HBTC) {
@@ -4319,7 +4319,7 @@ func spar_gain(ch *char_data, vict *char_data, type_ int, dmg int64) {
 	}
 }
 func can_grav(ch *char_data) int {
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10 && ch.Max_hit < 5000 && ch.Chclass != CLASS_BARDOCK && !IS_NPC(ch) {
+	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10 && ch.Max_hit < 5000 && int(ch.Chclass) != CLASS_BARDOCK && !IS_NPC(ch) {
 		send_to_char(ch, libc.CString("You are hardly able to move in this gravity!\r\n"))
 		return 0
 	} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 20 && ch.Max_hit < 20000 {
@@ -4437,7 +4437,7 @@ func can_kill(ch *char_data, vict *char_data, obj *obj_data, num int) int {
 		} else if ch.Absorbby != nil {
 			send_to_char(ch, libc.CString("You are too busy being absorbed by %s!\r\n"), GET_NAME(ch.Absorbby))
 			return 0
-		} else if (vict.Altitude-1 > ch.Altitude || vict.Altitude < ch.Altitude-1) && ch.Race == RACE_NAMEK {
+		} else if (vict.Altitude-1 > ch.Altitude || vict.Altitude < ch.Altitude-1) && int(ch.Race) == RACE_NAMEK {
 			act(libc.CString("@GYou stretch your limbs toward @g$N@G in an attempt to hit $M!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 			act(libc.CString("@g$n@G stretches $s limbs toward @RYOU@G in an attempt to land a hit!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 			act(libc.CString("@g$n@G stretches $s limbs toward @g$N@G in an attempt to hit $M!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
@@ -4596,7 +4596,7 @@ func pcost(ch *char_data, ki float64, st int64) {
 		} else if !IS_NPC(ch) && (ch.Bonuses[BONUS_SLACKER]) > 0 {
 			st += int64(float64(st) * 0.25)
 		}
-		if ch.Race == RACE_ICER {
+		if int(ch.Race) == RACE_ICER {
 			if PLR_FLAGGED(ch, PLR_TRANS1) {
 				st = int64(float64(st) * 1.05)
 			} else if PLR_FLAGGED(ch, PLR_TRANS2) {
@@ -4640,10 +4640,10 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 		dead      int   = FALSE
 	)
 	if type_ <= 0 {
-		if ch.Race == RACE_SAIYAN && PLR_FLAGGED(ch, PLR_STAIL) {
+		if int(ch.Race) == RACE_SAIYAN && PLR_FLAGGED(ch, PLR_STAIL) {
 			dmg += int64(float64(dmg) * 0.15)
 		}
-		if ch.Race == RACE_NAMEK && (ch.Equipment[WEAR_HEAD]) == nil {
+		if int(ch.Race) == RACE_NAMEK && (ch.Equipment[WEAR_HEAD]) == nil {
 			dmg += int64(float64(dmg) * 0.25)
 		}
 		if group_bonus(ch, 2) == 4 {
@@ -4688,7 +4688,7 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 		if ch.Kaioken > 0 {
 			dmg += (dmg / 100) * int64(ch.Kaioken*2)
 		}
-		if vict.Race == RACE_MUTANT && ((vict.Genome[0]) == 8 || (vict.Genome[1]) == 8) && type_ == 0 {
+		if int(vict.Race) == RACE_MUTANT && ((vict.Genome[0]) == 8 || (vict.Genome[1]) == 8) && type_ == 0 {
 			var drain int64 = int64(float64(dmg) * 0.1)
 			dmg -= drain
 			ch.Move -= drain
@@ -4812,25 +4812,25 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 		var conlimit int64 = 2000000000
 		if type_ == 0 {
 			if vict.Max_hit < conlimit {
-				index += (vict.Max_hit / 1500) * int64(vict.Aff_abils.Con/2)
+				index += (vict.Max_hit / 1500) * int64(int(vict.Aff_abils.Con)/2)
 			} else if vict.Max_hit < conlimit*2 {
-				index += (vict.Max_hit / 2500) * int64(vict.Aff_abils.Con/2)
+				index += (vict.Max_hit / 2500) * int64(int(vict.Aff_abils.Con)/2)
 			} else if vict.Max_hit < conlimit*3 {
-				index += (vict.Max_hit / 3500) * int64(vict.Aff_abils.Con/2)
+				index += (vict.Max_hit / 3500) * int64(int(vict.Aff_abils.Con)/2)
 			} else if vict.Max_hit < conlimit*5 {
-				index += (vict.Max_hit / 6000) * int64(vict.Aff_abils.Con/2)
+				index += (vict.Max_hit / 6000) * int64(int(vict.Aff_abils.Con)/2)
 			} else if vict.Max_hit < conlimit*10 {
-				index += (vict.Max_hit / 8500) * int64(vict.Aff_abils.Con/2)
+				index += (vict.Max_hit / 8500) * int64(int(vict.Aff_abils.Con)/2)
 			} else if vict.Max_hit < conlimit*15 {
-				index += (vict.Max_hit / 10000) * int64(vict.Aff_abils.Con/2)
+				index += (vict.Max_hit / 10000) * int64(int(vict.Aff_abils.Con)/2)
 			} else if vict.Max_hit < conlimit*20 {
-				index += (vict.Max_hit / 12500) * int64(vict.Aff_abils.Con/2)
+				index += (vict.Max_hit / 12500) * int64(int(vict.Aff_abils.Con)/2)
 			} else if vict.Max_hit < conlimit*25 {
-				index += (vict.Max_hit / 16000) * int64(vict.Aff_abils.Con/2)
+				index += (vict.Max_hit / 16000) * int64(int(vict.Aff_abils.Con)/2)
 			} else if vict.Max_hit < conlimit*30 {
-				index += (vict.Max_hit / 22000) * int64(vict.Aff_abils.Con/2)
+				index += (vict.Max_hit / 22000) * int64(int(vict.Aff_abils.Con)/2)
 			} else if vict.Max_hit > conlimit*30 {
-				index += (vict.Max_hit / 25000) * int64(vict.Aff_abils.Con/2)
+				index += (vict.Max_hit / 25000) * int64(int(vict.Aff_abils.Con)/2)
 			}
 		}
 		if IS_NPC(vict) && GET_LEVEL(vict) > 0 {
@@ -4862,7 +4862,7 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 		if AFF_FLAGGED(vict, AFF_WITHER) {
 			dmg += int64((float64(dmg) * 0.01) * 20)
 		}
-		if !IS_NPC(vict) && (vict.Player_specials.Conditions[DRUNK]) > 4 {
+		if !IS_NPC(vict) && int(vict.Player_specials.Conditions[DRUNK]) > 4 {
 			dmg -= int64((float64(dmg) * 0.001) * float64(vict.Player_specials.Conditions[DRUNK]))
 		}
 		if AFF_FLAGGED(vict, AFF_EARMOR) {
@@ -4872,7 +4872,7 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 			advanced_energy(vict, dmg)
 			dmg -= int64((float64(dmg) * 0.0005) * float64(vict.Aff_abils.Wis))
 		}
-		if vict.Race == RACE_MUTANT {
+		if int(vict.Race) == RACE_MUTANT {
 			if type_ <= 0 {
 				dmg -= int64(float64(dmg) * 0.3)
 			} else if type_ > 0 {
@@ -4895,18 +4895,18 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 		if PLR_FLAGGED(vict, PLR_FURY) {
 			dmg -= int64(float64(dmg) * 0.1)
 		}
-		if vict.Race == RACE_MAJIN {
+		if int(vict.Race) == RACE_MAJIN {
 			if type_ <= 0 {
 				dmg -= int64(float64(dmg) * 0.5)
 			}
 		}
-		if vict.Race == RACE_KAI {
+		if int(vict.Race) == RACE_KAI {
 			dmg += int64(float64(dmg) * 0.15)
 		}
 		if ch.Grappling == vict && ch.Grap == 3 {
 			dmg += (dmg / 100) * 20
 		}
-		if vict.Clan != nil && C.strcasecmp(vict.Clan, libc.CString("Heavenly Kaios")) == 0 {
+		if vict.Clan != nil && libc.StrCaseCmp(vict.Clan, libc.CString("Heavenly Kaios")) == 0 {
 			if vict.Mana >= vict.Max_mana/2 {
 				dmg -= (dmg / 100) * 20
 				act(libc.CString("@wYou are covered in a pristine @Cglow@w.@n"), TRUE, vict, nil, nil, TO_CHAR)
@@ -4953,8 +4953,8 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 				}
 			}
 		}
-		if !AFF_FLAGGED(vict, AFF_KNOCKED) && (vict.Position == POS_SITTING || vict.Position == POS_RESTING) && GET_SKILL(vict, SKILL_ROLL) > axion_dice(0) {
-			var rollcost int64 = (vict.Max_hit / 300) * int64(ch.Aff_abils.Str/2)
+		if !AFF_FLAGGED(vict, AFF_KNOCKED) && (int(vict.Position) == POS_SITTING || int(vict.Position) == POS_RESTING) && GET_SKILL(vict, SKILL_ROLL) > axion_dice(0) {
+			var rollcost int64 = (vict.Max_hit / 300) * int64(int(ch.Aff_abils.Str)/2)
 			if vict.Move >= rollcost {
 				act(libc.CString("@GYou roll to your feet in an agile fashion!@n"), TRUE, vict, nil, nil, TO_CHAR)
 				act(libc.CString("@G$n rolls to $s feet in an agile fashion!@n"), TRUE, vict, nil, nil, TO_ROOM)
@@ -5040,7 +5040,7 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 		if vict.Player_specials.Carrying != nil && float64(dmg) > (float64(gear_pl(vict))*0.01) && rand_number(1, 10) >= 8 {
 			carry_drop(vict, 2)
 		}
-		if vict.Position == POS_SITTING && IS_NPC(vict) && float64(vict.Hit) >= float64(gear_pl(vict))*0.98 {
+		if int(vict.Position) == POS_SITTING && IS_NPC(vict) && float64(vict.Hit) >= float64(gear_pl(vict))*0.98 {
 			do_stand(vict, nil, 0, 0)
 		}
 		var suppresso int = FALSE
@@ -5103,10 +5103,10 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 			}
 		} else if is_sparring(ch) && !is_sparring(vict) && IS_NPC(ch) {
 			act(libc.CString("@w$n@w stops sparring!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_ROOM)
-			ch.Act[int(MOB_SPAR/32)] &= bitvector_t(^(1 << (int(MOB_SPAR % 32))))
+			ch.Act[int(MOB_SPAR/32)] &= bitvector_t(int32(^(1 << (int(MOB_SPAR % 32)))))
 		} else if !is_sparring(ch) && is_sparring(vict) && IS_NPC(vict) {
 			act(libc.CString("@w$n@w stops sparring!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_ROOM)
-			vict.Act[int(MOB_SPAR/32)] &= bitvector_t(^(1 << (int(MOB_SPAR % 32))))
+			vict.Act[int(MOB_SPAR/32)] &= bitvector_t(int32(^(1 << (int(MOB_SPAR % 32)))))
 		}
 		if vict.Suppressed > 0 && vict.Suppression > 0 {
 			if vict.Suppressed > dmg {
@@ -5151,46 +5151,46 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 				}
 				vict.Position = POS_SITTING
 				char_from_room(vict)
-				if vict.Chclass == CLASS_ROSHI {
+				if int(vict.Chclass) == CLASS_ROSHI {
 					char_to_room(vict, real_room(1130))
 				}
-				if vict.Chclass == CLASS_KABITO {
+				if int(vict.Chclass) == CLASS_KABITO {
 					char_to_room(vict, real_room(0x2F42))
 				}
-				if vict.Chclass == CLASS_NAIL {
+				if int(vict.Chclass) == CLASS_NAIL {
 					char_to_room(vict, real_room(0x2DA3))
 				}
-				if vict.Chclass == CLASS_BARDOCK {
+				if int(vict.Chclass) == CLASS_BARDOCK {
 					char_to_room(vict, real_room(2268))
 				}
-				if vict.Chclass == CLASS_KRANE {
+				if int(vict.Chclass) == CLASS_KRANE {
 					char_to_room(vict, real_room(0x32D1))
 				}
-				if vict.Chclass == CLASS_TAPION {
+				if int(vict.Chclass) == CLASS_TAPION {
 					char_to_room(vict, real_room(8231))
 				}
-				if vict.Chclass == CLASS_PICCOLO {
+				if int(vict.Chclass) == CLASS_PICCOLO {
 					char_to_room(vict, real_room(1659))
 				}
-				if vict.Chclass == CLASS_ANDSIX {
+				if int(vict.Chclass) == CLASS_ANDSIX {
 					char_to_room(vict, real_room(1713))
 				}
-				if vict.Chclass == CLASS_DABURA {
+				if int(vict.Chclass) == CLASS_DABURA {
 					char_to_room(vict, real_room(6486))
 				}
-				if vict.Chclass == CLASS_FRIEZA {
+				if int(vict.Chclass) == CLASS_FRIEZA {
 					char_to_room(vict, real_room(4282))
 				}
-				if vict.Chclass == CLASS_GINYU {
+				if int(vict.Chclass) == CLASS_GINYU {
 					char_to_room(vict, real_room(4289))
 				}
-				if vict.Chclass == CLASS_JINTO {
+				if int(vict.Chclass) == CLASS_JINTO {
 					char_to_room(vict, real_room(3499))
 				}
-				if vict.Chclass == CLASS_TSUNA {
+				if int(vict.Chclass) == CLASS_TSUNA {
 					char_to_room(vict, real_room(15000))
 				}
-				if vict.Chclass == CLASS_KURZAK {
+				if int(vict.Chclass) == CLASS_KURZAK {
 					char_to_room(vict, real_room(16100))
 				}
 			}
@@ -5255,7 +5255,7 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 						act(libc.CString("@r$n@R's dark aura saps some of your life energy!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 						ch.Hit += healhp
 					}
-					if ch.Race == RACE_MUTANT && ((ch.Genome[0]) == 10 || (ch.Genome[1]) == 10) {
+					if int(ch.Race) == RACE_MUTANT && ((ch.Genome[0]) == 10 || (ch.Genome[1]) == 10) {
 						ch.Mana += int64(float64(dmg) * 0.05)
 						if ch.Mana > ch.Max_mana {
 							ch.Mana = ch.Max_mana
@@ -5276,7 +5276,7 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 					if AFF_FLAGGED(vict, AFF_ECHAINS) {
 						if IS_NPC(ch) && type_ == 0 {
 							ch.Real_abils.Cha -= 2
-							if ch.Real_abils.Cha < 5 {
+							if int(ch.Real_abils.Cha) < 5 {
 								ch.Real_abils.Cha = 5
 							} else {
 								act(libc.CString("@CEthereal chains burn into existence! They quickly latch onto @RYOUR@C body and begin temporarily hampering $s actions!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
@@ -5298,7 +5298,7 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 				} else {
 					solo_gain(ch, vict)
 				}
-				if ch.Race == RACE_DEMON && type_ == 1 {
+				if int(ch.Race) == RACE_DEMON && type_ == 1 {
 					vict.Affected_by[int(AFF_ASHED/32)] |= 1 << (int(AFF_ASHED % 32))
 				}
 				die(vict, ch)
@@ -5327,7 +5327,7 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 						ch.Mana = ch.Max_mana
 					}
 				}
-				if ch.Race == RACE_MUTANT && ((ch.Genome[0]) == 10 || (ch.Genome[1]) == 10) {
+				if int(ch.Race) == RACE_MUTANT && ((ch.Genome[0]) == 10 || (ch.Genome[1]) == 10) {
 					ch.Mana += int64(float64(dmg) * 0.05)
 					if ch.Mana > ch.Max_mana {
 						ch.Mana = ch.Max_mana
@@ -5336,7 +5336,7 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 				send_to_char(ch, libc.CString("@D[@GDamage@W: @R%s@D]@n"), add_commas(dmg))
 				send_to_char(vict, libc.CString("@D[@rDamage@W: @R%s@D]@n\r\n"), add_commas(dmg))
 				if (ch.Equipment[WEAR_EYE]) != nil && vict != nil && !PRF_FLAGGED(ch, PRF_NODEC) {
-					if vict.Race == RACE_ANDROID {
+					if int(vict.Race) == RACE_ANDROID {
 						send_to_char(ch, libc.CString(" @D<@YProcessing@D: @c?????????????@D>@n\r\n"))
 					} else if OBJ_FLAGGED(ch.Equipment[WEAR_EYE], ITEM_BSCOUTER) && vict.Hit >= 150000 {
 						send_to_char(ch, libc.CString(" @D<@YProcessing@D: @c?????????????@D>@n\r\n"))
@@ -5355,7 +5355,7 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 					send_to_char(ch, libc.CString("@D[@GDamage@W: @BPitiful...@D]@n"))
 					send_to_char(vict, libc.CString("@D[@rDamage@W: @BPitiful...@D]@n\r\n"))
 					if (ch.Equipment[WEAR_EYE]) != nil && vict != nil && !PRF_FLAGGED(ch, PRF_NODEC) {
-						if vict.Race == RACE_ANDROID {
+						if int(vict.Race) == RACE_ANDROID {
 							send_to_char(ch, libc.CString(" @D<@YProcessing@D: @c?????????????@D>@n\r\n"))
 						} else if OBJ_FLAGGED(ch.Equipment[WEAR_EYE], ITEM_BSCOUTER) && vict.Hit >= 150000 {
 							send_to_char(ch, libc.CString(" @D<@YProcessing@D: @c?????????????@D>@n\r\n"))
@@ -5374,7 +5374,7 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 					send_to_char(vict, libc.CString("@D[@rDamage@W: @R%s @c-Suppression-@D]@n\r\n"), add_commas(dmg))
 					send_to_char(vict, libc.CString("@D[Suppression@W: @G%s@D]@n\r\n"), add_commas(vict.Suppressed))
 					if (ch.Equipment[WEAR_EYE]) != nil && vict != nil && !PRF_FLAGGED(ch, PRF_NODEC) {
-						if vict.Race == RACE_ANDROID {
+						if int(vict.Race) == RACE_ANDROID {
 							send_to_char(ch, libc.CString(" @D<@YProcessing@D: @c?????????????@D>@n\r\n"))
 						} else if OBJ_FLAGGED(ch.Equipment[WEAR_EYE], ITEM_BSCOUTER) && vict.Hit >= 150000 {
 							send_to_char(ch, libc.CString(" @D<@YProcessing@D: @c?????????????@D>@n\r\n"))
@@ -5393,7 +5393,7 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 					send_to_char(vict, libc.CString("@D[@rDamage@W: @BPitiful... @c-Suppression-@D]@n\r\n"))
 					send_to_char(vict, libc.CString("@D[Suppression@W: @G%s@D]@n\r\n"), add_commas(vict.Suppressed))
 					if (ch.Equipment[WEAR_EYE]) != nil && vict != nil {
-						if vict.Race == RACE_ANDROID && !PRF_FLAGGED(ch, PRF_NODEC) {
+						if int(vict.Race) == RACE_ANDROID && !PRF_FLAGGED(ch, PRF_NODEC) {
 							send_to_char(ch, libc.CString(" @D<@YProcessing@D: @c?????????????@D>@n\r\n"))
 						} else if OBJ_FLAGGED(ch.Equipment[WEAR_EYE], ITEM_BSCOUTER) && vict.Hit >= 150000 {
 							send_to_char(ch, libc.CString(" @D<@YProcessing@D: @c?????????????@D>@n\r\n"))
@@ -5413,19 +5413,19 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 		if GET_SKILL(ch, SKILL_FOCUS) != 0 && type_ == 1 {
 			improve_skill(ch, SKILL_FOCUS, 1)
 		}
-		if !is_sparring(ch) && vict.Race == RACE_HALFBREED && int(vict.Fury) < 100 && !PLR_FLAGGED(vict, PLR_FURY) {
+		if !is_sparring(ch) && int(vict.Race) == RACE_HALFBREED && int(vict.Fury) < 100 && !PLR_FLAGGED(vict, PLR_FURY) {
 			send_to_char(vict, libc.CString("@RYour fury increases a little bit!@n\r\n"))
 			vict.Fury += 1
 		}
 		if is_sparring(ch) && is_sparring(vict) && ch.Lastattack != -1 {
 			spar_gain(ch, vict, type_, dmg)
 		}
-		if (ch.Race == RACE_SAIYAN || ch.Race == RACE_BIO && ((ch.Genome[0]) == 2 || (ch.Genome[1]) == 2)) && !IS_NPC(ch) && (is_sparring(ch) && is_sparring(vict) || !is_sparring(ch) && !is_sparring(vict)) {
-			if ch.Position != POS_RESTING && vict.Position != POS_RESTING && dmg > 1 {
+		if (int(ch.Race) == RACE_SAIYAN || int(ch.Race) == RACE_BIO && ((ch.Genome[0]) == 2 || (ch.Genome[1]) == 2)) && !IS_NPC(ch) && (is_sparring(ch) && is_sparring(vict) || !is_sparring(ch) && !is_sparring(vict)) {
+			if int(ch.Position) != POS_RESTING && int(vict.Position) != POS_RESTING && dmg > 1 {
 				saiyan_gain(ch, vict)
 			}
 		}
-		if vict.Race == RACE_ARLIAN && dead != TRUE && !is_sparring(vict) && !is_sparring(ch) {
+		if int(vict.Race) == RACE_ARLIAN && dead != TRUE && !is_sparring(vict) && !is_sparring(ch) {
 			handle_evolution(vict, dmg)
 		}
 		if dead == TRUE {
@@ -5507,8 +5507,8 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 				act(libc.CString("$p@w shatters apart!@n"), TRUE, ch, obj, nil, TO_CHAR)
 				act(libc.CString("$p@w shatters apart!@n"), TRUE, ch, obj, nil, TO_ROOM)
 				obj.Value[VAL_ALL_HEALTH] = 0
-				obj.Extra_flags[int(ITEM_BROKEN/32)] |= bitvector_t(1 << (int(ITEM_BROKEN % 32)))
-				if obj.Type_flag == ITEM_DRINKCON && obj.Type_flag == ITEM_FOUNTAIN {
+				obj.Extra_flags[int(ITEM_BROKEN/32)] |= bitvector_t(int32(1 << (int(ITEM_BROKEN % 32))))
+				if int(obj.Type_flag) == ITEM_DRINKCON && int(obj.Type_flag) == ITEM_FOUNTAIN {
 					obj.Value[VAL_DRINKCON_HOWFULL] = 0
 				}
 			} else if type_ != 0 {
@@ -5524,7 +5524,7 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 func handle_cooldown(ch *char_data, cooldown int) {
 	if !IS_NPC(ch) {
 		if PLR_FLAGGED(ch, PLR_MULTIHIT) {
-			ch.Act[int(PLR_MULTIHIT/32)] &= bitvector_t(^(1 << (int(PLR_MULTIHIT % 32))))
+			ch.Act[int(PLR_MULTIHIT/32)] &= bitvector_t(int32(^(1 << (int(PLR_MULTIHIT % 32)))))
 			return
 		}
 	}
@@ -5653,18 +5653,18 @@ func handle_parry(ch *char_data) int {
 		return -2
 	} else {
 		var num int = GET_SKILL(ch, SKILL_PARRY)
-		if ch.Race == RACE_MUTANT && ((ch.Genome[0]) == 3 || (ch.Genome[1]) == 3) {
+		if int(ch.Race) == RACE_MUTANT && ((ch.Genome[0]) == 3 || (ch.Genome[1]) == 3) {
 			num += 10
 		}
-		if (ch.Skills[SKILL_STYLE]) >= 100 {
+		if int(ch.Skills[SKILL_STYLE]) >= 100 {
 			num += 5
-		} else if (ch.Skills[SKILL_STYLE]) >= 80 {
+		} else if int(ch.Skills[SKILL_STYLE]) >= 80 {
 			num += 4
-		} else if (ch.Skills[SKILL_STYLE]) >= 60 {
+		} else if int(ch.Skills[SKILL_STYLE]) >= 60 {
 			num += 3
-		} else if (ch.Skills[SKILL_STYLE]) >= 40 {
+		} else if int(ch.Skills[SKILL_STYLE]) >= 40 {
 			num += 2
-		} else if (ch.Skills[SKILL_STYLE]) >= 20 {
+		} else if int(ch.Skills[SKILL_STYLE]) >= 20 {
 			num += 1
 		}
 		return num
@@ -5715,7 +5715,7 @@ func handle_combo(ch *char_data, vict *char_data) int {
 	if count_physical(ch) < 3 {
 		return 0
 	}
-	var chance int = int((ch.Aff_abils.Cha * 2) - vict.Aff_abils.Cha)
+	var chance int = (int(ch.Aff_abils.Cha) * 2) - int(vict.Aff_abils.Cha)
 	var bottom int = chance / 2
 	if ch.Lastattack == 0 || ch.Lastattack == 1 {
 		chance += 10
@@ -6392,13 +6392,13 @@ func handle_spiral(ch *char_data, vict *char_data, skill int, first int) {
 	} else if vict == nil {
 		act(libc.CString("@WHaving lost your target you slow down until your vortex disappears, and end your attack.@n"), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("@C$n@W slows down until $s vortex disappears.@n"), TRUE, ch, nil, nil, TO_ROOM)
-		ch.Act[int(PLR_SPIRAL/32)] &= bitvector_t(^(1 << (int(PLR_SPIRAL % 32))))
+		ch.Act[int(PLR_SPIRAL/32)] &= bitvector_t(int32(^(1 << (int(PLR_SPIRAL % 32)))))
 		return
 	}
 	if ch.Charge <= 0 {
 		act(libc.CString("@WHaving no more charged ki you slow down until your vortex disappears, and end your attack.@n"), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("@C$n@W slows down until $s vortex disappears.@n"), TRUE, ch, nil, nil, TO_ROOM)
-		ch.Act[int(PLR_SPIRAL/32)] &= bitvector_t(^(1 << (int(PLR_SPIRAL % 32))))
+		ch.Act[int(PLR_SPIRAL/32)] &= bitvector_t(int32(^(1 << (int(PLR_SPIRAL % 32)))))
 		return
 	}
 	if vict != nil {
@@ -6413,25 +6413,25 @@ func handle_spiral(ch *char_data, vict *char_data, skill int, first int) {
 		} else if avo >= 70 {
 			prob -= 69
 		}
-		if vict.Position == POS_SLEEPING {
+		if int(vict.Position) == POS_SLEEPING {
 			pry = 0
 			blk = 0
 			dge = 0
 			prob += 50
 		}
-		if vict.Position == POS_RESTING {
+		if int(vict.Position) == POS_RESTING {
 			pry /= 4
 			blk /= 4
 			dge /= 4
 			prob += 25
 		}
-		if vict.Position == POS_SITTING {
+		if int(vict.Position) == POS_SITTING {
 			pry /= 2
 			blk /= 2
 			dge /= 2
 			prob += 10
 		}
-		if (!IS_NPC(vict) && vict.Race == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && vict.Position != POS_SLEEPING {
+		if (!IS_NPC(vict) && int(vict.Race) == RACE_ICER && rand_number(1, 30) >= 28 || AFF_FLAGGED(vict, AFF_ZANZOKEN)) && vict.Move >= 1 && int(vict.Position) != POS_SLEEPING {
 			if !AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_ZANZOKEN) && GET_SPEEDI(ch)+rand_number(1, 5) < GET_SPEEDI(vict)+rand_number(1, 5) {
 				act(libc.CString("@C$N@c disappears, avoiding your Spiral Comet blast before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Spiral Comet blast before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)

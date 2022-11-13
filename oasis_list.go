@@ -73,7 +73,7 @@ func do_oasis_links(ch *char_data, argument *byte, cmd int, subcmd int) {
 	)
 	skip_spaces(&argument)
 	one_argument(argument, &arg[0])
-	if C.strcmp(&arg[0], libc.CString(".")) == 0 || (arg == nil || arg[0] == 0) {
+	if libc.StrCmp(&arg[0], libc.CString(".")) == 0 || (arg == nil || arg[0] == 0) {
 		zrnum = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone
 		zvnum = (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Number
 	} else {
@@ -184,7 +184,7 @@ func list_mobiles(ch *char_data, rnum zone_rnum, vmin zone_vnum, vmax zone_vnum)
 	for i = 0; i <= int(top_of_mobt); i++ {
 		if (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Vnum >= mob_vnum(bottom) && (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Vnum <= mob_vnum(top) {
 			counter++
-			admg = int((float64((*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Mob_specials.Damsizedice+1) / 2.0) * float64((*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Mob_specials.Damnodice))
+			admg = int((float64(int((*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Mob_specials.Damsizedice)+1) / 2.0) * float64((*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Mob_specials.Damnodice))
 			send_to_char(ch, libc.CString("@g%4d@n) [@g%-5d@n] @[3]%-*s @C%-9s @c%-9s @y[%4d]@n %s\r\n"), counter, (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Vnum, count_color_chars((*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Short_descr)+30, (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Short_descr, pc_race_types[(*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Race], pc_class_types[(*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Chclass], (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Level+(*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Level_adj+(*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Race_level, func() string {
 				if (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Proto_script != nil {
 					return " [TRIG]"
@@ -376,14 +376,14 @@ func list_triggers(ch *char_data, rnum zone_rnum, vmin trig_vnum, vmax trig_vnum
 		if (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i)))).Vnum >= mob_vnum(bottom) && (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i)))).Vnum <= mob_vnum(top) {
 			counter++
 			send_to_char(ch, libc.CString("%4d) [@g%5d@n] @[1]%-45.45s "), counter, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i)))).Vnum, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i)))).Proto.Name)
-			if (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i)))).Proto.Attach_type == OBJ_TRIGGER {
-				sprintbit(bitvector_t((*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i)))).Proto.Trigger_type), otrig_types[:], &trgtypes[0], uint64(256))
+			if int((*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i)))).Proto.Attach_type) == OBJ_TRIGGER {
+				sprintbit(bitvector_t(int32((*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i)))).Proto.Trigger_type)), otrig_types[:], &trgtypes[0], uint64(256))
 				send_to_char(ch, libc.CString("obj @y%s@n\r\n"), &trgtypes[0])
-			} else if (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i)))).Proto.Attach_type == WLD_TRIGGER {
-				sprintbit(bitvector_t((*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i)))).Proto.Trigger_type), wtrig_types[:], &trgtypes[0], uint64(256))
+			} else if int((*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i)))).Proto.Attach_type) == WLD_TRIGGER {
+				sprintbit(bitvector_t(int32((*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i)))).Proto.Trigger_type)), wtrig_types[:], &trgtypes[0], uint64(256))
 				send_to_char(ch, libc.CString("wld @y%s@n\r\n"), &trgtypes[0])
 			} else {
-				sprintbit(bitvector_t((*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i)))).Proto.Trigger_type), trig_types[:], &trgtypes[0], uint64(256))
+				sprintbit(bitvector_t(int32((*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i)))).Proto.Trigger_type)), trig_types[:], &trgtypes[0], uint64(256))
 				send_to_char(ch, libc.CString("mob @y%s@n\r\n"), &trgtypes[0])
 			}
 		}

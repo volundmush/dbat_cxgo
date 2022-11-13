@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"os"
 	"unsafe"
 )
 
@@ -32,7 +33,7 @@ func do_oasis_aedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	d = ch.Desc
-	if C.strcasecmp(libc.CString("save"), &arg[0]) == 0 {
+	if libc.StrCaseCmp(libc.CString("save"), &arg[0]) == 0 {
 		mudlog(CMP, MAX(ADMLVL_BUILDER, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("OLC: %s saves socials."), GET_NAME(ch))
 		send_to_char(ch, libc.CString("Writing social file..\r\n"))
 		aedit_save_to_disk(d)
@@ -45,7 +46,7 @@ func do_oasis_aedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	d.Olc = new(oasis_olc_data)
 	d.Olc.Number = 0
-	d.Olc.Storage = C.strdup(&arg[0])
+	d.Olc.Storage = libc.StrDup(&arg[0])
 	for d.Olc.Zone_num = 0; d.Olc.Zone_num <= zone_rnum(top_of_socialt); d.Olc.Zone_num++ {
 		if is_abbrev(d.Olc.Storage, (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(d.Olc.Zone_num)))).Command) != 0 {
 			break
@@ -68,19 +69,19 @@ func do_oasis_aedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	d.Connected = CON_AEDIT
 	act(libc.CString("$n starts using OLC."), TRUE, d.Character, nil, nil, TO_ROOM)
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(1 << (int(PLR_WRITING % 32)))
+	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
 	mudlog(CMP, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing actions."), GET_NAME(ch))
 }
 func aedit_setup_new(d *descriptor_data) {
 	d.Olc.Action = new(social_messg)
-	d.Olc.Action.Command = C.strdup(d.Olc.Storage)
-	d.Olc.Action.Sort_as = C.strdup(d.Olc.Storage)
+	d.Olc.Action.Command = libc.StrDup(d.Olc.Storage)
+	d.Olc.Action.Sort_as = libc.StrDup(d.Olc.Storage)
 	d.Olc.Action.Hide = 0
 	d.Olc.Action.Min_victim_position = POS_STANDING
 	d.Olc.Action.Min_char_position = POS_STANDING
 	d.Olc.Action.Min_level_char = 0
-	d.Olc.Action.Char_no_arg = C.strdup(libc.CString("This action is unfinished."))
-	d.Olc.Action.Others_no_arg = C.strdup(libc.CString("This action is unfinished."))
+	d.Olc.Action.Char_no_arg = libc.CString("This action is unfinished.")
+	d.Olc.Action.Others_no_arg = libc.CString("This action is unfinished.")
 	d.Olc.Action.Char_found = nil
 	d.Olc.Action.Others_found = nil
 	d.Olc.Action.Vict_found = nil
@@ -97,50 +98,50 @@ func aedit_setup_new(d *descriptor_data) {
 }
 func aedit_setup_existing(d *descriptor_data, real_num int) {
 	d.Olc.Action = new(social_messg)
-	d.Olc.Action.Command = C.strdup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Command)
-	d.Olc.Action.Sort_as = C.strdup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Sort_as)
+	d.Olc.Action.Command = libc.StrDup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Command)
+	d.Olc.Action.Sort_as = libc.StrDup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Sort_as)
 	d.Olc.Action.Hide = (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Hide
 	d.Olc.Action.Min_victim_position = (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Min_victim_position
 	d.Olc.Action.Min_char_position = (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Min_char_position
 	d.Olc.Action.Min_level_char = (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Min_level_char
 	if (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Char_no_arg != nil {
-		d.Olc.Action.Char_no_arg = C.strdup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Char_no_arg)
+		d.Olc.Action.Char_no_arg = libc.StrDup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Char_no_arg)
 	}
 	if (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Others_no_arg != nil {
-		d.Olc.Action.Others_no_arg = C.strdup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Others_no_arg)
+		d.Olc.Action.Others_no_arg = libc.StrDup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Others_no_arg)
 	}
 	if (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Char_found != nil {
-		d.Olc.Action.Char_found = C.strdup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Char_found)
+		d.Olc.Action.Char_found = libc.StrDup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Char_found)
 	}
 	if (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Others_found != nil {
-		d.Olc.Action.Others_found = C.strdup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Others_found)
+		d.Olc.Action.Others_found = libc.StrDup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Others_found)
 	}
 	if (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Vict_found != nil {
-		d.Olc.Action.Vict_found = C.strdup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Vict_found)
+		d.Olc.Action.Vict_found = libc.StrDup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Vict_found)
 	}
 	if (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Not_found != nil {
-		d.Olc.Action.Not_found = C.strdup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Not_found)
+		d.Olc.Action.Not_found = libc.StrDup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Not_found)
 	}
 	if (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Char_auto != nil {
-		d.Olc.Action.Char_auto = C.strdup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Char_auto)
+		d.Olc.Action.Char_auto = libc.StrDup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Char_auto)
 	}
 	if (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Others_auto != nil {
-		d.Olc.Action.Others_auto = C.strdup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Others_auto)
+		d.Olc.Action.Others_auto = libc.StrDup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Others_auto)
 	}
 	if (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Char_body_found != nil {
-		d.Olc.Action.Char_body_found = C.strdup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Char_body_found)
+		d.Olc.Action.Char_body_found = libc.StrDup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Char_body_found)
 	}
 	if (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Others_body_found != nil {
-		d.Olc.Action.Others_body_found = C.strdup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Others_body_found)
+		d.Olc.Action.Others_body_found = libc.StrDup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Others_body_found)
 	}
 	if (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Vict_body_found != nil {
-		d.Olc.Action.Vict_body_found = C.strdup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Vict_body_found)
+		d.Olc.Action.Vict_body_found = libc.StrDup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Vict_body_found)
 	}
 	if (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Char_obj_found != nil {
-		d.Olc.Action.Char_obj_found = C.strdup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Char_obj_found)
+		d.Olc.Action.Char_obj_found = libc.StrDup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Char_obj_found)
 	}
 	if (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Others_obj_found != nil {
-		d.Olc.Action.Others_obj_found = C.strdup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Others_obj_found)
+		d.Olc.Action.Others_obj_found = libc.StrDup((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(real_num)))).Others_obj_found)
 	}
 	d.Olc.Value = 0
 	aedit_disp_menu(d)
@@ -175,21 +176,21 @@ func aedit_save_internally(d *descriptor_data) {
 }
 func aedit_save_to_disk(d *descriptor_data) {
 	var (
-		fp *C.FILE
+		fp *stdio.File
 		i  int
 	)
-	if (func() *C.FILE {
-		fp = (*C.FILE)(unsafe.Pointer(stdio.FOpen(LIB_MISC, "w+")))
+	if (func() *stdio.File {
+		fp = stdio.FOpen(LIB_MISC, "w+")
 		return fp
 	}()) == nil {
 		var error [64936]byte
 		stdio.Snprintf(&error[0], int(64936), "Can't open socials file '%s'", LIB_MISC)
-		C.perror(&error[0])
-		C.exit(1)
+		perror(&error[0])
+		os.Exit(1)
 	}
 	for i = 0; i <= top_of_socialt; i++ {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "~%s %s %d %d %d %d\n", (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Command, (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Sort_as, (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Hide, (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Min_char_position, (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Min_victim_position, (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Min_level_char)
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "%s\n%s\n%s\n%s\n", func() *byte {
+		stdio.Fprintf(fp, "~%s %s %d %d %d %d\n", (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Command, (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Sort_as, (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Hide, (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Min_char_position, (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Min_victim_position, (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Min_level_char)
+		stdio.Fprintf(fp, "%s\n%s\n%s\n%s\n", func() *byte {
 			if (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Char_no_arg != nil {
 				return (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Char_no_arg
 			}
@@ -210,7 +211,7 @@ func aedit_save_to_disk(d *descriptor_data) {
 			}
 			return libc.CString("#")
 		}())
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "%s\n%s\n%s\n%s\n", func() *byte {
+		stdio.Fprintf(fp, "%s\n%s\n%s\n%s\n", func() *byte {
 			if (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Vict_found != nil {
 				return (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Vict_found
 			}
@@ -231,7 +232,7 @@ func aedit_save_to_disk(d *descriptor_data) {
 			}
 			return libc.CString("#")
 		}())
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "%s\n%s\n%s\n", func() *byte {
+		stdio.Fprintf(fp, "%s\n%s\n%s\n", func() *byte {
 			if (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Char_body_found != nil {
 				return (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Char_body_found
 			}
@@ -247,7 +248,7 @@ func aedit_save_to_disk(d *descriptor_data) {
 			}
 			return libc.CString("#")
 		}())
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "%s\n%s\n\n", func() *byte {
+		stdio.Fprintf(fp, "%s\n%s\n\n", func() *byte {
 			if (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Char_obj_found != nil {
 				return (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Char_obj_found
 			}
@@ -259,8 +260,8 @@ func aedit_save_to_disk(d *descriptor_data) {
 			return libc.CString("#")
 		}())
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "$\n")
-	C.fclose(fp)
+	stdio.Fprintf(fp, "$\n")
+	fp.Close()
 	remove_from_save_list(AEDIT_PERMISSION, int(SL_GLD+1))
 }
 func aedit_disp_menu(d *descriptor_data) {
@@ -601,22 +602,22 @@ func aedit_parse(d *descriptor_data, arg *byte) {
 		}
 		return
 	case AEDIT_ACTION_NAME:
-		if *arg == 0 || C.strchr(arg, ' ') != nil {
+		if *arg == 0 || libc.StrChr(arg, ' ') != nil {
 			aedit_disp_menu(d)
 			return
 		}
 		if d.Olc.Action.Command != nil {
 			libc.Free(unsafe.Pointer(d.Olc.Action.Command))
 		}
-		d.Olc.Action.Command = C.strdup(arg)
+		d.Olc.Action.Command = libc.StrDup(arg)
 	case AEDIT_SORT_AS:
-		if *arg == 0 || C.strchr(arg, ' ') != nil {
+		if *arg == 0 || libc.StrChr(arg, ' ') != nil {
 			aedit_disp_menu(d)
 			return
 		}
 		if d.Olc.Action.Sort_as != nil {
 			libc.Free(unsafe.Pointer(d.Olc.Action.Sort_as))
-			d.Olc.Action.Sort_as = C.strdup(arg)
+			d.Olc.Action.Sort_as = libc.StrDup(arg)
 		}
 	case AEDIT_MIN_CHAR_POS:
 		fallthrough
@@ -652,7 +653,7 @@ func aedit_parse(d *descriptor_data, arg *byte) {
 		}
 		if *arg != 0 {
 			delete_doubledollar(arg)
-			d.Olc.Action.Char_no_arg = C.strdup(arg)
+			d.Olc.Action.Char_no_arg = libc.StrDup(arg)
 		} else {
 			d.Olc.Action.Char_no_arg = nil
 		}
@@ -662,7 +663,7 @@ func aedit_parse(d *descriptor_data, arg *byte) {
 		}
 		if *arg != 0 {
 			delete_doubledollar(arg)
-			d.Olc.Action.Others_no_arg = C.strdup(arg)
+			d.Olc.Action.Others_no_arg = libc.StrDup(arg)
 		} else {
 			d.Olc.Action.Others_no_arg = nil
 		}
@@ -672,7 +673,7 @@ func aedit_parse(d *descriptor_data, arg *byte) {
 		}
 		if *arg != 0 {
 			delete_doubledollar(arg)
-			d.Olc.Action.Char_found = C.strdup(arg)
+			d.Olc.Action.Char_found = libc.StrDup(arg)
 		} else {
 			d.Olc.Action.Char_found = nil
 		}
@@ -682,7 +683,7 @@ func aedit_parse(d *descriptor_data, arg *byte) {
 		}
 		if *arg != 0 {
 			delete_doubledollar(arg)
-			d.Olc.Action.Others_found = C.strdup(arg)
+			d.Olc.Action.Others_found = libc.StrDup(arg)
 		} else {
 			d.Olc.Action.Others_found = nil
 		}
@@ -692,7 +693,7 @@ func aedit_parse(d *descriptor_data, arg *byte) {
 		}
 		if *arg != 0 {
 			delete_doubledollar(arg)
-			d.Olc.Action.Vict_found = C.strdup(arg)
+			d.Olc.Action.Vict_found = libc.StrDup(arg)
 		} else {
 			d.Olc.Action.Vict_found = nil
 		}
@@ -702,7 +703,7 @@ func aedit_parse(d *descriptor_data, arg *byte) {
 		}
 		if *arg != 0 {
 			delete_doubledollar(arg)
-			d.Olc.Action.Not_found = C.strdup(arg)
+			d.Olc.Action.Not_found = libc.StrDup(arg)
 		} else {
 			d.Olc.Action.Not_found = nil
 		}
@@ -712,7 +713,7 @@ func aedit_parse(d *descriptor_data, arg *byte) {
 		}
 		if *arg != 0 {
 			delete_doubledollar(arg)
-			d.Olc.Action.Char_auto = C.strdup(arg)
+			d.Olc.Action.Char_auto = libc.StrDup(arg)
 		} else {
 			d.Olc.Action.Char_auto = nil
 		}
@@ -722,7 +723,7 @@ func aedit_parse(d *descriptor_data, arg *byte) {
 		}
 		if *arg != 0 {
 			delete_doubledollar(arg)
-			d.Olc.Action.Others_auto = C.strdup(arg)
+			d.Olc.Action.Others_auto = libc.StrDup(arg)
 		} else {
 			d.Olc.Action.Others_auto = nil
 		}
@@ -732,7 +733,7 @@ func aedit_parse(d *descriptor_data, arg *byte) {
 		}
 		if *arg != 0 {
 			delete_doubledollar(arg)
-			d.Olc.Action.Char_body_found = C.strdup(arg)
+			d.Olc.Action.Char_body_found = libc.StrDup(arg)
 		} else {
 			d.Olc.Action.Char_body_found = nil
 		}
@@ -742,7 +743,7 @@ func aedit_parse(d *descriptor_data, arg *byte) {
 		}
 		if *arg != 0 {
 			delete_doubledollar(arg)
-			d.Olc.Action.Others_body_found = C.strdup(arg)
+			d.Olc.Action.Others_body_found = libc.StrDup(arg)
 		} else {
 			d.Olc.Action.Others_body_found = nil
 		}
@@ -752,7 +753,7 @@ func aedit_parse(d *descriptor_data, arg *byte) {
 		}
 		if *arg != 0 {
 			delete_doubledollar(arg)
-			d.Olc.Action.Vict_body_found = C.strdup(arg)
+			d.Olc.Action.Vict_body_found = libc.StrDup(arg)
 		} else {
 			d.Olc.Action.Vict_body_found = nil
 		}
@@ -762,7 +763,7 @@ func aedit_parse(d *descriptor_data, arg *byte) {
 		}
 		if *arg != 0 {
 			delete_doubledollar(arg)
-			d.Olc.Action.Char_obj_found = C.strdup(arg)
+			d.Olc.Action.Char_obj_found = libc.StrDup(arg)
 		} else {
 			d.Olc.Action.Char_obj_found = nil
 		}
@@ -772,7 +773,7 @@ func aedit_parse(d *descriptor_data, arg *byte) {
 		}
 		if *arg != 0 {
 			delete_doubledollar(arg)
-			d.Olc.Action.Others_obj_found = C.strdup(arg)
+			d.Olc.Action.Others_obj_found = libc.StrDup(arg)
 		} else {
 			d.Olc.Action.Others_obj_found = nil
 		}
@@ -880,7 +881,7 @@ func do_astat(ch *char_data, argument *byte, cmd int, subcmd int) {
 func aedit_find_command(txt *byte) int {
 	var cmd int
 	for cmd = 1; *(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command != '\n'; cmd++ {
-		if C.strncmp((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Sort_as, txt, uint64(C.strlen(txt))) == 0 || C.strcmp((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, txt) == 0 {
+		if libc.StrNCmp((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Sort_as, txt, libc.StrLen(txt)) == 0 || libc.StrCmp((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, txt) == 0 {
 			return cmd
 		}
 	}

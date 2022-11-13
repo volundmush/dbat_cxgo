@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"unicode"
 	"unsafe"
 )
 
@@ -29,7 +30,7 @@ func do_oasis_trigedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		d        *descriptor_data
 	)
 	skip_spaces(&argument)
-	if *argument == 0 || (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*argument)))))&int(uint16(int16(_ISdigit)))) == 0 {
+	if *argument == 0 || !unicode.IsDigit(rune(*argument)) {
 		send_to_char(ch, libc.CString("Specify a trigger VNUM to edit.\r\n"))
 		return
 	}
@@ -80,10 +81,10 @@ func do_oasis_trigedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		disp = 1
 	}
 	act(libc.CString("$n starts using OLC."), TRUE, d.Character, nil, nil, TO_ROOM)
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(1 << (int(PLR_WRITING % 32)))
+	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
 	mudlog(CMP, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing zone %d [trigger](allowed zone %d)"), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number, ch.Player_specials.Olc_zone)
 }
-func script_save_to_disk(fp *C.FILE, item unsafe.Pointer, type_ int) {
+func script_save_to_disk(fp *stdio.File, item unsafe.Pointer, type_ int) {
 	var t *trig_proto_list
 	if type_ == MOB_TRIGGER {
 		t = ((*char_data)(item)).Proto_script
@@ -96,7 +97,7 @@ func script_save_to_disk(fp *C.FILE, item unsafe.Pointer, type_ int) {
 		return
 	}
 	for t != nil {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "T %d\n", t.Vnum)
+		stdio.Fprintf(fp, "T %d\n", t.Vnum)
 		t = t.Next
 	}
 }
@@ -104,10 +105,10 @@ func trigedit_setup_new(d *descriptor_data) {
 	var trig *trig_data
 	trig = new(trig_data)
 	trig.Nr = -1
-	trig.Name = C.strdup(libc.CString("new trigger"))
+	trig.Name = libc.CString("new trigger")
 	trig.Trigger_type = 1 << 6
 	d.Olc.Storage = (*byte)(unsafe.Pointer(&make([]int8, MAX_CMD_LENGTH)[0]))
-	C.strncpy(d.Olc.Storage, libc.CString("%echo% This trigger commandlist is not complete!\r\n"), uint64(int(MAX_CMD_LENGTH-1)))
+	libc.StrNCpy(d.Olc.Storage, libc.CString("%echo% This trigger commandlist is not complete!\r\n"), int(MAX_CMD_LENGTH-1))
 	trig.Narg = 100
 	d.Olc.Trig = trig
 	d.Olc.Value = 0
@@ -121,10 +122,10 @@ func trigedit_setup_existing(d *descriptor_data, rtrg_num int) {
 	trig_data_copy(trig, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(rtrg_num)))).Proto)
 	c = trig.Cmdlist
 	d.Olc.Storage = (*byte)(unsafe.Pointer(&make([]int8, MAX_CMD_LENGTH)[0]))
-	C.strcpy(d.Olc.Storage, libc.CString(""))
+	libc.StrCpy(d.Olc.Storage, libc.CString(""))
 	for c != nil {
-		C.strcat(d.Olc.Storage, c.Cmd)
-		C.strcat(d.Olc.Storage, libc.CString("\r\n"))
+		libc.StrCat(d.Olc.Storage, c.Cmd)
+		libc.StrCat(d.Olc.Storage, libc.CString("\r\n"))
 		c = c.Next
 	}
 	d.Olc.Trig = trig
@@ -136,15 +137,15 @@ func trigedit_disp_menu(d *descriptor_data) {
 		attach_type *byte
 		trgtypes    [256]byte
 	)
-	if trig.Attach_type == OBJ_TRIGGER {
+	if int(trig.Attach_type) == OBJ_TRIGGER {
 		attach_type = libc.CString("Objects")
-		sprintbit(bitvector_t(trig.Trigger_type), otrig_types[:], &trgtypes[0], uint64(256))
-	} else if trig.Attach_type == WLD_TRIGGER {
+		sprintbit(bitvector_t(int32(trig.Trigger_type)), otrig_types[:], &trgtypes[0], uint64(256))
+	} else if int(trig.Attach_type) == WLD_TRIGGER {
 		attach_type = libc.CString("Rooms")
-		sprintbit(bitvector_t(trig.Trigger_type), wtrig_types[:], &trgtypes[0], uint64(256))
+		sprintbit(bitvector_t(int32(trig.Trigger_type)), wtrig_types[:], &trgtypes[0], uint64(256))
 	} else {
 		attach_type = libc.CString("Mobiles")
-		sprintbit(bitvector_t(trig.Trigger_type), trig_types[:], &trgtypes[0], uint64(256))
+		sprintbit(bitvector_t(int32(trig.Trigger_type)), trig_types[:], &trgtypes[0], uint64(256))
 	}
 	clear_screen(d)
 	write_to_output(d, libc.CString("Trigger Editor [@c%d@n]\r\n\r\n@g1@n) Name         : @y%s\r\n@g2@n) Intended for : @y%s\r\n@g3@n) Trigger types: @y%s\r\n@g4@n) Numeric Arg  : @y%d\r\n@g5@n) Arguments    : @y%s\r\n@g6@n) Commands:\r\n@c%s\r\n@gW@n) Copy Trigger\r\n@gZ@n) Wiznet\r\n@gQ@n) Quit\r\nEnter Choice :"), d.Olc.Number, trig.Name, attach_type, &trgtypes[0], trig.Narg, func() *byte {
@@ -185,14 +186,14 @@ func trigedit_disp_types(d *descriptor_data) {
 			return ""
 		}())
 	}
-	sprintbit(bitvector_t(d.Olc.Trig.Trigger_type), ([0]*byte)(types), &bitbuf[0], uint64(64936))
+	sprintbit(bitvector_t(int32(d.Olc.Trig.Trigger_type)), ([0]*byte)(types), &bitbuf[0], uint64(64936))
 	write_to_output(d, libc.CString("\r\nCurrent types : @c%s@n\r\nEnter type (0 to quit) : "), &bitbuf[0])
 }
 func trigedit_parse(d *descriptor_data, arg *byte) {
 	var i int = 0
 	switch d.Olc.Mode {
 	case TRIGEDIT_MAIN_MENU:
-		switch C.tolower(int(*arg)) {
+		switch unicode.ToLower(rune(*arg)) {
 		case 'q':
 			if d.Olc.Value != 0 {
 				if d.Olc.Trig.Trigger_type == 0 {
@@ -225,7 +226,7 @@ func trigedit_parse(d *descriptor_data, arg *byte) {
 			d.Backstr = nil
 			if d.Olc.Storage != nil {
 				write_to_output(d, libc.CString("%s"), d.Olc.Storage)
-				d.Backstr = C.strdup(d.Olc.Storage)
+				d.Backstr = libc.StrDup(d.Olc.Storage)
 			}
 			d.Str = &d.Olc.Storage
 			d.Max_str = MAX_CMD_LENGTH
@@ -247,7 +248,7 @@ func trigedit_parse(d *descriptor_data, arg *byte) {
 		}
 		return
 	case TRIGEDIT_CONFIRM_SAVESTRING:
-		switch C.tolower(int(*arg)) {
+		switch unicode.ToLower(rune(*arg)) {
 		case 'y':
 			trigedit_save(d)
 			mudlog(CMP, MAX(ADMLVL_BUILDER, int(d.Character.Player_specials.Invis_level)), TRUE, libc.CString("OLC: %s edits trigger %d"), GET_NAME(d.Character), d.Olc.Number)
@@ -266,7 +267,7 @@ func trigedit_parse(d *descriptor_data, arg *byte) {
 		if d.Olc.Trig.Name != nil {
 			libc.Free(unsafe.Pointer(d.Olc.Trig.Name))
 		}
-		d.Olc.Trig.Name = C.strdup(func() *byte {
+		d.Olc.Trig.Name = libc.StrDup(func() *byte {
 			if arg != nil && *arg != 0 {
 				return arg
 			}
@@ -284,7 +285,7 @@ func trigedit_parse(d *descriptor_data, arg *byte) {
 	case TRIGEDIT_ARGUMENT:
 		smash_tilde(arg)
 		if *arg != 0 {
-			d.Olc.Trig.Arglist = C.strdup(arg)
+			d.Olc.Trig.Arglist = libc.StrDup(arg)
 		} else {
 			d.Olc.Trig.Arglist = nil
 		}
@@ -328,7 +329,7 @@ func trigedit_save(d *descriptor_data) {
 		next_cmd  *cmdlist_element
 		new_index **index_data
 		dsc       *descriptor_data
-		trig_file *C.FILE
+		trig_file *stdio.File
 		zone      int
 		top       int
 		buf       [16384]byte
@@ -352,23 +353,23 @@ func trigedit_save(d *descriptor_data) {
 		s = d.Olc.Storage
 		trig.Cmdlist = new(cmdlist_element)
 		if s != nil {
-			var t *byte = strtok(s, libc.CString("\n\r"))
+			var t *byte = libc.StrTok(s, libc.CString("\n\r"))
 			if t != nil {
-				trig.Cmdlist.Cmd = C.strdup(t)
+				trig.Cmdlist.Cmd = libc.StrDup(t)
 			} else {
-				trig.Cmdlist.Cmd = C.strdup(libc.CString("* No script"))
+				trig.Cmdlist.Cmd = libc.CString("* No script")
 			}
 			cmd = trig.Cmdlist
 			for (func() *byte {
-				s = strtok(nil, libc.CString("\n\r"))
+				s = libc.StrTok(nil, libc.CString("\n\r"))
 				return s
 			}()) != nil {
 				cmd.Next = new(cmdlist_element)
 				cmd = cmd.Next
-				cmd.Cmd = C.strdup(s)
+				cmd.Cmd = libc.StrDup(s)
 			}
 		} else {
-			trig.Cmdlist.Cmd = C.strdup(libc.CString("* No Script"))
+			trig.Cmdlist.Cmd = libc.CString("* No Script")
 		}
 		trig_data_copy(proto, trig)
 		live_trig = trigger_list
@@ -383,10 +384,10 @@ func trigedit_save(d *descriptor_data) {
 					live_trig.Name = nil
 				}
 				if proto.Arglist != nil {
-					live_trig.Arglist = C.strdup(proto.Arglist)
+					live_trig.Arglist = libc.StrDup(proto.Arglist)
 				}
 				if proto.Name != nil {
-					live_trig.Name = C.strdup(proto.Name)
+					live_trig.Name = libc.StrDup(proto.Name)
 				}
 				if live_trig.Wait_event != nil {
 					event_cancel(live_trig.Wait_event)
@@ -411,8 +412,8 @@ func trigedit_save(d *descriptor_data) {
 		s = d.Olc.Storage
 		trig.Cmdlist = new(cmdlist_element)
 		if s != nil {
-			var t *byte = strtok(s, libc.CString("\n\r"))
-			trig.Cmdlist.Cmd = C.strdup(func() *byte {
+			var t *byte = libc.StrTok(s, libc.CString("\n\r"))
+			trig.Cmdlist.Cmd = libc.StrDup(func() *byte {
 				if t != nil {
 					return t
 				}
@@ -420,15 +421,15 @@ func trigedit_save(d *descriptor_data) {
 			}())
 			cmd = trig.Cmdlist
 			for (func() *byte {
-				s = strtok(nil, libc.CString("\n\r"))
+				s = libc.StrTok(nil, libc.CString("\n\r"))
 				return s
 			}()) != nil {
 				cmd.Next = new(cmdlist_element)
 				cmd = cmd.Next
-				cmd.Cmd = C.strdup(s)
+				cmd.Cmd = libc.StrDup(s)
 			}
 		} else {
-			trig.Cmdlist.Cmd = C.strdup(libc.CString("* No Script"))
+			trig.Cmdlist.Cmd = libc.CString("* No Script")
 		}
 		for i = 0; i < top_of_trigt; i++ {
 			if found == 0 {
@@ -483,8 +484,8 @@ func trigedit_save(d *descriptor_data) {
 	zone = int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number)
 	top = int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Top)
 	stdio.Snprintf(&fname[0], int(2048), "%s/%i.new", LIB_WORLD, zone)
-	if (func() *C.FILE {
-		trig_file = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "w")))
+	if (func() *stdio.File {
+		trig_file = stdio.FOpen(libc.GoString(&fname[0]), "w")
 		return trig_file
 	}()) == nil {
 		mudlog(BRF, MAX(ADMLVL_GOD, int(d.Character.Player_specials.Invis_level)), TRUE, libc.CString("SYSERR: OLC: Can't open trig file \"%s\""), &fname[0])
@@ -496,13 +497,13 @@ func trigedit_save(d *descriptor_data) {
 			return rnum
 		}()) != trig_rnum(-1) {
 			trig = (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(rnum)))).Proto
-			if stdio.Fprintf((*stdio.File)(unsafe.Pointer(trig_file)), "#%d\n", i) < 0 {
+			if stdio.Fprintf(trig_file, "#%d\n", i) < 0 {
 				mudlog(BRF, MAX(ADMLVL_GOD, int(d.Character.Player_specials.Invis_level)), TRUE, libc.CString("SYSERR: OLC: Can't write trig file!"))
-				C.fclose(trig_file)
+				trig_file.Close()
 				return
 			}
-			sprintascii(&bitBuf[0], bitvector_t(trig.Trigger_type))
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(trig_file)), "%s%c\n%d %s %d\n%s%c\n", func() *byte {
+			sprintascii(&bitBuf[0], bitvector_t(int32(trig.Trigger_type)))
+			stdio.Fprintf(trig_file, "%s%c\n%d %s %d\n%s%c\n", func() *byte {
 				if trig.Name != nil {
 					return trig.Name
 				}
@@ -522,20 +523,20 @@ func trigedit_save(d *descriptor_data) {
 				}
 				return libc.CString("")
 			}(), STRING_TERMINATOR)
-			C.strcpy(&buf[0], libc.CString(""))
+			libc.StrCpy(&buf[0], libc.CString(""))
 			for cmd = trig.Cmdlist; cmd != nil; cmd = cmd.Next {
-				C.strcat(&buf[0], cmd.Cmd)
-				C.strcat(&buf[0], libc.CString("\n"))
+				libc.StrCat(&buf[0], cmd.Cmd)
+				libc.StrCat(&buf[0], libc.CString("\n"))
 			}
 			if buf[0] == 0 {
-				C.strcpy(&buf[0], libc.CString("* Empty script"))
+				libc.StrCpy(&buf[0], libc.CString("* Empty script"))
 			}
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(trig_file)), "%s%c\n", &buf[0], STRING_TERMINATOR)
+			stdio.Fprintf(trig_file, "%s%c\n", &buf[0], STRING_TERMINATOR)
 			buf[0] = '\x00'
 		}
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(trig_file)), "$%c\n", STRING_TERMINATOR)
-	C.fclose(trig_file)
+	stdio.Fprintf(trig_file, "$%c\n", STRING_TERMINATOR)
+	trig_file.Close()
 	stdio.Snprintf(&buf[0], int(16384), "%s%d.trg", LIB_WORLD, zone)
 	stdio.Remove(libc.GoString(&buf[0]))
 	stdio.Rename(libc.GoString(&fname[0]), libc.GoString(&buf[0]))
@@ -607,7 +608,7 @@ func dg_script_edit_parse(d *descriptor_data, arg *byte) int {
 	)
 	switch d.Olc.Script_mode {
 	case SCRIPT_MAIN_MENU:
-		switch C.tolower(int(*arg)) {
+		switch unicode.ToLower(rune(*arg)) {
 		case 'x':
 			return 0
 		case 'n':
@@ -622,7 +623,7 @@ func dg_script_edit_parse(d *descriptor_data, arg *byte) int {
 		return 1
 	case SCRIPT_NEW_TRIGGER:
 		vnum = -1
-		count = __isoc99_sscanf(arg, libc.CString("%d, %d"), &pos, &vnum)
+		count = stdio.Sscanf(arg, "%d, %d", &pos, &vnum)
 		if count == 1 {
 			vnum = pos
 			pos = 999
@@ -710,18 +711,18 @@ func format_script(d *descriptor_data) int {
 	if d.Str == nil || *d.Str == nil {
 		return FALSE
 	}
-	sc = C.strdup(*d.Str)
-	t = strtok(sc, libc.CString("\n\r"))
+	sc = libc.StrDup(*d.Str)
+	t = libc.StrTok(sc, libc.CString("\n\r"))
 	nsc[0] = '\x00'
 	for t != nil {
 		line_num++
 		skip_spaces(&t)
-		if C.strncasecmp(t, libc.CString("if "), 3) == 0 || C.strncasecmp(t, libc.CString("switch "), 7) == 0 {
+		if libc.StrNCaseCmp(t, libc.CString("if "), 3) == 0 || libc.StrNCaseCmp(t, libc.CString("switch "), 7) == 0 {
 			indent_next = TRUE
-		} else if C.strncasecmp(t, libc.CString("while "), 6) == 0 {
+		} else if libc.StrNCaseCmp(t, libc.CString("while "), 6) == 0 {
 			found_case = TRUE
 			indent_next = TRUE
-		} else if C.strncasecmp(t, libc.CString("end"), 3) == 0 || C.strncasecmp(t, libc.CString("done"), 4) == 0 {
+		} else if libc.StrNCaseCmp(t, libc.CString("end"), 3) == 0 || libc.StrNCaseCmp(t, libc.CString("done"), 4) == 0 {
 			if indent == 0 {
 				write_to_output(d, libc.CString("Unmatched 'end' or 'done' (line %d)!\r\n"), line_num)
 				libc.Free(unsafe.Pointer(sc))
@@ -729,7 +730,7 @@ func format_script(d *descriptor_data) int {
 			}
 			indent--
 			indent_next = FALSE
-		} else if C.strncasecmp(t, libc.CString("else"), 4) == 0 {
+		} else if libc.StrNCaseCmp(t, libc.CString("else"), 4) == 0 {
 			if indent == 0 {
 				write_to_output(d, libc.CString("Unmatched 'else' (line %d)!\r\n"), line_num)
 				libc.Free(unsafe.Pointer(sc))
@@ -737,7 +738,7 @@ func format_script(d *descriptor_data) int {
 			}
 			indent--
 			indent_next = TRUE
-		} else if C.strncasecmp(t, libc.CString("case"), 4) == 0 || C.strncasecmp(t, libc.CString("default"), 7) == 0 {
+		} else if libc.StrNCaseCmp(t, libc.CString("case"), 4) == 0 || libc.StrNCaseCmp(t, libc.CString("default"), 7) == 0 {
 			if indent == 0 {
 				write_to_output(d, libc.CString("Case/default outside switch (line %d)!\r\n"), line_num)
 				libc.Free(unsafe.Pointer(sc))
@@ -747,7 +748,7 @@ func format_script(d *descriptor_data) int {
 				indent_next = TRUE
 			}
 			found_case = TRUE
-		} else if C.strncasecmp(t, libc.CString("break"), 5) == 0 {
+		} else if libc.StrNCaseCmp(t, libc.CString("break"), 5) == 0 {
 			if found_case == 0 || indent == 0 {
 				write_to_output(d, libc.CString("Break not in case (line %d)!\r\n"), line_num)
 				libc.Free(unsafe.Pointer(sc))
@@ -764,7 +765,7 @@ func format_script(d *descriptor_data) int {
 				return i
 			}()
 		}(); i < indent; i++ {
-			C.strncat(&line[0], libc.CString("  "), uint64(256-1))
+			libc.StrNCat(&line[0], libc.CString("  "), int(256-1))
 			nlen += 2
 		}
 		llen = uint64(stdio.Snprintf(&line[nlen], int(256-uintptr(nlen)), "%s\r\n", t))
@@ -774,18 +775,18 @@ func format_script(d *descriptor_data) int {
 			return FALSE
 		}
 		len_ = len_ + nlen + llen
-		C.strcat(&nsc[0], &line[0])
+		libc.StrCat(&nsc[0], &line[0])
 		if indent_next != 0 {
 			indent++
 			indent_next = FALSE
 		}
-		t = strtok(nil, libc.CString("\n\r"))
+		t = libc.StrTok(nil, libc.CString("\n\r"))
 	}
 	if indent != 0 {
 		write_to_output(d, libc.CString("Unmatched if, while or switch ignored.\r\n"))
 	}
 	libc.Free(unsafe.Pointer(*d.Str))
-	*d.Str = C.strdup(&nsc[0])
+	*d.Str = libc.StrDup(&nsc[0])
 	libc.Free(unsafe.Pointer(sc))
 	return TRUE
 }

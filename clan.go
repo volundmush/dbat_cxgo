@@ -46,27 +46,27 @@ func clanMemberFromList(id int, list *clan_member) *clan_member {
 func writeClanMasterlist() {
 	var (
 		i   int
-		fl  *C.FILE
+		fl  *stdio.File
 		buf [64936]byte
 	)
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(LIB_ETC, "w")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(LIB_ETC, "w")
 		return fl
 	}()) == nil {
 		basic_mud_log(libc.CString("ERROR: could not open clan masterlist for writing."))
 		return
 	}
 	stdio.Sprintf(&buf[0], "%d\n", num_clans)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), libc.GoString(&buf[0]))
+	stdio.Fprintf(fl, libc.GoString(&buf[0]))
 	for i = 0; i < num_clans; i++ {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s%d.cla\n", LIB_ETC, i)
+		stdio.Fprintf(fl, "%s%d.cla\n", LIB_ETC, i)
 	}
-	C.fclose(fl)
+	fl.Close()
 }
-func fgetlinetomax(file *C.FILE, p *byte, maxlen int) int {
+func fgetlinetomax(file *stdio.File, p *byte, maxlen int) int {
 	var count int = 0
-	for C.feof(file) == 0 && count < maxlen-1 {
-		*(*byte)(unsafe.Add(unsafe.Pointer(p), count)) = byte(int8(fgetc(file)))
+	for int(file.IsEOF()) == 0 && count < maxlen-1 {
+		*(*byte)(unsafe.Add(unsafe.Pointer(p), count)) = byte(int8(file.GetC()))
 		if *(*byte)(unsafe.Add(unsafe.Pointer(p), count)) == '\n' {
 			break
 		}
@@ -78,7 +78,7 @@ func fgetlinetomax(file *C.FILE, p *byte, maxlen int) int {
 func clanFilename(S *clan_data) *byte {
 	var i int
 	for i = 0; i < num_clans; i++ {
-		if C.strcmp(S.Name, (*(**clan_data)(unsafe.Add(unsafe.Pointer(clan), unsafe.Sizeof((*clan_data)(nil))*uintptr(i)))).Name) == 0 {
+		if libc.StrCmp(S.Name, (*(**clan_data)(unsafe.Add(unsafe.Pointer(clan), unsafe.Sizeof((*clan_data)(nil))*uintptr(i)))).Name) == 0 {
 			break
 		}
 	}
@@ -87,12 +87,12 @@ func clanFilename(S *clan_data) *byte {
 	} else {
 		var buf [64936]byte
 		stdio.Sprintf(&buf[0], "%s%d.cla", LIB_ETC, i)
-		return C.strdup(&buf[0])
+		return libc.StrDup(&buf[0])
 	}
 }
 func clanLoad(filename *byte) *clan_data {
 	var (
-		fl   *C.FILE
+		fl   *stdio.File
 		line [64936]byte
 		info *byte
 	)
@@ -105,8 +105,8 @@ func clanLoad(filename *byte) *clan_data {
 		basic_mud_log(libc.CString("ERROR: passed null pointer to clanLoad"))
 		return nil
 	}
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(filename), "r")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(filename), "r")
 		return fl
 	}()) == nil {
 		basic_mud_log(libc.CString("ERROR: could not open file, %s, in clanLoad."), filename)
@@ -117,110 +117,110 @@ func clanLoad(filename *byte) *clan_data {
 	stdio.Sprintf(&S.Memlist[0], "@D---@cMembers@D---\n")
 	stdio.Sprintf(&S.Applist[0], "@D---@YApplicants@D---\n")
 	fgetlinetomax(fl, &line[0], MAX_STRING_LENGTH)
-	__isoc99_sscanf(&line[0], libc.CString("%d %d"), &S.Open_join, &S.Open_leave)
+	stdio.Sscanf(&line[0], "%d %d", &S.Open_join, &S.Open_leave)
 	fgetlinetomax(fl, &line[0], MAX_STRING_LENGTH)
-	__isoc99_sscanf(&line[0], libc.CString("%ld"), &S.Bank)
+	stdio.Sscanf(&line[0], "%ld", &S.Bank)
 	fgetlinetomax(fl, &line[0], MAX_STRING_LENGTH)
-	__isoc99_sscanf(&line[0], libc.CString("%d"), &S.Bany)
+	stdio.Sscanf(&line[0], "%d", &S.Bany)
 	fgetlinetomax(fl, &line[0], MAX_STRING_LENGTH)
-	S.Name = C.strdup(&line[0])
+	S.Name = libc.StrDup(&line[0])
 	fgetlinetomax(fl, &line[0], MAX_STRING_LENGTH)
-	S.Highrank = C.strdup(&line[0])
+	S.Highrank = libc.StrDup(&line[0])
 	fgetlinetomax(fl, &line[0], MAX_STRING_LENGTH)
-	S.Midrank = C.strdup(&line[0])
+	S.Midrank = libc.StrDup(&line[0])
 	var memcount int = 0
 	for TRUE != 0 {
 		var moderator *clan_member
 		fgetlinetomax(fl, &line[0], MAX_STRING_LENGTH)
-		if C.strcmp(&line[0], libc.CString("~")) == 0 {
+		if libc.StrCmp(&line[0], libc.CString("~")) == 0 {
 			break
 		}
-		__isoc99_sscanf(&line[0], libc.CString("%d"), &id)
+		stdio.Sscanf(&line[0], "%d", &id)
 		moderator = new(clan_member)
 		moderator.Id = id
 		moderator.Next = S.Moderators
 		S.Moderators = moderator
 		if get_name_by_id(id) != nil {
 			memcount += 1
-			stdio.Sprintf(&S.Modlist[C.strlen(&S.Modlist[0])], "@D[@G%2d@D]@W %s\n", memcount, get_name_by_id(id))
+			stdio.Sprintf(&S.Modlist[libc.StrLen(&S.Modlist[0])], "@D[@G%2d@D]@W %s\n", memcount, get_name_by_id(id))
 		}
 	}
 	for TRUE != 0 {
 		var member *clan_member
 		fgetlinetomax(fl, &line[0], MAX_STRING_LENGTH)
-		if C.strcmp(&line[0], libc.CString("~")) == 0 {
+		if libc.StrCmp(&line[0], libc.CString("~")) == 0 {
 			break
 		}
-		__isoc99_sscanf(&line[0], libc.CString("%d"), &id)
+		stdio.Sscanf(&line[0], "%d", &id)
 		member = new(clan_member)
 		member.Id = id
 		member.Next = S.Members
 		S.Members = member
 		if get_name_by_id(id) != nil {
 			memcount += 1
-			stdio.Sprintf(&S.Memlist[C.strlen(&S.Memlist[0])], "@D[@G%2d@D]@W %s\n", memcount, get_name_by_id(id))
+			stdio.Sprintf(&S.Memlist[libc.StrLen(&S.Memlist[0])], "@D[@G%2d@D]@W %s\n", memcount, get_name_by_id(id))
 		}
 	}
 	for TRUE != 0 {
 		var applicant *clan_member
 		fgetlinetomax(fl, &line[0], MAX_STRING_LENGTH)
-		if C.strcmp(&line[0], libc.CString("~")) == 0 {
+		if libc.StrCmp(&line[0], libc.CString("~")) == 0 {
 			break
 		}
-		__isoc99_sscanf(&line[0], libc.CString("%d"), &id)
+		stdio.Sscanf(&line[0], "%d", &id)
 		applicant = new(clan_member)
 		applicant.Id = id
 		applicant.Next = S.Applicants
 		S.Applicants = applicant
 		if get_name_by_id(id) != nil {
-			stdio.Sprintf(&S.Applist[C.strlen(&S.Applist[0])], "@W%s\n", get_name_by_id(id))
+			stdio.Sprintf(&S.Applist[libc.StrLen(&S.Applist[0])], "@W%s\n", get_name_by_id(id))
 		}
 	}
 	infolen = 0
-	info = C.strdup(libc.CString(""))
-	C.strcpy(&line[0], libc.CString(""))
+	info = libc.CString("")
+	libc.StrCpy(&line[0], libc.CString(""))
 	S.Info = fread_string(fl, &line[0])
-	if C.strlen(&line[0]) > 0 {
+	if libc.StrLen(&line[0]) > 0 {
 	}
-	C.fclose(fl)
+	fl.Close()
 	return S
 }
 func clanSave(S *clan_data, filename *byte) bool {
 	var (
-		fl   *C.FILE
+		fl   *stdio.File
 		list *clan_member
 	)
 	if filename == nil {
 		basic_mud_log(libc.CString("ERROR: passed null pointer to clanSave when saving %s"), S.Name)
 		return FALSE != 0
 	}
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(filename), "w")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(filename), "w")
 		return fl
 	}()) == nil {
 		basic_mud_log(libc.CString("ERROR: could not save clan, %s, to filename, %s."), S.Name, filename)
 		return FALSE != 0
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d %d\n", S.Open_join, S.Open_leave)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%ld\n", S.Bank)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", S.Bany)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", S.Name)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", S.Highrank)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s\n", S.Midrank)
+	stdio.Fprintf(fl, "%d %d\n", S.Open_join, S.Open_leave)
+	stdio.Fprintf(fl, "%ld\n", S.Bank)
+	stdio.Fprintf(fl, "%d\n", S.Bany)
+	stdio.Fprintf(fl, "%s\n", S.Name)
+	stdio.Fprintf(fl, "%s\n", S.Highrank)
+	stdio.Fprintf(fl, "%s\n", S.Midrank)
 	for list = S.Moderators; list != nil; list = list.Next {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", list.Id)
+		stdio.Fprintf(fl, "%d\n", list.Id)
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "~\n")
+	stdio.Fprintf(fl, "~\n")
 	for list = S.Members; list != nil; list = list.Next {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", list.Id)
+		stdio.Fprintf(fl, "%d\n", list.Id)
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "~\n")
+	stdio.Fprintf(fl, "~\n")
 	for list = S.Applicants; list != nil; list = list.Next {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%d\n", list.Id)
+		stdio.Fprintf(fl, "%d\n", list.Id)
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "~\n")
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fl)), "%s~\n", S.Info)
-	C.fclose(fl)
+	stdio.Fprintf(fl, "~\n")
+	stdio.Fprintf(fl, "%s~\n", S.Info)
+	fl.Close()
 	return TRUE != 0
 }
 func clanDelete(S *clan_data) {
@@ -299,10 +299,10 @@ func clanAdd(S *clan_data) {
 func clanGet(name *byte) *clan_data {
 	var (
 		i       int
-		newname *byte = strlwr(C.strdup(name))
+		newname *byte = strlwr(libc.StrDup(name))
 	)
 	for i = 0; i < num_clans; i++ {
-		if C.strcmp(newname, strlwr(C.strdup((*(**clan_data)(unsafe.Add(unsafe.Pointer(clan), unsafe.Sizeof((*clan_data)(nil))*uintptr(i)))).Name))) == 0 {
+		if libc.StrCmp(newname, strlwr(libc.StrDup((*(**clan_data)(unsafe.Add(unsafe.Pointer(clan), unsafe.Sizeof((*clan_data)(nil))*uintptr(i)))).Name))) == 0 {
 			libc.Free(unsafe.Pointer(newname))
 			return *(**clan_data)(unsafe.Add(unsafe.Pointer(clan), unsafe.Sizeof((*clan_data)(nil))*uintptr(i)))
 		}
@@ -334,24 +334,24 @@ func clanReload(name *byte) bool {
 }
 func clanBoot() {
 	var (
-		fl   *C.FILE
+		fl   *stdio.File
 		i    int
 		len_ int
 		line [64936]byte
 	)
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(LIB_ETC, "r")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(LIB_ETC, "r")
 		return fl
 	}()) == nil {
 		basic_mud_log(libc.CString("  Could not open clan masterlist. Aborting."))
 		return
 	}
-	if C.feof(fl) != 0 {
+	if int(fl.IsEOF()) != 0 {
 		basic_mud_log(libc.CString("  Clan masterlist contained no data! Aborting."))
 		return
 	}
 	len_ = fgetlinetomax(fl, &line[0], MAX_STRING_LENGTH)
-	__isoc99_sscanf(&line[0], libc.CString("%d"), &num_clans)
+	stdio.Sscanf(&line[0], "%d", &num_clans)
 	if num_clans <= 0 {
 		basic_mud_log(libc.CString("  No clans have formed yet."))
 		clan = nil
@@ -373,11 +373,11 @@ func clanBoot() {
 			libc.Free(unsafe.Pointer(clan))
 			clan = nil
 			num_clans = 0
-			C.fclose(fl)
+			fl.Close()
 			return
 		}
 	}
-	C.fclose(fl)
+	fl.Close()
 }
 func isClan(name *byte) bool {
 	return clanGet(name) != nil
@@ -388,13 +388,13 @@ func clanCreate(name *byte) bool {
 		return FALSE != 0
 	}
 	S = new(clan_data)
-	S.Name = C.strdup(name)
-	S.Info = C.strdup(libc.CString(DEFAULT_CLAN_INFO))
+	S.Name = libc.StrDup(name)
+	S.Info = libc.CString(DEFAULT_CLAN_INFO)
 	S.Moderators = nil
 	S.Members = nil
 	S.Applicants = nil
-	S.Highrank = C.strdup(libc.CString("Captain"))
-	S.Midrank = C.strdup(libc.CString("Lieutenant"))
+	S.Highrank = libc.CString("Captain")
+	S.Midrank = libc.CString("Lieutenant")
 	clanAdd(S)
 	return TRUE != 0
 }
@@ -405,10 +405,10 @@ func clanINFOW(name *byte, ch *char_data) {
 	} else {
 		var backstr *byte = nil
 		act(libc.CString("$n begins to edit a clan's info."), TRUE, ch, nil, nil, TO_ROOM)
-		ch.Act[int(PLR_WRITING/32)] |= bitvector_t(1 << (int(PLR_WRITING % 32)))
+		ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
 		send_editor_help(ch.Desc)
 		write_to_output(ch.Desc, libc.CString("@rYou are limited to 1000 characters for the clan info.@n\r\n"))
-		backstr = C.strdup(S.Info)
+		backstr = libc.StrDup(S.Info)
 		write_to_output(ch.Desc, libc.CString("%s\r\n"), S.Info)
 		string_write(ch.Desc, &S.Info, 1000, 0, unsafe.Pointer(backstr))
 		clanSave(S, clanFilename(S))
@@ -467,7 +467,7 @@ func clanHIGHRANK(name *byte, ch *char_data, rank *byte) bool {
 	if S == nil || IS_NPC(ch) {
 		return FALSE != 0
 	} else {
-		S.Highrank = C.strdup(rank)
+		S.Highrank = libc.StrDup(rank)
 		clanSave(S, clanFilename(S))
 		return TRUE != 0
 	}
@@ -477,7 +477,7 @@ func clanMIDRANK(name *byte, ch *char_data, rank *byte) bool {
 	if S == nil || IS_NPC(ch) {
 		return FALSE != 0
 	} else {
-		S.Midrank = C.strdup(rank)
+		S.Midrank = libc.StrDup(rank)
 		clanSave(S, clanFilename(S))
 		return TRUE != 0
 	}
@@ -614,14 +614,14 @@ func set_clan(ch *char_data, clan *byte) {
 	if ch.Clan != nil {
 		libc.Free(unsafe.Pointer(ch.Clan))
 	}
-	ch.Clan = C.strdup(clan)
+	ch.Clan = libc.StrDup(clan)
 	ch.Crank = 0
 }
 func remove_clan(ch *char_data) {
 	if ch.Clan != nil {
 		libc.Free(unsafe.Pointer(ch.Clan))
 	}
-	ch.Clan = C.strdup(libc.CString("None."))
+	ch.Clan = libc.CString("None.")
 }
 func clanMakeModerator(name *byte, ch *char_data) bool {
 	var (
@@ -759,7 +759,7 @@ func handle_clan_member_list(ch *char_data) {
 	if ch.Clan == nil || ch.Clan == nil {
 		return
 	}
-	if C.strstr(ch.Clan, libc.CString("None")) != nil {
+	if libc.StrStr(ch.Clan, libc.CString("None")) != nil {
 		return
 	}
 	var S *clan_data = clanGet(ch.Clan)
@@ -888,7 +888,7 @@ func checkCLAN(ch *char_data) int {
 		return FALSE
 	}
 	for i = 0; i < num_clans; i++ {
-		if C.strstr(ch.Clan, (*(**clan_data)(unsafe.Add(unsafe.Pointer(clan), unsafe.Sizeof((*clan_data)(nil))*uintptr(i)))).Name) != nil {
+		if libc.StrStr(ch.Clan, (*(**clan_data)(unsafe.Add(unsafe.Pointer(clan), unsafe.Sizeof((*clan_data)(nil))*uintptr(i)))).Name) != nil {
 			return TRUE
 		}
 	}
@@ -900,8 +900,8 @@ func checkAPP(ch *char_data) {
 		return
 	}
 	for i = 0; i < num_clans; i++ {
-		if C.strstr(ch.Clan, (*(**clan_data)(unsafe.Add(unsafe.Pointer(clan), unsafe.Sizeof((*clan_data)(nil))*uintptr(i)))).Name) != nil {
-			ch.Clan = C.strdup((*(**clan_data)(unsafe.Add(unsafe.Pointer(clan), unsafe.Sizeof((*clan_data)(nil))*uintptr(i)))).Name)
+		if libc.StrStr(ch.Clan, (*(**clan_data)(unsafe.Add(unsafe.Pointer(clan), unsafe.Sizeof((*clan_data)(nil))*uintptr(i)))).Name) != nil {
+			ch.Clan = libc.StrDup((*(**clan_data)(unsafe.Add(unsafe.Pointer(clan), unsafe.Sizeof((*clan_data)(nil))*uintptr(i)))).Name)
 			return
 		}
 	}

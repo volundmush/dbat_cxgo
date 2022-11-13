@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
+	"unicode"
 	"unsafe"
 )
 
@@ -48,8 +49,8 @@ func do_oasis_redit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		} else {
 			number = -1
 		}
-	} else if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(buf1[0]))))) & int(uint16(int16(_ISdigit)))) == 0 {
-		if C.strcasecmp(libc.CString("save"), &buf1[0]) != 0 {
+	} else if !unicode.IsDigit(rune(buf1[0])) {
+		if libc.StrCaseCmp(libc.CString("save"), &buf1[0]) != 0 {
 			send_to_char(ch, libc.CString("Yikes!  Stop that, someone will get hurt!\r\n"))
 			return
 		}
@@ -126,13 +127,13 @@ func do_oasis_redit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	redit_disp_menu(d)
 	d.Connected = CON_REDIT
 	act(libc.CString("$n starts using OLC."), TRUE, d.Character, nil, nil, TO_ROOM)
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(1 << (int(PLR_WRITING % 32)))
+	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
 	mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing zone %d allowed zone %d"), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number, ch.Player_specials.Olc_zone)
 }
 func redit_setup_new(d *descriptor_data) {
 	d.Olc.Room = new(room_data)
-	d.Olc.Room.Name = C.strdup(libc.CString("An unfinished room"))
-	d.Olc.Room.Description = C.strdup(libc.CString("You are in an unfinished room.\r\n"))
+	d.Olc.Room.Name = libc.CString("An unfinished room")
+	d.Olc.Room.Description = libc.CString("You are in an unfinished room.\r\n")
 	d.Olc.Room.Number = -1
 	d.Olc.Item_type = WLD_TRIGGER
 	d.Olc.Room.Proto_script = func() *trig_proto_list {
@@ -156,10 +157,10 @@ func redit_setup_existing(d *descriptor_data, real_num int) {
 			room.Dir_option[counter] = new(room_direction_data)
 			*room.Dir_option[counter] = *(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_num)))).Dir_option[counter]
 			if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_num)))).Dir_option[counter].General_description != nil {
-				room.Dir_option[counter].General_description = C.strdup((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_num)))).Dir_option[counter].General_description)
+				room.Dir_option[counter].General_description = libc.StrDup((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_num)))).Dir_option[counter].General_description)
 			}
 			if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_num)))).Dir_option[counter].Keyword != nil {
-				room.Dir_option[counter].Keyword = C.strdup((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_num)))).Dir_option[counter].Keyword)
+				room.Dir_option[counter].Keyword = libc.StrDup((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_num)))).Dir_option[counter].Keyword)
 			}
 		}
 	}
@@ -172,8 +173,8 @@ func redit_setup_existing(d *descriptor_data, real_num int) {
 		temp = new(extra_descr_data)
 		room.Ex_description = temp
 		for tdesc = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_num)))).Ex_description; tdesc != nil; tdesc = tdesc.Next {
-			temp.Keyword = C.strdup(tdesc.Keyword)
-			temp.Description = C.strdup(tdesc.Description)
+			temp.Keyword = libc.StrDup(tdesc.Keyword)
+			temp.Description = libc.StrDup(tdesc.Description)
 			if tdesc.Next != nil {
 				temp2 = new(extra_descr_data)
 				temp.Next = temp2
@@ -541,7 +542,7 @@ func redit_parse(d *descriptor_data, arg *byte) {
 			}
 			if d.Olc.Room.Description != nil {
 				write_to_output(d, libc.CString("%s"), d.Olc.Room.Description)
-				oldtext = C.strdup(d.Olc.Room.Description)
+				oldtext = libc.StrDup(d.Olc.Room.Description)
 			}
 			string_write(d, &d.Olc.Room.Description, MAX_ROOM_DESC, 0, unsafe.Pointer(oldtext))
 			d.Olc.Value = 1
@@ -728,7 +729,7 @@ func redit_parse(d *descriptor_data, arg *byte) {
 		} else if number == 0 {
 			break
 		} else {
-			d.Olc.Room.Room_flags[(number-1)/32] = d.Olc.Room.Room_flags[(number-1)/32] ^ bitvector_t(1<<((number-1)%32))
+			d.Olc.Room.Room_flags[(number-1)/32] = bitvector_t(int32(int(d.Olc.Room.Room_flags[(number-1)/32]) ^ 1<<((number-1)%32)))
 			redit_disp_flag_menu(d)
 		}
 		return
@@ -753,7 +754,7 @@ func redit_parse(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("Enter exit description:\r\n\r\n"))
 			if (d.Olc.Room.Dir_option[d.Olc.Value]).General_description != nil {
 				write_to_output(d, libc.CString("%s"), (d.Olc.Room.Dir_option[d.Olc.Value]).General_description)
-				oldtext = C.strdup((d.Olc.Room.Dir_option[d.Olc.Value]).General_description)
+				oldtext = libc.StrDup((d.Olc.Room.Dir_option[d.Olc.Value]).General_description)
 			}
 			string_write(d, &(d.Olc.Room.Dir_option[d.Olc.Value]).General_description, MAX_EXIT_DESC, 0, unsafe.Pointer(oldtext))
 			return
@@ -869,7 +870,7 @@ func redit_parse(d *descriptor_data, arg *byte) {
 		} else if number == 0 {
 			redit_disp_exit_menu(d)
 		} else {
-			(d.Olc.Room.Dir_option[d.Olc.Value]).Exit_info ^= bitvector_t(1 << (number - 1))
+			(d.Olc.Room.Dir_option[d.Olc.Value]).Exit_info ^= bitvector_t(int32(1 << (number - 1)))
 			redit_disp_exit_flag_menu(d)
 		}
 		return
@@ -919,7 +920,7 @@ func redit_parse(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("Enter extra description:\r\n\r\n"))
 			if d.Olc.Desc.Description != nil {
 				write_to_output(d, libc.CString("%s"), d.Olc.Desc.Description)
-				oldtext = C.strdup(d.Olc.Desc.Description)
+				oldtext = libc.StrDup(d.Olc.Desc.Description)
 			}
 			string_write(d, &d.Olc.Desc.Description, MAX_MESSAGE_LENGTH, 0, unsafe.Pointer(oldtext))
 			return

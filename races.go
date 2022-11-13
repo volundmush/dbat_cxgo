@@ -6,7 +6,7 @@ var race_names [25]*byte = [25]*byte{libc.CString("human"), libc.CString("saiyan
 var race_abbrevs [25]*byte = [25]*byte{libc.CString("Hum"), libc.CString("Sai"), libc.CString("Ice"), libc.CString("Kon"), libc.CString("Nam"), libc.CString("Mut"), libc.CString("Kan"), libc.CString("H-B"), libc.CString("Bio"), libc.CString("And"), libc.CString("Dem"), libc.CString("Maj"), libc.CString("Kai"), libc.CString("Tru"), libc.CString("Hos"), libc.CString("Ict"), libc.CString("Sab"), libc.CString("Ser"), libc.CString("Trl"), libc.CString("Dra"), libc.CString("Arl"), libc.CString("Mnd"), libc.CString("Mec"), libc.CString("Spi"), libc.CString("\n")}
 var pc_race_types [25]*byte = [25]*byte{libc.CString("Human"), libc.CString("Saiyan"), libc.CString("Icer"), libc.CString("Konatsu"), libc.CString("Namekian"), libc.CString("Mutant"), libc.CString("Kanassan"), libc.CString("Halfbreed"), libc.CString("Bioandroid"), libc.CString("Android"), libc.CString("Demon"), libc.CString("Majin"), libc.CString("Kai"), libc.CString("Truffle"), libc.CString("Hoshijin"), libc.CString("animal"), libc.CString("Saiba"), libc.CString("Serpent"), libc.CString("Ogre"), libc.CString("Yardratian"), libc.CString("Arlian"), libc.CString("Dragon"), libc.CString("mechanical"), libc.CString("Spirit"), libc.CString("\n")}
 var d_race_types [25]*byte = [25]*byte{libc.CString("A Disguised Human"), libc.CString("A Disguised Saiyan"), libc.CString("A Disguised Icer"), libc.CString("A Disguised Konatsu"), libc.CString("A Disguised Namekian"), libc.CString("A Disguised Mutant"), libc.CString("A Disguised Kanassan"), libc.CString("A Disguised Halfbreed"), libc.CString("A Disguised Bioandroid"), libc.CString("A Disguised Android"), libc.CString("A Disguised Demon"), libc.CString("A Disguised Majin"), libc.CString("A Disguised Kai"), libc.CString("A Disguised Truffle"), libc.CString("A Disguised Hoshijin"), libc.CString("A Disguised Animal"), libc.CString("Saiba"), libc.CString("Serpent"), libc.CString("Ogre"), libc.CString("Yardratian"), libc.CString("A Disguised Arlian"), libc.CString("Dragon"), libc.CString("mechanical"), libc.CString("Spirit"), libc.CString("\n")}
-var race_ok_gender [3][24]int = [3][24]int{{TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE}, {TRUE, TRUE, TRUE, TRUE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE}, {TRUE, TRUE, TRUE, TRUE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE}}
+var race_ok_gender [3][24]bool = [3][24]bool{{true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, true, false, false, false}, {true, true, true, true, false, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, true, false, false, false}, {true, true, true, true, false, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, true, false, false, false}}
 var race_display [24]*byte = [24]*byte{libc.CString("@B1@W) @cHuman\r\n"), libc.CString("@B2@W) @cSaiyan\r\n"), libc.CString("@B3@W) @cIcer\r\n"), libc.CString("@B4@W) @cKonatsu\r\n"), libc.CString("@B5@W) @cNamekian\r\n"), libc.CString("@B6@W) @cMutant\r\n"), libc.CString("@B7@W) @cKanassan\r\n"), libc.CString("@B8@W) @cHalf Breed\r\n"), libc.CString("@B9@W) @cBio-Android\r\n"), libc.CString("@B10@W) @cAndroid\r\n"), libc.CString("@B11@W) @cDemon\r\n"), libc.CString("@B12@W) @cMajin\r\n"), libc.CString("@B13@W) @cKai\r\n"), libc.CString("@B14@W) @cTruffle\r\n"), libc.CString("@B15@W) @cHoshijin\r\n"), libc.CString("@B16@W) @YArlian\r\n"), libc.CString("@B17@W) @GAnimal\r\n"), libc.CString("@B18@W) @MSaiba\r\n"), libc.CString("@B19@W) @BSerpent\r\n"), libc.CString("@B20@W) @ROgre\r\n"), libc.CString("@B21@W) @CYardratian\r\n"), libc.CString("@B22@W) @GLizardfolk\r\n"), libc.CString("@B23@W) @GMechanical\r\n"), libc.CString("@B24@W) @MSpirit\r\n")}
 
 func parse_race(ch *char_data, arg int) int {
@@ -97,7 +97,7 @@ func parse_race(ch *char_data, arg int) int {
 		race = -1
 	}
 	if race >= 0 && race < NUM_RACES {
-		if race_ok_gender[int(ch.Sex)][race] == 0 {
+		if !race_ok_gender[int(ch.Sex)][race] {
 			race = -1
 		}
 	}
@@ -109,7 +109,7 @@ var racial_ability_mods [25][6]int = [25][6]int{{}, {0, -2, 0, 0, 2, 0}, {-2, 2,
 func racial_ability_modifiers(ch *char_data) {
 	var chrace int = 0
 	_ = chrace
-	if ch.Race >= NUM_RACES || ch.Race < 0 {
+	if int(ch.Race) >= NUM_RACES || int(ch.Race) < 0 {
 		basic_mud_log(libc.CString("SYSERR: Unknown race %d in racial_ability_modifiers"), ch.Race)
 	} else {
 		chrace = int(ch.Race)
@@ -157,28 +157,28 @@ func invalid_race(ch *char_data, obj *obj_data) int {
 	if ch.Admlevel >= ADMLVL_IMMORT {
 		return FALSE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ANTI_HUMAN) && ch.Race == RACE_HUMAN {
+	if OBJ_FLAGGED(obj, ITEM_ANTI_HUMAN) && int(ch.Race) == RACE_HUMAN {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ANTI_SAIYAN) && ch.Race == RACE_SAIYAN {
+	if OBJ_FLAGGED(obj, ITEM_ANTI_SAIYAN) && int(ch.Race) == RACE_SAIYAN {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ANTI_ICER) && ch.Race == RACE_ICER {
+	if OBJ_FLAGGED(obj, ITEM_ANTI_ICER) && int(ch.Race) == RACE_ICER {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ANTI_KONATSU) && ch.Race == RACE_KONATSU {
+	if OBJ_FLAGGED(obj, ITEM_ANTI_KONATSU) && int(ch.Race) == RACE_KONATSU {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ONLY_HUMAN) && ch.Race != RACE_HUMAN {
+	if OBJ_FLAGGED(obj, ITEM_ONLY_HUMAN) && int(ch.Race) != RACE_HUMAN {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ONLY_ICER) && ch.Race != RACE_ICER {
+	if OBJ_FLAGGED(obj, ITEM_ONLY_ICER) && int(ch.Race) != RACE_ICER {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ONLY_SAIYAN) && ch.Race != RACE_SAIYAN {
+	if OBJ_FLAGGED(obj, ITEM_ONLY_SAIYAN) && int(ch.Race) != RACE_SAIYAN {
 		return TRUE
 	}
-	if OBJ_FLAGGED(obj, ITEM_ONLY_KONATSU) && ch.Race != RACE_KONATSU {
+	if OBJ_FLAGGED(obj, ITEM_ONLY_KONATSU) && int(ch.Race) != RACE_KONATSU {
 		return TRUE
 	}
 	return FALSE
@@ -212,7 +212,7 @@ func get_size_bonus(sz int) int {
 	return size_bonus_table[sz]
 }
 func wield_type(chsize int, weap *obj_data) int {
-	if weap.Type_flag != ITEM_WEAPON {
+	if int(weap.Type_flag) != ITEM_WEAPON {
 		if OBJ_FLAGGED(weap, ITEM_2H) {
 			return WIELD_TWOHAND
 		}
@@ -239,7 +239,7 @@ func racial_body_parts(ch *char_data) {
 		if race_bodyparts[ch.Race][i] != 0 {
 			ch.Bodyparts[i/32] |= 1 << (i % 32)
 		} else {
-			if BODY_FLAGGED(ch, bitvector_t(i)) {
+			if BODY_FLAGGED(ch, bitvector_t(int32(i))) {
 				ch.Bodyparts[i/32] &= ^(1 << (i % 32))
 			}
 		}

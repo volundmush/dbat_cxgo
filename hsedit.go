@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"unicode"
 	"unsafe"
 )
 
@@ -16,7 +17,7 @@ func hsedit_setup_new(d *descriptor_data) {
 	d.Olc.House.Owner = 0
 	d.Olc.House.Atrium = 0
 	d.Olc.House.Exit_num = -1
-	d.Olc.House.Built_on = C.time(nil)
+	d.Olc.House.Built_on = libc.GetTime(nil)
 	d.Olc.House.Mode = HOUSE_PRIVATE
 	d.Olc.House.Bitvector = 0
 	d.Olc.House.Builtby = 0
@@ -73,10 +74,10 @@ func hsedit_save_internally(d *descriptor_data) {
 		}
 	}
 	if real_room(d.Olc.House.Vnum) != room_rnum(-1) {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(d.Olc.House.Vnum))))).Room_flags[int(ROOM_HOUSE/32)] |= bitvector_t(1 << (int(ROOM_HOUSE % 32)))
+		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(d.Olc.House.Vnum))))).Room_flags[int(ROOM_HOUSE/32)] |= bitvector_t(int32(1 << (int(ROOM_HOUSE % 32))))
 	}
 	if real_room(d.Olc.House.Atrium) != room_rnum(-1) {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(d.Olc.House.Atrium))))).Room_flags[int(ROOM_ATRIUM/32)] |= bitvector_t(1 << (int(ROOM_ATRIUM % 32)))
+		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(d.Olc.House.Atrium))))).Room_flags[int(ROOM_ATRIUM/32)] |= bitvector_t(int32(1 << (int(ROOM_ATRIUM % 32))))
 	}
 }
 func hsedit_save_to_disk() {
@@ -106,7 +107,7 @@ func hedit_delete_house(d *descriptor_data, house_vnum int) {
 	}()) == room_rnum(-1) {
 		basic_mud_log(libc.CString("SYSERR: House %d had invalid vnum %d!"), house_vnum, house_control[i].Vnum)
 	} else {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_house)))).Room_flags[(int(ROOM_HOUSE|ROOM_HOUSE_CRASH))/32] &= bitvector_t(^(1 << ((int(ROOM_HOUSE | ROOM_HOUSE_CRASH)) % 32)))
+		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_house)))).Room_flags[(int(ROOM_HOUSE|ROOM_HOUSE_CRASH))/32] &= bitvector_t(int32(^(1 << ((int(ROOM_HOUSE | ROOM_HOUSE_CRASH)) % 32))))
 	}
 	House_delete_file(house_control[i].Vnum)
 	for j = i; j < num_of_houses-1; j++ {
@@ -134,7 +135,7 @@ func hsedit_disp_flags_menu(d *descriptor_data) {
 			send_to_char(d.Character, libc.CString("\r\n"))
 		}
 	}
-	sprintbit(bitvector_t(d.Olc.House.Bitvector), house_flags[:], &buf1[0], uint64(64936))
+	sprintbit(bitvector_t(int32(d.Olc.House.Bitvector)), house_flags[:], &buf1[0], uint64(64936))
 	send_to_char(d.Character, libc.CString("\r\nHouse flags: @g%s@n\r\nEnter house flags, 0 to quit : "), &buf1[0])
 	d.Olc.Mode = HSEDIT_FLAGS
 }
@@ -423,7 +424,7 @@ func hsedit_list_guests(thishouse *house_control_rec, guestlist *byte) *byte {
 			continue
 		}
 		num_printed++
-		stdio.Sprintf(guestlist, "%s%c%s ", guestlist, C.toupper(int(*temp)), (*byte)(unsafe.Add(unsafe.Pointer(temp), 1)))
+		stdio.Sprintf(guestlist, "%s%c%s ", guestlist, unicode.ToUpper(rune(*temp)), (*byte)(unsafe.Add(unsafe.Pointer(temp), 1)))
 	}
 	if num_printed == 0 {
 		stdio.Sprintf(guestlist, "all dead")
@@ -444,21 +445,21 @@ func hsedit_disp_menu(d *descriptor_data) {
 	clear_screen(d)
 	house = d.Olc.House
 	if house.Built_on != 0 {
-		timestr = C.asctime(C.localtime(&house.Built_on))
+		timestr = libc.AscTime(libc.LocalTime(&house.Built_on))
 		*((*byte)(unsafe.Add(unsafe.Pointer(timestr), 10))) = '\x00'
 		strlcpy(&built_on[0], timestr, uint64(128))
 	} else {
-		C.strcpy(&built_on[0], libc.CString("Unknown"))
+		libc.StrCpy(&built_on[0], libc.CString("Unknown"))
 	}
 	if house.Last_payment != 0 {
-		timestr = C.asctime(C.localtime(&house.Last_payment))
+		timestr = libc.AscTime(libc.LocalTime(&house.Last_payment))
 		*((*byte)(unsafe.Add(unsafe.Pointer(timestr), 10))) = '\x00'
 		strlcpy(&last_pay[0], timestr, uint64(128))
 	} else {
-		C.strcpy(&last_pay[0], libc.CString("None"))
+		libc.StrCpy(&last_pay[0], libc.CString("None"))
 	}
 	buf2[0] = '\x00'
-	sprintbit(bitvector_t(house.Bitvector), house_flags[:], &buf1[0], uint64(64936))
+	sprintbit(bitvector_t(int32(house.Bitvector)), house_flags[:], &buf1[0], uint64(64936))
 	stdio.Sprintf(&no_name[0], "(NOBODY)")
 	stdio.Sprintf(&buf[0], "@D-- @RJamdog's House OLC Editor @D--\r\n@D--@g House number : @D[@c%d@D]     @gHouse zone: @D[@c%d@D]\r\n@g1@D)@g Owner       : @c%ld -- %s\r\n@g2@D)@g Atrium      : @c%d\r\n@g3@D)@g Direction   : @c%s\r\n@g4@D)@g House Type  : @c%s\r\n@g5@D)@g Built on    : @c%s\r\n@g6@D)@g Payment     : @c%s\r\n@g7@D)@g Guests      : @c%s\r\n@g8@D)@g Flags       : @c%s\r\n@gX@D)@g Delete this house\r\n@gQ@D)@g Quit\r\n@gEnter choice : @n", d.Olc.Number, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number, house.Owner, func() *byte {
 		if get_name_by_id(house.Owner) == nil {
@@ -466,7 +467,7 @@ func hsedit_disp_menu(d *descriptor_data) {
 		}
 		return get_name_by_id(house.Owner)
 	}(), house.Atrium, func() *byte {
-		if house.Exit_num >= 0 && house.Exit_num <= 11 {
+		if int(house.Exit_num) >= 0 && int(house.Exit_num) <= 11 {
 			return dirs[house.Exit_num]
 		}
 		return libc.CString("NONE")
@@ -651,7 +652,7 @@ func hsedit_parse(d *descriptor_data, arg *byte) {
 		case 'y':
 			fallthrough
 		case 'Y':
-			d.Olc.House.Built_on = C.time(nil)
+			d.Olc.House.Built_on = libc.GetTime(nil)
 		case 'n':
 			fallthrough
 		case 'N':
@@ -689,7 +690,7 @@ func hsedit_parse(d *descriptor_data, arg *byte) {
 		case 'y':
 			fallthrough
 		case 'Y':
-			d.Olc.House.Last_payment = C.time(nil)
+			d.Olc.House.Last_payment = libc.GetTime(nil)
 		case 'n':
 			fallthrough
 		case 'N':
@@ -867,8 +868,8 @@ func do_oasis_hsedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		} else {
 			number = -1
 		}
-	} else if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(buf1[0]))))) & int(uint16(int16(_ISdigit)))) == 0 {
-		if C.strcasecmp(libc.CString("save"), &buf1[0]) != 0 {
+	} else if !unicode.IsDigit(rune(buf1[0])) {
+		if libc.StrCaseCmp(libc.CString("save"), &buf1[0]) != 0 {
 			send_to_char(ch, libc.CString("Yikes!  Stop that, someone will get hurt!\r\n"))
 			return
 		}
@@ -949,6 +950,6 @@ func do_oasis_hsedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	d.Connected = CON_HSEDIT
 	act(libc.CString("$n starts using OLC."), TRUE, d.Character, nil, nil, TO_ROOM)
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(1 << (int(PLR_WRITING % 32)))
+	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
 	mudlog(CMP, ADMLVL_BUILDER, TRUE, libc.CString("OLC: (hsedit) %s starts editing zone %d allowed zone %d"), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number, ch.Player_specials.Olc_zone)
 }

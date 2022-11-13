@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
+	"unicode"
 	"unsafe"
 )
 
@@ -37,7 +38,7 @@ func do_olc(ch *char_data, argument *byte, cmd int, subcmd int) {
 		vnum     room_vnum = room_vnum(-1)
 		olc_mode int
 	)
-	if C.strcmp(GET_NAME(ch), libc.CString("Ras")) != 0 {
+	if libc.StrCmp(GET_NAME(ch), libc.CString("Ras")) != 0 {
 		send_to_char(ch, libc.CString("OLC is not yet complete.  Sorry.\r\n"))
 		return
 	}
@@ -67,7 +68,7 @@ func do_olc(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	case OLC_ROOM_TYPE:
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*argument))))) & int(uint16(int16(_ISdigit)))) != 0 {
+		if unicode.IsDigit(rune(*argument)) {
 			argument = one_argument(argument, &arg[0])
 			if is_number(&arg[0]) == 0 {
 				send_to_char(ch, libc.CString("Invalid room vnum '%s'.\r\n"), &arg[0])
@@ -215,13 +216,13 @@ func olc_string(string_ **byte, maxlen uint64, arg *byte) {
 		**string_ = '\x00'
 		string_write(olc_ch.Desc, string_, maxlen, 0, nil)
 	} else {
-		if uint64(C.strlen(arg)) > maxlen {
+		if libc.StrLen(arg) > int(maxlen) {
 			send_to_char(olc_ch, libc.CString("String too long (cannot be more than %d chars).\r\n"), int(maxlen))
 		} else {
 			if *string_ != nil {
 				libc.Free(unsafe.Pointer(*string_))
 			}
-			*string_ = C.strdup(arg)
+			*string_ = libc.StrDup(arg)
 			send_to_char(olc_ch, libc.CString("%s"), config_info.Play.OK)
 		}
 	}
@@ -274,7 +275,7 @@ func olc_bitvector(bv *int, names **byte, arg *byte) {
 		}
 	}
 	*bv = newbv
-	sprintbit(bitvector_t(newbv), ([0]*byte)(names), &buf[0], uint64(64936))
+	sprintbit(bitvector_t(int32(newbv)), ([0]*byte)(names), &buf[0], uint64(64936))
 	send_to_char(olc_ch, libc.CString("Flags now set to: %s\r\n"), &buf[0])
 }
 func olc_set_show(ch *char_data, olc_mode int, arg *byte) {

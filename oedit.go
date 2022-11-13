@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
+	"unicode"
 	"unsafe"
 )
 
@@ -20,8 +21,8 @@ func do_oasis_oedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if buf1[0] == 0 {
 		send_to_char(ch, libc.CString("Specify an object VNUM to edit.\r\n"))
 		return
-	} else if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(buf1[0]))))) & int(uint16(int16(_ISdigit)))) == 0 {
-		if C.strcasecmp(libc.CString("save"), &buf1[0]) != 0 {
+	} else if !unicode.IsDigit(rune(buf1[0])) {
+		if libc.StrCaseCmp(libc.CString("save"), &buf1[0]) != 0 {
 			send_to_char(ch, libc.CString("Yikes!  Stop that, someone will get hurt!\r\n"))
 			return
 		}
@@ -98,15 +99,15 @@ func do_oasis_oedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	oedit_disp_menu(d)
 	d.Connected = CON_OEDIT
 	act(libc.CString("$n starts using OLC."), TRUE, d.Character, nil, nil, TO_ROOM)
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(1 << (int(PLR_WRITING % 32)))
+	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
 	mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing zone %d allowed zone %d"), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number, ch.Player_specials.Olc_zone)
 }
 func oedit_setup_new(d *descriptor_data) {
 	d.Olc.Obj = new(obj_data)
 	clear_object(d.Olc.Obj)
-	d.Olc.Obj.Name = C.strdup(libc.CString("unfinished object"))
-	d.Olc.Obj.Description = C.strdup(libc.CString("An unfinished object is lying here."))
-	d.Olc.Obj.Short_description = C.strdup(libc.CString("an unfinished object"))
+	d.Olc.Obj.Name = libc.CString("unfinished object")
+	d.Olc.Obj.Description = libc.CString("An unfinished object is lying here.")
+	d.Olc.Obj.Short_description = libc.CString("an unfinished object")
 	d.Olc.Obj.Wear_flags[int(ITEM_WEAR_TAKE/32)] |= 1 << (int(ITEM_WEAR_TAKE % 32))
 	d.Olc.Value = 0
 	d.Olc.Item_type = OBJ_TRIGGER
@@ -202,7 +203,7 @@ func oedit_save_to_disk(zone_num int) {
 func oedit_disp_container_flags_menu(d *descriptor_data) {
 	var bits [64936]byte
 	clear_screen(d)
-	sprintbit(bitvector_t(d.Olc.Obj.Value[1]), container_bits[:], &bits[0], uint64(64936))
+	sprintbit(bitvector_t(int32(d.Olc.Obj.Value[1])), container_bits[:], &bits[0], uint64(64936))
 	write_to_output(d, libc.CString("@g1@n) CLOSEABLE\r\n@g2@n) PICKPROOF\r\n@g3@n) CLOSED\r\n@g4@n) LOCKED\r\nContainer flags: @c%s@n\r\nEnter flag, 0 to quit : "), &bits[0])
 }
 func oedit_disp_extradesc_menu(d *descriptor_data) {
@@ -834,7 +835,7 @@ func oedit_parse(d *descriptor_data, arg *byte) {
 			} else {
 				write_to_output(d, libc.CString("Object saved to memory.\r\n"))
 			}
-			if d.Olc.Obj.Type_flag == ITEM_BOARD {
+			if int(d.Olc.Obj.Type_flag) == ITEM_BOARD {
 				if (func() *board_info {
 					tmp = locate_board(GET_OBJ_VNUM(d.Olc.Obj))
 					return tmp
@@ -923,10 +924,10 @@ func oedit_parse(d *descriptor_data, arg *byte) {
 					copy_proto_script(unsafe.Pointer((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(robj)))), unsafe.Pointer(obj), OBJ_TRIGGER)
 					assign_triggers(unsafe.Pointer(obj), OBJ_TRIGGER)
 				}
-				obj.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(1 << (int(ITEM_UNIQUE_SAVE % 32)))
+				obj.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(int32(1 << (int(ITEM_UNIQUE_SAVE % 32))))
 				mudlog(CMP, MAX(ADMLVL_BUILDER, int(d.Character.Player_specials.Invis_level)), TRUE, libc.CString("OLC: %s iedit a unique #%d"), GET_NAME(d.Character), GET_OBJ_VNUM(obj))
 				if d.Character != nil {
-					d.Character.Act[int(PLR_WRITING/32)] &= bitvector_t(^(1 << (int(PLR_WRITING % 32))))
+					d.Character.Act[int(PLR_WRITING/32)] &= bitvector_t(int32(^(1 << (int(PLR_WRITING % 32)))))
 					d.Connected = CON_PLAYING
 					act(libc.CString("$n stops using OLC."), TRUE, d.Character, nil, nil, TO_ROOM)
 				}
@@ -949,7 +950,7 @@ func oedit_parse(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("Enter action description:\r\n\r\n"))
 			if d.Olc.Obj.Action_description != nil {
 				write_to_output(d, libc.CString("%s"), d.Olc.Obj.Action_description)
-				oldtext = C.strdup(d.Olc.Obj.Action_description)
+				oldtext = libc.StrDup(d.Olc.Obj.Action_description)
 			}
 			string_write(d, &d.Olc.Obj.Action_description, MAX_MESSAGE_LENGTH, 0, unsafe.Pointer(oldtext))
 			d.Olc.Value = 1
@@ -1113,7 +1114,7 @@ func oedit_parse(d *descriptor_data, arg *byte) {
 		} else if number == 0 {
 			break
 		} else {
-			d.Olc.Obj.Extra_flags[(number-1)/32] = d.Olc.Obj.Extra_flags[(number-1)/32] ^ bitvector_t(1<<((number-1)%32))
+			d.Olc.Obj.Extra_flags[(number-1)/32] = bitvector_t(int32(int(d.Olc.Obj.Extra_flags[(number-1)/32]) ^ 1<<((number-1)%32)))
 			oedit_disp_extra_menu(d)
 			return
 		}
@@ -1158,7 +1159,7 @@ func oedit_parse(d *descriptor_data, arg *byte) {
 		}
 		if number > 0 && number <= NUM_AFF_FLAGS {
 			if number != AFF_CHARM {
-				d.Olc.Obj.Bitvector[number/32] = d.Olc.Obj.Bitvector[number/32] ^ bitvector_t(1<<(number%32))
+				d.Olc.Obj.Bitvector[number/32] = bitvector_t(int32(int(d.Olc.Obj.Bitvector[number/32]) ^ 1<<(number%32)))
 			}
 		}
 		oedit_disp_perm_menu(d)
@@ -1359,7 +1360,7 @@ func oedit_parse(d *descriptor_data, arg *byte) {
 		oedit_disp_apply_spec_menu(d)
 		return
 	case OEDIT_APPLYSPEC:
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg))))) & int(uint16(int16(_ISdigit)))) != 0 {
+		if unicode.IsDigit(rune(*arg)) {
 			d.Olc.Obj.Affected[d.Olc.Value].Specific = libc.Atoi(libc.GoString(arg))
 		} else {
 			switch d.Olc.Obj.Affected[d.Olc.Value].Location {
@@ -1426,7 +1427,7 @@ func oedit_parse(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("Enter the extra description:\r\n\r\n"))
 			if d.Olc.Desc.Description != nil {
 				write_to_output(d, libc.CString("%s"), d.Olc.Desc.Description)
-				oldtext = C.strdup(d.Olc.Desc.Description)
+				oldtext = libc.StrDup(d.Olc.Desc.Description)
 			}
 			string_write(d, &d.Olc.Desc.Description, MAX_MESSAGE_LENGTH, 0, unsafe.Pointer(oldtext))
 			d.Olc.Value = 1
@@ -1561,8 +1562,8 @@ func do_iedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	ch.Desc.Olc = new(oasis_olc_data)
-	k.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(1 << (int(ITEM_UNIQUE_SAVE % 32)))
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(1 << (int(PLR_WRITING % 32)))
+	k.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(int32(1 << (int(ITEM_UNIQUE_SAVE % 32))))
+	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
 	iedit_setup_existing(ch.Desc, k)
 	ch.Desc.Olc.Value = 0
 	act(libc.CString("$n starts using OLC."), TRUE, ch, nil, nil, TO_ROOM)

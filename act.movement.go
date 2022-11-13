@@ -1,9 +1,9 @@
 package main
 
-import "C"
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"unicode"
 	"unsafe"
 )
 
@@ -110,7 +110,7 @@ func do_carry(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("Someone is already carrying them!\r\n"))
 			return
 		}
-		if vict.Position > POS_SLEEPING {
+		if int(vict.Position) > POS_SLEEPING {
 			send_to_char(ch, libc.CString("They are not unconcious.\r\n"))
 			return
 		}
@@ -165,31 +165,31 @@ func land_location(ch *char_data, arg *byte) int {
 		}
 		return -1
 	}()) == 50 {
-		if C.strcasecmp(arg, libc.CString("Nexus City")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Nexus City")) == 0 {
 			return 300
-		} else if C.strcasecmp(arg, libc.CString("South Ocean")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("South Ocean")) == 0 {
 			return 800
-		} else if C.strcasecmp(arg, libc.CString("Nexus Field")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Nexus Field")) == 0 {
 			return 1150
-		} else if C.strcasecmp(arg, libc.CString("Cherry Blossom Mountain")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Cherry Blossom Mountain")) == 0 {
 			return 1180
-		} else if C.strcasecmp(arg, libc.CString("Sandy Desert")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Sandy Desert")) == 0 {
 			return 1287
-		} else if C.strcasecmp(arg, libc.CString("Northern Plains")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Northern Plains")) == 0 {
 			return 1428
-		} else if C.strcasecmp(arg, libc.CString("Korin's Tower")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Korin's Tower")) == 0 {
 			return 1456
-		} else if C.strcasecmp(arg, libc.CString("Kami's Lookout")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Kami's Lookout")) == 0 {
 			return 1506
-		} else if C.strcasecmp(arg, libc.CString("Shadow Forest")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Shadow Forest")) == 0 {
 			return 1636
-		} else if C.strcasecmp(arg, libc.CString("Decrepit Area")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Decrepit Area")) == 0 {
 			return 1710
-		} else if C.strcasecmp(arg, libc.CString("West City")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("West City")) == 0 {
 			return 19510
-		} else if C.strcasecmp(arg, libc.CString("Hercule Beach")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Hercule Beach")) == 0 {
 			return 2141
-		} else if C.strcasecmp(arg, libc.CString("Satan City")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Satan City")) == 0 {
 			return 13020
 		} else {
 			send_to_char(ch, libc.CString("You don't know where that made up place is, but decided to land anyway."))
@@ -201,29 +201,29 @@ func land_location(ch *char_data, arg *byte) int {
 		}
 		return -1
 	}()) == 51 {
-		if C.strcasecmp(arg, libc.CString("Ice Crown City")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Ice Crown City")) == 0 {
 			return 4264
-		} else if C.strcasecmp(arg, libc.CString("Ice Highway")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Ice Highway")) == 0 {
 			return 4300
-		} else if C.strcasecmp(arg, libc.CString("Topica Snowfield")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Topica Snowfield")) == 0 {
 			return 4351
-		} else if C.strcasecmp(arg, libc.CString("Glug's Volcano")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Glug's Volcano")) == 0 {
 			return 4400
-		} else if C.strcasecmp(arg, libc.CString("Platonic Sea")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Platonic Sea")) == 0 {
 			return 4600
-		} else if C.strcasecmp(arg, libc.CString("Slave City")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Slave City")) == 0 {
 			return 4800
-		} else if C.strcasecmp(arg, libc.CString("Acturian Woods")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Acturian Woods")) == 0 {
 			return 5100
-		} else if C.strcasecmp(arg, libc.CString("Desolate Demesne")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Desolate Demesne")) == 0 {
 			return 5150
-		} else if C.strcasecmp(arg, libc.CString("Chateau Ishran")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Chateau Ishran")) == 0 {
 			return 5165
-		} else if C.strcasecmp(arg, libc.CString("Wyrm Spine Mountain")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Wyrm Spine Mountain")) == 0 {
 			return 5200
-		} else if C.strcasecmp(arg, libc.CString("Cloud Ruler Temple")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Cloud Ruler Temple")) == 0 {
 			return 5500
-		} else if C.strcasecmp(arg, libc.CString("Koltoan Mine")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Koltoan Mine")) == 0 {
 			return 4944
 		} else {
 			send_to_char(ch, libc.CString("You don't know where that made up place is, but decided to land anyway."))
@@ -235,37 +235,37 @@ func land_location(ch *char_data, arg *byte) int {
 		}
 		return -1
 	}()) == 52 {
-		if C.strcasecmp(arg, libc.CString("Tiranoc City")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Tiranoc City")) == 0 {
 			return 8006
-		} else if C.strcasecmp(arg, libc.CString("Great Oroist Temple")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Great Oroist Temple")) == 0 {
 			return 8300
-		} else if C.strcasecmp(arg, libc.CString("Elzthuan Forest")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Elzthuan Forest")) == 0 {
 			return 8400
-		} else if C.strcasecmp(arg, libc.CString("Mazori Farm")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Mazori Farm")) == 0 {
 			return 8447
-		} else if C.strcasecmp(arg, libc.CString("Dres")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Dres")) == 0 {
 			return 8500
-		} else if C.strcasecmp(arg, libc.CString("Colvian Farm")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Colvian Farm")) == 0 {
 			return 8600
-		} else if C.strcasecmp(arg, libc.CString("St Alucia")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("St Alucia")) == 0 {
 			return 8700
-		} else if C.strcasecmp(arg, libc.CString("Meridius Memorial")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Meridius Memorial")) == 0 {
 			return 8800
-		} else if C.strcasecmp(arg, libc.CString("Desert of Illusion")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Desert of Illusion")) == 0 {
 			return 8900
-		} else if C.strcasecmp(arg, libc.CString("Plains of Confusion")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Plains of Confusion")) == 0 {
 			return 8954
-		} else if C.strcasecmp(arg, libc.CString("Turlon Fair")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Turlon Fair")) == 0 {
 			return 9200
-		} else if C.strcasecmp(arg, libc.CString("Wetlands")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Wetlands")) == 0 {
 			return 9700
-		} else if C.strcasecmp(arg, libc.CString("Kerberos")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Kerberos")) == 0 {
 			return 9855
-		} else if C.strcasecmp(arg, libc.CString("Shaeras Mansion")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Shaeras Mansion")) == 0 {
 			return 9864
-		} else if C.strcasecmp(arg, libc.CString("Slavinus Ravine")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Slavinus Ravine")) == 0 {
 			return 9900
-		} else if C.strcasecmp(arg, libc.CString("Furian Citadel")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Furian Citadel")) == 0 {
 			return 9949
 		} else {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
@@ -277,19 +277,19 @@ func land_location(ch *char_data, arg *byte) int {
 		}
 		return -1
 	}()) == 53 {
-		if C.strcasecmp(arg, libc.CString("Vegetos City")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Vegetos City")) == 0 {
 			return 2226
-		} else if C.strcasecmp(arg, libc.CString("Blood Dunes")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Blood Dunes")) == 0 {
 			return 2600
-		} else if C.strcasecmp(arg, libc.CString("Ancestral Mountains")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Ancestral Mountains")) == 0 {
 			return 2616
-		} else if C.strcasecmp(arg, libc.CString("Destopa Swamp")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Destopa Swamp")) == 0 {
 			return 2709
-		} else if C.strcasecmp(arg, libc.CString("Pride forest")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Pride forest")) == 0 {
 			return 2800
-		} else if C.strcasecmp(arg, libc.CString("Pride Tower")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Pride Tower")) == 0 {
 			return 2899
-		} else if C.strcasecmp(arg, libc.CString("Ruby Cave")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Ruby Cave")) == 0 {
 			return 2615
 		} else {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
@@ -301,17 +301,17 @@ func land_location(ch *char_data, arg *byte) int {
 		}
 		return -1
 	}()) == 54 {
-		if C.strcasecmp(arg, libc.CString("Senzu Village")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Senzu Village")) == 0 {
 			return 11600
-		} else if C.strcasecmp(arg, libc.CString("Guru's House")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Guru's House")) == 0 {
 			return 0x27C6
-		} else if C.strcasecmp(arg, libc.CString("Crystalline Cave")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Crystalline Cave")) == 0 {
 			return 0x28EA
-		} else if C.strcasecmp(arg, libc.CString("Elder Village")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Elder Village")) == 0 {
 			return 13300
-		} else if C.strcasecmp(arg, libc.CString("Frieza's Ship")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Frieza's Ship")) == 0 {
 			return 0x27DB
-		} else if C.strcasecmp(arg, libc.CString("Kakureta Village")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Kakureta Village")) == 0 {
 			return 0x2AAA
 		} else {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
@@ -323,15 +323,15 @@ func land_location(ch *char_data, arg *byte) int {
 		}
 		return -1
 	}()) == 55 {
-		if C.strcasecmp(arg, libc.CString("Haven City")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Haven City")) == 0 {
 			return 12010
-		} else if C.strcasecmp(arg, libc.CString("Serenity Lake")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Serenity Lake")) == 0 {
 			return 0x2F47
-		} else if C.strcasecmp(arg, libc.CString("Kaiju Forest")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Kaiju Forest")) == 0 {
 			return 12300
-		} else if C.strcasecmp(arg, libc.CString("Ortusian Temple")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Ortusian Temple")) == 0 {
 			return 12400
-		} else if C.strcasecmp(arg, libc.CString("Silent Glade")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Silent Glade")) == 0 {
 			return 0x30C0
 		} else {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
@@ -343,13 +343,13 @@ func land_location(ch *char_data, arg *byte) int {
 		}
 		return -1
 	}()) == 56 {
-		if C.strcasecmp(arg, libc.CString("Yardra City")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Yardra City")) == 0 {
 			return 0x36B8
-		} else if C.strcasecmp(arg, libc.CString("Jade Forest")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Jade Forest")) == 0 {
 			return 14100
-		} else if C.strcasecmp(arg, libc.CString("Jade Cliffs")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Jade Cliffs")) == 0 {
 			return 14200
-		} else if C.strcasecmp(arg, libc.CString("Mount Valaria")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Mount Valaria")) == 0 {
 			return 14300
 		} else {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
@@ -361,11 +361,11 @@ func land_location(ch *char_data, arg *byte) int {
 		}
 		return -1
 	}()) == 198 {
-		if C.strcasecmp(arg, libc.CString("Cerria Colony")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Cerria Colony")) == 0 {
 			return 0x447B
-		} else if C.strcasecmp(arg, libc.CString("Crystalline Forest")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Crystalline Forest")) == 0 {
 			return 7950
-		} else if C.strcasecmp(arg, libc.CString("Fistarl Volcano")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Fistarl Volcano")) == 0 {
 			return 17420
 		} else {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
@@ -377,11 +377,11 @@ func land_location(ch *char_data, arg *byte) int {
 		}
 		return -1
 	}()) == 57 {
-		if C.strcasecmp(arg, libc.CString("Utatlan City")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Utatlan City")) == 0 {
 			return 3412
-		} else if C.strcasecmp(arg, libc.CString("Zenith Jungle")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Zenith Jungle")) == 0 {
 			return 3520
-		} else if C.strcasecmp(arg, libc.CString("Ancient Castle")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Ancient Castle")) == 0 {
 			return 19600
 		} else {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
@@ -393,9 +393,9 @@ func land_location(ch *char_data, arg *byte) int {
 		}
 		return -1
 	}()) == 58 {
-		if C.strcasecmp(arg, libc.CString("Aquis City")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Aquis City")) == 0 {
 			return 0x3A38
-		} else if C.strcasecmp(arg, libc.CString("Yunkai Pirate Base")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Yunkai Pirate Base")) == 0 {
 			return 0x3D27
 		} else {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
@@ -407,11 +407,11 @@ func land_location(ch *char_data, arg *byte) int {
 		}
 		return -1
 	}()) == 59 {
-		if C.strcasecmp(arg, libc.CString("Janacre")) == 0 {
+		if libc.StrCaseCmp(arg, libc.CString("Janacre")) == 0 {
 			return 0x3E89
-		} else if C.strcasecmp(arg, libc.CString("Arlian Wasteland")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Arlian Wasteland")) == 0 {
 			return 0x40A0
-		} else if C.strcasecmp(arg, libc.CString("Arlia Mine")) == 0 {
+		} else if libc.StrCaseCmp(arg, libc.CString("Arlia Mine")) == 0 {
 			return 16600
 		} else {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
@@ -609,12 +609,12 @@ func has_boat(ch *char_data) int {
 		return 1
 	}
 	for obj = ch.Carrying; obj != nil; obj = obj.Next_content {
-		if obj.Type_flag == ITEM_BOAT && find_eq_pos(ch, obj, nil) < 0 {
+		if int(obj.Type_flag) == ITEM_BOAT && find_eq_pos(ch, obj, nil) < 0 {
 			return 1
 		}
 	}
 	for i = 0; i < NUM_WEARS; i++ {
-		if (ch.Equipment[i]) != nil && (ch.Equipment[i]).Type_flag == ITEM_BOAT {
+		if (ch.Equipment[i]) != nil && int((ch.Equipment[i]).Type_flag) == ITEM_BOAT {
 			return 1
 		}
 	}
@@ -625,17 +625,17 @@ func has_flight(ch *char_data) int {
 	if ADM_FLAGGED(ch, ADM_WALKANYWHERE) {
 		return 1
 	}
-	if AFF_FLAGGED(ch, AFF_FLYING) && ch.Mana >= int64(GET_LEVEL(ch)+int(ch.Max_mana/int64(GET_LEVEL(ch)*30))) && ch.Race != RACE_ANDROID && !IS_NPC(ch) {
+	if AFF_FLAGGED(ch, AFF_FLYING) && ch.Mana >= int64(GET_LEVEL(ch)+int(ch.Max_mana/int64(GET_LEVEL(ch)*30))) && int(ch.Race) != RACE_ANDROID && !IS_NPC(ch) {
 		return 1
 	}
-	if AFF_FLAGGED(ch, AFF_FLYING) && ch.Mana < int64(GET_LEVEL(ch)+int(ch.Max_mana/int64(GET_LEVEL(ch)*30))) && ch.Race != RACE_ANDROID && !IS_NPC(ch) {
+	if AFF_FLAGGED(ch, AFF_FLYING) && ch.Mana < int64(GET_LEVEL(ch)+int(ch.Max_mana/int64(GET_LEVEL(ch)*30))) && int(ch.Race) != RACE_ANDROID && !IS_NPC(ch) {
 		act(libc.CString("@WYou crash to the ground, too tired to fly anymore!@n"), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("@W$n@W crashes to the ground!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		ch.Affected_by[int(AFF_FLYING/32)] &= ^(1 << (int(AFF_FLYING % 32)))
 		handle_fall(ch)
 		return 0
 	}
-	if AFF_FLAGGED(ch, AFF_FLYING) && ch.Race == RACE_ANDROID {
+	if AFF_FLAGGED(ch, AFF_FLYING) && int(ch.Race) == RACE_ANDROID {
 		return 1
 	}
 	if AFF_FLAGGED(ch, AFF_FLYING) && IS_NPC(ch) {
@@ -655,7 +655,7 @@ func has_o2(ch *char_data) int {
 	if AFF_FLAGGED(ch, AFF_WATERBREATH) {
 		return 1
 	}
-	if ch.Race == RACE_KANASSAN || ch.Race == RACE_ANDROID || ch.Race == RACE_ICER || ch.Race == RACE_MAJIN {
+	if int(ch.Race) == RACE_KANASSAN || int(ch.Race) == RACE_ANDROID || int(ch.Race) == RACE_ICER || int(ch.Race) == RACE_MAJIN {
 		return 1
 	}
 	return 0
@@ -722,13 +722,13 @@ func do_simple_move(ch *char_data, dir int, need_specials_check int) int {
 		}
 		return SECT_INSIDE
 	}()) == SECT_WATER_NOSWIM) && IS_HUMANOID(ch) {
-		if ch.Race == RACE_KANASSAN && has_flight(ch) == 0 {
+		if int(ch.Race) == RACE_KANASSAN && has_flight(ch) == 0 {
 			act(libc.CString("@CYou swim swiftly.@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@c$n@C swims swiftly.@n"), TRUE, ch, nil, nil, TO_ROOM)
-		} else if ch.Race == RACE_ICER && has_flight(ch) == 0 {
+		} else if int(ch.Race) == RACE_ICER && has_flight(ch) == 0 {
 			act(libc.CString("@CYou swim swiftly.@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@c$n@C swims swiftly.@n"), TRUE, ch, nil, nil, TO_ROOM)
-		} else if ch.Race != RACE_KANASSAN && ch.Race != RACE_ICER && has_flight(ch) == 0 {
+		} else if int(ch.Race) != RACE_KANASSAN && int(ch.Race) != RACE_ICER && has_flight(ch) == 0 {
 			if check_swim(ch) == 0 {
 				return 0
 			} else {
@@ -739,7 +739,7 @@ func do_simple_move(ch *char_data, dir int, need_specials_check int) int {
 		}
 	}
 	if ROOM_FLAGGED(ch.In_room, ROOM_SPACE) {
-		if ch.Race != RACE_ANDROID {
+		if int(ch.Race) != RACE_ANDROID {
 			if check_swim(ch) == 0 {
 				return 0
 			}
@@ -785,7 +785,7 @@ func do_simple_move(ch *char_data, dir int, need_specials_check int) int {
 	need_movement = 1
 	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity > 10 {
 		need_movement = (need_movement + (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity) * (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity
-	} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10 && ch.Chclass != CLASS_BARDOCK && !IS_NPC(ch) {
+	} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10 && int(ch.Chclass) != CLASS_BARDOCK && !IS_NPC(ch) {
 		need_movement = (need_movement + (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity) * (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity
 	}
 	if GET_LEVEL(ch) <= 1 {
@@ -806,7 +806,7 @@ func do_simple_move(ch *char_data, dir int, need_specials_check int) int {
 		}
 	}
 	var flight_cost int = 0
-	if AFF_FLAGGED(ch, AFF_FLYING) && ch.Race != RACE_ANDROID {
+	if AFF_FLAGGED(ch, AFF_FLYING) && int(ch.Race) != RACE_ANDROID {
 		if GET_SKILL(ch, SKILL_CONCENTRATION) == 0 && GET_SKILL(ch, SKILL_FOCUS) == 0 {
 			flight_cost = int(ch.Max_mana / 100)
 		} else if GET_SKILL(ch, SKILL_CONCENTRATION) != 0 && GET_SKILL(ch, SKILL_FOCUS) == 0 {
@@ -817,12 +817,12 @@ func do_simple_move(ch *char_data, dir int, need_specials_check int) int {
 			flight_cost = int(ch.Max_mana / int64((GET_SKILL(ch, SKILL_CONCENTRATION)*2)+GET_SKILL(ch, SKILL_FOCUS)*3))
 		}
 	}
-	if AFF_FLAGGED(ch, AFF_FLYING) && ch.Mana < int64(flight_cost) && ch.Race != RACE_ANDROID {
+	if AFF_FLAGGED(ch, AFF_FLYING) && ch.Mana < int64(flight_cost) && int(ch.Race) != RACE_ANDROID {
 		ch.Mana = 0
 		act(libc.CString("@WYou crash to the ground, too tired to fly anymore!@n"), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("@W$n@W crashes to the ground!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		ch.Affected_by[int(AFF_FLYING/32)] &= ^(1 << (int(AFF_FLYING % 32)))
-	} else if AFF_FLAGGED(ch, AFF_FLYING) && ch.Race != RACE_ANDROID {
+	} else if AFF_FLAGGED(ch, AFF_FLYING) && int(ch.Race) != RACE_ANDROID {
 		ch.Mana -= int64(flight_cost)
 	}
 	if ch.Move < int64(need_movement) && !AFF_FLAGGED(ch, AFF_FLYING) && !IS_NPC(ch) {
@@ -930,7 +930,7 @@ func do_simple_move(ch *char_data, dir int, need_specials_check int) int {
 	ch.Affected_by[int(AFF_PURSUIT/32)] |= 1 << (int(AFF_PURSUIT % 32))
 	char_from_room(ch)
 	char_to_room(ch, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(was_in)))).Dir_option[dir].To_room)
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone != (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(was_in)))).Zone && !IS_NPC(ch) && ch.Race != RACE_ANDROID {
+	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone != (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(was_in)))).Zone && !IS_NPC(ch) && int(ch.Race) != RACE_ANDROID {
 		send_to_sense(0, libc.CString("You sense someone"), ch)
 		stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@Y %s\r\n@RSomeone has entered your scouter detection range@n.", add_commas(ch.Hit))
 		send_to_scouter(&buf3[0], ch, 0, 0)
@@ -1007,7 +1007,7 @@ func do_simple_move(ch *char_data, dir int, need_specials_check int) int {
 		}
 	}
 	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Geffect == 6 || (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(was_in)))).Geffect == 6 {
-		if ch.Race != RACE_DEMON && !AFF_FLAGGED(ch, AFF_FLYING) && group_bonus(ch, 2) != 14 {
+		if int(ch.Race) != RACE_DEMON && !AFF_FLAGGED(ch, AFF_FLYING) && group_bonus(ch, 2) != 14 {
 			act(libc.CString("@rYour legs are burned by the lava!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@R$n@r's legs are burned by the lava!@n"), TRUE, ch, nil, nil, TO_ROOM)
 			if IS_NPC(ch) && IS_HUMANOID(ch) && rand_number(1, 2) == 2 {
@@ -1026,7 +1026,7 @@ func do_simple_move(ch *char_data, dir int, need_specials_check int) int {
 				}
 			}
 		}
-		if ch.Drag != nil && ch.Drag.Race != RACE_DEMON {
+		if ch.Drag != nil && int(ch.Drag.Race) != RACE_DEMON {
 			act(libc.CString("@R$N@r gets burned!@n"), TRUE, ch, nil, unsafe.Pointer(ch.Drag), TO_CHAR)
 			act(libc.CString("@R$N@r gets burned!@n"), TRUE, ch, nil, unsafe.Pointer(ch.Drag), TO_ROOM)
 			ch.Drag.Hit -= ch.Drag.Max_hit / 20
@@ -1120,17 +1120,17 @@ func perform_move(ch *char_data, dir int, need_specials_check int) int {
 		}
 		for k = ch.Followers; k != nil; k = next {
 			next = k.Next
-			if k.Follower.In_room == was_in && k.Follower.Position >= POS_STANDING && (!AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(k.Follower, AFF_GROUP)) {
+			if k.Follower.In_room == was_in && int(k.Follower.Position) >= POS_STANDING && (!AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(k.Follower, AFF_GROUP)) {
 				act(libc.CString("You follow $N.\r\n"), FALSE, k.Follower, nil, unsafe.Pointer(ch), TO_CHAR)
 				perform_move(k.Follower, dir, 1)
-			} else if k.Follower.In_room == was_in && k.Follower.Position >= POS_STANDING && (AFF_FLAGGED(ch, AFF_ZANZOKEN) && AFF_FLAGGED(k.Follower, AFF_ZANZOKEN)) && (!AFF_FLAGGED(ch, AFF_GROUP) || !AFF_FLAGGED(k.Follower, AFF_GROUP)) {
+			} else if k.Follower.In_room == was_in && int(k.Follower.Position) >= POS_STANDING && (AFF_FLAGGED(ch, AFF_ZANZOKEN) && AFF_FLAGGED(k.Follower, AFF_ZANZOKEN)) && (!AFF_FLAGGED(ch, AFF_GROUP) || !AFF_FLAGGED(k.Follower, AFF_GROUP)) {
 				act(libc.CString("$N tries to zanzoken and escape, but your zanzoken matches $S!\r\n"), FALSE, k.Follower, nil, unsafe.Pointer(ch), TO_CHAR)
 				act(libc.CString("$N tries to zanzoken and escape, but $n's zanzoken matches $S!\r\n"), FALSE, k.Follower, nil, unsafe.Pointer(ch), TO_NOTVICT)
 				act(libc.CString("You zanzoken to try and escape, but $n's zanzoken matches yours!\r\n"), FALSE, k.Follower, nil, unsafe.Pointer(ch), TO_VICT)
 				ch.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
 				k.Follower.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
 				perform_move(k.Follower, dir, 1)
-			} else if k.Follower.In_room == was_in && k.Follower.Position >= POS_STANDING && (AFF_FLAGGED(ch, AFF_ZANZOKEN) && !AFF_FLAGGED(k.Follower, AFF_ZANZOKEN)) {
+			} else if k.Follower.In_room == was_in && int(k.Follower.Position) >= POS_STANDING && (AFF_FLAGGED(ch, AFF_ZANZOKEN) && !AFF_FLAGGED(k.Follower, AFF_ZANZOKEN)) {
 				act(libc.CString("You try to follow $N, but $E disappears in a flash of movement!\r\n"), FALSE, k.Follower, nil, unsafe.Pointer(ch), TO_CHAR)
 				act(libc.CString("$n tries to follow $N, but $E disappears in a flash of movement!\r\n"), FALSE, k.Follower, nil, unsafe.Pointer(ch), TO_NOTVICT)
 				act(libc.CString("$n tries to follow you, but you manage to zanzoken away!\r\n"), FALSE, k.Follower, nil, unsafe.Pointer(ch), TO_VICT)
@@ -1170,7 +1170,7 @@ func do_move(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You have too much ki charged. You can't concentrate on keeping it charged while also traveling.\r\n"))
 		return
 	}
-	if (ch.Player_specials.Conditions[DRUNK]) > 4 && (rand_number(1, 9)+int(ch.Player_specials.Conditions[DRUNK])) >= rand_number(14, 20) {
+	if int(ch.Player_specials.Conditions[DRUNK]) > 4 && (rand_number(1, 9)+int(ch.Player_specials.Conditions[DRUNK])) >= rand_number(14, 20) {
 		send_to_char(ch, libc.CString("You wobble around and then fall on your ass.\r\n"))
 		act(libc.CString("@C$n@W wobbles around before falling on $s ass@n."), TRUE, ch, nil, nil, TO_ROOM)
 		ch.Position = POS_SITTING
@@ -1240,7 +1240,7 @@ func do_move(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	}
-	if !IS_NPC(ch) && (ch.Limb_condition[0]) <= 0 && (ch.Limb_condition[1]) <= 0 && (ch.Limb_condition[2]) <= 0 && (ch.Limb_condition[3]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
+	if !IS_NPC(ch) && (ch.Limb_condition[1]) <= 0 && (ch.Limb_condition[2]) <= 0 && (ch.Limb_condition[3]) <= 0 && (ch.Limb_condition[4]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
 		send_to_char(ch, libc.CString("Unless you fly, you can't get far with no limbs.\r\n"))
 		return
 	}
@@ -1275,7 +1275,7 @@ func do_move(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	if !IS_NPC(ch) {
 		if PRF_FLAGGED(ch, PRF_ARENAWATCH) {
-			ch.Player_specials.Pref[int(PRF_ARENAWATCH/32)] &= bitvector_t(^(1 << (int(PRF_ARENAWATCH % 32))))
+			ch.Player_specials.Pref[int(PRF_ARENAWATCH/32)] &= bitvector_t(int32(^(1 << (int(PRF_ARENAWATCH % 32)))))
 			ch.Arenawatch = -1
 		}
 		if (func() room_vnum {
@@ -1300,7 +1300,7 @@ func do_move(ch *char_data, argument *byte, cmd int, subcmd int) {
 				ch.Player_specials.Load_room = -1
 			}
 		}
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10 && ch.Max_hit <= 10000 && ch.Chclass != CLASS_BARDOCK && !IS_NPC(ch) {
+		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10 && ch.Max_hit <= 10000 && int(ch.Chclass) != CLASS_BARDOCK && !IS_NPC(ch) {
 			send_to_char(ch, libc.CString("The gravity slows you down some.\r\n"))
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*1)
 		}
@@ -1355,75 +1355,75 @@ func do_move(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if ROOM_FLAGGED(ch.In_room, ROOM_SPACE) && ch.Admlevel < 1 {
 			send_to_char(ch, libc.CString("You struggle to cross the vast distance.\r\n"))
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*6)
-		} else if (ch.Limb_condition[2]) <= 0 && (ch.Limb_condition[3]) <= 0 && (ch.Limb_condition[0]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
+		} else if (ch.Limb_condition[3]) <= 0 && (ch.Limb_condition[4]) <= 0 && (ch.Limb_condition[1]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
 			act(libc.CString("@wYou slowly pull yourself along with your arm...@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@C$n@w slowly pulls $mself along with one arm...@n"), TRUE, ch, nil, nil, TO_ROOM)
-			if (ch.Limb_condition[1]) < 50 {
+			if (ch.Limb_condition[2]) < 50 {
 				send_to_char(ch, libc.CString("@RYour left arm is damaged by the forced use!@n\r\n"))
-				ch.Limb_condition[1] -= rand_number(1, 5)
-				if (ch.Limb_condition[0]) <= 0 {
-					act(libc.CString("@RYour left arm falls apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
-					act(libc.CString("@r$n's@R left arm falls apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
-				}
-			}
-			WAIT_STATE(ch, (int(1000000/OPT_USEC))*5)
-		} else if (ch.Limb_condition[2]) <= 0 && (ch.Limb_condition[3]) <= 0 && (ch.Limb_condition[1]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
-			act(libc.CString("@wYou slowly pull yourself along with your arm...@n"), TRUE, ch, nil, nil, TO_CHAR)
-			act(libc.CString("@C$n@w slowly pulls $mself along with one arm...@n"), TRUE, ch, nil, nil, TO_ROOM)
-			if (ch.Limb_condition[0]) < 50 {
-				send_to_char(ch, libc.CString("@RYour right arm is damaged by the forced use!@n\r\n"))
-				ch.Limb_condition[0] -= rand_number(1, 5)
-				if (ch.Limb_condition[0]) <= 0 {
-					act(libc.CString("@RYour right arm falls apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
-					act(libc.CString("@r$n's@R right arm falls apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
-				}
-			}
-			WAIT_STATE(ch, (int(1000000/OPT_USEC))*5)
-		} else if (ch.Limb_condition[2]) <= 0 && (ch.Limb_condition[3]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
-			act(libc.CString("@wYou slowly pull yourself along with your arms...@n"), TRUE, ch, nil, nil, TO_CHAR)
-			act(libc.CString("@C$n@w slowly pulls $mself along with one arms...@n"), TRUE, ch, nil, nil, TO_ROOM)
-			if (ch.Limb_condition[1]) < 50 {
-				send_to_char(ch, libc.CString("@RYour left arm is damaged by the forced use!@n\r\n"))
-				ch.Limb_condition[1] -= rand_number(1, 5)
+				ch.Limb_condition[2] -= rand_number(1, 5)
 				if (ch.Limb_condition[1]) <= 0 {
 					act(libc.CString("@RYour left arm falls apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 					act(libc.CString("@r$n's@R left arm falls apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 				}
 			}
-			if (ch.Limb_condition[0]) < 50 {
+			WAIT_STATE(ch, (int(1000000/OPT_USEC))*5)
+		} else if (ch.Limb_condition[3]) <= 0 && (ch.Limb_condition[4]) <= 0 && (ch.Limb_condition[2]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
+			act(libc.CString("@wYou slowly pull yourself along with your arm...@n"), TRUE, ch, nil, nil, TO_CHAR)
+			act(libc.CString("@C$n@w slowly pulls $mself along with one arm...@n"), TRUE, ch, nil, nil, TO_ROOM)
+			if (ch.Limb_condition[1]) < 50 {
 				send_to_char(ch, libc.CString("@RYour right arm is damaged by the forced use!@n\r\n"))
-				ch.Limb_condition[0] -= rand_number(1, 5)
-				if (ch.Limb_condition[0]) <= 0 {
+				ch.Limb_condition[1] -= rand_number(1, 5)
+				if (ch.Limb_condition[1]) <= 0 {
+					act(libc.CString("@RYour right arm falls apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
+					act(libc.CString("@r$n's@R right arm falls apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
+				}
+			}
+			WAIT_STATE(ch, (int(1000000/OPT_USEC))*5)
+		} else if (ch.Limb_condition[3]) <= 0 && (ch.Limb_condition[4]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
+			act(libc.CString("@wYou slowly pull yourself along with your arms...@n"), TRUE, ch, nil, nil, TO_CHAR)
+			act(libc.CString("@C$n@w slowly pulls $mself along with one arms...@n"), TRUE, ch, nil, nil, TO_ROOM)
+			if (ch.Limb_condition[2]) < 50 {
+				send_to_char(ch, libc.CString("@RYour left arm is damaged by the forced use!@n\r\n"))
+				ch.Limb_condition[2] -= rand_number(1, 5)
+				if (ch.Limb_condition[2]) <= 0 {
+					act(libc.CString("@RYour left arm falls apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
+					act(libc.CString("@r$n's@R left arm falls apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
+				}
+			}
+			if (ch.Limb_condition[1]) < 50 {
+				send_to_char(ch, libc.CString("@RYour right arm is damaged by the forced use!@n\r\n"))
+				ch.Limb_condition[1] -= rand_number(1, 5)
+				if (ch.Limb_condition[1]) <= 0 {
 					act(libc.CString("@RYour right arm falls apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 					act(libc.CString("@r$n's@R right arm falls apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 				}
 			}
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
-		} else if (ch.Limb_condition[2]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
+		} else if (ch.Limb_condition[3]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
 			act(libc.CString("@wYou hop on one leg...@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@C$n@w hops on one leg...@n"), TRUE, ch, nil, nil, TO_ROOM)
-			if (ch.Limb_condition[3]) < 50 {
+			if (ch.Limb_condition[4]) < 50 {
 				send_to_char(ch, libc.CString("@RYour left leg is damaged by the forced use!@n\r\n"))
-				ch.Limb_condition[3] -= rand_number(1, 5)
-				if (ch.Limb_condition[3]) <= 0 {
+				ch.Limb_condition[4] -= rand_number(1, 5)
+				if (ch.Limb_condition[4]) <= 0 {
 					act(libc.CString("@RYour left leg falls apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 					act(libc.CString("@r$n's@R left leg falls apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 				}
 			}
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*2)
-		} else if (ch.Limb_condition[3]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
+		} else if (ch.Limb_condition[4]) <= 0 && !AFF_FLAGGED(ch, AFF_FLYING) {
 			act(libc.CString("@wYou hop on one leg...@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@C$n@w hops on one leg...@n"), TRUE, ch, nil, nil, TO_ROOM)
-			if (ch.Limb_condition[2]) < 50 {
+			if (ch.Limb_condition[3]) < 50 {
 				send_to_char(ch, libc.CString("@RYour right leg is damaged by the forced use!@n\r\n"))
-				ch.Limb_condition[2] -= rand_number(1, 5)
-				if (ch.Limb_condition[2]) <= 0 {
+				ch.Limb_condition[3] -= rand_number(1, 5)
+				if (ch.Limb_condition[3]) <= 0 {
 					act(libc.CString("@RYour right leg falls apart!@n"), TRUE, ch, nil, nil, TO_CHAR)
 					act(libc.CString("@r$n's@R right leg falls apart!@n"), TRUE, ch, nil, nil, TO_ROOM)
 				}
 			}
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*2)
-		} else if ch.Position == POS_RESTING {
+		} else if int(ch.Position) == POS_RESTING {
 			act(libc.CString("@wYou crawl on your hands and knees.@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@C$n@w crawls on $s hands and knees.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			if ch.Sits != nil {
@@ -1432,7 +1432,7 @@ func do_move(ch *char_data, argument *byte, cmd int, subcmd int) {
 				ch.Sits = nil
 			}
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
-		} else if ch.Position == POS_SITTING {
+		} else if int(ch.Position) == POS_SITTING {
 			act(libc.CString("@wYou shuffle on your hands and knees.@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@C$n@w shuffles on $s hands and knees.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			if ch.Sits != nil {
@@ -1441,7 +1441,7 @@ func do_move(ch *char_data, argument *byte, cmd int, subcmd int) {
 				ch.Sits = nil
 			}
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*2)
-		} else if ch.Position < POS_RESTING {
+		} else if int(ch.Position) < POS_RESTING {
 			send_to_char(ch, libc.CString("You are in no condition to move! Try standing...\r\n"))
 			return
 		}
@@ -1537,9 +1537,9 @@ func do_doorcmd(ch *char_data, obj *obj_data, door int, scmd int) {
 		next_obj   *obj_data
 		vehicle    *obj_data = nil
 	)
-	if obj != nil && obj.Type_flag == ITEM_HATCH {
+	if obj != nil && int(obj.Type_flag) == ITEM_HATCH {
 		vehicle = find_vehicle_by_vnum(obj.Value[VAL_HATCH_DEST])
-	} else if obj != nil && obj.Type_flag == ITEM_VEHICLE {
+	} else if obj != nil && int(obj.Type_flag) == ITEM_VEHICLE {
 		if real_room(room_vnum(obj.Value[VAL_PORTAL_DEST])) != room_rnum(-1) {
 			num = int(ch.In_room)
 			char_from_room(ch)
@@ -1547,7 +1547,7 @@ func do_doorcmd(ch *char_data, obj *obj_data, door int, scmd int) {
 		}
 		for obj2 = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; obj2 != nil; obj2 = next_obj {
 			next_obj = obj2.Next_content
-			if obj2.Type_flag == ITEM_HATCH {
+			if int(obj2.Type_flag) == ITEM_HATCH {
 				hatch = obj2
 			}
 		}
@@ -1576,7 +1576,7 @@ func do_doorcmd(ch *char_data, obj *obj_data, door int, scmd int) {
 	switch scmd {
 	case SCMD_OPEN:
 		if obj != nil {
-			if obj != nil && obj.Type_flag == ITEM_HATCH && vehicle != nil {
+			if obj != nil && int(obj.Type_flag) == ITEM_HATCH && vehicle != nil {
 				if vehicle != nil {
 					vehicle.Value[VAL_CONTAINER_FLAGS] &= ^(1 << 2)
 				} else {
@@ -1595,7 +1595,7 @@ func do_doorcmd(ch *char_data, obj *obj_data, door int, scmd int) {
 				}
 				vehicle = nil
 			}
-			if obj != nil && obj.Type_flag == ITEM_VEHICLE && hatch != nil {
+			if obj != nil && int(obj.Type_flag) == ITEM_VEHICLE && hatch != nil {
 				if hatch != nil {
 					hatch.Value[VAL_CONTAINER_FLAGS] &= ^(1 << 2)
 				} else {
@@ -1636,12 +1636,12 @@ func do_doorcmd(ch *char_data, obj *obj_data, door int, scmd int) {
 				}
 				return libc.CString("door")
 			}(), dirs[door])
-		} else if obj.Type_flag != ITEM_VEHICLE && obj.Type_flag != ITEM_HATCH {
+		} else if int(obj.Type_flag) != ITEM_VEHICLE && int(obj.Type_flag) != ITEM_HATCH {
 			send_to_char(ch, libc.CString("You open %s.\r\n"), obj.Short_description)
 		}
 	case SCMD_CLOSE:
 		if obj != nil {
-			if obj != nil && obj.Type_flag == ITEM_HATCH && vehicle != nil {
+			if obj != nil && int(obj.Type_flag) == ITEM_HATCH && vehicle != nil {
 				if vehicle != nil {
 					vehicle.Value[VAL_CONTAINER_FLAGS] |= 1 << 2
 				} else {
@@ -1660,7 +1660,7 @@ func do_doorcmd(ch *char_data, obj *obj_data, door int, scmd int) {
 				}
 				vehicle = nil
 			}
-			if obj != nil && obj.Type_flag == ITEM_VEHICLE && hatch != nil {
+			if obj != nil && int(obj.Type_flag) == ITEM_VEHICLE && hatch != nil {
 				if hatch != nil {
 					hatch.Value[VAL_CONTAINER_FLAGS] |= 1 << 2
 				} else {
@@ -1701,12 +1701,12 @@ func do_doorcmd(ch *char_data, obj *obj_data, door int, scmd int) {
 				}
 				return libc.CString("door")
 			}(), dirs[door])
-		} else if obj.Type_flag != ITEM_VEHICLE && obj.Type_flag != ITEM_HATCH {
+		} else if int(obj.Type_flag) != ITEM_VEHICLE && int(obj.Type_flag) != ITEM_HATCH {
 			send_to_char(ch, libc.CString("You close %s.\r\n"), obj.Short_description)
 		}
 	case SCMD_LOCK:
 		if obj != nil {
-			if obj != nil && obj.Type_flag == ITEM_HATCH && vehicle != nil {
+			if obj != nil && int(obj.Type_flag) == ITEM_HATCH && vehicle != nil {
 				if vehicle != nil {
 					vehicle.Value[VAL_CONTAINER_FLAGS] |= 1 << 3
 				} else {
@@ -1714,7 +1714,7 @@ func do_doorcmd(ch *char_data, obj *obj_data, door int, scmd int) {
 				}
 				vehicle = nil
 			}
-			if obj != nil && obj.Type_flag == ITEM_VEHICLE && hatch != nil {
+			if obj != nil && int(obj.Type_flag) == ITEM_VEHICLE && hatch != nil {
 				if hatch != nil {
 					hatch.Value[VAL_CONTAINER_FLAGS] |= 1 << 3
 				} else {
@@ -1749,7 +1749,7 @@ func do_doorcmd(ch *char_data, obj *obj_data, door int, scmd int) {
 		}
 	case SCMD_UNLOCK:
 		if obj != nil {
-			if obj != nil && obj.Type_flag == ITEM_HATCH && vehicle != nil {
+			if obj != nil && int(obj.Type_flag) == ITEM_HATCH && vehicle != nil {
 				if vehicle != nil {
 					vehicle.Value[VAL_CONTAINER_FLAGS] &= ^(1 << 3)
 				} else {
@@ -1757,7 +1757,7 @@ func do_doorcmd(ch *char_data, obj *obj_data, door int, scmd int) {
 				}
 				vehicle = nil
 			}
-			if obj != nil && obj.Type_flag == ITEM_VEHICLE && hatch != nil {
+			if obj != nil && int(obj.Type_flag) == ITEM_VEHICLE && hatch != nil {
 				if hatch != nil {
 					hatch.Value[VAL_CONTAINER_FLAGS] &= ^(1 << 3)
 				} else {
@@ -1890,7 +1890,7 @@ func ok_pick(ch *char_data, keynum obj_vnum, pickproof int, dclock int, scmd int
 		send_to_char(ch, libc.CString("You need a lock picking kit.\r\n"))
 		return 0
 	}
-	if hatch != nil && (hatch.Type_flag == ITEM_HATCH || hatch.Type_flag == ITEM_VEHICLE) {
+	if hatch != nil && (int(hatch.Type_flag) == ITEM_HATCH || int(hatch.Type_flag) == ITEM_VEHICLE) {
 		send_to_char(ch, libc.CString("No picking ship hatches.\r\n"))
 		hatch = nil
 		return 0
@@ -1935,14 +1935,14 @@ func do_gen_door(ch *char_data, argument *byte, cmd int, subcmd int) {
 	)
 	skip_spaces(&argument)
 	if *argument == 0 {
-		send_to_char(ch, libc.CString("%c%s what?\r\n"), C.toupper(int(*cmd_door[subcmd])), (*byte)(unsafe.Add(unsafe.Pointer(cmd_door[subcmd]), 1)))
+		send_to_char(ch, libc.CString("%c%s what?\r\n"), unicode.ToUpper(rune(*cmd_door[subcmd])), (*byte)(unsafe.Add(unsafe.Pointer(cmd_door[subcmd]), 1)))
 		return
 	}
 	two_arguments(argument, &type_[0], &dir[0])
 	if generic_find(&type_[0], (1<<2)|1<<3, ch, &victim, &obj) == 0 {
 		door = find_door(ch, &type_[0], &dir[0], cmd_door[subcmd])
 	}
-	if obj != nil && (obj.Type_flag != ITEM_CONTAINER && obj.Type_flag != ITEM_VEHICLE && obj.Type_flag != ITEM_HATCH) {
+	if obj != nil && (int(obj.Type_flag) != ITEM_CONTAINER && int(obj.Type_flag) != ITEM_VEHICLE && int(obj.Type_flag) != ITEM_HATCH) {
 		obj = nil
 		door = find_door(ch, &type_[0], &dir[0], cmd_door[subcmd])
 	}
@@ -1966,7 +1966,7 @@ func do_gen_door(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		if !(func() bool {
 			if obj != nil {
-				return obj.Type_flag == ITEM_CONTAINER && OBJVAL_FLAGGED(obj, 1<<0) || obj.Type_flag == ITEM_VEHICLE && OBJVAL_FLAGGED(obj, 1<<0) || obj.Type_flag == ITEM_HATCH && OBJVAL_FLAGGED(obj, 1<<0) || obj.Type_flag == ITEM_WINDOW && OBJVAL_FLAGGED(obj, 1<<0) || obj.Type_flag == ITEM_PORTAL && OBJVAL_FLAGGED(obj, 1<<0)
+				return int(obj.Type_flag) == ITEM_CONTAINER && OBJVAL_FLAGGED(obj, 1<<0) || int(obj.Type_flag) == ITEM_VEHICLE && OBJVAL_FLAGGED(obj, 1<<0) || int(obj.Type_flag) == ITEM_HATCH && OBJVAL_FLAGGED(obj, 1<<0) || int(obj.Type_flag) == ITEM_WINDOW && OBJVAL_FLAGGED(obj, 1<<0) || int(obj.Type_flag) == ITEM_PORTAL && OBJVAL_FLAGGED(obj, 1<<0)
 			}
 			return EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door], 1<<0)
 		}()) {
@@ -2043,7 +2043,7 @@ func do_simple_enter(ch *char_data, obj *obj_data, need_specials_check int) int 
 	need_movement = 1
 	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity > 10 {
 		need_movement = (need_movement + (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity) * (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity
-	} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10 && ch.Chclass != CLASS_BARDOCK && !IS_NPC(ch) {
+	} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10 && int(ch.Chclass) != CLASS_BARDOCK && !IS_NPC(ch) {
 		need_movement = (need_movement + (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity) * (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity
 	}
 	if GET_LEVEL(ch) <= 1 {
@@ -2097,7 +2097,7 @@ func do_simple_enter(ch *char_data, obj *obj_data, need_specials_check int) int 
 		char_to_room(ch, was_in)
 		return 0
 	}
-	if obj.Type_flag == ITEM_PORTAL {
+	if int(obj.Type_flag) == ITEM_PORTAL {
 		act(libc.CString("$n arrives from $p."), FALSE, ch, obj, nil, int(TO_ROOM|2<<9))
 	} else {
 		act(libc.CString("$n arrives from outside."), FALSE, ch, nil, nil, int(TO_ROOM|2<<9))
@@ -2154,7 +2154,7 @@ func perform_enter_obj(ch *char_data, obj *obj_data, need_specials_check int) in
 		send_to_char(ch, libc.CString("You are grappling with someone!\r\n"))
 		return 0
 	}
-	if obj.Type_flag == ITEM_VEHICLE || obj.Type_flag == ITEM_PORTAL {
+	if int(obj.Type_flag) == ITEM_VEHICLE || int(obj.Type_flag) == ITEM_PORTAL {
 		if OBJVAL_FLAGGED(obj, 1<<2) {
 			send_to_char(ch, libc.CString("But it's closed!\r\n"))
 		} else if (obj.Value[VAL_PORTAL_DEST]) != int(-1) && real_room(room_vnum(obj.Value[VAL_PORTAL_DEST])) != room_rnum(-1) {
@@ -2180,7 +2180,7 @@ func perform_enter_obj(ch *char_data, obj *obj_data, need_specials_check int) in
 				return could_move
 			}()) != 0 {
 				for k = ch.Followers; k != nil; k = k.Next {
-					if k.Follower.In_room == was_in && k.Follower.Position >= POS_STANDING {
+					if k.Follower.In_room == was_in && int(k.Follower.Position) >= POS_STANDING {
 						act(libc.CString("You follow $N.\r\n"), FALSE, k.Follower, nil, unsafe.Pointer(ch), TO_CHAR)
 						perform_enter_obj(k.Follower, obj, 1)
 					}
@@ -2254,14 +2254,14 @@ func do_simple_leave(ch *char_data, obj *obj_data, need_specials_check int) int 
 		need_movement int       = 0
 		vehicle       *obj_data = nil
 	)
-	if obj.Type_flag != ITEM_PORTAL {
+	if int(obj.Type_flag) != ITEM_PORTAL {
 		vehicle = find_vehicle_by_vnum(obj.Value[VAL_HATCH_DEST])
 	}
-	if vehicle == nil && obj.Type_flag != ITEM_PORTAL {
+	if vehicle == nil && int(obj.Type_flag) != ITEM_PORTAL {
 		send_to_char(ch, libc.CString("That doesn't appear to lead anywhere.\r\n"))
 		return 0
 	}
-	if obj.Type_flag == ITEM_PORTAL && OBJVAL_FLAGGED(obj, 1<<2) {
+	if int(obj.Type_flag) == ITEM_PORTAL && OBJVAL_FLAGGED(obj, 1<<2) {
 		send_to_char(ch, libc.CString("But it's closed!\r\n"))
 		return 0
 	}
@@ -2291,7 +2291,7 @@ func do_simple_leave(ch *char_data, obj *obj_data, need_specials_check int) int 
 	need_movement = 1
 	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity > 10 {
 		need_movement = (need_movement + (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity) * (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity
-	} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10 && ch.Chclass != CLASS_BARDOCK && !IS_NPC(ch) {
+	} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10 && int(ch.Chclass) != CLASS_BARDOCK && !IS_NPC(ch) {
 		need_movement = (need_movement + (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity) * (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity
 	}
 	if GET_LEVEL(ch) <= 1 {
@@ -2412,7 +2412,7 @@ func perform_leave_obj(ch *char_data, obj *obj_data, need_specials_check int) in
 				return could_move
 			}()) != 0 {
 				for k = ch.Followers; k != nil; k = k.Next {
-					if k.Follower.In_room == was_in && k.Follower.Position >= POS_STANDING {
+					if k.Follower.In_room == was_in && int(k.Follower.Position) >= POS_STANDING {
 						act(libc.CString("You follow $N.\r\n"), FALSE, k.Follower, nil, unsafe.Pointer(ch), TO_CHAR)
 						perform_leave_obj(k.Follower, obj, 1)
 					}
@@ -2433,7 +2433,7 @@ func do_leave(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; obj != nil; obj = obj.Next_content {
 		if CAN_SEE_OBJ(ch, obj) {
-			if obj.Type_flag == ITEM_HATCH || obj.Type_flag == ITEM_PORTAL {
+			if int(obj.Type_flag) == ITEM_HATCH || int(obj.Type_flag) == ITEM_PORTAL {
 				perform_leave_obj(ch, obj, 0)
 				return
 			}
@@ -2497,7 +2497,7 @@ func handle_fall(ch *char_data) {
 			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
 		}
 		return SECT_INSIDE
-	}()) == SECT_WATER_NOSWIM && ch.Player_specials.Carried_by == nil && ch.Race != RACE_KANASSAN {
+	}()) == SECT_WATER_NOSWIM && ch.Player_specials.Carried_by == nil && int(ch.Race) != RACE_KANASSAN {
 		if ch.Move >= int64(gear_weight(ch)) {
 			act(libc.CString("@bYou swim in place.@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@C$n@b swims in place.@n"), TRUE, ch, nil, nil, TO_ROOM)
@@ -2561,7 +2561,7 @@ func do_fly(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	}
-	if !IS_NPC(ch) && GET_SKILL(ch, SKILL_FOCUS) < 30 && ch.Race != RACE_ANDROID {
+	if !IS_NPC(ch) && GET_SKILL(ch, SKILL_FOCUS) < 30 && int(ch.Race) != RACE_ANDROID {
 		send_to_char(ch, libc.CString("You do not have enough focus to hold yourself aloft.\r\n"))
 		send_to_char(ch, libc.CString("@wOOC@D: @WYou need the skill Focus at @m30@W.@n\r\n"))
 		return
@@ -2609,7 +2609,7 @@ func do_fly(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Altitude = 0
 			return
 		}
-		if ch.Mana < ch.Max_mana/100 && ch.Race != RACE_ANDROID {
+		if ch.Mana < ch.Max_mana/100 && int(ch.Race) != RACE_ANDROID {
 			send_to_char(ch, libc.CString("You do not have the ki to fly."))
 			return
 		} else {
@@ -2620,7 +2620,7 @@ func do_fly(ch *char_data, argument *byte, cmd int, subcmd int) {
 				ch.Sits.Sitting = nil
 				ch.Sits = nil
 			}
-			if ch.Position < POS_STANDING {
+			if int(ch.Position) < POS_STANDING {
 				ch.Position = POS_STANDING
 			}
 			ch.Affected_by[int(AFF_FLYING/32)] |= 1 << (int(AFF_FLYING % 32))
@@ -2628,8 +2628,8 @@ func do_fly(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Mana -= ch.Max_mana / 100
 		}
 	}
-	if C.strcasecmp(libc.CString("high"), &arg[0]) == 0 {
-		if ch.Mana < ch.Max_mana/100 && ch.Race != RACE_ANDROID {
+	if libc.StrCaseCmp(libc.CString("high"), &arg[0]) == 0 {
+		if ch.Mana < ch.Max_mana/100 && int(ch.Race) != RACE_ANDROID {
 			send_to_char(ch, libc.CString("You do not have the ki to fly."))
 			return
 		} else {
@@ -2640,7 +2640,7 @@ func do_fly(ch *char_data, argument *byte, cmd int, subcmd int) {
 				ch.Sits.Sitting = nil
 				ch.Sits = nil
 			}
-			if ch.Position < POS_STANDING {
+			if int(ch.Position) < POS_STANDING {
 				ch.Position = POS_STANDING
 			}
 			ch.Affected_by[int(AFF_FLYING/32)] |= 1 << (int(AFF_FLYING % 32))
@@ -2648,12 +2648,12 @@ func do_fly(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Mana -= ch.Max_mana / 100
 		}
 	}
-	if C.strcasecmp(libc.CString("space"), &arg[0]) == 0 {
+	if libc.StrCaseCmp(libc.CString("space"), &arg[0]) == 0 {
 		if !OUTSIDE(ch) {
 			send_to_char(ch, libc.CString("You are not outside!"))
 			return
 		}
-		if ch.Mana < ch.Max_mana/10 && ch.Race != RACE_ANDROID {
+		if ch.Mana < ch.Max_mana/10 && int(ch.Race) != RACE_ANDROID {
 			send_to_char(ch, libc.CString("You do not have the ki to fly to space."))
 			return
 		}
@@ -2690,7 +2690,7 @@ func do_fly(ch *char_data, argument *byte, cmd int, subcmd int) {
 			char_to_room(ch, real_room(50))
 			act(libc.CString("@C$n blasts up from the atmosphere below and then comes to a stop.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			send_to_char(ch, libc.CString("@mOOC: Use the command 'land' to return to the planet from here.@n\r\n"))
-			if ch.Race != RACE_ANDROID {
+			if int(ch.Race) != RACE_ANDROID {
 				ch.Mana -= ch.Max_mana / 10
 			}
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
@@ -2726,7 +2726,7 @@ func do_fly(ch *char_data, argument *byte, cmd int, subcmd int) {
 			char_to_room(ch, real_room(198))
 			act(libc.CString("@C$n blasts up from the atmosphere below and then comes to a stop.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			send_to_char(ch, libc.CString("@mOOC: Use the command 'land' to return to the planet from here.@n\r\n"))
-			if ch.Race != RACE_ANDROID {
+			if int(ch.Race) != RACE_ANDROID {
 				ch.Mana -= ch.Max_mana / 10
 			}
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
@@ -2760,7 +2760,7 @@ func do_fly(ch *char_data, argument *byte, cmd int, subcmd int) {
 			char_to_room(ch, real_room(53))
 			act(libc.CString("@C$n blasts up from the atmosphere below and then comes to a stop.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			send_to_char(ch, libc.CString("@mOOC: Use the command 'land' to return to the planet from here.@n\r\n"))
-			if ch.Race != RACE_ANDROID {
+			if int(ch.Race) != RACE_ANDROID {
 				ch.Mana -= ch.Max_mana / 10
 			}
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
@@ -2800,7 +2800,7 @@ func do_fly(ch *char_data, argument *byte, cmd int, subcmd int) {
 				char_to_room(ch, real_room(58))
 				act(libc.CString("@C$n blasts up from the atmosphere below and then comes to a stop.@n"), TRUE, ch, nil, nil, TO_ROOM)
 				send_to_char(ch, libc.CString("@mOOC: Use the command 'land' to return to the planet from here.@n\r\n"))
-				if ch.Race != RACE_ANDROID {
+				if int(ch.Race) != RACE_ANDROID {
 					ch.Mana -= ch.Max_mana / 10
 				}
 				WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
@@ -2837,7 +2837,7 @@ func do_fly(ch *char_data, argument *byte, cmd int, subcmd int) {
 			char_to_room(ch, real_room(51))
 			act(libc.CString("@C$n blasts up from the atmosphere below and then comes to a stop.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			send_to_char(ch, libc.CString("@mOOC: Use the command 'land' to return to the planet from here.@n\r\n"))
-			if ch.Race != RACE_ANDROID {
+			if int(ch.Race) != RACE_ANDROID {
 				ch.Mana -= ch.Max_mana / 10
 			}
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
@@ -2871,7 +2871,7 @@ func do_fly(ch *char_data, argument *byte, cmd int, subcmd int) {
 			char_to_room(ch, real_room(52))
 			act(libc.CString("@C$n blasts up from the atmosphere below and then comes to a stop.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			send_to_char(ch, libc.CString("@mOOC: Use the command 'land' to return to the planet from here.@n\r\n"))
-			if ch.Race != RACE_ANDROID {
+			if int(ch.Race) != RACE_ANDROID {
 				ch.Mana -= ch.Max_mana / 10
 			}
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
@@ -2905,7 +2905,7 @@ func do_fly(ch *char_data, argument *byte, cmd int, subcmd int) {
 			char_to_room(ch, real_room(54))
 			act(libc.CString("@C$n blasts up from the atmosphere below and then comes to a stop.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			send_to_char(ch, libc.CString("@mOOC: Use the command 'land' to return to the planet from here.@n\r\n"))
-			if ch.Race != RACE_ANDROID {
+			if int(ch.Race) != RACE_ANDROID {
 				ch.Mana -= ch.Max_mana / 10
 			}
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
@@ -2939,7 +2939,7 @@ func do_fly(ch *char_data, argument *byte, cmd int, subcmd int) {
 			char_to_room(ch, real_room(55))
 			act(libc.CString("@C$n blasts up from the atmosphere below and then comes to a stop.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			send_to_char(ch, libc.CString("@mOOC: Use the command 'land' to return to the planet from here.@n\r\n"))
-			if ch.Race != RACE_ANDROID {
+			if int(ch.Race) != RACE_ANDROID {
 				ch.Mana -= ch.Max_mana / 10
 			}
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
@@ -2973,7 +2973,7 @@ func do_fly(ch *char_data, argument *byte, cmd int, subcmd int) {
 			char_to_room(ch, real_room(56))
 			act(libc.CString("@C$n blasts up from the atmosphere below and then comes to a stop.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			send_to_char(ch, libc.CString("@mOOC: Use the command 'land' to return to the planet from here.@n\r\n"))
-			if ch.Race != RACE_ANDROID {
+			if int(ch.Race) != RACE_ANDROID {
 				ch.Mana -= ch.Max_mana / 10
 			}
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
@@ -3007,7 +3007,7 @@ func do_fly(ch *char_data, argument *byte, cmd int, subcmd int) {
 			char_to_room(ch, real_room(59))
 			act(libc.CString("@C$n blasts up from the atmosphere below and then comes to a stop.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			send_to_char(ch, libc.CString("@mOOC: Use the command 'land' to return to the planet from here.@n\r\n"))
-			if ch.Race != RACE_ANDROID {
+			if int(ch.Race) != RACE_ANDROID {
 				ch.Mana -= ch.Max_mana / 10
 			}
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
@@ -3066,7 +3066,7 @@ func do_fly(ch *char_data, argument *byte, cmd int, subcmd int) {
 			char_to_room(ch, real_room(57))
 			act(libc.CString("@C$n blasts up from the atmosphere below and then comes to a stop.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			send_to_char(ch, libc.CString("@mOOC: Use the command 'land' to return to the planet from here.@n\r\n"))
-			if ch.Race != RACE_ANDROID {
+			if int(ch.Race) != RACE_ANDROID {
 				ch.Mana -= ch.Max_mana / 10
 			}
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
@@ -3083,7 +3083,7 @@ func do_stand(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You are knocked out cold for right now!\r\n"))
 		return
 	}
-	if !IS_NPC(ch) && (ch.Limb_condition[2]) <= 0 && (ch.Limb_condition[3]) <= 0 {
+	if !IS_NPC(ch) && (ch.Limb_condition[3]) <= 0 && (ch.Limb_condition[4]) <= 0 {
 		send_to_char(ch, libc.CString("With what legs will you be standing up on?\r\n"))
 		return
 	}
@@ -3099,7 +3099,7 @@ func do_stand(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You stand up.\r\n"))
 		act(libc.CString("$n clambers to $s feet."), TRUE, ch, nil, nil, TO_ROOM)
 		if ch.Sits != nil {
-			if OBJWEAR_FLAGGED(ch.Sits, ITEM_WEAR_TAKE) && ch.Sits.Type_flag != ITEM_CHAIR && ch.Carry_weight+int(ch.Sits.Weight) <= int(max_carry_weight(ch)) {
+			if OBJWEAR_FLAGGED(ch.Sits, ITEM_WEAR_TAKE) && int(ch.Sits.Type_flag) != ITEM_CHAIR && ch.Carry_weight+int(ch.Sits.Weight) <= int(max_carry_weight(ch)) {
 				obj_from_room(ch.Sits)
 				obj_to_char(ch.Sits, ch)
 				act(libc.CString("You pick up $p."), TRUE, ch, ch.Sits, nil, TO_CHAR)
@@ -3206,7 +3206,7 @@ func do_sit(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("Someone is already on that one!\r\n"))
 			return
 		}
-		if chair.Type_flag != ITEM_CHAIR && chair.Type_flag != ITEM_BED {
+		if int(chair.Type_flag) != ITEM_CHAIR && int(chair.Type_flag) != ITEM_BED {
 			send_to_char(ch, libc.CString("You can't sit on that!\r\n"))
 			return
 		}
@@ -3293,7 +3293,7 @@ func do_rest(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if arg[0] == 0 {
 		if ch.Sits != nil {
 			chair = ch.Sits
-			if chair.Type_flag != ITEM_BED {
+			if int(chair.Type_flag) != ITEM_BED {
 				send_to_char(ch, libc.CString("You can't lay on that!\r\n"))
 				return
 			}
@@ -3339,7 +3339,7 @@ func do_rest(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("Someone is already on that one!\r\n"))
 			return
 		}
-		if chair.Type_flag != ITEM_BED {
+		if int(chair.Type_flag) != ITEM_BED {
 			send_to_char(ch, libc.CString("You can't lay on that!\r\n"))
 			return
 		}
@@ -3378,7 +3378,7 @@ func do_sleep(ch *char_data, argument *byte, cmd int, subcmd int) {
 	one_argument(argument, &arg[0])
 	if !IS_NPC(ch) {
 		if PRF_FLAGGED(ch, PRF_ARENAWATCH) {
-			ch.Player_specials.Pref[int(PRF_ARENAWATCH/32)] &= bitvector_t(^(1 << (int(PRF_ARENAWATCH % 32))))
+			ch.Player_specials.Pref[int(PRF_ARENAWATCH/32)] &= bitvector_t(int32(^(1 << (int(PRF_ARENAWATCH % 32)))))
 			ch.Arenawatch = -1
 			send_to_char(ch, libc.CString("You stop watching the arena action.\r\n"))
 		}
@@ -3445,7 +3445,7 @@ func do_sleep(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if arg[0] == 0 {
 		if ch.Sits != nil {
 			chair = ch.Sits
-			if chair.Type_flag != ITEM_BED {
+			if int(chair.Type_flag) != ITEM_BED {
 				send_to_char(ch, libc.CString("You can't sleep on %s.\r\n"), chair.Short_description)
 				return
 			}
@@ -3462,7 +3462,7 @@ func do_sleep(ch *char_data, argument *byte, cmd int, subcmd int) {
 			ch.Position = POS_SLEEPING
 			if PLR_FLAGGED(ch, PLR_FURY) {
 				send_to_char(ch, libc.CString("Your fury subsides for now. Next time try to take advantage of it before you calm down.\r\n"))
-				ch.Act[int(PLR_FURY/32)] &= bitvector_t(^(1 << (int(PLR_FURY % 32))))
+				ch.Act[int(PLR_FURY/32)] &= bitvector_t(int32(^(1 << (int(PLR_FURY % 32)))))
 			}
 			if int(ch.Stupidkiss) > 0 {
 				ch.Stupidkiss = 0
@@ -3497,7 +3497,7 @@ func do_sleep(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("Someone is already on that one!\r\n"))
 			return
 		}
-		if chair.Type_flag != ITEM_BED {
+		if int(chair.Type_flag) != ITEM_BED {
 			send_to_char(ch, libc.CString("You can't sleep on that!\r\n"))
 			return
 		}
@@ -3516,7 +3516,7 @@ func do_sleep(ch *char_data, argument *byte, cmd int, subcmd int) {
 			act(libc.CString("$n lays down on $p and sleeps."), FALSE, ch, chair, nil, TO_ROOM)
 			if PLR_FLAGGED(ch, PLR_FURY) {
 				send_to_char(ch, libc.CString("Your fury subsides for now. Next time try to take advantage of it before you calm down.\r\n"))
-				ch.Act[int(PLR_FURY/32)] &= bitvector_t(^(1 << (int(PLR_FURY % 32))))
+				ch.Act[int(PLR_FURY/32)] &= bitvector_t(int32(^(1 << (int(PLR_FURY % 32)))))
 			}
 			if int(ch.Stupidkiss) > 0 {
 				ch.Stupidkiss = 0
@@ -3547,12 +3547,12 @@ func do_wake(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You are knocked out cold for right now!\r\n"))
 		return
 	}
-	if (ch.Bonuses[BONUS_LATE]) != 0 && ch.Position == POS_SLEEPING {
+	if (ch.Bonuses[BONUS_LATE]) != 0 && int(ch.Position) == POS_SLEEPING {
 		send_to_char(ch, libc.CString("Nah you're enjoying sleeping too much.\r\n"))
 		return
 	}
 	if arg[0] != 0 {
-		if ch.Position == POS_SLEEPING {
+		if int(ch.Position) == POS_SLEEPING {
 			send_to_char(ch, libc.CString("Maybe you should wake yourself up first.\r\n"))
 		} else if (func() *char_data {
 			vict = get_char_vis(ch, &arg[0], nil, 1<<0)
@@ -3565,7 +3565,7 @@ func do_wake(ch *char_data, argument *byte, cmd int, subcmd int) {
 			act(libc.CString("$E is already awake."), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 		} else if AFF_FLAGGED(vict, AFF_SLEEP) {
 			act(libc.CString("You can't wake $M up!"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
-		} else if vict.Position < POS_SLEEPING {
+		} else if int(vict.Position) < POS_SLEEPING {
 			act(libc.CString("$E's in pretty bad shape!"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 		} else if AFF_FLAGGED(vict, AFF_KNOCKED) {
 			send_to_char(ch, libc.CString("They are knocked out cold for right now!\r\n"))
@@ -3595,7 +3595,7 @@ func do_wake(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	if AFF_FLAGGED(ch, AFF_SLEEP) {
 		send_to_char(ch, libc.CString("You can't wake up!\r\n"))
-	} else if ch.Position > POS_SLEEPING {
+	} else if int(ch.Position) > POS_SLEEPING {
 		send_to_char(ch, libc.CString("You are already awake...\r\n"))
 	} else {
 		send_to_char(ch, libc.CString("You awaken, and sit up.\r\n"))

@@ -3,6 +3,8 @@ package main
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"os"
+	"unicode"
 	"unsafe"
 )
 
@@ -34,13 +36,13 @@ func calculate_skill_cost(ch *char_data, skill int) int {
 	} else if (spell_info[skill].Flags & (1 << 11)) != 0 {
 		cost = 15
 	} else if (spell_info[skill].Flags & (1 << 12)) != 0 {
-		if (ch.Skills[skill]) == 0 {
+		if int(ch.Skills[skill]) == 0 {
 			cost = 200
 		} else {
 			cost = 25
 		}
 	} else if (spell_info[skill].Flags & (1 << 13)) != 0 {
-		if (ch.Skills[skill]) == 0 {
+		if int(ch.Skills[skill]) == 0 {
 			cost = 300
 		} else {
 			cost = 40
@@ -48,17 +50,17 @@ func calculate_skill_cost(ch *char_data, skill int) int {
 	} else {
 		cost = 4
 	}
-	if (ch.Skills[skill]) > 90 {
+	if int(ch.Skills[skill]) > 90 {
 		cost += 12
-	} else if (ch.Skills[skill]) > 80 {
+	} else if int(ch.Skills[skill]) > 80 {
 		cost += 10
-	} else if (ch.Skills[skill]) > 70 {
+	} else if int(ch.Skills[skill]) > 70 {
 		cost += 8
-	} else if (ch.Skills[skill]) > 50 {
+	} else if int(ch.Skills[skill]) > 50 {
 		cost += 6
-	} else if (ch.Skills[skill]) > 40 {
+	} else if int(ch.Skills[skill]) > 40 {
 		cost += 2
-	} else if (ch.Skills[skill]) > 30 {
+	} else if int(ch.Skills[skill]) > 30 {
 		cost += 1
 	}
 	if ch.Forgeting != 0 {
@@ -70,11 +72,11 @@ func calculate_skill_cost(ch *char_data, skill int) int {
 	if skill == SKILL_EXTRACT {
 		cost += 3
 	}
-	if ch.Race == RACE_HOSHIJIN && (skill == SKILL_PUNCH || skill == SKILL_KICK || skill == SKILL_KNEE || skill == SKILL_ELBOW || skill == SKILL_UPPERCUT || skill == SKILL_ROUNDHOUSE || skill == SKILL_SLAM || skill == SKILL_HEELDROP || skill == SKILL_DAGGER || skill == SKILL_SWORD || skill == SKILL_CLUB || skill == SKILL_GUN || skill == SKILL_SPEAR || skill == SKILL_BRAWL) {
+	if int(ch.Race) == RACE_HOSHIJIN && (skill == SKILL_PUNCH || skill == SKILL_KICK || skill == SKILL_KNEE || skill == SKILL_ELBOW || skill == SKILL_UPPERCUT || skill == SKILL_ROUNDHOUSE || skill == SKILL_SLAM || skill == SKILL_HEELDROP || skill == SKILL_DAGGER || skill == SKILL_SWORD || skill == SKILL_CLUB || skill == SKILL_GUN || skill == SKILL_SPEAR || skill == SKILL_BRAWL) {
 		cost += 5
 	}
 	if skill == SKILL_INSTANTT {
-		if (ch.Skills[skill]) == 0 {
+		if int(ch.Skills[skill]) == 0 {
 			cost = 2000
 		} else {
 			cost = 50
@@ -89,17 +91,17 @@ func handle_ingest_learn(ch *char_data, vict *char_data) {
 	var i int = 1
 	send_to_char(ch, libc.CString("@YAll your current skills improve somewhat!@n\r\n"))
 	for i = 1; i <= SKILL_TABLE_SIZE; i++ {
-		if (ch.Skills[i]) > 0 && (vict.Skills[i]) > 0 && i != 141 {
+		if int(ch.Skills[i]) > 0 && int(vict.Skills[i]) > 0 && i != 141 {
 			send_to_char(ch, libc.CString("@YYou gained a lot of new knowledge about @y%s@Y!@n\r\n"), spell_info[i].Name)
-			if (ch.Skills[i])+10 < 100 {
+			if int(ch.Skills[i])+10 < 100 {
 				ch.Skills[i] += 10
-			} else if (ch.Skills[i]) > 0 && (ch.Skills[i]) < 100 {
+			} else if int(ch.Skills[i]) > 0 && int(ch.Skills[i]) < 100 {
 				ch.Skills[i] += 1
 			} else {
 				ch.Skills[i] = 100
 			}
 		}
-		if (i >= 481 && i <= 489 || i == 517 || i == 535) && ((ch.Skills[i]) <= 0 && (vict.Skills[i]) > 0) {
+		if (i >= 481 && i <= 489 || i == 517 || i == 535) && (int(ch.Skills[i]) <= 0 && int(vict.Skills[i]) > 0) {
 			for {
 				ch.Skills[i] = int8(int(ch.Skills[i]) + rand_number(10, 25))
 				if true {
@@ -126,7 +128,7 @@ func do_teach(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	skill = find_skill_num(&arg[0], 1<<1)
-	if (ch.Skills[skill]) < 101 {
+	if int(ch.Skills[skill]) < 101 {
 		send_to_char(ch, libc.CString("You are not a Grand Master in that skill!\r\n"))
 		send_to_char(ch, libc.CString("@wSyntax: teach (skill) (target)@n\r\n"))
 		return
@@ -146,12 +148,12 @@ func do_teach(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	var cost int = calculate_skill_cost(vict, skill)
 	var free int = FALSE
-	if (ch.Skills[skill]) >= 103 {
+	if int(ch.Skills[skill]) >= 103 {
 		cost = int(float64(cost) * 0.5)
 		if rand_number(1, 4) == 4 {
 			free = TRUE
 		}
-	} else if (ch.Skills[skill]) == 102 {
+	} else if int(ch.Skills[skill]) == 102 {
 		cost = int(float64(cost) * 0.5)
 	} else {
 		cost = int(float64(cost) * 0.75)
@@ -171,10 +173,10 @@ func do_teach(ch *char_data, argument *byte, cmd int, subcmd int) {
 	} else if (vict.Player_specials.Class_skill_points[vict.Chclass]) < cost {
 		send_to_char(ch, libc.CString("They do not have enough practice sessions for you to teach them.\r\n"))
 		return
-	} else if (vict.Skills[skill]) >= 80 {
+	} else if int(vict.Skills[skill]) >= 80 {
 		send_to_char(ch, libc.CString("You can not teach them anymore.\r\n"))
 		return
-	} else if (vict.Skills[skill]) > 0 {
+	} else if int(vict.Skills[skill]) > 0 {
 		var (
 			tochar  [64936]byte
 			tovict  [64936]byte
@@ -187,7 +189,7 @@ func do_teach(ch *char_data, argument *byte, cmd int, subcmd int) {
 		act(&tovict[0], TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 		act(&toother[0], TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 		for {
-			vict.Skills[skill] = (vict.Skills[skill]) + 1
+			vict.Skills[skill] = int8(int(vict.Skills[skill]) + 1)
 			if true {
 				break
 			}
@@ -244,7 +246,7 @@ func compare_spells(x unsafe.Pointer, y unsafe.Pointer) int {
 		a int = *(*int)(x)
 		b int = *(*int)(y)
 	)
-	return C.strcmp(spell_info[a].Name, spell_info[b].Name)
+	return libc.StrCmp(spell_info[a].Name, spell_info[b].Name)
 }
 func print_skills_by_type(ch *char_data, buf *byte, maxsz int, sktype int, argument *byte) int {
 	var (
@@ -272,7 +274,7 @@ func print_skills_by_type(ch *char_data, buf *byte, maxsz int, sktype int, argum
 					return known
 				}()
 			}(); nlen <= NUM_CLASSES; nlen++ {
-				if ((ch.Chclasses[nlen])+(ch.Epicclasses[nlen])) > 0 && spell_info[i].Can_learn_skill[nlen] > SKLEARN_CANT {
+				if ((ch.Chclasses[nlen])+(ch.Epicclasses[nlen])) > 0 && int(spell_info[i].Can_learn_skill[nlen]) > SKLEARN_CANT {
 					known = int(spell_info[i].Can_learn_skill[nlen])
 				}
 			}
@@ -283,7 +285,7 @@ func print_skills_by_type(ch *char_data, buf *byte, maxsz int, sktype int, argum
 			known = 0
 		}
 		if arg[0] != 0 {
-			if libc.Atoi(libc.GoString(&arg[0])) <= 0 && unsafe.Pointer(C.strstr(spell_info[i].Name, &arg[0])) == unsafe.Pointer(uintptr(FALSE)) {
+			if libc.Atoi(libc.GoString(&arg[0])) <= 0 && unsafe.Pointer(libc.StrStr(spell_info[i].Name, &arg[0])) == unsafe.Pointer(uintptr(FALSE)) {
 				known = 0
 			} else if libc.Atoi(libc.GoString(&arg[0])) > GET_SKILL(ch, i) {
 				known = 0
@@ -292,13 +294,13 @@ func print_skills_by_type(ch *char_data, buf *byte, maxsz int, sktype int, argum
 		if known != 0 {
 			if t&(1<<2) != 0 {
 				nlen = stdio.Snprintf((*byte)(unsafe.Add(unsafe.Pointer(buf), len_)), maxsz-int(len_), "%-20s  (%s)\r\n", spell_info[i].Name, func() string {
-					if (ch.Skills[i]) != 0 {
+					if int(ch.Skills[i]) != 0 {
 						return "known"
 					}
 					return "unknown"
 				}())
 			} else if t&(1<<1) != 0 {
-				if (ch.Skillmods[i]) != 0 {
+				if int(ch.Skillmods[i]) != 0 {
 					stdio.Snprintf(&buf2[0], int(256), " (base %d + bonus %d)", ch.Skills[i], ch.Skillmods[i])
 				} else {
 					buf2[0] = 0
@@ -307,18 +309,18 @@ func print_skills_by_type(ch *char_data, buf *byte, maxsz int, sktype int, argum
 					count++
 					canknow = highest_skill_value(GET_LEVEL(ch), GET_SKILL(ch, i))
 					nlen = stdio.Snprintf((*byte)(unsafe.Add(unsafe.Pointer(buf), len_)), maxsz-int(len_), "@y(@Y%2d@y) @W%-30s  @y(@Y%2d@y) @C%3d@D/@c%3d   %s@n%s%s\r\n", count, spell_info[i].Name, count, GET_SKILL(ch, i), canknow, func() string {
-						if (ch.Skillperfs[i]) > 0 {
-							if (ch.Skillperfs[i]) == 1 {
+						if int(ch.Skillperfs[i]) > 0 {
+							if int(ch.Skillperfs[i]) == 1 {
 								return "@ROver Charge"
 							}
-							if (ch.Skillperfs[i]) == 2 {
+							if int(ch.Skillperfs[i]) == 2 {
 								return "@BAccurate"
 							}
 							return "@GEfficient"
 						}
 						return ""
 					}(), func() string {
-						if (ch.Skills[i]) > 100 {
+						if int(ch.Skills[i]) > 100 {
 							return " @D(@YGrand Master@D)@n"
 						}
 						return ""
@@ -327,18 +329,18 @@ func print_skills_by_type(ch *char_data, buf *byte, maxsz int, sktype int, argum
 					count++
 					canknow = highest_skill_value(GET_LEVEL(ch), GET_SKILL(ch, i))
 					nlen = stdio.Snprintf((*byte)(unsafe.Add(unsafe.Pointer(buf), len_)), maxsz-int(len_), "@y(@Y%2d@y) @W%-30s  @y(@Y%2d@y) @C%3d@D/@c%d3   %s@n%s%s\r\n", count, spell_info[i].Name, count, GET_SKILL(ch, i), canknow, func() string {
-						if (ch.Skillperfs[i]) > 0 {
-							if (ch.Skillperfs[i]) == 1 {
+						if int(ch.Skillperfs[i]) > 0 {
+							if int(ch.Skillperfs[i]) == 1 {
 								return "@ROver Charge"
 							}
-							if (ch.Skillperfs[i]) == 2 {
+							if int(ch.Skillperfs[i]) == 2 {
 								return "@BAccurate"
 							}
 							return "@GEfficient"
 						}
 						return ""
 					}(), func() string {
-						if (ch.Skills[i]) > 100 {
+						if int(ch.Skills[i]) > 100 {
 							return " @D(@YGrand Master@D)@n"
 						}
 						return ""
@@ -399,23 +401,23 @@ func slot_count(ch *char_data) int {
 				fail = TRUE
 				renzo = TRUE
 			case SKILL_TELEPATHY:
-				if ch.Race == RACE_KANASSAN || ch.Race == RACE_KAI {
+				if int(ch.Race) == RACE_KANASSAN || int(ch.Race) == RACE_KAI {
 					fail = TRUE
 				}
 			case SKILL_ABSORB:
-				if ch.Race == RACE_BIO || ch.Race == RACE_ANDROID {
+				if int(ch.Race) == RACE_BIO || int(ch.Race) == RACE_ANDROID {
 					fail = TRUE
 				}
 			case SKILL_TAILWHIP:
-				if ch.Race == RACE_ICER {
+				if int(ch.Race) == RACE_ICER {
 					fail = TRUE
 				}
 			case SKILL_SEISHOU:
-				if ch.Race == RACE_ARLIAN {
+				if int(ch.Race) == RACE_ARLIAN {
 					fail = TRUE
 				}
 			case SKILL_REGENERATE:
-				if ch.Race == RACE_MAJIN || ch.Race == RACE_NAMEK || ch.Race == RACE_BIO {
+				if int(ch.Race) == RACE_MAJIN || int(ch.Race) == RACE_NAMEK || int(ch.Race) == RACE_BIO {
 					fail = TRUE
 				}
 			}
@@ -452,7 +454,7 @@ func list_skills(ch *char_data, arg *byte) {
 		len_ += uint64(stdio.Snprintf(&buf2[len_], int(64936-uintptr(len_)), "\r\n@DSkill Slots@W: @M%d@W/@m%d", slot_count(ch), ch.Skill_slots))
 	}
 	if len_ >= uint64(64936) {
-		C.strcpy((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(&buf2[64936]), -C.strlen(overflow)))), -1)), overflow)
+		libc.StrCpy((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(&buf2[64936]), -libc.StrLen(overflow)))), -1)), overflow)
 	}
 	page_string(ch.Desc, &buf2[0], TRUE)
 }
@@ -489,17 +491,17 @@ func is_guild_ok_char(keeper *char_data, ch *char_data, guild_nr int) int {
 	if IS_NPC(ch) {
 		return FALSE
 	}
-	if ch.Chclass == CLASS_ROSHI && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOWIZARD) || ch.Chclass == CLASS_PICCOLO && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOCLERIC) || ch.Chclass == CLASS_KRANE && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOROGUE) || ch.Chclass == CLASS_NAIL && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOFIGHTER) || ch.Chclass == CLASS_GINYU && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOPALADIN) || ch.Chclass == CLASS_FRIEZA && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOSORCERER) || ch.Chclass == CLASS_TAPION && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NODRUID) || ch.Chclass == CLASS_ANDSIX && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOBARD) || ch.Chclass == CLASS_DABURA && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NORANGER) || ch.Chclass == CLASS_BARDOCK && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOMONK) || ch.Chclass == CLASS_KABITO && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOBARBARIAN) || ch.Chclass == CLASS_JINTO && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOARCANE_ARCHER) || ch.Chclass == CLASS_TSUNA && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOARCANE_TRICKSTER) || ch.Chclass == CLASS_KURZAK && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOARCHMAGE) || ((ch.Chclasses[CLASS_ASSASSIN])+(ch.Epicclasses[CLASS_ASSASSIN])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOASSASSIN) || ((ch.Chclasses[CLASS_BLACKGUARD])+(ch.Epicclasses[CLASS_BLACKGUARD])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOBLACKGUARD) || ((ch.Chclasses[CLASS_DRAGON_DISCIPLE])+(ch.Epicclasses[CLASS_DRAGON_DISCIPLE])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NODRAGON_DISCIPLE) || ((ch.Chclasses[CLASS_DUELIST])+(ch.Epicclasses[CLASS_DUELIST])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NODUELIST) || ((ch.Chclasses[CLASS_DWARVEN_DEFENDER])+(ch.Epicclasses[CLASS_DWARVEN_DEFENDER])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NODWARVEN_DEFENDER) || ((ch.Chclasses[CLASS_ELDRITCH_KNIGHT])+(ch.Epicclasses[CLASS_ELDRITCH_KNIGHT])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOELDRITCH_KNIGHT) || ((ch.Chclasses[CLASS_HIEROPHANT])+(ch.Epicclasses[CLASS_HIEROPHANT])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOHIEROPHANT) || ((ch.Chclasses[CLASS_HORIZON_WALKER])+(ch.Epicclasses[CLASS_HORIZON_WALKER])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOHORIZON_WALKER) || ((ch.Chclasses[CLASS_LOREMASTER])+(ch.Epicclasses[CLASS_LOREMASTER])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOLOREMASTER) || ((ch.Chclasses[CLASS_MYSTIC_THEURGE])+(ch.Epicclasses[CLASS_MYSTIC_THEURGE])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOMYSTIC_THEURGE) || ((ch.Chclasses[CLASS_SHADOWDANCER])+(ch.Epicclasses[CLASS_SHADOWDANCER])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOSHADOWDANCER) || ((ch.Chclasses[CLASS_THAUMATURGIST])+(ch.Epicclasses[CLASS_THAUMATURGIST])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOTHAUMATURGIST) {
+	if int(ch.Chclass) == CLASS_ROSHI && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOWIZARD) || int(ch.Chclass) == CLASS_PICCOLO && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOCLERIC) || int(ch.Chclass) == CLASS_KRANE && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOROGUE) || int(ch.Chclass) == CLASS_NAIL && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOFIGHTER) || int(ch.Chclass) == CLASS_GINYU && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOPALADIN) || int(ch.Chclass) == CLASS_FRIEZA && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOSORCERER) || int(ch.Chclass) == CLASS_TAPION && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NODRUID) || int(ch.Chclass) == CLASS_ANDSIX && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOBARD) || int(ch.Chclass) == CLASS_DABURA && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NORANGER) || int(ch.Chclass) == CLASS_BARDOCK && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOMONK) || int(ch.Chclass) == CLASS_KABITO && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOBARBARIAN) || int(ch.Chclass) == CLASS_JINTO && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOARCANE_ARCHER) || int(ch.Chclass) == CLASS_TSUNA && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOARCANE_TRICKSTER) || int(ch.Chclass) == CLASS_KURZAK && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOARCHMAGE) || ((ch.Chclasses[CLASS_ASSASSIN])+(ch.Epicclasses[CLASS_ASSASSIN])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOASSASSIN) || ((ch.Chclasses[CLASS_BLACKGUARD])+(ch.Epicclasses[CLASS_BLACKGUARD])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOBLACKGUARD) || ((ch.Chclasses[CLASS_DRAGON_DISCIPLE])+(ch.Epicclasses[CLASS_DRAGON_DISCIPLE])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NODRAGON_DISCIPLE) || ((ch.Chclasses[CLASS_DUELIST])+(ch.Epicclasses[CLASS_DUELIST])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NODUELIST) || ((ch.Chclasses[CLASS_DWARVEN_DEFENDER])+(ch.Epicclasses[CLASS_DWARVEN_DEFENDER])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NODWARVEN_DEFENDER) || ((ch.Chclasses[CLASS_ELDRITCH_KNIGHT])+(ch.Epicclasses[CLASS_ELDRITCH_KNIGHT])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOELDRITCH_KNIGHT) || ((ch.Chclasses[CLASS_HIEROPHANT])+(ch.Epicclasses[CLASS_HIEROPHANT])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOHIEROPHANT) || ((ch.Chclasses[CLASS_HORIZON_WALKER])+(ch.Epicclasses[CLASS_HORIZON_WALKER])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOHORIZON_WALKER) || ((ch.Chclasses[CLASS_LOREMASTER])+(ch.Epicclasses[CLASS_LOREMASTER])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOLOREMASTER) || ((ch.Chclasses[CLASS_MYSTIC_THEURGE])+(ch.Epicclasses[CLASS_MYSTIC_THEURGE])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOMYSTIC_THEURGE) || ((ch.Chclasses[CLASS_SHADOWDANCER])+(ch.Epicclasses[CLASS_SHADOWDANCER])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOSHADOWDANCER) || ((ch.Chclasses[CLASS_THAUMATURGIST])+(ch.Epicclasses[CLASS_THAUMATURGIST])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOTHAUMATURGIST) {
 		stdio.Snprintf(&buf[0], int(200), "%s %s", GET_NAME(ch), MSG_TRAINER_DISLIKE_CLASS)
 		do_tell(keeper, &buf[0], cmd_tell, 0)
 		return FALSE
 	}
-	if ch.Chclass != CLASS_ROSHI && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYWIZARD) || ch.Chclass != CLASS_PICCOLO && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYCLERIC) || ch.Chclass != CLASS_KRANE && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYROGUE) || ch.Chclass != CLASS_BARDOCK && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYMONK) || ch.Chclass != CLASS_GINYU && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYPALADIN) || ch.Chclass != CLASS_NAIL && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYFIGHTER) || ch.Chclass != CLASS_FRIEZA && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYSORCERER) || ch.Chclass != CLASS_TAPION && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYDRUID) || ch.Chclass != CLASS_ANDSIX && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYBARD) || ch.Chclass != CLASS_DABURA && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYRANGER) || ch.Chclass != CLASS_KABITO && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYBARBARIAN) || ch.Chclass != CLASS_JINTO && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYARCANE_ARCHER) || ch.Chclass != CLASS_TSUNA && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYARCANE_TRICKSTER) || ch.Chclass != CLASS_KURZAK && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYARCHMAGE) || ((ch.Chclasses[CLASS_ASSASSIN])+(ch.Epicclasses[CLASS_ASSASSIN])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYASSASSIN) || ((ch.Chclasses[CLASS_BLACKGUARD])+(ch.Epicclasses[CLASS_BLACKGUARD])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYBLACKGUARD) || ((ch.Chclasses[CLASS_DRAGON_DISCIPLE])+(ch.Epicclasses[CLASS_DRAGON_DISCIPLE])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYDRAGON_DISCIPLE) || ((ch.Chclasses[CLASS_DUELIST])+(ch.Epicclasses[CLASS_DUELIST])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYDUELIST) || ((ch.Chclasses[CLASS_DWARVEN_DEFENDER])+(ch.Epicclasses[CLASS_DWARVEN_DEFENDER])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYDWARVEN_DEFENDER) || ((ch.Chclasses[CLASS_ELDRITCH_KNIGHT])+(ch.Epicclasses[CLASS_ELDRITCH_KNIGHT])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYELDRITCH_KNIGHT) || ((ch.Chclasses[CLASS_HIEROPHANT])+(ch.Epicclasses[CLASS_HIEROPHANT])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYHIEROPHANT) || ((ch.Chclasses[CLASS_HORIZON_WALKER])+(ch.Epicclasses[CLASS_HORIZON_WALKER])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYHORIZON_WALKER) || ((ch.Chclasses[CLASS_LOREMASTER])+(ch.Epicclasses[CLASS_LOREMASTER])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYLOREMASTER) || ((ch.Chclasses[CLASS_MYSTIC_THEURGE])+(ch.Epicclasses[CLASS_MYSTIC_THEURGE])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYMYSTIC_THEURGE) || ((ch.Chclasses[CLASS_SHADOWDANCER])+(ch.Epicclasses[CLASS_SHADOWDANCER])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYSHADOWDANCER) || ((ch.Chclasses[CLASS_THAUMATURGIST])+(ch.Epicclasses[CLASS_THAUMATURGIST])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYTHAUMATURGIST) {
+	if int(ch.Chclass) != CLASS_ROSHI && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYWIZARD) || int(ch.Chclass) != CLASS_PICCOLO && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYCLERIC) || int(ch.Chclass) != CLASS_KRANE && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYROGUE) || int(ch.Chclass) != CLASS_BARDOCK && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYMONK) || int(ch.Chclass) != CLASS_GINYU && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYPALADIN) || int(ch.Chclass) != CLASS_NAIL && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYFIGHTER) || int(ch.Chclass) != CLASS_FRIEZA && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYSORCERER) || int(ch.Chclass) != CLASS_TAPION && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYDRUID) || int(ch.Chclass) != CLASS_ANDSIX && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYBARD) || int(ch.Chclass) != CLASS_DABURA && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYRANGER) || int(ch.Chclass) != CLASS_KABITO && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYBARBARIAN) || int(ch.Chclass) != CLASS_JINTO && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYARCANE_ARCHER) || int(ch.Chclass) != CLASS_TSUNA && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYARCANE_TRICKSTER) || int(ch.Chclass) != CLASS_KURZAK && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYARCHMAGE) || ((ch.Chclasses[CLASS_ASSASSIN])+(ch.Epicclasses[CLASS_ASSASSIN])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYASSASSIN) || ((ch.Chclasses[CLASS_BLACKGUARD])+(ch.Epicclasses[CLASS_BLACKGUARD])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYBLACKGUARD) || ((ch.Chclasses[CLASS_DRAGON_DISCIPLE])+(ch.Epicclasses[CLASS_DRAGON_DISCIPLE])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYDRAGON_DISCIPLE) || ((ch.Chclasses[CLASS_DUELIST])+(ch.Epicclasses[CLASS_DUELIST])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYDUELIST) || ((ch.Chclasses[CLASS_DWARVEN_DEFENDER])+(ch.Epicclasses[CLASS_DWARVEN_DEFENDER])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYDWARVEN_DEFENDER) || ((ch.Chclasses[CLASS_ELDRITCH_KNIGHT])+(ch.Epicclasses[CLASS_ELDRITCH_KNIGHT])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYELDRITCH_KNIGHT) || ((ch.Chclasses[CLASS_HIEROPHANT])+(ch.Epicclasses[CLASS_HIEROPHANT])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYHIEROPHANT) || ((ch.Chclasses[CLASS_HORIZON_WALKER])+(ch.Epicclasses[CLASS_HORIZON_WALKER])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYHORIZON_WALKER) || ((ch.Chclasses[CLASS_LOREMASTER])+(ch.Epicclasses[CLASS_LOREMASTER])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYLOREMASTER) || ((ch.Chclasses[CLASS_MYSTIC_THEURGE])+(ch.Epicclasses[CLASS_MYSTIC_THEURGE])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYMYSTIC_THEURGE) || ((ch.Chclasses[CLASS_SHADOWDANCER])+(ch.Epicclasses[CLASS_SHADOWDANCER])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYSHADOWDANCER) || ((ch.Chclasses[CLASS_THAUMATURGIST])+(ch.Epicclasses[CLASS_THAUMATURGIST])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYTHAUMATURGIST) {
 		stdio.Snprintf(&buf[0], int(200), "%s %s", GET_NAME(ch), MSG_TRAINER_DISLIKE_CLASS)
 		do_tell(keeper, &buf[0], cmd_tell, 0)
 		return FALSE
 	}
-	if ch.Race == RACE_HUMAN && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOHUMAN) || ch.Race == RACE_SAIYAN && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOSAIYAN) || ch.Race == RACE_ICER && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOICER) || ch.Race == RACE_KONATSU && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOKONATSU) || ch.Race == RACE_NAMEK && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NONAMEK) || ch.Race == RACE_MUTANT && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOMUTANT) || ch.Race == RACE_KANASSAN && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOKANASSAN) || ch.Race == RACE_ANDROID && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOANDROID) || ch.Race == RACE_BIO && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOBIO) || ch.Race == RACE_DEMON && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NODEMON) || ch.Race == RACE_MAJIN && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOMAJIN) || ch.Race == RACE_KAI && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOKAI) || ch.Race == RACE_TRUFFLE && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOTRUFFLE) || ch.Race == RACE_HOSHIJIN && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOGOBLIN) || ch.Race == RACE_ANIMAL && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOANIMAL) || ch.Race == RACE_ORC && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOORC) || ch.Race == RACE_SNAKE && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOSNAKE) || ch.Race == RACE_TROLL && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOTROLL) || ch.Race == RACE_HALFBREED && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOHALFBREED) || ch.Race == RACE_MINOTAUR && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOMINOTAUR) || ch.Race == RACE_ARLIAN && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOKOBOLD) {
+	if int(ch.Race) == RACE_HUMAN && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOHUMAN) || int(ch.Race) == RACE_SAIYAN && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOSAIYAN) || int(ch.Race) == RACE_ICER && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOICER) || int(ch.Race) == RACE_KONATSU && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOKONATSU) || int(ch.Race) == RACE_NAMEK && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NONAMEK) || int(ch.Race) == RACE_MUTANT && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOMUTANT) || int(ch.Race) == RACE_KANASSAN && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOKANASSAN) || int(ch.Race) == RACE_ANDROID && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOANDROID) || int(ch.Race) == RACE_BIO && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOBIO) || int(ch.Race) == RACE_DEMON && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NODEMON) || int(ch.Race) == RACE_MAJIN && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOMAJIN) || int(ch.Race) == RACE_KAI && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOKAI) || int(ch.Race) == RACE_TRUFFLE && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOTRUFFLE) || int(ch.Race) == RACE_HOSHIJIN && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOGOBLIN) || int(ch.Race) == RACE_ANIMAL && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOANIMAL) || int(ch.Race) == RACE_ORC && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOORC) || int(ch.Race) == RACE_SNAKE && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOSNAKE) || int(ch.Race) == RACE_TROLL && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOTROLL) || int(ch.Race) == RACE_HALFBREED && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOHALFBREED) || int(ch.Race) == RACE_MINOTAUR && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOMINOTAUR) || int(ch.Race) == RACE_ARLIAN && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOKOBOLD) {
 		stdio.Snprintf(&buf[0], int(200), "%s %s", GET_NAME(ch), MSG_TRAINER_DISLIKE_RACE)
 		do_tell(keeper, &buf[0], cmd_tell, 0)
 		return FALSE
@@ -560,7 +562,7 @@ func what_does_guild_know(guild_nr int, ch *char_data) {
 					return j
 				}()
 			}(); j <= NUM_CLASSES; j++ {
-				if ((ch.Chclasses[j])+(ch.Epicclasses[j])) > 0 && spell_info[i].Can_learn_skill[j] > SKLEARN_CANT {
+				if ((ch.Chclasses[j])+(ch.Epicclasses[j])) > 0 && int(spell_info[i].Can_learn_skill[j]) > SKLEARN_CANT {
 					k = int(spell_info[i].Can_learn_skill[j])
 				}
 			}
@@ -570,7 +572,7 @@ func what_does_guild_know(guild_nr int, ch *char_data) {
 			if k == SKLEARN_CLASS {
 				if int(ch.Skills[i]) < canknow {
 					nlen = uint64(stdio.Snprintf(&buf2[len_], int(64936-uintptr(len_)), "@y(@Y%2d@y) @W%-30s @y(@Y%2d@y) @C%d@D/@c%3d        @g%d%s@n\r\n", count, spell_info[i].Name, count, ch.Skills[i], canknow, cost, func() string {
-						if (ch.Skills[i]) > 100 {
+						if int(ch.Skills[i]) > 100 {
 							return "  @D(@YGrand Master@D)@n"
 						}
 						return ""
@@ -581,7 +583,7 @@ func what_does_guild_know(guild_nr int, ch *char_data) {
 					len_ += nlen
 				} else {
 					nlen = uint64(stdio.Snprintf(&buf2[len_], int(64936-uintptr(len_)), "@y(@Y%2d@y) @W%-30s @y(@Y%2d@y) @C%d@D/@c%3d        @g%d%s@n\r\n", count, spell_info[i].Name, count, ch.Skills[i], canknow, cost, func() string {
-						if (ch.Skills[i]) > 100 {
+						if int(ch.Skills[i]) > 100 {
 							return "  @D(@YGrand Master@D)@n"
 						}
 						return ""
@@ -593,7 +595,7 @@ func what_does_guild_know(guild_nr int, ch *char_data) {
 				}
 			} else {
 				nlen = uint64(stdio.Snprintf(&buf2[len_], int(64936-uintptr(len_)), "@y(@Y%2d@y) @W%-30s @y(@Y%2d@y) @C%d@D/@c%3d        @g%d%s@n\r\n", count, spell_info[i].Name, count, ch.Skills[i], canknow, cost, func() string {
-					if (ch.Skills[i]) > 100 {
+					if int(ch.Skills[i]) > 100 {
 						return "  @D(@YGrand Master@D)@n"
 					}
 					return ""
@@ -634,7 +636,7 @@ func what_does_guild_know(guild_nr int, ch *char_data) {
 				canknow = highest_skill_value(GET_LEVEL(ch), canknow)
 				if int(ch.Skills[i]) < canknow {
 					nlen = uint64(stdio.Snprintf(&buf2[len_], int(64936-uintptr(len_)), "%-20s %s\r\n", spell_info[i].Name, func() string {
-						if (ch.Skills[i]) != 0 {
+						if int(ch.Skills[i]) != 0 {
 							return "known"
 						}
 						return "unknown"
@@ -648,96 +650,96 @@ func what_does_guild_know(guild_nr int, ch *char_data) {
 		}
 	}
 	if len_ >= uint64(64936) {
-		C.strcpy((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(&buf2[64936]), -C.strlen(overflow)))), -1)), overflow)
+		libc.StrCpy((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(&buf2[64936]), -libc.StrLen(overflow)))), -1)), overflow)
 	}
 	page_string(ch.Desc, &buf2[0], TRUE)
 }
 func prereq_pass(ch *char_data, snum int) int {
 	if snum == SKILL_KOUSENGAN || snum == SKILL_TSUIHIDAN || snum == SKILL_RENZO || snum == SKILL_SHOGEKIHA {
-		if (ch.Skills[SKILL_KIBALL]) < 40 || (ch.Skills[SKILL_KIBLAST]) < 40 || (ch.Skills[SKILL_BEAM]) < 40 {
+		if int(ch.Skills[SKILL_KIBALL]) < 40 || int(ch.Skills[SKILL_KIBLAST]) < 40 || int(ch.Skills[SKILL_BEAM]) < 40 {
 			send_to_char(ch, libc.CString("You can not train that skill until you at least have trained Kiball, Kiblast, and Beam to Skill LVL 40."))
 			return 0
 		}
 	} else if snum == SKILL_INSTANTT {
-		if (ch.Skills[SKILL_FOCUS]) < 90 || (ch.Skills[SKILL_CONCENTRATION]) < 90 || (ch.Skills[SKILL_ZANZOKEN]) < 90 {
+		if int(ch.Skills[SKILL_FOCUS]) < 90 || int(ch.Skills[SKILL_CONCENTRATION]) < 90 || int(ch.Skills[SKILL_ZANZOKEN]) < 90 {
 			send_to_char(ch, libc.CString("You can not train instant transmission until you have Focus, Concentration, and Zanzoken up to Skill LVL 90."))
 			return 0
 		}
 	} else if snum == SKILL_SLAM {
-		if (ch.Skills[SKILL_UPPERCUT]) < 50 {
+		if int(ch.Skills[SKILL_UPPERCUT]) < 50 {
 			send_to_char(ch, libc.CString("You can not train that skill until you at least have trained uppercut to Skill LVL 50."))
 			return 0
 		}
 	} else if snum == SKILL_UPPERCUT {
-		if (ch.Skills[SKILL_ELBOW]) < 40 {
+		if int(ch.Skills[SKILL_ELBOW]) < 40 {
 			send_to_char(ch, libc.CString("You can not train that skill until you at least have trained elbow to Skill LVL 40."))
 			return 0
 		}
 	} else if snum == SKILL_HEELDROP {
-		if (ch.Skills[SKILL_ROUNDHOUSE]) < 50 {
+		if int(ch.Skills[SKILL_ROUNDHOUSE]) < 50 {
 			send_to_char(ch, libc.CString("You can not train that skill until you at least have trained roundhouse to Skill LVL 50."))
 			return 0
 		}
 	} else if snum == SKILL_ROUNDHOUSE {
-		if (ch.Skills[SKILL_KNEE]) < 40 {
+		if int(ch.Skills[SKILL_KNEE]) < 40 {
 			send_to_char(ch, libc.CString("You can not train that skill until you at least have trained knee to Skill LVL 40."))
 			return 0
 		}
 	} else if snum == SKILL_KIBALL || snum == SKILL_KIBLAST || snum == SKILL_BEAM {
-		if (ch.Skills[SKILL_FOCUS]) < 30 {
+		if int(ch.Skills[SKILL_FOCUS]) < 30 {
 			send_to_char(ch, libc.CString("You can not train that skill until you at least have trained focus to Skill LVL 30."))
 			return 0
 		}
 	} else if (spell_info[snum].Flags&(1<<10)) != 0 || (spell_info[snum].Flags&(1<<11)) != 0 {
 		if snum != 530 && snum != 531 {
-			if (ch.Skills[SKILL_TSUIHIDAN]) < 40 || (ch.Skills[SKILL_RENZO]) < 40 || (ch.Skills[SKILL_SHOGEKIHA]) < 40 {
+			if int(ch.Skills[SKILL_TSUIHIDAN]) < 40 || int(ch.Skills[SKILL_RENZO]) < 40 || int(ch.Skills[SKILL_SHOGEKIHA]) < 40 {
 				send_to_char(ch, libc.CString("You can not train that skill until you at least have trained Tsuihidan, Renzokou Energy Dan, and Shogekiha to Skill LVL 40."))
 				return 0
 			}
 		}
 	} else if (spell_info[snum].Flags & (1 << 12)) != 0 {
-		if ch.Chclass == CLASS_ROSHI && ((ch.Skills[SKILL_KAMEHAMEHA]) < 40 || (ch.Skills[SKILL_KIENZAN]) < 40) {
+		if int(ch.Chclass) == CLASS_ROSHI && (int(ch.Skills[SKILL_KAMEHAMEHA]) < 40 || int(ch.Skills[SKILL_KIENZAN]) < 40) {
 			send_to_char(ch, libc.CString("You can not train that skill until you at least have trained Kamehameha and Kienzan to Skill LVL 40."))
 			return 0
 		}
-		if ch.Chclass == CLASS_TSUNA && ((ch.Skills[SKILL_WRAZOR]) < 40 || (ch.Skills[SKILL_WSPIKE]) < 40) {
+		if int(ch.Chclass) == CLASS_TSUNA && (int(ch.Skills[SKILL_WRAZOR]) < 40 || int(ch.Skills[SKILL_WSPIKE]) < 40) {
 			send_to_char(ch, libc.CString("You can not train that skill until you at least have trained Water Razor and Water Spikes to Skill LVL 40."))
 			return 0
 		}
-		if ch.Chclass == CLASS_PICCOLO && ((ch.Skills[SKILL_MASENKO]) < 40 || (ch.Skills[SKILL_SBC]) < 40) {
+		if int(ch.Chclass) == CLASS_PICCOLO && (int(ch.Skills[SKILL_MASENKO]) < 40 || int(ch.Skills[SKILL_SBC]) < 40) {
 			send_to_char(ch, libc.CString("You can not train that skill until you at least have trained Masenko and Special Beam Cannon to Skill LVL 40."))
 			return 0
 		}
-		if ch.Chclass == CLASS_FRIEZA && ((ch.Skills[SKILL_DEATHBEAM]) < 40 || (ch.Skills[SKILL_KIENZAN]) < 40) {
+		if int(ch.Chclass) == CLASS_FRIEZA && (int(ch.Skills[SKILL_DEATHBEAM]) < 40 || int(ch.Skills[SKILL_KIENZAN]) < 40) {
 			send_to_char(ch, libc.CString("You can not train that skill until you at least have trained Deathbeam and Kienzan to Skill LVL 40."))
 			return 0
 		}
-		if ch.Chclass == CLASS_GINYU && ((ch.Skills[SKILL_CRUSHER]) < 40 || (ch.Skills[SKILL_ERASER]) < 40) {
+		if int(ch.Chclass) == CLASS_GINYU && (int(ch.Skills[SKILL_CRUSHER]) < 40 || int(ch.Skills[SKILL_ERASER]) < 40) {
 			send_to_char(ch, libc.CString("You can not train that skill until you at least have trained Crusher Ball and Eraser Cannon to Skill LVL 40."))
 			return 0
 		}
-		if ch.Chclass == CLASS_BARDOCK && ((ch.Skills[SKILL_GALIKGUN]) < 40 || (ch.Skills[SKILL_FINALFLASH]) < 40) {
+		if int(ch.Chclass) == CLASS_BARDOCK && (int(ch.Skills[SKILL_GALIKGUN]) < 40 || int(ch.Skills[SKILL_FINALFLASH]) < 40) {
 			send_to_char(ch, libc.CString("You can not train that skill until you at least have trained Galik Gun and Final Flash to Skill LVL 40."))
 			return 0
 		}
-		if ch.Chclass == CLASS_TAPION && ((ch.Skills[SKILL_TSLASH]) < 40 || (ch.Skills[SKILL_DDSLASH]) < 40) {
+		if int(ch.Chclass) == CLASS_TAPION && (int(ch.Skills[SKILL_TSLASH]) < 40 || int(ch.Skills[SKILL_DDSLASH]) < 40) {
 			send_to_char(ch, libc.CString("You can not train that skill until you at least have trained Twin Slash and Darkness Dragon Slash to Skill LVL 40."))
 			return 0
 		}
-		if ch.Chclass == CLASS_NAIL && ((ch.Skills[SKILL_MASENKO]) < 40 || (ch.Skills[SKILL_KOUSENGAN]) < 40) {
+		if int(ch.Chclass) == CLASS_NAIL && (int(ch.Skills[SKILL_MASENKO]) < 40 || int(ch.Skills[SKILL_KOUSENGAN]) < 40) {
 			send_to_char(ch, libc.CString("You can not train that skill until you at least have trained Masenko and Kousengan to Skill LVL 40."))
 			return 0
 		}
-		if ch.Race == RACE_ANDROID && ((ch.Skills[SKILL_DUALBEAM]) < 40 || (ch.Skills[SKILL_HELLFLASH]) < 40) {
+		if int(ch.Race) == RACE_ANDROID && (int(ch.Skills[SKILL_DUALBEAM]) < 40 || int(ch.Skills[SKILL_HELLFLASH]) < 40) {
 			send_to_char(ch, libc.CString("You can not train that skill until you at least have trained Dual Beam and Hell Flash to Skill LVL 40."))
 			return 0
 		}
-		if ch.Chclass == CLASS_JINTO && (ch.Skills[SKILL_BREAKER]) < 40 {
+		if int(ch.Chclass) == CLASS_JINTO && int(ch.Skills[SKILL_BREAKER]) < 40 {
 			send_to_char(ch, libc.CString("You can not train that skill until you at least have trained Star Breaker to Skill LVL 40."))
 			return 0
 		}
 	} else if (spell_info[snum].Flags & (1 << 13)) != 0 {
-		if (ch.Skills[SKILL_FOCUS]) < 60 || (ch.Skills[SKILL_CONCENTRATION]) < 80 {
+		if int(ch.Skills[SKILL_FOCUS]) < 60 || int(ch.Skills[SKILL_CONCENTRATION]) < 80 {
 			send_to_char(ch, libc.CString("You can not train that skill until you at least have trained focus to Skill LVL 60 and concentration to Skill LVL 80."))
 			return 0
 		}
@@ -752,14 +754,14 @@ func handle_forget(keeper *char_data, guild_nr int, ch *char_data, argument *byt
 		return
 	}
 	skill_num = find_skill_num(argument, 1<<1)
-	if (ch.Skills[skill_num]) > 30 {
+	if int(ch.Skills[skill_num]) > 30 {
 		send_to_char(ch, libc.CString("@MYou can not forget that skill, you know too much about it.@n\r\n"))
 		return
 	} else if skill_num == SKILL_MIMIC && ch.Mimic > 0 {
 		send_to_char(ch, libc.CString("@MYou can not forget mimic while you are using it!\r\n"))
 	} else if skill_num == SKILL_FOCUS {
 		send_to_char(ch, libc.CString("@MYou can not forget such a fundamental skill!@n\r\n"))
-	} else if (ch.Skills[skill_num]) <= 0 {
+	} else if int(ch.Skills[skill_num]) <= 0 {
 		send_to_char(ch, libc.CString("@MYou can not forget a skill you don't know!@n\r\n"))
 	} else if ch.Forgeting == skill_num {
 		send_to_char(ch, libc.CString("@MYou stop forgetting %s@n\r\n"), spell_info[skill_num].Name)
@@ -793,26 +795,26 @@ func handle_grand(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 		do_tell(keeper, &buf[0], cmd_tell, 0)
 		return
 	}
-	if (ch.Skills[skill_num]) <= 0 {
+	if int(ch.Skills[skill_num]) <= 0 {
 		send_to_char(ch, libc.CString("You do not know that skill!\r\n"))
 		return
-	} else if (ch.Skills[skill_num]) < 100 {
+	} else if int(ch.Skills[skill_num]) < 100 {
 		send_to_char(ch, libc.CString("You haven't even mastered that skill. How can you become a Grand Master in it?\r\n"))
 		return
-	} else if (ch.Skills[skill_num]) >= 103 {
+	} else if int(ch.Skills[skill_num]) >= 103 {
 		send_to_char(ch, libc.CString("You have already become a Grand Master in that skill and have progessed as far as possible in it.\r\n"))
 		return
 	} else if (ch.Player_specials.Class_skill_points[ch.Chclass]) < 1000 {
 		send_to_char(ch, libc.CString("You need at least 1,000 practice sessions to rank up beyond 100 in a skill.\r\n"))
 		return
 	} else {
-		if (ch.Skills[skill_num]) == 100 {
+		if int(ch.Skills[skill_num]) == 100 {
 			send_to_char(ch, libc.CString("@YYou have ascended to Grand Master in the skill, @C%s@Y.\r\n"), spell_info[skill_num].Name)
 		} else {
 			send_to_char(ch, libc.CString("@YYou have ranked up in your Grand Mastery of the skill, @C%s@Y.\r\n"), spell_info[skill_num].Name)
 		}
 		for {
-			ch.Skills[skill_num] = (ch.Skills[skill_num]) + 1
+			ch.Skills[skill_num] = int8(int(ch.Skills[skill_num]) + 1)
 			if true {
 				break
 			}
@@ -843,7 +845,7 @@ func handle_practice(keeper *char_data, guild_nr int, ch *char_data, argument *b
 		return
 	}
 	skill_num = find_skill_num(argument, 1<<1)
-	if C.strstr(sensei_style[ch.Chclass], argument) != nil {
+	if libc.StrStr(sensei_style[ch.Chclass], argument) != nil {
 		skill_num = 539
 	}
 	if skill_num == ch.Forgeting {
@@ -890,53 +892,53 @@ func handle_practice(keeper *char_data, guild_nr int, ch *char_data, argument *b
 				send_to_char(ch, libc.CString("You cannot increase that skill again until you progress further.\r\n"))
 				return
 			}
-			if (ch.Skills[skill_num]) >= 75 && (ch.Bonuses[BONUS_MASOCHISTIC]) > 0 {
+			if int(ch.Skills[skill_num]) >= 75 && (ch.Bonuses[BONUS_MASOCHISTIC]) > 0 {
 				if skill_num == SKILL_PARRY || skill_num == SKILL_ZANZOKEN || skill_num == SKILL_DODGE || skill_num == SKILL_BARRIER || skill_num == SKILL_BLOCK || skill_num == SKILL_TSKIN {
 					send_to_char(ch, libc.CString("You cannot increase that skill again because it would deny you the pain you enjoy.\r\n"))
 					return
 				}
 			}
-			if (ch.Skills[skill_num]) >= 75 && ch.Chclass == CLASS_TAPION && skill_num == SKILL_SENSE {
+			if int(ch.Skills[skill_num]) >= 75 && int(ch.Chclass) == CLASS_TAPION && skill_num == SKILL_SENSE {
 				send_to_char(ch, libc.CString("You cannot practice that anymore.\r\n"))
 				return
 			}
-			if (ch.Skills[skill_num]) >= 75 && ch.Chclass == CLASS_DABURA && skill_num == SKILL_SENSE {
+			if int(ch.Skills[skill_num]) >= 75 && int(ch.Chclass) == CLASS_DABURA && skill_num == SKILL_SENSE {
 				send_to_char(ch, libc.CString("You cannot practice that anymore.\r\n"))
 				return
 			}
-			if (ch.Skills[skill_num]) >= 75 && ch.Chclass == CLASS_JINTO && skill_num == SKILL_SENSE {
+			if int(ch.Skills[skill_num]) >= 75 && int(ch.Chclass) == CLASS_JINTO && skill_num == SKILL_SENSE {
 				send_to_char(ch, libc.CString("You cannot practice that anymore.\r\n"))
 				return
 			}
-			if (ch.Skills[skill_num]) >= 75 && ch.Chclass == CLASS_TSUNA && skill_num == SKILL_SENSE {
+			if int(ch.Skills[skill_num]) >= 75 && int(ch.Chclass) == CLASS_TSUNA && skill_num == SKILL_SENSE {
 				send_to_char(ch, libc.CString("You cannot practice that anymore.\r\n"))
 				return
 			}
-			if (ch.Skills[skill_num]) >= 50 && ch.Chclass == CLASS_FRIEZA && skill_num == SKILL_SENSE {
+			if int(ch.Skills[skill_num]) >= 50 && int(ch.Chclass) == CLASS_FRIEZA && skill_num == SKILL_SENSE {
 				send_to_char(ch, libc.CString("You cannot practice that anymore.\r\n"))
 				return
 			}
-			if (ch.Skills[skill_num]) >= 50 && ch.Chclass == CLASS_ANDSIX && skill_num == SKILL_SENSE {
+			if int(ch.Skills[skill_num]) >= 50 && int(ch.Chclass) == CLASS_ANDSIX && skill_num == SKILL_SENSE {
 				send_to_char(ch, libc.CString("You cannot practice that anymore.\r\n"))
 				return
 			}
-			if (ch.Skills[skill_num]) >= 50 && ch.Chclass == CLASS_KURZAK && skill_num == SKILL_SENSE {
+			if int(ch.Skills[skill_num]) >= 50 && int(ch.Chclass) == CLASS_KURZAK && skill_num == SKILL_SENSE {
 				send_to_char(ch, libc.CString("You cannot practice that anymore.\r\n"))
 				return
 			}
-			if (ch.Skills[skill_num]) >= 50 && ch.Chclass == CLASS_GINYU && skill_num == SKILL_SENSE {
+			if int(ch.Skills[skill_num]) >= 50 && int(ch.Chclass) == CLASS_GINYU && skill_num == SKILL_SENSE {
 				send_to_char(ch, libc.CString("You cannot practice that anymore.\r\n"))
 				return
 			}
-			if (ch.Skills[skill_num]) >= 50 && ch.Chclass == CLASS_BARDOCK && skill_num == SKILL_SENSE {
+			if int(ch.Skills[skill_num]) >= 50 && int(ch.Chclass) == CLASS_BARDOCK && skill_num == SKILL_SENSE {
 				send_to_char(ch, libc.CString("You cannot practice that anymore.\r\n"))
 				return
 			}
-			if (ch.Skills[skill_num]) >= 100 {
+			if int(ch.Skills[skill_num]) >= 100 {
 				send_to_char(ch, libc.CString("You know everything about that skill.\r\n"))
 				return
 			} else {
-				if (ch.Skills[skill_num]) == 0 {
+				if int(ch.Skills[skill_num]) == 0 {
 					if slot_count(ch) < ch.Skill_slots {
 						if skill_num != 539 {
 							send_to_char(ch, libc.CString("You practice and master the basics!\r\n"))
@@ -950,7 +952,7 @@ func handle_practice(keeper *char_data, guild_nr int, ch *char_data, argument *b
 							}
 						}
 						ch.Player_specials.Class_skill_points[ch.Chclass] -= pointcost
-						if ch.Forgeting != 0 && (ch.Skills[ch.Forgeting]) < 30 {
+						if ch.Forgeting != 0 && int(ch.Skills[ch.Forgeting]) < 30 {
 							ch.Forgetcount += 1
 							if ch.Forgetcount >= 5 {
 								for {
@@ -964,7 +966,7 @@ func handle_practice(keeper *char_data, guild_nr int, ch *char_data, argument *b
 								ch.Forgetcount = 0
 								save_char(ch)
 							}
-						} else if (ch.Skills[ch.Forgeting]) < 30 {
+						} else if int(ch.Skills[ch.Forgeting]) < 30 {
 							ch.Forgeting = 0
 						}
 					} else {
@@ -978,17 +980,17 @@ func handle_practice(keeper *char_data, guild_nr int, ch *char_data, argument *b
 						send_to_char(ch, libc.CString("You practice the basics of %s\r\n"), sensei_style[ch.Chclass])
 					}
 					for {
-						ch.Skills[skill_num] = (ch.Skills[skill_num]) + 1
+						ch.Skills[skill_num] = int8(int(ch.Skills[skill_num]) + 1)
 						if true {
 							break
 						}
 					}
 					ch.Player_specials.Class_skill_points[ch.Chclass] -= pointcost
-					if (ch.Skills[skill_num]) >= 100 {
+					if int(ch.Skills[skill_num]) >= 100 {
 						send_to_char(ch, libc.CString("You learned a lot by mastering that skill.\r\n"))
-						if ch.Race == RACE_KONATSU && skill_num == SKILL_PARRY {
+						if int(ch.Race) == RACE_KONATSU && skill_num == SKILL_PARRY {
 							for {
-								ch.Skills[skill_num] = (ch.Skills[skill_num]) + 5
+								ch.Skills[skill_num] = int8(int(ch.Skills[skill_num]) + 5)
 								if true {
 									break
 								}
@@ -1032,33 +1034,33 @@ func handle_train(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 		send_to_char(ch, libc.CString("Training sessions remaining: %d\r\nStats: strength constitution agility intelligence wisdom speed\r\n"), ch.Player_specials.Ability_trains)
 	} else if ch.Player_specials.Ability_trains == 0 {
 		send_to_char(ch, libc.CString("You have no ability training sessions.\r\n"))
-	} else if C.strncasecmp(libc.CString("strength"), argument, uint64(C.strlen(argument))) == 0 {
+	} else if libc.StrNCaseCmp(libc.CString("strength"), argument, libc.StrLen(argument)) == 0 {
 		send_to_char(ch, config_info.Play.OK)
 		ch.Real_abils.Str += 1
 		ch.Player_specials.Ability_trains -= 1
-	} else if C.strncasecmp(libc.CString("constitution"), argument, uint64(C.strlen(argument))) == 0 {
+	} else if libc.StrNCaseCmp(libc.CString("constitution"), argument, libc.StrLen(argument)) == 0 {
 		send_to_char(ch, config_info.Play.OK)
 		ch.Real_abils.Con += 1
-		if (ch.Real_abils.Con % 2) == 0 {
+		if (int(ch.Real_abils.Con) % 2) == 0 {
 			ch.Max_hit += int64(GET_LEVEL(ch))
 		}
 		ch.Player_specials.Ability_trains -= 1
-	} else if C.strncasecmp(libc.CString("agility"), argument, uint64(C.strlen(argument))) == 0 {
+	} else if libc.StrNCaseCmp(libc.CString("agility"), argument, libc.StrLen(argument)) == 0 {
 		send_to_char(ch, config_info.Play.OK)
 		ch.Real_abils.Dex += 1
 		ch.Player_specials.Ability_trains -= 1
-	} else if C.strncasecmp(libc.CString("intelligence"), argument, uint64(C.strlen(argument))) == 0 {
+	} else if libc.StrNCaseCmp(libc.CString("intelligence"), argument, libc.StrLen(argument)) == 0 {
 		send_to_char(ch, config_info.Play.OK)
 		ch.Real_abils.Intel += 1
-		if (ch.Real_abils.Intel % 2) == 0 {
+		if (int(ch.Real_abils.Intel) % 2) == 0 {
 			ch.Player_specials.Class_skill_points[ch.Chclass] += 1
 		}
 		ch.Player_specials.Ability_trains -= 1
-	} else if C.strncasecmp(libc.CString("wisdom"), argument, uint64(C.strlen(argument))) == 0 {
+	} else if libc.StrNCaseCmp(libc.CString("wisdom"), argument, libc.StrLen(argument)) == 0 {
 		send_to_char(ch, config_info.Play.OK)
 		ch.Real_abils.Wis += 1
 		ch.Player_specials.Ability_trains -= 1
-	} else if C.strncasecmp(libc.CString("speed"), argument, uint64(C.strlen(argument))) == 0 {
+	} else if libc.StrNCaseCmp(libc.CString("speed"), argument, libc.StrLen(argument)) == 0 {
 		send_to_char(ch, config_info.Play.OK)
 		ch.Real_abils.Cha += 1
 		ch.Player_specials.Ability_trains -= 1
@@ -1090,13 +1092,13 @@ func handle_gain(keeper *char_data, guild_nr int, ch *char_data, argument *byte)
 }
 func rpp_to_level(ch *char_data) int {
 	if GET_LEVEL(ch) == 2 {
-		if ch.Race == RACE_SAIYAN {
+		if int(ch.Race) == RACE_SAIYAN {
 			return 60
-		} else if ch.Race == RACE_BIO {
+		} else if int(ch.Race) == RACE_BIO {
 			return 35
-		} else if ch.Race == RACE_MAJIN {
+		} else if int(ch.Race) == RACE_MAJIN {
 			return 55
-		} else if ch.Race == RACE_HOSHIJIN {
+		} else if int(ch.Race) == RACE_HOSHIJIN {
 			return 30
 		}
 	} else if GET_LEVEL(ch) >= 90 {
@@ -1140,10 +1142,10 @@ func handle_exp(keeper *char_data, guild_nr int, ch *char_data, argument *byte) 
 		act(libc.CString("@c$n@W spends time training @C$N@W in $s fighting style.@n"), TRUE, keeper, nil, unsafe.Pointer(ch), TO_NOTVICT)
 		send_to_char(ch, libc.CString("@wExperience Gained: @C%s@n\r\n"), add_commas(amt))
 		ch.Player_specials.Class_skill_points[ch.Chclass] -= 25
-		if ch.Race == RACE_SAIYAN || ch.Race == RACE_HALFBREED {
+		if int(ch.Race) == RACE_SAIYAN || int(ch.Race) == RACE_HALFBREED {
 			amt = int64(float64(amt) + float64(amt)*0.3)
 		}
-		if ch.Race == RACE_ICER {
+		if int(ch.Race) == RACE_ICER {
 			amt = int64(float64(amt) - float64(amt)*0.1)
 		}
 		gain_exp(ch, amt)
@@ -1224,7 +1226,7 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 		send_to_char(ch, libc.CString("You can't learn any new feats right now.\r\n"))
 		return
 	}
-	ptr = C.strchr(argument, ':')
+	ptr = libc.StrChr(argument, ':')
 	if ptr != nil {
 		*ptr = 0
 	}
@@ -1237,7 +1239,7 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 		do_tell(keeper, &buf[0], cmd_tell, 0)
 		return
 	}
-	if (ch.Feats[feat_num]) != 0 && feat_list[feat_num].Can_stack == 0 {
+	if int(ch.Feats[feat_num]) != 0 && feat_list[feat_num].Can_stack == 0 {
 		send_to_char(ch, libc.CString("You already know the %s feat.\r\n"), feat_list[feat_num].Name)
 		return
 	}
@@ -1364,7 +1366,7 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 			return
 		}
 		if sftype == 1 {
-			if IS_SET_AR(ch.Combat_feats[subfeat][:], bitvector_t(subval)) {
+			if IS_SET_AR(ch.Combat_feats[subfeat][:], bitvector_t(int32(subval))) {
 				send_to_char(ch, libc.CString("You already have that weapon feat.\r\n"))
 				return
 			}
@@ -1381,7 +1383,7 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 			return
 		}
 		for {
-			ch.Feats[feat_num] = (ch.Feats[feat_num]) + 1
+			ch.Feats[feat_num] = int8(int(ch.Feats[feat_num]) + 1)
 			if true {
 				break
 			}
@@ -1411,7 +1413,7 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 		}
 		ch.Apply_saving_throw[SAVING_REFLEX] += 2
 	case FEAT_TOUGHNESS:
-		subval = int((ch.Feats[feat_num]) + 1)
+		subval = int(ch.Feats[feat_num]) + 1
 		for {
 			ch.Feats[feat_num] = int8(subval)
 			if true {
@@ -1447,19 +1449,19 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 			return
 		}
 		for {
-			ch.Skillmods[subval] = (ch.Skillmods[subval]) + 5
+			ch.Skillmods[subval] = int8(int(ch.Skillmods[subval]) + 5)
 			if true {
 				break
 			}
 		}
 		for {
-			ch.Feats[feat_num] = (ch.Feats[feat_num]) + 1
+			ch.Feats[feat_num] = int8(int(ch.Feats[feat_num]) + 1)
 			if true {
 				break
 			}
 		}
 	case FEAT_SPELL_MASTERY:
-		subval = int((ch.Feats[feat_num]) + 1)
+		subval = int(ch.Feats[feat_num]) + 1
 		for {
 			ch.Feats[feat_num] = int8(subval)
 			if true {
@@ -1468,7 +1470,7 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 		}
 		ch.Player_specials.Spell_mastery_points += MAX(1, int(ability_mod_value(int(ch.Aff_abils.Intel))))
 	case FEAT_ACROBATIC:
-		subval = int((ch.Feats[feat_num]) + 1)
+		subval = int(ch.Feats[feat_num]) + 1
 		for {
 			ch.Feats[feat_num] = int8(subval)
 			if true {
@@ -1476,7 +1478,7 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 			}
 		}
 	case FEAT_AGILE:
-		subval = int((ch.Feats[feat_num]) + 1)
+		subval = int(ch.Feats[feat_num]) + 1
 		for {
 			ch.Feats[feat_num] = int8(subval)
 			if true {
@@ -1484,19 +1486,19 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 			}
 		}
 		for {
-			ch.Skillmods[SKILL_BALANCE] = (ch.Skillmods[SKILL_BALANCE]) + 2
+			ch.Skillmods[SKILL_BALANCE] = int8(int(ch.Skillmods[SKILL_BALANCE]) + 2)
 			if true {
 				break
 			}
 		}
 		for {
-			ch.Skillmods[SKILL_ESCAPE_ARTIST] = (ch.Skillmods[SKILL_ESCAPE_ARTIST]) + 2
+			ch.Skillmods[SKILL_ESCAPE_ARTIST] = int8(int(ch.Skillmods[SKILL_ESCAPE_ARTIST]) + 2)
 			if true {
 				break
 			}
 		}
 	case FEAT_ALERTNESS:
-		subval = int((ch.Feats[feat_num]) + 1)
+		subval = int(ch.Feats[feat_num]) + 1
 		for {
 			ch.Feats[feat_num] = int8(subval)
 			if true {
@@ -1504,19 +1506,19 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 			}
 		}
 		for {
-			ch.Skillmods[SKILL_LISTEN] = (ch.Skillmods[SKILL_LISTEN]) + 2
+			ch.Skillmods[SKILL_LISTEN] = int8(int(ch.Skillmods[SKILL_LISTEN]) + 2)
 			if true {
 				break
 			}
 		}
 		for {
-			ch.Skillmods[SKILL_SPOT] = (ch.Skillmods[SKILL_SPOT]) + 2
+			ch.Skillmods[SKILL_SPOT] = int8(int(ch.Skillmods[SKILL_SPOT]) + 2)
 			if true {
 				break
 			}
 		}
 	case FEAT_ANIMAL_AFFINITY:
-		subval = int((ch.Feats[feat_num]) + 1)
+		subval = int(ch.Feats[feat_num]) + 1
 		for {
 			ch.Feats[feat_num] = int8(subval)
 			if true {
@@ -1524,7 +1526,7 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 			}
 		}
 	case FEAT_ATHLETIC:
-		subval = int((ch.Feats[feat_num]) + 1)
+		subval = int(ch.Feats[feat_num]) + 1
 		for {
 			ch.Feats[feat_num] = int8(subval)
 			if true {
@@ -1532,7 +1534,7 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 			}
 		}
 	case FEAT_DECEITFUL:
-		subval = int((ch.Feats[feat_num]) + 1)
+		subval = int(ch.Feats[feat_num]) + 1
 		for {
 			ch.Feats[feat_num] = int8(subval)
 			if true {
@@ -1540,19 +1542,19 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 			}
 		}
 		for {
-			ch.Skillmods[SKILL_DISGUISE] = (ch.Skillmods[SKILL_DISGUISE]) + 2
+			ch.Skillmods[SKILL_DISGUISE] = int8(int(ch.Skillmods[SKILL_DISGUISE]) + 2)
 			if true {
 				break
 			}
 		}
 		for {
-			ch.Skillmods[SKILL_FORGERY] = (ch.Skillmods[SKILL_FORGERY]) + 2
+			ch.Skillmods[SKILL_FORGERY] = int8(int(ch.Skillmods[SKILL_FORGERY]) + 2)
 			if true {
 				break
 			}
 		}
 	case FEAT_DEFT_HANDS:
-		subval = int((ch.Feats[feat_num]) + 1)
+		subval = int(ch.Feats[feat_num]) + 1
 		for {
 			ch.Feats[feat_num] = int8(subval)
 			if true {
@@ -1560,13 +1562,13 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 			}
 		}
 		for {
-			ch.Skillmods[SKILL_SLEIGHT_OF_HAND] = (ch.Skillmods[SKILL_SLEIGHT_OF_HAND]) + 2
+			ch.Skillmods[SKILL_SLEIGHT_OF_HAND] = int8(int(ch.Skillmods[SKILL_SLEIGHT_OF_HAND]) + 2)
 			if true {
 				break
 			}
 		}
 	case FEAT_DILIGENT:
-		subval = int((ch.Feats[feat_num]) + 1)
+		subval = int(ch.Feats[feat_num]) + 1
 		for {
 			ch.Feats[feat_num] = int8(subval)
 			if true {
@@ -1574,13 +1576,13 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 			}
 		}
 		for {
-			ch.Skillmods[SKILL_APPRAISE] = (ch.Skillmods[SKILL_APPRAISE]) + 2
+			ch.Skillmods[SKILL_APPRAISE] = int8(int(ch.Skillmods[SKILL_APPRAISE]) + 2)
 			if true {
 				break
 			}
 		}
 	case FEAT_INVESTIGATOR:
-		subval = int((ch.Feats[feat_num]) + 1)
+		subval = int(ch.Feats[feat_num]) + 1
 		for {
 			ch.Feats[feat_num] = int8(subval)
 			if true {
@@ -1588,19 +1590,19 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 			}
 		}
 		for {
-			ch.Skillmods[SKILL_EAVESDROP] = (ch.Skillmods[SKILL_EAVESDROP]) + 2
+			ch.Skillmods[SKILL_EAVESDROP] = int8(int(ch.Skillmods[SKILL_EAVESDROP]) + 2)
 			if true {
 				break
 			}
 		}
 		for {
-			ch.Skillmods[SKILL_SEARCH] = (ch.Skillmods[SKILL_SEARCH]) + 2
+			ch.Skillmods[SKILL_SEARCH] = int8(int(ch.Skillmods[SKILL_SEARCH]) + 2)
 			if true {
 				break
 			}
 		}
 	case FEAT_MAGICAL_APTITUDE:
-		subval = int((ch.Feats[feat_num]) + 1)
+		subval = int(ch.Feats[feat_num]) + 1
 		for {
 			ch.Feats[feat_num] = int8(subval)
 			if true {
@@ -1608,7 +1610,7 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 			}
 		}
 	case FEAT_NEGOTIATOR:
-		subval = int((ch.Feats[feat_num]) + 1)
+		subval = int(ch.Feats[feat_num]) + 1
 		for {
 			ch.Feats[feat_num] = int8(subval)
 			if true {
@@ -1616,7 +1618,7 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 			}
 		}
 	case FEAT_NIMBLE_FINGERS:
-		subval = int((ch.Feats[feat_num]) + 1)
+		subval = int(ch.Feats[feat_num]) + 1
 		for {
 			ch.Feats[feat_num] = int8(subval)
 			if true {
@@ -1624,13 +1626,13 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 			}
 		}
 		for {
-			ch.Skillmods[SKILL_OPEN_LOCK] = (ch.Skillmods[SKILL_OPEN_LOCK]) + 2
+			ch.Skillmods[SKILL_OPEN_LOCK] = int8(int(ch.Skillmods[SKILL_OPEN_LOCK]) + 2)
 			if true {
 				break
 			}
 		}
 	case FEAT_PERSUASIVE:
-		subval = int((ch.Feats[feat_num]) + 1)
+		subval = int(ch.Feats[feat_num]) + 1
 		for {
 			ch.Feats[feat_num] = int8(subval)
 			if true {
@@ -1638,7 +1640,7 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 			}
 		}
 	case FEAT_SELF_SUFFICIENT:
-		subval = int((ch.Feats[feat_num]) + 1)
+		subval = int(ch.Feats[feat_num]) + 1
 		for {
 			ch.Feats[feat_num] = int8(subval)
 			if true {
@@ -1646,19 +1648,19 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 			}
 		}
 		for {
-			ch.Skillmods[SKILL_HEAL] = (ch.Skillmods[SKILL_HEAL]) + 2
+			ch.Skillmods[SKILL_HEAL] = int8(int(ch.Skillmods[SKILL_HEAL]) + 2)
 			if true {
 				break
 			}
 		}
 		for {
-			ch.Skillmods[SKILL_SURVIVAL] = (ch.Skillmods[SKILL_SURVIVAL]) + 2
+			ch.Skillmods[SKILL_SURVIVAL] = int8(int(ch.Skillmods[SKILL_SURVIVAL]) + 2)
 			if true {
 				break
 			}
 		}
 	case FEAT_STEALTHY:
-		subval = int((ch.Feats[feat_num]) + 1)
+		subval = int(ch.Feats[feat_num]) + 1
 		for {
 			ch.Feats[feat_num] = int8(subval)
 			if true {
@@ -1666,13 +1668,13 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 			}
 		}
 		for {
-			ch.Skillmods[SKILL_HIDE] = (ch.Skillmods[SKILL_HIDE]) + 2
+			ch.Skillmods[SKILL_HIDE] = int8(int(ch.Skillmods[SKILL_HIDE]) + 2)
 			if true {
 				break
 			}
 		}
 		for {
-			ch.Skillmods[SKILL_MOVE_SILENTLY] = (ch.Skillmods[SKILL_MOVE_SILENTLY]) + 2
+			ch.Skillmods[SKILL_MOVE_SILENTLY] = int8(int(ch.Skillmods[SKILL_MOVE_SILENTLY]) + 2)
 			if true {
 				break
 			}
@@ -1721,7 +1723,7 @@ func guild(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 		return FALSE
 	}
 	for i = 0; guild_cmd_tab[i].Cmd != nil; i++ {
-		if C.strcmp(guild_cmd_tab[i].Cmd, (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+		if libc.StrCmp(guild_cmd_tab[i].Cmd, (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 			break
 		}
 	}
@@ -1740,14 +1742,14 @@ func clear_skills(gdindex int) {
 		(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gdindex)))).Skills[i] = 0
 	}
 }
-func read_guild_line(gm_f *C.FILE, string_ *byte, data unsafe.Pointer, type_ *byte) {
+func read_guild_line(gm_f *stdio.File, string_ *byte, data unsafe.Pointer, type_ *byte) {
 	var buf [64936]byte
-	if get_line(gm_f, &buf[0]) == 0 || __isoc99_sscanf(&buf[0], string_, data) == 0 {
-		stdio.Fprintf((*stdio.File)(unsafe.Pointer(stderr)), "Error in guild #%d, Could not get %s\n", (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).Vnum, type_)
-		C.exit(1)
+	if get_line(gm_f, &buf[0]) == 0 || stdio.Sscanf(&buf[0], libc.GoString(string_), data) == 0 {
+		stdio.Fprintf(stdio.Stderr(), "Error in guild #%d, Could not get %s\n", (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).Vnum, type_)
+		os.Exit(1)
 	}
 }
-func boot_the_guilds(gm_f *C.FILE, filename *byte, rec_count int) {
+func boot_the_guilds(gm_f *stdio.File, filename *byte, rec_count int) {
 	var (
 		buf  *byte
 		buf2 [256]byte
@@ -1764,7 +1766,7 @@ func boot_the_guilds(gm_f *C.FILE, filename *byte, rec_count int) {
 	buf = fread_string(gm_f, &buf2[0])
 	for done == 0 {
 		if *buf == '#' {
-			__isoc99_sscanf(buf, libc.CString("#%d\n"), &temp)
+			stdio.Sscanf(buf, "#%d\n", &temp)
 			stdio.Snprintf(&buf2[0], int(256), "GM #%d in GM file %s", temp, filename)
 			libc.Free(unsafe.Pointer(buf))
 			top_guild++
@@ -1774,7 +1776,7 @@ func boot_the_guilds(gm_f *C.FILE, filename *byte, rec_count int) {
 			(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).Vnum = room_vnum(temp)
 			clear_skills(top_guild)
 			get_line(gm_f, &buf3[0])
-			rv = __isoc99_sscanf(&buf3[0], libc.CString("%d %d"), &t1, &t2)
+			rv = stdio.Sscanf(&buf3[0], "%d %d", &t1, &t2)
 			for t1 > -1 {
 				if rv == 1 {
 					(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).Skills[t1] = 1
@@ -1785,14 +1787,14 @@ func boot_the_guilds(gm_f *C.FILE, filename *byte, rec_count int) {
 						(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).Feats[t1] = 1
 					} else {
 						basic_mud_log(libc.CString("SYSERR: Invalid 2nd arg in guild file!"))
-						C.exit(1)
+						os.Exit(1)
 					}
 				} else {
 					basic_mud_log(libc.CString("SYSERR: Invalid format in guild file. Expecting 2 args but got %d!"), rv)
-					C.exit(1)
+					os.Exit(1)
 				}
 				get_line(gm_f, &buf3[0])
-				rv = __isoc99_sscanf(&buf3[0], libc.CString("%d %d"), &t1, &t2)
+				rv = stdio.Sscanf(&buf3[0], "%d %d", &t1, &t2)
 			}
 			read_guild_line(gm_f, libc.CString("%f"), unsafe.Pointer(&(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).Charge), libc.CString("GM_CHARGE"))
 			(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).No_such_skill = fread_string(gm_f, &buf2[0])
@@ -1812,15 +1814,15 @@ func boot_the_guilds(gm_f *C.FILE, filename *byte, rec_count int) {
 					if p == nil || *p == 0 {
 						break
 					}
-					if __isoc99_sscanf(p, libc.CString("%d"), &val) != 1 {
+					if stdio.Sscanf(p, "%d", &val) != 1 {
 						basic_mud_log(libc.CString("SYSERR: Can't parse GM_WITH_WHO line in %s: '%s'"), &buf2[0], buf)
 						break
 					}
 					(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).With_who[temp] = val
-					for (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p)))))&int(uint16(int16(_ISdigit)))) != 0 || *p == '-' {
+					for unicode.IsDigit(rune(*p)) || *p == '-' {
 						p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1))
 					}
-					for *p != 0 && ((int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*p)))))&int(uint16(int16(_ISdigit)))) == 0 && *p != '-') {
+					for *p != 0 && (!unicode.IsDigit(rune(*p)) && *p != '-') {
 						p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1))
 					}
 				}
@@ -1867,7 +1869,7 @@ func guild_customer_string(guild_nr int, detailed int) *byte {
 	)
 	for *trade_letters[gindex] != '\n' && len_+1 < uint64(64936) {
 		if detailed != 0 {
-			if !IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], bitvector_t(flag)) {
+			if !IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], bitvector_t(int32(flag))) {
 				nlen = stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), ", %s", trade_letters[gindex])
 				if len_+uint64(nlen) >= uint64(64936) || nlen < 0 {
 					break
@@ -1881,7 +1883,7 @@ func guild_customer_string(guild_nr int, detailed int) *byte {
 				*p++
 				return x
 			}()] = func() byte {
-				if IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], bitvector_t(flag)) {
+				if IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], bitvector_t(int32(flag))) {
 					return '_'
 				}
 				return *trade_letters[gindex]
@@ -1901,7 +1903,7 @@ func list_all_guilds(ch *char_data) {
 	var (
 		list_all_guilds_header *byte = libc.CString("Virtual   G.Master\tCharge   Members\r\n----------------------------------------------------------------------\r\n")
 		gm_nr                  int
-		headerlen              int    = int(C.strlen(list_all_guilds_header))
+		headerlen              int    = libc.StrLen(list_all_guilds_header)
 		len_                   uint64 = 0
 		buf                    [64936]byte
 		buf1                   [16]byte
@@ -1912,11 +1914,11 @@ func list_all_guilds(ch *char_data) {
 			if len_+uint64(headerlen)+1 >= uint64(64936) {
 				break
 			}
-			C.strcpy(&buf[len_], list_all_guilds_header)
+			libc.StrCpy(&buf[len_], list_all_guilds_header)
 			len_ += uint64(headerlen)
 		}
 		if (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gm_nr)))).Gm == mob_rnum(-1) {
-			C.strcpy(&buf1[0], libc.CString("<NONE>"))
+			libc.StrCpy(&buf1[0], libc.CString("<NONE>"))
 		} else {
 			stdio.Sprintf(&buf1[0], "%6d", (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gm_nr)))).Gm)))).Vnum)
 		}
@@ -1932,7 +1934,7 @@ func list_detailed_guild(ch *char_data, gm_nr int) {
 		buf2 [64936]byte
 	)
 	if (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gm_nr)))).Gm < mob_rnum(-1) {
-		C.strcpy(&buf1[0], libc.CString("<NONE>"))
+		libc.StrCpy(&buf1[0], libc.CString("<NONE>"))
 	} else {
 		stdio.Sprintf(&buf1[0], "%6d   ", (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gm_nr)))).Gm)))).Vnum)
 	}
@@ -1947,7 +1949,7 @@ func list_detailed_guild(ch *char_data, gm_nr int) {
 			stdio.Sprintf(&buf2[0], "%s %s \r\n", &buf2[0], spell_info[i].Name)
 		}
 	}
-	C.strcat(&buf[0], &buf2[0])
+	libc.StrCat(&buf[0], &buf2[0])
 	page_string(ch.Desc, &buf[0], 1)
 }
 func show_guild(ch *char_data, arg *byte) {
@@ -2018,11 +2020,11 @@ func list_guilds(ch *char_data, rnum zone_rnum, vmin guild_vnum, vmax guild_vnum
 	}
 }
 func destroy_guilds() {
-	var cnt ssize_t
+	var cnt int64
 	if guild_index == nil {
 		return
 	}
-	for cnt = 0; cnt <= ssize_t(top_guild); cnt++ {
+	for cnt = 0; cnt <= int64(top_guild); cnt++ {
 		if (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(cnt)))).No_such_skill != nil {
 			libc.Free(unsafe.Pointer((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(cnt)))).No_such_skill))
 		}

@@ -14,7 +14,7 @@ const MAX_BAG_ROWS = 5
 
 func delete_inv_backup(ch *char_data) {
 	var (
-		source      *C.FILE
+		source      *stdio.File
 		source_file [20480]byte
 		alpha       [2048]byte
 		name        [2048]byte
@@ -32,14 +32,14 @@ func delete_inv_backup(ch *char_data) {
 		stdio.Sprintf(&alpha[0], "U-Z")
 	}
 	stdio.Sprintf(&source_file[0], "/home/m053car2/dbat/lib/plrobjs/%s/%s.copy", &alpha[0], ch.Name)
-	if (func() *C.FILE {
-		source = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&source_file[0]), "r")))
+	if (func() *stdio.File {
+		source = stdio.FOpen(libc.GoString(&source_file[0]), "r")
 		return source
 	}()) == nil {
 		return
 	}
-	C.fclose(source)
-	if stdio.Remove(libc.GoString(&source_file[0])) < 0 && (*__errno_location()) != ENOENT {
+	source.Close()
+	if stdio.Remove(libc.GoString(&source_file[0])) < 0 && libc.Errno != ENOENT {
 		basic_mud_log(libc.CString("ERROR: Couldn't delete backup inv."))
 	}
 	return
@@ -49,8 +49,8 @@ func load_inv_backup(ch *char_data) int {
 		return -1
 	}
 	var chx int8
-	var source *C.FILE
-	var target *C.FILE
+	var source *stdio.File
+	var target *stdio.File
 	var source_file [20480]byte
 	var target_file [20480]byte
 	var buf2 [20480]byte
@@ -73,16 +73,16 @@ func load_inv_backup(ch *char_data) int {
 		return -1
 	}
 	stdio.Sprintf(&target_file[0], "/home/m053car2/dbat/lib/%s", &buf2[0])
-	if (func() *C.FILE {
-		source = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&source_file[0]), "r")))
+	if (func() *stdio.File {
+		source = stdio.FOpen(libc.GoString(&source_file[0]), "r")
 		return source
 	}()) == nil {
 		basic_mud_log(libc.CString("Source in load_inv_backup failed to load."))
 		basic_mud_log(&source_file[0])
 		return -1
 	}
-	if (func() *C.FILE {
-		target = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&target_file[0]), "w")))
+	if (func() *stdio.File {
+		target = stdio.FOpen(libc.GoString(&target_file[0]), "w")
 		return target
 	}()) == nil {
 		basic_mud_log(libc.CString("Target in load_inv_backup failed to load."))
@@ -90,19 +90,19 @@ func load_inv_backup(ch *char_data) int {
 		return -1
 	}
 	for int(func() int8 {
-		chx = int8(fgetc(source))
+		chx = int8(source.GetC())
 		return chx
-	}()) != int(-1) {
-		fputc(int(chx), target)
+	}()) != stdio.EOF {
+		target.PutC(int(chx))
 	}
 	basic_mud_log(libc.CString("Inventory backup restore successful."))
-	C.fclose(source)
-	C.fclose(target)
+	source.Close()
+	target.Close()
 	return 1
 }
 func inv_backup(ch *char_data) int {
 	var (
-		backup *C.FILE
+		backup *stdio.File
 		buf    [20480]byte
 		alpha  [2048]byte
 		name   [2048]byte
@@ -120,20 +120,20 @@ func inv_backup(ch *char_data) int {
 		stdio.Sprintf(&alpha[0], "U-Z")
 	}
 	stdio.Sprintf(&buf[0], "/home/m053car2/dbat/lib/plrobjs/%s/%s.copy", &alpha[0], ch.Name)
-	if (func() *C.FILE {
-		backup = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&buf[0]), "r")))
+	if (func() *stdio.File {
+		backup = stdio.FOpen(libc.GoString(&buf[0]), "r")
 		return backup
 	}()) == nil {
 		return -1
 	}
-	C.fclose(backup)
+	backup.Close()
 	return 1
 }
 func cp(ch *char_data) int {
 	var (
 		chx         int8
-		source      *C.FILE
-		target      *C.FILE
+		source      *stdio.File
+		target      *stdio.File
 		source_file [20480]byte
 		target_file [20480]byte
 		buf2        [20480]byte
@@ -157,16 +157,16 @@ func cp(ch *char_data) int {
 		return -1
 	}
 	stdio.Sprintf(&source_file[0], "/home/m053car2/dbat/lib/%s", &buf2[0])
-	if (func() *C.FILE {
-		source = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&source_file[0]), "r")))
+	if (func() *stdio.File {
+		source = stdio.FOpen(libc.GoString(&source_file[0]), "r")
 		return source
 	}()) == nil {
 		basic_mud_log(libc.CString("Source failed to load."))
 		basic_mud_log(&source_file[0])
 		return -1
 	}
-	if (func() *C.FILE {
-		target = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&target_file[0]), "w")))
+	if (func() *stdio.File {
+		target = stdio.FOpen(libc.GoString(&target_file[0]), "w")
 		return target
 	}()) == nil {
 		basic_mud_log(libc.CString("Target failed to load."))
@@ -174,16 +174,16 @@ func cp(ch *char_data) int {
 		return -1
 	}
 	for int(func() int8 {
-		chx = int8(fgetc(source))
+		chx = int8(source.GetC())
 		return chx
-	}()) != int(-1) {
-		fputc(int(chx), target)
+	}()) != stdio.EOF {
+		target.PutC(int(chx))
 	}
-	C.fclose(source)
-	C.fclose(target)
+	source.Close()
+	target.Close()
 	return 1
 }
-func Obj_to_store(obj *obj_data, fl *C.FILE, location int) int {
+func Obj_to_store(obj *obj_data, fl *stdio.File, location int) int {
 	my_obj_save_to_disk(fl, obj, location)
 	return 1
 }
@@ -297,30 +297,30 @@ func auto_equip(ch *char_data, obj *obj_data, location int) {
 func Crash_delete_file(name *byte) int {
 	var (
 		filename [50]byte
-		fl       *C.FILE
+		fl       *stdio.File
 	)
 	if get_filename(&filename[0], uint64(50), NEW_OBJ_FILES, name) == 0 {
 		return 0
 	}
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&filename[0]), "rb")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(&filename[0]), "rb")
 		return fl
 	}()) == nil {
-		if (*__errno_location()) != ENOENT {
-			basic_mud_log(libc.CString("SYSERR: deleting crash file %s (1): %s"), &filename[0], C.strerror(*__errno_location()))
+		if libc.Errno != ENOENT {
+			basic_mud_log(libc.CString("SYSERR: deleting crash file %s (1): %s"), &filename[0], libc.StrError(libc.Errno))
 		}
 		return 0
 	}
-	C.fclose(fl)
-	if stdio.Remove(libc.GoString(&filename[0])) < 0 && (*__errno_location()) != ENOENT {
-		basic_mud_log(libc.CString("SYSERR: deleting crash file %s (2): %s"), &filename[0], C.strerror(*__errno_location()))
+	fl.Close()
+	if stdio.Remove(libc.GoString(&filename[0])) < 0 && libc.Errno != ENOENT {
+		basic_mud_log(libc.CString("SYSERR: deleting crash file %s (2): %s"), &filename[0], libc.StrError(libc.Errno))
 	}
 	return 1
 }
 func Crash_delete_crashfile(ch *char_data) int {
 	var (
 		filename [2048]byte
-		fl       *C.FILE
+		fl       *stdio.File
 		rentcode int
 		timed    int
 		netcost  int
@@ -332,20 +332,20 @@ func Crash_delete_crashfile(ch *char_data) int {
 	if get_filename(&filename[0], uint64(2048), NEW_OBJ_FILES, GET_NAME(ch)) == 0 {
 		return 0
 	}
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&filename[0]), "rb")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(&filename[0]), "rb")
 		return fl
 	}()) == nil {
-		if (*__errno_location()) != ENOENT {
-			basic_mud_log(libc.CString("SYSERR: checking for crash file %s (3): %s"), &filename[0], C.strerror(*__errno_location()))
+		if libc.Errno != ENOENT {
+			basic_mud_log(libc.CString("SYSERR: checking for crash file %s (3): %s"), &filename[0], libc.StrError(libc.Errno))
 		}
 		return 0
 	}
-	if C.feof(fl) == 0 {
+	if int(fl.IsEOF()) == 0 {
 		get_line(fl, &line[0])
 	}
-	__isoc99_sscanf(&line[0], libc.CString("%d %d %d %d %d %d"), &rentcode, &timed, &netcost, &gold, &account, &nitems)
-	C.fclose(fl)
+	stdio.Sscanf(&line[0], "%d %d %d %d %d %d", &rentcode, &timed, &netcost, &gold, &account, &nitems)
+	fl.Close()
 	if rentcode == RENT_CRASH {
 		Crash_delete_file(GET_NAME(ch))
 	}
@@ -354,7 +354,7 @@ func Crash_delete_crashfile(ch *char_data) int {
 func Crash_clean_file(name *byte) int {
 	var (
 		filename [64936]byte
-		fl       *C.FILE
+		fl       *stdio.File
 		rentcode int
 		timed    int
 		netcost  int
@@ -366,21 +366,21 @@ func Crash_clean_file(name *byte) int {
 	if get_filename(&filename[0], uint64(64936), NEW_OBJ_FILES, name) == 0 {
 		return 0
 	}
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&filename[0]), "r+b")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(&filename[0]), "r+b")
 		return fl
 	}()) == nil {
-		if (*__errno_location()) != ENOENT {
-			basic_mud_log(libc.CString("SYSERR: OPENING OBJECT C.FILE %s (4): %s"), &filename[0], C.strerror(*__errno_location()))
+		if libc.Errno != ENOENT {
+			basic_mud_log(libc.CString("SYSERR: OPENING OBJECT FILE %s (4): %s"), &filename[0], libc.StrError(libc.Errno))
 		}
 		return 0
 	}
-	if C.feof(fl) == 0 {
+	if int(fl.IsEOF()) == 0 {
 		get_line(fl, &line[0])
-		__isoc99_sscanf(&line[0], libc.CString("%d %d %d %d %d %d"), &rentcode, &timed, &netcost, &gold, &account, &nitems)
-		C.fclose(fl)
+		stdio.Sscanf(&line[0], "%d %d %d %d %d %d", &rentcode, &timed, &netcost, &gold, &account, &nitems)
+		fl.Close()
 		if rentcode == RENT_CRASH || rentcode == RENT_FORCED || rentcode == RENT_TIMEDOUT {
-			if timed < int(C.time(nil)-int64(config_info.Csd.Crash_file_timeout*((int(SECS_PER_REAL_MIN*60))*24))) {
+			if timed < int(libc.GetTime(nil))-config_info.Csd.Crash_file_timeout*((int(SECS_PER_REAL_MIN*60))*24) {
 				var filetype *byte
 				Crash_delete_file(name)
 				switch rentcode {
@@ -397,7 +397,7 @@ func Crash_clean_file(name *byte) int {
 				return 1
 			}
 		} else if rentcode == RENT_RENTED {
-			if timed < int(C.time(nil)-int64(config_info.Csd.Rent_file_timeout*((int(SECS_PER_REAL_MIN*60))*24))) {
+			if timed < int(libc.GetTime(nil))-config_info.Csd.Rent_file_timeout*((int(SECS_PER_REAL_MIN*60))*24) {
 				Crash_delete_file(name)
 				basic_mud_log(libc.CString("    Deleting %s's rent file."), name)
 				return 1
@@ -416,7 +416,7 @@ func update_obj_file() {
 }
 func Crash_listrent(ch *char_data, name *byte) {
 	var (
-		fl       *C.FILE = nil
+		fl       *stdio.File = nil
 		filename [64936]byte
 		buf      [64936]byte
 		obj      *obj_data
@@ -433,16 +433,16 @@ func Crash_listrent(ch *char_data, name *byte) {
 		sdesc    *byte
 	)
 	if get_filename(&filename[0], uint64(64936), NEW_OBJ_FILES, name) != 0 {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&filename[0]), "rb")))
+		fl = stdio.FOpen(libc.GoString(&filename[0]), "rb")
 	}
 	if fl == nil {
 		send_to_char(ch, libc.CString("%s has no rent file.\r\n"), name)
 		return
 	}
 	send_to_char(ch, libc.CString("%s\r\n"), &filename[0])
-	if C.feof(fl) == 0 {
+	if int(fl.IsEOF()) == 0 {
 		get_line(fl, &line[0])
-		__isoc99_sscanf(&line[0], libc.CString("%d %d %d %d %d %d"), &rentcode, &timed, &netcost, &gold, &account, &nitems)
+		stdio.Sscanf(&line[0], "%d %d %d %d %d %d", &rentcode, &timed, &netcost, &gold, &account, &nitems)
 	}
 	switch rentcode {
 	case RENT_RENTED:
@@ -460,10 +460,10 @@ func Crash_listrent(ch *char_data, name *byte) {
 	}
 	buf[0] = 0
 	len_ = 0
-	for C.feof(fl) == 0 {
+	for int(fl.IsEOF()) == 0 {
 		get_line(fl, &line[0])
 		if line[0] == '#' {
-			__isoc99_sscanf(&line[0], libc.CString("#%d"), &nr)
+			stdio.Sscanf(&line[0], "#%d", &nr)
 			if nr != int(-1) {
 				if real_object(obj_vnum(nr)) != obj_rnum(-1) {
 					obj = read_object(obj_vnum(nr), VIRTUAL)
@@ -490,7 +490,7 @@ func Crash_listrent(ch *char_data, name *byte) {
 				fread_string(fl, libc.CString(", listrent reading desc"))
 				fread_string(fl, libc.CString(", listrent reading adesc"))
 				get_line(fl, &line[0])
-				__isoc99_sscanf(&line[0], libc.CString("%d %d %d %d %d"), &t[0], &t[1], &t[2], &t[3], &t[4])
+				stdio.Sscanf(&line[0], "%d %d %d %d %d", &t[0], &t[1], &t[2], &t[3], &t[4])
 				if len_+math.MaxUint8 < int(64936) {
 					len_ += stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "%s[%5d] (%5dau) %-20s\r\n", &buf[0], nr, t[4], sdesc)
 				} else {
@@ -501,9 +501,9 @@ func Crash_listrent(ch *char_data, name *byte) {
 		}
 	}
 	page_string(ch.Desc, &buf[0], 0)
-	C.fclose(fl)
+	fl.Close()
 }
-func Crash_save(obj *obj_data, fp *C.FILE, location int) int {
+func Crash_save(obj *obj_data, fp *stdio.File, location int) int {
 	var (
 		tmp    *obj_data
 		result int
@@ -592,7 +592,7 @@ func Crash_crashsave(ch *char_data) {
 	var (
 		buf [2048]byte
 		j   int
-		fp  *C.FILE
+		fp  *stdio.File
 	)
 	if IS_NPC(ch) {
 		return
@@ -600,29 +600,29 @@ func Crash_crashsave(ch *char_data) {
 	if get_filename(&buf[0], uint64(2048), NEW_OBJ_FILES, GET_NAME(ch)) == 0 {
 		return
 	}
-	if (func() *C.FILE {
-		fp = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&buf[0]), "wb")))
+	if (func() *stdio.File {
+		fp = stdio.FOpen(libc.GoString(&buf[0]), "wb")
 		return fp
 	}()) == nil {
 		return
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "%d %d %d %d %d %d\r\n", RENT_CRASH, int(C.time(nil)), 0, ch.Gold, ch.Bank_gold, 0)
+	stdio.Fprintf(fp, "%d %d %d %d %d %d\r\n", RENT_CRASH, int(libc.GetTime(nil)), 0, ch.Gold, ch.Bank_gold, 0)
 	for j = 0; j < NUM_WEARS; j++ {
 		if (ch.Equipment[j]) != nil {
 			if Crash_save(ch.Equipment[j], fp, j+1) == 0 {
-				C.fclose(fp)
+				fp.Close()
 				return
 			}
 			Crash_restore_weight(ch.Equipment[j])
 		}
 	}
 	if Crash_save(ch.Carrying, fp, 0) == 0 {
-		C.fclose(fp)
+		fp.Close()
 		return
 	}
 	Crash_restore_weight(ch.Carrying)
-	C.fclose(fp)
-	ch.Act[int(PLR_CRASH/32)] &= bitvector_t(^(1 << (int(PLR_CRASH % 32))))
+	fp.Close()
+	ch.Act[int(PLR_CRASH/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRASH % 32)))))
 }
 func Crash_idlesave(ch *char_data) {
 	var (
@@ -630,7 +630,7 @@ func Crash_idlesave(ch *char_data) {
 		j       int
 		cost    int
 		cost_eq int
-		fp      *C.FILE
+		fp      *stdio.File
 	)
 	if IS_NPC(ch) {
 		return
@@ -638,8 +638,8 @@ func Crash_idlesave(ch *char_data) {
 	if get_filename(&buf[0], uint64(2048), NEW_OBJ_FILES, GET_NAME(ch)) == 0 {
 		return
 	}
-	if (func() *C.FILE {
-		fp = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&buf[0]), "wb")))
+	if (func() *stdio.File {
+		fp = stdio.FOpen(libc.GoString(&buf[0]), "wb")
 		return fp
 	}()) == nil {
 		return
@@ -671,16 +671,16 @@ func Crash_idlesave(ch *char_data) {
 		for j = 0; j < NUM_WEARS && (ch.Equipment[j]) == nil; j++ {
 		}
 		if j == NUM_WEARS {
-			C.fclose(fp)
+			fp.Close()
 			Crash_delete_file(GET_NAME(ch))
 			return
 		}
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "%d %d %d %d %d %d\r\n", RENT_TIMEDOUT, int(C.time(nil)), cost, ch.Gold, ch.Bank_gold, 0)
+	stdio.Fprintf(fp, "%d %d %d %d %d %d\r\n", RENT_TIMEDOUT, int(libc.GetTime(nil)), cost, ch.Gold, ch.Bank_gold, 0)
 	for j = 0; j < NUM_WEARS; j++ {
 		if (ch.Equipment[j]) != nil {
 			if Crash_save(ch.Equipment[j], fp, j+1) == 0 {
-				C.fclose(fp)
+				fp.Close()
 				return
 			}
 			Crash_restore_weight(ch.Equipment[j])
@@ -688,17 +688,17 @@ func Crash_idlesave(ch *char_data) {
 		}
 	}
 	if Crash_save(ch.Carrying, fp, 0) == 0 {
-		C.fclose(fp)
+		fp.Close()
 		return
 	}
-	C.fclose(fp)
+	fp.Close()
 	Crash_extract_objs(ch.Carrying)
 }
 func Crash_rentsave(ch *char_data, cost int) {
 	var (
 		buf [2048]byte
 		j   int
-		fp  *C.FILE
+		fp  *stdio.File
 	)
 	if IS_NPC(ch) {
 		return
@@ -706,19 +706,19 @@ func Crash_rentsave(ch *char_data, cost int) {
 	if get_filename(&buf[0], uint64(2048), NEW_OBJ_FILES, GET_NAME(ch)) == 0 {
 		return
 	}
-	if (func() *C.FILE {
-		fp = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&buf[0]), "wb")))
+	if (func() *stdio.File {
+		fp = stdio.FOpen(libc.GoString(&buf[0]), "wb")
 		return fp
 	}()) == nil {
 		return
 	}
 	Crash_extract_norent_eq(ch)
 	Crash_extract_norents(ch.Carrying)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "%d %d %d %d %d %d\r\n", RENT_RENTED, int(C.time(nil)), cost, ch.Gold, ch.Bank_gold, 0)
+	stdio.Fprintf(fp, "%d %d %d %d %d %d\r\n", RENT_RENTED, int(libc.GetTime(nil)), cost, ch.Gold, ch.Bank_gold, 0)
 	for j = 0; j < NUM_WEARS; j++ {
 		if (ch.Equipment[j]) != nil {
 			if Crash_save(ch.Equipment[j], fp, j+1) == 0 {
-				C.fclose(fp)
+				fp.Close()
 				return
 			}
 			Crash_restore_weight(ch.Equipment[j])
@@ -726,17 +726,17 @@ func Crash_rentsave(ch *char_data, cost int) {
 		}
 	}
 	if Crash_save(ch.Carrying, fp, 0) == 0 {
-		C.fclose(fp)
+		fp.Close()
 		return
 	}
-	C.fclose(fp)
+	fp.Close()
 	Crash_extract_objs(ch.Carrying)
 }
 func Crash_cryosave(ch *char_data, cost int) {
 	var (
 		buf [2048]byte
 		j   int
-		fp  *C.FILE
+		fp  *stdio.File
 	)
 	if IS_NPC(ch) {
 		return
@@ -744,8 +744,8 @@ func Crash_cryosave(ch *char_data, cost int) {
 	if get_filename(&buf[0], uint64(2048), CRASH_FILE, GET_NAME(ch)) == 0 {
 		return
 	}
-	if (func() *C.FILE {
-		fp = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&buf[0]), "wb")))
+	if (func() *stdio.File {
+		fp = stdio.FOpen(libc.GoString(&buf[0]), "wb")
 		return fp
 	}()) == nil {
 		return
@@ -753,11 +753,11 @@ func Crash_cryosave(ch *char_data, cost int) {
 	Crash_extract_norent_eq(ch)
 	Crash_extract_norents(ch.Carrying)
 	ch.Gold = MAX(0, ch.Gold-cost)
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(fp)), "%d %d %d %d %d %d\r\n", RENT_CRYO, int(C.time(nil)), 0, ch.Gold, ch.Bank_gold, 0)
+	stdio.Fprintf(fp, "%d %d %d %d %d %d\r\n", RENT_CRYO, int(libc.GetTime(nil)), 0, ch.Gold, ch.Bank_gold, 0)
 	for j = 0; j < NUM_WEARS; j++ {
 		if (ch.Equipment[j]) != nil {
 			if Crash_save(ch.Equipment[j], fp, j+1) == 0 {
-				C.fclose(fp)
+				fp.Close()
 				return
 			}
 			Crash_restore_weight(ch.Equipment[j])
@@ -765,12 +765,12 @@ func Crash_cryosave(ch *char_data, cost int) {
 		}
 	}
 	if Crash_save(ch.Carrying, fp, 0) == 0 {
-		C.fclose(fp)
+		fp.Close()
 		return
 	}
-	C.fclose(fp)
+	fp.Close()
 	Crash_extract_objs(ch.Carrying)
-	ch.Act[int(PLR_CRYO/32)] |= bitvector_t(1 << (int(PLR_CRYO % 32)))
+	ch.Act[int(PLR_CRYO/32)] |= bitvector_t(int32(1 << (int(PLR_CRYO % 32))))
 }
 func Crash_rent_deadline(ch *char_data, recep *char_data, cost int) {
 	var (
@@ -874,7 +874,7 @@ func gen_receptionist(ch *char_data, recep *char_data, cmd int, arg *byte, mode 
 	if ch.Desc == nil || IS_NPC(ch) {
 		return FALSE
 	}
-	if C.strcmp(libc.CString("offer"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) != 0 && C.strcmp(libc.CString("rent"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) != 0 {
+	if libc.StrCmp(libc.CString("offer"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) != 0 && libc.StrCmp(libc.CString("rent"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) != 0 {
 		return FALSE
 	}
 	if !AWAKE(recep) {
@@ -889,7 +889,7 @@ func gen_receptionist(ch *char_data, recep *char_data, cmd int, arg *byte, mode 
 		act(libc.CString("$n tells you, 'Rent is free here.  Just quit, and your objects will be saved!'"), FALSE, recep, nil, unsafe.Pointer(ch), TO_VICT)
 		return 1
 	}
-	if C.strcmp(libc.CString("rent"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	if libc.StrCmp(libc.CString("rent"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
 		var buf [128]byte
 		if (func() int {
 			cost = Crash_offer_rent(ch, recep, FALSE, mode)
@@ -918,7 +918,7 @@ func gen_receptionist(ch *char_data, recep *char_data, cmd int, arg *byte, mode 
 			act(libc.CString("$n stores your belongings and helps you into your private chamber.\r\nA white mist appears in the room, chilling you to the bone...\r\nYou begin to lose consciousness..."), FALSE, recep, nil, unsafe.Pointer(ch), TO_VICT)
 			Crash_cryosave(ch, cost)
 			mudlog(NRM, MAX(ADMLVL_IMMORT, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("%s has cryo-rented."), GET_NAME(ch))
-			ch.Act[int(PLR_CRYO/32)] |= bitvector_t(1 << (int(PLR_CRYO % 32)))
+			ch.Act[int(PLR_CRYO/32)] |= bitvector_t(int32(1 << (int(PLR_CRYO % 32))))
 		}
 		act(libc.CString("$n helps $N into $S private chamber."), FALSE, recep, nil, unsafe.Pointer(ch), TO_NOTVICT)
 		extract_char(ch)
@@ -941,14 +941,14 @@ func Crash_save_all() {
 			if PLR_FLAGGED(d.Character, PLR_CRASH) {
 				Crash_crashsave(d.Character)
 				save_char(d.Character)
-				d.Character.Act[int(PLR_CRASH/32)] &= bitvector_t(^(1 << (int(PLR_CRASH % 32))))
+				d.Character.Act[int(PLR_CRASH/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRASH % 32)))))
 			}
 		}
 	}
 }
 func Crash_load(ch *char_data) int {
 	var (
-		fl      *C.FILE
+		fl      *stdio.File
 		cmfname [64936]byte
 		buf1    [64936]byte
 		buf2    [64936]byte
@@ -986,13 +986,13 @@ func Crash_load(ch *char_data) int {
 	if get_filename(&cmfname[0], uint64(64936), NEW_OBJ_FILES, GET_NAME(ch)) == 0 {
 		return 1
 	}
-	if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&cmfname[0]), "r+b")))
+	if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(&cmfname[0]), "r+b")
 		return fl
 	}()) == nil {
-		if (*__errno_location()) != ENOENT {
-			stdio.Sprintf(&buf1[0], "SYSERR: READING OBJECT C.FILE %s (5)", &cmfname[0])
-			C.perror(&buf1[0])
+		if libc.Errno != ENOENT {
+			stdio.Sprintf(&buf1[0], "SYSERR: READING OBJECT FILE %s (5)", &cmfname[0])
+			perror(&buf1[0])
 			send_to_char(ch, libc.CString("\r\n********************* NOTICE *********************\r\nThere was a problem loading your objects from disk.\r\nContact a God for assistance.\r\n"))
 		}
 		if GET_LEVEL(ch) > 1 {
@@ -1003,25 +1003,25 @@ func Crash_load(ch *char_data) int {
 		} else {
 			if load_inv_backup(ch) == 0 {
 				return -1
-			} else if (func() *C.FILE {
-				fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&cmfname[0]), "r+b")))
+			} else if (func() *stdio.File {
+				fl = stdio.FOpen(libc.GoString(&cmfname[0]), "r+b")
 				return fl
 			}()) == nil {
-				if (*__errno_location()) != ENOENT {
-					stdio.Sprintf(&buf1[0], "SYSERR: READING OBJECT C.FILE %s (5)", &cmfname[0])
-					C.perror(&buf1[0])
+				if libc.Errno != ENOENT {
+					stdio.Sprintf(&buf1[0], "SYSERR: READING OBJECT FILE %s (5)", &cmfname[0])
+					perror(&buf1[0])
 					send_to_char(ch, libc.CString("\r\n********************* NOTICE *********************\r\nThere was a problem loading your objects from disk.\r\nContact a God for assistance.\r\n"))
 				}
 				return -1
 			}
 		}
 	}
-	if C.feof(fl) == 0 {
+	if int(fl.IsEOF()) == 0 {
 		get_line(fl, &line[0])
 	}
-	__isoc99_sscanf(&line[0], libc.CString("%d %d %d %d %d %d"), &rentcode, &timed, &netcost, &gold, &account, &nitems)
+	stdio.Sscanf(&line[0], "%d %d %d %d %d %d", &rentcode, &timed, &netcost, &gold, &account, &nitems)
 	if rentcode == RENT_RENTED || rentcode == RENT_TIMEDOUT {
-		num_of_days = int(float32(C.time(nil)-int64(timed)) / float32((int(SECS_PER_REAL_MIN*60))*24))
+		num_of_days = int(float32(int(libc.GetTime(nil))-timed) / float32((int(SECS_PER_REAL_MIN*60))*24))
 		cost = 0
 		save_char(ch)
 	}
@@ -1045,13 +1045,13 @@ func Crash_load(ch *char_data) int {
 	for j = 0; j < MAX_BAG_ROWS; j++ {
 		cont_row[j] = nil
 	}
-	if C.feof(fl) == 0 {
+	if int(fl.IsEOF()) == 0 {
 		get_line(fl, &line[0])
 	}
-	for C.feof(fl) == 0 {
+	for int(fl.IsEOF()) == 0 {
 		temp = nil
 		if line[0] == '#' {
-			if __isoc99_sscanf(&line[0], libc.CString("#%d"), &nr) != 1 {
+			if stdio.Sscanf(&line[0], "#%d", &nr) != 1 {
 				continue
 			}
 			if nr == int(-1) {
@@ -1071,7 +1071,7 @@ func Crash_load(ch *char_data) int {
 				}
 			}
 			get_line(fl, &line[0])
-			__isoc99_sscanf(&line[0], libc.CString("%d %d %d %d %d %d %d %d %d %s %s %s %s %d %d %d %d %d %d %d %d"), &t[0], &t[1], &t[2], &t[3], &t[4], &t[5], &t[6], &t[7], &t[8], &f1[0], &f2[0], &f3[0], &f4[0], &t[13], &t[14], &t[15], &t[16], &t[17], &t[18], &t[19], &t[20])
+			stdio.Sscanf(&line[0], "%d %d %d %d %d %d %d %d %d %s %s %s %s %d %d %d %d %d %d %d %d", &t[0], &t[1], &t[2], &t[3], &t[4], &t[5], &t[6], &t[7], &t[8], &f1[0], &f2[0], &f3[0], &f4[0], &t[13], &t[14], &t[15], &t[16], &t[17], &t[18], &t[19], &t[20])
 			locate = t[0]
 			temp.Value[0] = t[1]
 			temp.Value[1] = t[2]
@@ -1094,7 +1094,7 @@ func Crash_load(ch *char_data) int {
 			temp.Value[14] = t[19]
 			temp.Value[15] = t[20]
 			get_line(fl, &line[0])
-			if C.strcmp(libc.CString("XAP"), &line[0]) == 0 {
+			if libc.StrCmp(libc.CString("XAP"), &line[0]) == 0 {
 				if (func() *byte {
 					p := &temp.Name
 					temp.Name = fread_string(fl, libc.CString("rented object name"))
@@ -1123,8 +1123,8 @@ func Crash_load(ch *char_data) int {
 				}()) == nil {
 					temp.Action_description = nil
 				}
-				if get_line(fl, &line[0]) == 0 || __isoc99_sscanf(&line[0], libc.CString("%d %d %d %d %d %d %d %d"), &t[0], &t[1], &t[2], &t[3], &t[4], &t[5], &t[6], &t[7]) != 8 {
-					stdio.Fprintf((*stdio.File)(unsafe.Pointer(stderr)), "Format error in first numeric line (expecting _x_ args)")
+				if get_line(fl, &line[0]) == 0 || stdio.Sscanf(&line[0], "%d %d %d %d %d %d %d %d", &t[0], &t[1], &t[2], &t[3], &t[4], &t[5], &t[6], &t[7]) != 8 {
+					stdio.Fprintf(stdio.Stderr(), "Format error in first numeric line (expecting _x_ args)")
 					return 0
 				}
 				temp.Type_flag = int8(t[0])
@@ -1140,7 +1140,7 @@ func Crash_load(ch *char_data) int {
 					temp.Affected[j].Modifier = 0
 					temp.Affected[j].Specific = 0
 				}
-				if temp.Type_flag == ITEM_SPELLBOOK {
+				if int(temp.Type_flag) == ITEM_SPELLBOOK {
 					if temp.Sbinfo == nil {
 						temp.Sbinfo = &make([]obj_spellbook_spell, SPELLBOOK_SIZE)[0]
 						libc.MemSet(unsafe.Pointer((*byte)(unsafe.Pointer(temp.Sbinfo))), 0, int(SPELLBOOK_SIZE*unsafe.Sizeof(obj_spellbook_spell{})))
@@ -1160,7 +1160,7 @@ func Crash_load(ch *char_data) int {
 						return zwei
 					}()
 					return j
-				}(); zwei == 0 && C.feof(fl) == 0; {
+				}(); zwei == 0 && int(fl.IsEOF()) == 0; {
 					switch line[0] {
 					case 'E':
 						new_descr = new(extra_descr_data)
@@ -1177,7 +1177,7 @@ func Crash_load(ch *char_data) int {
 							danger = 1
 						}
 						get_line(fl, &line[0])
-						__isoc99_sscanf(&line[0], libc.CString("%d %d %d"), &t[0], &t[1], &t[2])
+						stdio.Sscanf(&line[0], "%d %d %d", &t[0], &t[1], &t[2])
 						temp.Affected[j].Location = t[0]
 						temp.Affected[j].Modifier = t[1]
 						temp.Affected[j].Specific = t[2]
@@ -1185,11 +1185,11 @@ func Crash_load(ch *char_data) int {
 						get_line(fl, &line[0])
 					case 'G':
 						get_line(fl, &line[0])
-						__isoc99_sscanf(&line[0], libc.CString("%ld"), &temp.Generation)
+						stdio.Sscanf(&line[0], "%ld", &temp.Generation)
 						get_line(fl, &line[0])
 					case 'U':
 						get_line(fl, &line[0])
-						__isoc99_sscanf(&line[0], libc.CString("%lld"), &temp.Unique_id)
+						stdio.Sscanf(&line[0], "%lld", &temp.Unique_id)
 						get_line(fl, &line[0])
 					case 'S':
 						if j >= SPELLBOOK_SIZE {
@@ -1197,7 +1197,7 @@ func Crash_load(ch *char_data) int {
 							danger = 1
 						}
 						get_line(fl, &line[0])
-						__isoc99_sscanf(&line[0], libc.CString("%d %d"), &t[0], &t[1])
+						stdio.Sscanf(&line[0], "%d %d", &t[0], &t[1])
 						if temp.Sbinfo == nil {
 							temp.Sbinfo = &make([]obj_spellbook_spell, SPELLBOOK_SIZE)[0]
 							libc.MemSet(unsafe.Pointer((*byte)(unsafe.Pointer(temp.Sbinfo))), 0, int(SPELLBOOK_SIZE*unsafe.Sizeof(obj_spellbook_spell{})))
@@ -1208,7 +1208,7 @@ func Crash_load(ch *char_data) int {
 						get_line(fl, &line[0])
 					case 'Z':
 						get_line(fl, &line[0])
-						__isoc99_sscanf(&line[0], libc.CString("%d"), &temp.Size)
+						stdio.Sscanf(&line[0], "%d", &temp.Size)
 						get_line(fl, &line[0])
 					case '$':
 						fallthrough
@@ -1223,7 +1223,7 @@ func Crash_load(ch *char_data) int {
 				num_objs++
 				check_unique_id(temp)
 				add_unique_id(temp)
-				if temp.Type_flag == ITEM_DRINKCON {
+				if int(temp.Type_flag) == ITEM_DRINKCON {
 					name_from_drinkcon(temp)
 					if (temp.Value[1]) != 0 {
 						name_to_drinkcon(temp, temp.Value[2])
@@ -1231,7 +1231,7 @@ func Crash_load(ch *char_data) int {
 				}
 				if GET_OBJ_VNUM(temp) == 0x4E83 || GET_OBJ_VNUM(temp) == 0x4E82 {
 					if OBJ_FLAGGED(temp, ITEM_UNBREAKABLE) {
-						temp.Extra_flags[int(ITEM_UNBREAKABLE/32)] &= bitvector_t(^(1 << (int(ITEM_UNBREAKABLE % 32))))
+						temp.Extra_flags[int(ITEM_UNBREAKABLE/32)] &= bitvector_t(int32(^(1 << (int(ITEM_UNBREAKABLE % 32)))))
 					}
 				}
 				auto_equip(ch, temp, locate)
@@ -1249,7 +1249,7 @@ func Crash_load(ch *char_data) int {
 					}
 				}
 				if cont_row[0] != nil {
-					if temp.Type_flag == ITEM_CONTAINER {
+					if int(temp.Type_flag) == ITEM_CONTAINER {
 						temp = unequip_char(ch, locate-1)
 						temp.Contains = nil
 						for ; cont_row[0] != nil; cont_row[0] = obj1 {
@@ -1276,7 +1276,7 @@ func Crash_load(ch *char_data) int {
 					}
 				}
 				if j == -locate && cont_row[j] != nil {
-					if temp.Type_flag == ITEM_CONTAINER {
+					if int(temp.Type_flag) == ITEM_CONTAINER {
 						obj_from_char(temp)
 						temp.Contains = nil
 						for ; cont_row[j] != nil; cont_row[j] = obj1 {
@@ -1312,7 +1312,7 @@ func Crash_load(ch *char_data) int {
 		}
 	}
 	mudlog(NRM, MAX(ADMLVL_IMMORT, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("%s (level %d) has %d objects (max %d)."), GET_NAME(ch), GET_LEVEL(ch), num_objs, config_info.Csd.Max_obj_save)
-	C.fclose(fl)
+	fl.Close()
 	Crash_crashsave(ch)
 	if orig_rent_code == RENT_RENTED || orig_rent_code == RENT_CRYO {
 		return 0

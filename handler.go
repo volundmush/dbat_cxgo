@@ -3,6 +3,8 @@ package main
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"os"
+	"unicode"
 	"unsafe"
 )
 
@@ -15,11 +17,10 @@ const FIND_OBJ_INV = 4
 const FIND_OBJ_ROOM = 8
 const FIND_OBJ_WORLD = 16
 const FIND_OBJ_EQUIP = 32
+
 const WHITESPACE = " \t"
 
 var extractions_pending int = 0
-var do_return func(ch *char_data, argument *byte, cmd int, subcmd int)
-var shop_keeper func(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int
 
 func get_i_name(ch *char_data, vict *char_data) *byte {
 	var (
@@ -29,7 +30,7 @@ func get_i_name(ch *char_data, vict *char_data) *byte {
 		line   [256]byte
 		name   [50]byte
 		known  int = FALSE
-		fl     *C.FILE
+		fl     *stdio.File
 	)
 	if vict == nil {
 		return libc.CString("")
@@ -42,21 +43,21 @@ func get_i_name(ch *char_data, vict *char_data) *byte {
 	}
 	if get_filename(&fname[0], uint64(40), INTRO_FILE, GET_NAME(ch)) == 0 {
 		return JUGGLERACE(vict)
-	} else if (func() *C.FILE {
-		fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "r")))
+	} else if (func() *stdio.File {
+		fl = stdio.FOpen(libc.GoString(&fname[0]), "r")
 		return fl
 	}()) == nil {
 		return JUGGLERACE(vict)
 	}
-	for C.feof(fl) == 0 {
+	for int(fl.IsEOF()) == 0 {
 		get_line(fl, &line[0])
-		__isoc99_sscanf(&line[0], libc.CString("%s %s\n"), &filler[0], &scrap[0])
-		if C.strcasecmp(GET_NAME(vict), &filler[0]) == 0 {
+		stdio.Sscanf(&line[0], "%s %s\n", &filler[0], &scrap[0])
+		if libc.StrCaseCmp(GET_NAME(vict), &filler[0]) == 0 {
 			stdio.Sprintf(&name[0], "%s", &scrap[0])
 			known = TRUE
 		}
 	}
-	C.fclose(fl)
+	fl.Close()
 	if known == TRUE {
 		return &name[0]
 	} else {
@@ -68,7 +69,7 @@ func fname(namelist *byte) *byte {
 		holder [256]byte
 		point  *byte
 	)
-	for point = &holder[0]; (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*namelist))))) & int(uint16(int16(_ISalpha)))) != 0; func() *byte {
+	for point = &holder[0]; libc.IsAlpha(rune(*namelist)); func() *byte {
 		namelist = (*byte)(unsafe.Add(unsafe.Pointer(namelist), 1))
 		return func() *byte {
 			p := &point
@@ -101,7 +102,7 @@ func is_name(str *byte, namelist *byte) int {
 				return x
 			}()
 		}() {
-			if *curstr == 0 && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*curname)))))&int(uint16(int16(_ISalpha)))) == 0 {
+			if *curstr == 0 && !libc.IsAlpha(rune(*curname)) {
 				return 1
 			}
 			if *curname == 0 {
@@ -110,11 +111,11 @@ func is_name(str *byte, namelist *byte) int {
 			if *curstr == 0 || *curname == ' ' {
 				break
 			}
-			if C.tolower(int(*curstr)) != C.tolower(int(*curname)) {
+			if unicode.ToLower(rune(*curstr)) != unicode.ToLower(rune(*curname)) {
 				break
 			}
 		}
-		for ; (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*curname))))) & int(uint16(int16(_ISalpha)))) != 0; curname = (*byte)(unsafe.Add(unsafe.Pointer(curname), 1)) {
+		for ; libc.IsAlpha(rune(*curname)); curname = (*byte)(unsafe.Add(unsafe.Pointer(curname), 1)) {
 		}
 		if *curname == 0 {
 			return 0
@@ -123,28 +124,8 @@ func is_name(str *byte, namelist *byte) int {
 	}
 }
 func isname(str *byte, namelist *byte) int {
-	var (
-		newlist    *byte
-		curtok     *byte
-		newlistbuf [64936]byte
-	)
-	if str == nil || *str == 0 || namelist == nil || *namelist == 0 {
-		return 0
-	}
-	if C.strcasecmp(str, namelist) == 0 {
-		return 1
-	}
-	strlcpy(&newlistbuf[0], namelist, uint64(64936))
-	newlist = &newlistbuf[0]
-	for curtok = strsep(&newlist, libc.CString(WHITESPACE)); curtok != nil; curtok = strsep(&newlist, libc.CString(WHITESPACE)) {
-		if curtok != nil && is_abbrev(str, curtok) != 0 {
-			if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*str)))))&int(uint16(int16(_ISdigit)))) != 0 && libc.Atoi(libc.GoString(str)) != libc.Atoi(libc.GoString(curtok)) {
-				return 0
-			}
-			return 1
-		}
-	}
-	return 0
+	basic_mud_log(libc.CString("PANIC! REIMPLEMENT THIS!"))
+	os.Exit(-1)
 }
 func aff_apply_modify(ch *char_data, loc int, mod int, spec int, msg *byte) {
 	switch loc {
@@ -164,7 +145,7 @@ func aff_apply_modify(ch *char_data, loc int, mod int, spec int, msg *byte) {
 	case APPLY_CLASS:
 	case APPLY_LEVEL:
 	case APPLY_AGE:
-		ch.Time.Birth -= int64(mod * (((int(SECS_PER_MUD_HOUR * 24)) * 30) * 12))
+		ch.Time.Birth -= libc.Time(mod * (((int(SECS_PER_MUD_HOUR * 24)) * 30) * 12))
 	case APPLY_CHAR_WEIGHT:
 		ch.Weight += uint8(int8(mod))
 	case APPLY_CHAR_HEIGHT:
@@ -270,11 +251,11 @@ func aff_apply_modify(ch *char_data, loc int, mod int, spec int, msg *byte) {
 }
 func affect_modify(ch *char_data, loc int, mod int, spec int, bitv int, add bool) {
 	if add {
-		if bitv != AFF_INFRAVISION || ch.Race != RACE_ANDROID {
+		if bitv != AFF_INFRAVISION || int(ch.Race) != RACE_ANDROID {
 			ch.Affected_by[bitv/32] |= 1 << (bitv % 32)
 		}
 	} else {
-		if bitv != AFF_INFRAVISION || ch.Race != RACE_ANDROID {
+		if bitv != AFF_INFRAVISION || int(ch.Race) != RACE_ANDROID {
 			ch.Affected_by[bitv/32] &= ^(1 << (bitv % 32))
 			mod = -mod
 		}
@@ -289,8 +270,8 @@ func affect_modify_ar(ch *char_data, loc int, mod int, spec int, bitv [0]int, ad
 	if add {
 		for i = 0; i < AF_ARRAY_MAX; i++ {
 			for j = 0; j < 32; j++ {
-				if IS_SET_AR([0]bitvector_t(bitv), bitvector_t((i*32)+j)) {
-					if (i*32)+j != AFF_INFRAVISION || ch.Race != RACE_ANDROID {
+				if IS_SET_AR([0]bitvector_t(bitv), bitvector_t(int32((i*32)+j))) {
+					if (i*32)+j != AFF_INFRAVISION || int(ch.Race) != RACE_ANDROID {
 						ch.Affected_by[((i*32)+j)/32] |= 1 << (((i * 32) + j) % 32)
 					}
 				}
@@ -299,8 +280,8 @@ func affect_modify_ar(ch *char_data, loc int, mod int, spec int, bitv [0]int, ad
 	} else {
 		for i = 0; i < AF_ARRAY_MAX; i++ {
 			for j = 0; j < 32; j++ {
-				if IS_SET_AR([0]bitvector_t(bitv), bitvector_t((i*32)+j)) {
-					if (i*32)+j != AFF_INFRAVISION || ch.Race != RACE_ANDROID {
+				if IS_SET_AR([0]bitvector_t(bitv), bitvector_t(int32((i*32)+j))) {
+					if (i*32)+j != AFF_INFRAVISION || int(ch.Race) != RACE_ANDROID {
 						ch.Affected_by[((i*32)+j)/32] &= ^(1 << (((i * 32) + j) % 32))
 					}
 				}
@@ -336,12 +317,12 @@ func affect_total(ch *char_data) {
 		affect_modify(ch, af.Location, af.Modifier, af.Specific, int(af.Bitvector), FALSE != 0)
 	}
 	ch.Aff_abils = ch.Real_abils
-	ch.Apply_saving_throw[SAVING_FORTITUDE] = int16((ch.Feats[FEAT_GREAT_FORTITUDE]) * 3)
-	ch.Apply_saving_throw[SAVING_REFLEX] = int16((ch.Feats[FEAT_LIGHTNING_REFLEXES]) * 3)
-	ch.Apply_saving_throw[SAVING_WILL] = int16((ch.Feats[FEAT_IRON_WILL]) * 3)
+	ch.Apply_saving_throw[SAVING_FORTITUDE] = int16(int(ch.Feats[FEAT_GREAT_FORTITUDE]) * 3)
+	ch.Apply_saving_throw[SAVING_REFLEX] = int16(int(ch.Feats[FEAT_LIGHTNING_REFLEXES]) * 3)
+	ch.Apply_saving_throw[SAVING_WILL] = int16(int(ch.Feats[FEAT_IRON_WILL]) * 3)
 	for i = 0; i < NUM_WEARS; i++ {
 		if (ch.Equipment[i]) != nil {
-			if (ch.Equipment[i]).Type_flag == ITEM_ARMOR {
+			if int((ch.Equipment[i]).Type_flag) == ITEM_ARMOR {
 				ch.Spellfail += int16((ch.Equipment[i]).Value[VAL_ARMOR_SPELLFAIL])
 				ch.Armorcheckall += int16((ch.Equipment[i]).Value[VAL_ARMOR_CHECK])
 				if is_proficient_with_armor(ch, (ch.Equipment[i]).Value[VAL_ARMOR_SKILL]) == 0 {
@@ -486,7 +467,7 @@ func affect_join(ch *char_data, af *affected_type, add_dur bool, avg_dur bool, a
 	)
 	for hjp = ch.Affected; !found && hjp != nil; hjp = next {
 		next = hjp.Next
-		if hjp.Type == af.Type && hjp.Location == af.Location {
+		if int(hjp.Type) == int(af.Type) && hjp.Location == af.Location {
 			if add_dur {
 				af.Duration += hjp.Duration
 			}
@@ -525,7 +506,7 @@ func char_from_room(ch *char_data) {
 	}
 	for i = 0; i < NUM_WEARS; i++ {
 		if (ch.Equipment[i]) != nil {
-			if (ch.Equipment[i]).Type_flag == ITEM_LIGHT {
+			if int((ch.Equipment[i]).Type_flag) == ITEM_LIGHT {
 				if ((ch.Equipment[i]).Value[VAL_LIGHT_HOURS]) != 0 {
 					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Light--
 				}
@@ -559,7 +540,7 @@ func char_to_room(ch *char_data, room room_rnum) {
 		ch.In_room = room
 		for i = 0; i < NUM_WEARS; i++ {
 			if (ch.Equipment[i]) != nil {
-				if (ch.Equipment[i]).Type_flag == ITEM_LIGHT {
+				if int((ch.Equipment[i]).Type_flag) == ITEM_LIGHT {
 					if ((ch.Equipment[i]).Value[VAL_LIGHT_HOURS]) != 0 {
 						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Light++
 					}
@@ -575,7 +556,7 @@ func char_to_room(ch *char_data, room room_rnum) {
 		}
 		if !IS_NPC(ch) {
 			if PRF_FLAGGED(ch, PRF_ARENAWATCH) {
-				ch.Player_specials.Pref[int(PRF_ARENAWATCH/32)] &= bitvector_t(^(1 << (int(PRF_ARENAWATCH % 32))))
+				ch.Player_specials.Pref[int(PRF_ARENAWATCH/32)] &= bitvector_t(int32(^(1 << (int(PRF_ARENAWATCH % 32)))))
 				ch.Arenawatch = -1
 			}
 		}
@@ -623,7 +604,7 @@ func obj_to_char(object *obj_data, ch *char_data) {
 			}
 		}
 		if !IS_NPC(ch) {
-			ch.Act[int(PLR_CRASH/32)] |= bitvector_t(1 << (int(PLR_CRASH % 32)))
+			ch.Act[int(PLR_CRASH/32)] |= bitvector_t(int32(1 << (int(PLR_CRASH % 32))))
 		}
 	} else {
 		basic_mud_log(libc.CString("SYSERR: NULL obj (%p) or char (%p) passed to obj_to_char."), object, ch)
@@ -647,7 +628,7 @@ func obj_from_char(object *obj_data) {
 		}
 	}
 	if !IS_NPC(object.Carried_by) {
-		object.Carried_by.Act[int(PLR_CRASH/32)] |= bitvector_t(1 << (int(PLR_CRASH % 32)))
+		object.Carried_by.Act[int(PLR_CRASH/32)] |= bitvector_t(int32(1 << (int(PLR_CRASH % 32))))
 	}
 	var previous int64 = gear_pl(object.Carried_by)
 	object.Carried_by.Carry_weight -= int(object.Weight)
@@ -673,7 +654,7 @@ func apply_ac(ch *char_data, eq_pos int) int {
 		core_dump_real(libc.CString(__FILE__), __LINE__)
 		return 0
 	}
-	if (ch.Equipment[eq_pos]).Type_flag != ITEM_ARMOR {
+	if int((ch.Equipment[eq_pos]).Type_flag) != ITEM_ARMOR {
 		return 0
 	}
 	return (ch.Equipment[eq_pos]).Value[VAL_ARMOR_APPLYAC]
@@ -717,11 +698,11 @@ func equip_char(ch *char_data, obj *obj_data, pos int) {
 	ch.Equipment[pos] = obj
 	obj.Worn_by = ch
 	obj.Worn_on = int16(pos)
-	if obj.Type_flag == ITEM_ARMOR {
+	if int(obj.Type_flag) == ITEM_ARMOR {
 		ch.Armor += apply_ac(ch, pos)
 	}
 	if ch.In_room != room_rnum(-1) {
-		if obj.Type_flag == ITEM_LIGHT {
+		if int(obj.Type_flag) == ITEM_LIGHT {
 			if (obj.Value[VAL_LIGHT_HOURS]) != 0 {
 				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Light++
 			}
@@ -746,11 +727,11 @@ func unequip_char(ch *char_data, pos int) *obj_data {
 	obj = ch.Equipment[pos]
 	obj.Worn_by = nil
 	obj.Worn_on = -1
-	if obj.Type_flag == ITEM_ARMOR {
+	if int(obj.Type_flag) == ITEM_ARMOR {
 		ch.Armor -= apply_ac(ch, pos)
 	}
 	if ch.In_room != room_rnum(-1) {
-		if obj.Type_flag == ITEM_LIGHT {
+		if int(obj.Type_flag) == ITEM_LIGHT {
 			if (obj.Value[VAL_LIGHT_HOURS]) != 0 {
 				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Light--
 			}
@@ -773,7 +754,7 @@ func get_number(name **byte) int {
 	)
 	number[0] = '\x00'
 	if (func() *byte {
-		ppos = C.strchr(*name, '.')
+		ppos = libc.StrChr(*name, '.')
 		return ppos
 	}()) != nil {
 		*func() *byte {
@@ -783,9 +764,9 @@ func get_number(name **byte) int {
 			return x
 		}() = '\x00'
 		strlcpy(&number[0], *name, uint64(2048))
-		C.strcpy(*name, ppos)
+		libc.StrCpy(*name, ppos)
 		for i = 0; number[i] != 0; i++ {
-			if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(number[i]))))) & int(uint16(int16(_ISdigit)))) == 0 {
+			if !unicode.IsDigit(rune(number[i])) {
 				return 0
 			}
 		}
@@ -851,7 +832,7 @@ func obj_to_room(object *obj_data, room room_rnum) {
 		basic_mud_log(libc.CString("SYSERR: Illegal value(s) passed to obj_to_room. (Room #%d/%d, obj %p)"), room, top_of_world, object)
 	} else {
 		if ROOM_FLAGGED(room, ROOM_GARDEN1) || ROOM_FLAGGED(room, ROOM_GARDEN2) {
-			if object.Type_flag != ITEM_PLANT {
+			if int(object.Type_flag) != ITEM_PLANT {
 				send_to_room(room, libc.CString("%s @wDisappears in a puff of smoke! It seems the room was designed to vaporize anything not plant related. Strange...@n\r\n"), object.Short_description)
 				extract_obj(object)
 				return
@@ -864,11 +845,11 @@ func obj_to_room(object *obj_data, room room_rnum) {
 		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Contents = object
 		object.In_room = room
 		object.Carried_by = nil
-		object.Lload = C.time(nil)
-		if object.Type_flag == ITEM_VEHICLE && !OBJ_FLAGGED(object, ITEM_UNBREAKABLE) && GET_OBJ_VNUM(object) > 0x4AFF {
-			object.Extra_flags[int(ITEM_UNBREAKABLE/32)] |= bitvector_t(1 << (int(ITEM_UNBREAKABLE % 32)))
+		object.Lload = libc.GetTime(nil)
+		if int(object.Type_flag) == ITEM_VEHICLE && !OBJ_FLAGGED(object, ITEM_UNBREAKABLE) && GET_OBJ_VNUM(object) > 0x4AFF {
+			object.Extra_flags[int(ITEM_UNBREAKABLE/32)] |= bitvector_t(int32(1 << (int(ITEM_UNBREAKABLE % 32))))
 		}
-		if object.Type_flag == ITEM_HATCH && GET_OBJ_VNUM(object) <= 0x4AFF {
+		if int(object.Type_flag) == ITEM_HATCH && GET_OBJ_VNUM(object) <= 0x4AFF {
 			if GET_OBJ_VNUM(object) <= 0x4A37 && GET_OBJ_VNUM(object) >= 18800 || GET_OBJ_VNUM(object) <= 0x4AFF && GET_OBJ_VNUM(object) >= 19100 {
 				var (
 					hnum  int       = (object.Value[0])
@@ -879,7 +860,7 @@ func obj_to_room(object *obj_data, room room_rnum) {
 				object.Value[VAL_CONTAINER_FLAGS] |= 1 << 3
 			}
 		}
-		if object.Type_flag == ITEM_HATCH && (object.Value[0]) > 1 && GET_OBJ_VNUM(object) > 0x4AFF {
+		if int(object.Type_flag) == ITEM_HATCH && (object.Value[0]) > 1 && GET_OBJ_VNUM(object) > 0x4AFF {
 			if (func() *obj_data {
 				vehicle = find_vehicle_by_vnum(object.Value[VAL_HATCH_DEST])
 				return vehicle
@@ -888,7 +869,7 @@ func obj_to_room(object *obj_data, room room_rnum) {
 					vehicle = read_object(obj_vnum(object.Value[0]), VIRTUAL)
 					obj_to_room(vehicle, real_room(room_vnum(object.Value[3])))
 					if object.Action_description != nil {
-						if C.strlen(object.Action_description) != 0 {
+						if libc.StrLen(object.Action_description) != 0 {
 							var (
 								nick  [2048]byte
 								nick2 [2048]byte
@@ -902,9 +883,9 @@ func obj_to_room(object *obj_data, room room_rnum) {
 								stdio.Sprintf(&nick2[0], "@wAn @YE@yD@YI @CX@ce@Wn@Do@Cf@ci@Wg@Dh@Wt@ce@Cr @RMK. II @wnamed @D(@C%s@D)@w", object.Action_description)
 							}
 							stdio.Sprintf(&nick3[0], "%s is resting here@w", &nick2[0])
-							vehicle.Name = C.strdup(&nick[0])
-							vehicle.Short_description = C.strdup(&nick2[0])
-							vehicle.Description = C.strdup(&nick3[0])
+							vehicle.Name = libc.StrDup(&nick[0])
+							vehicle.Short_description = libc.StrDup(&nick2[0])
+							vehicle.Description = libc.StrDup(&nick3[0])
 						}
 					}
 					object.Value[VAL_CONTAINER_FLAGS] |= 1 << 2
@@ -965,7 +946,7 @@ func obj_to_room(object *obj_data, room room_rnum) {
 			}
 		}
 		if ROOM_FLAGGED(room, ROOM_HOUSE) {
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Room_flags[int(ROOM_HOUSE_CRASH/32)] |= bitvector_t(1 << (int(ROOM_HOUSE_CRASH % 32)))
+			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Room_flags[int(ROOM_HOUSE_CRASH/32)] |= bitvector_t(int32(1 << (int(ROOM_HOUSE_CRASH % 32))))
 		}
 	}
 }
@@ -999,7 +980,7 @@ func obj_from_room(object *obj_data) {
 		}
 	}
 	if ROOM_FLAGGED(object.In_room, ROOM_HOUSE) {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(object.In_room)))).Room_flags[int(ROOM_HOUSE_CRASH/32)] |= bitvector_t(1 << (int(ROOM_HOUSE_CRASH % 32)))
+		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(object.In_room)))).Room_flags[int(ROOM_HOUSE_CRASH/32)] |= bitvector_t(int32(1 << (int(ROOM_HOUSE_CRASH % 32))))
 	}
 	object.In_room = -1
 	object.Next_content = nil
@@ -1029,7 +1010,7 @@ func obj_to_obj(obj *obj_data, obj_to *obj_data) {
 		}
 	}
 	if obj_to.In_room != room_rnum(-1) && ROOM_FLAGGED(obj_to.In_room, ROOM_HOUSE) {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj_to.In_room)))).Room_flags[int(ROOM_HOUSE_CRASH/32)] |= bitvector_t(1 << (int(ROOM_HOUSE_CRASH % 32)))
+		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj_to.In_room)))).Room_flags[int(ROOM_HOUSE_CRASH/32)] |= bitvector_t(int32(1 << (int(ROOM_HOUSE_CRASH % 32))))
 	}
 }
 func obj_from_obj(obj *obj_data) {
@@ -1064,7 +1045,7 @@ func obj_from_obj(obj *obj_data) {
 		}
 	}
 	if obj_from.In_room != room_rnum(-1) && ROOM_FLAGGED(obj_from.In_room, ROOM_HOUSE) {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj_from.In_room)))).Room_flags[int(ROOM_HOUSE_CRASH/32)] |= bitvector_t(1 << (int(ROOM_HOUSE_CRASH % 32)))
+		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj_from.In_room)))).Room_flags[int(ROOM_HOUSE_CRASH/32)] |= bitvector_t(int32(1 << (int(ROOM_HOUSE_CRASH % 32))))
 	}
 	obj.In_obj = nil
 	obj.Next_content = nil
@@ -1165,7 +1146,7 @@ func update_char_objects(ch *char_data) {
 	)
 	for i = 0; i < NUM_WEARS; i++ {
 		if (ch.Equipment[i]) != nil {
-			if (ch.Equipment[i]).Type_flag == ITEM_LIGHT && ((ch.Equipment[i]).Value[VAL_LIGHT_HOURS]) > 0 && ((ch.Equipment[i]).Value[VAL_LIGHT_TIME]) <= 0 {
+			if int((ch.Equipment[i]).Type_flag) == ITEM_LIGHT && ((ch.Equipment[i]).Value[VAL_LIGHT_HOURS]) > 0 && ((ch.Equipment[i]).Value[VAL_LIGHT_TIME]) <= 0 {
 				j = func() int {
 					p := &((ch.Equipment[i]).Value[VAL_LIGHT_HOURS])
 					*p--
@@ -1180,7 +1161,7 @@ func update_char_objects(ch *char_data) {
 					act(libc.CString("$n's light sputters out and dies."), FALSE, ch, nil, nil, TO_ROOM)
 					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Light--
 				}
-			} else if (ch.Equipment[i]).Type_flag == ITEM_LIGHT && ((ch.Equipment[i]).Value[VAL_LIGHT_HOURS]) > 0 {
+			} else if int((ch.Equipment[i]).Type_flag) == ITEM_LIGHT && ((ch.Equipment[i]).Value[VAL_LIGHT_HOURS]) > 0 {
 				(ch.Equipment[i]).Value[VAL_LIGHT_TIME] -= 1
 			}
 			update_object(ch.Equipment[i], 2)
@@ -1201,7 +1182,7 @@ func extract_char_final(ch *char_data) {
 	)
 	if ch.In_room == room_rnum(-1) {
 		basic_mud_log(libc.CString("SYSERR: NOWHERE extracting char %s. (%s, extract_char_final)"), GET_NAME(ch), __FILE__)
-		C.exit(1)
+		os.Exit(1)
 	}
 	if !IS_NPC(ch) && ch.Desc == nil {
 		for d = descriptor_list; d != nil; d = d.Next {
@@ -1219,7 +1200,7 @@ func extract_char_final(ch *char_data) {
 				if d == ch.Desc {
 					continue
 				}
-				if d.Character != nil && ch.Idnum == d.Character.Idnum {
+				if d.Character != nil && int(ch.Idnum) == int(d.Character.Idnum) {
 					d.Connected = CON_CLOSE
 				}
 			}
@@ -1365,13 +1346,13 @@ func extract_char(ch *char_data) {
 	)
 	if IS_NPC(ch) {
 		if !IS_SET_AR(ch.Act[:], MOB_NOTDEADYET) {
-			ch.Act[int(MOB_NOTDEADYET/32)] |= bitvector_t(1 << (int(MOB_NOTDEADYET % 32)))
+			ch.Act[int(MOB_NOTDEADYET/32)] |= bitvector_t(int32(1 << (int(MOB_NOTDEADYET % 32))))
 		} else {
 			return
 		}
 	} else {
 		if !IS_SET_AR(ch.Act[:], PLR_NOTDEADYET) {
-			ch.Act[int(PLR_NOTDEADYET/32)] |= bitvector_t(1 << (int(PLR_NOTDEADYET % 32)))
+			ch.Act[int(PLR_NOTDEADYET/32)] |= bitvector_t(int32(1 << (int(PLR_NOTDEADYET % 32))))
 		} else {
 			return
 		}
@@ -1413,9 +1394,9 @@ func extract_pending_chars() {
 	}(); vict != nil && extractions_pending != 0; vict = next_vict {
 		next_vict = vict.Next
 		if MOB_FLAGGED(vict, MOB_NOTDEADYET) {
-			vict.Act[int(MOB_NOTDEADYET/32)] &= bitvector_t(^(1 << (int(MOB_NOTDEADYET % 32))))
+			vict.Act[int(MOB_NOTDEADYET/32)] &= bitvector_t(int32(^(1 << (int(MOB_NOTDEADYET % 32)))))
 		} else if PLR_FLAGGED(vict, PLR_NOTDEADYET) {
-			vict.Act[int(PLR_NOTDEADYET/32)] &= bitvector_t(^(1 << (int(PLR_NOTDEADYET % 32))))
+			vict.Act[int(PLR_NOTDEADYET/32)] &= bitvector_t(int32(^(1 << (int(PLR_NOTDEADYET % 32)))))
 		} else {
 			prev_vict = vict
 			continue
@@ -1472,9 +1453,9 @@ func get_player_vis(ch *char_data, name *byte, number *int, inroom int) *char_da
 			continue
 		}
 		if ch.Admlevel < 1 && i.Admlevel < 1 && !IS_NPC(ch) && !IS_NPC(i) {
-			if C.strcasecmp(JUGGLERACE(i), name) != 0 && C.strstr(JUGGLERACE(i), name) == nil {
+			if libc.StrCaseCmp(JUGGLERACE(i), name) != 0 && libc.StrStr(JUGGLERACE(i), name) == nil {
 				if readIntro(ch, i) == 1 {
-					if C.strcasecmp(get_i_name(ch, i), name) != 0 && C.strstr(get_i_name(ch, i), name) == nil {
+					if libc.StrCaseCmp(get_i_name(ch, i), name) != 0 && libc.StrStr(get_i_name(ch, i), name) == nil {
 						continue
 					}
 				} else {
@@ -1483,10 +1464,10 @@ func get_player_vis(ch *char_data, name *byte, number *int, inroom int) *char_da
 			}
 		}
 		if ch.Admlevel >= 1 || i.Admlevel >= 1 || IS_NPC(ch) || IS_NPC(i) {
-			if C.strcasecmp(i.Name, name) != 0 && C.strstr(i.Name, name) == nil {
-				if C.strcasecmp(JUGGLERACE(i), name) != 0 && C.strstr(JUGGLERACE(i), name) == nil {
+			if libc.StrCaseCmp(i.Name, name) != 0 && libc.StrStr(i.Name, name) == nil {
+				if libc.StrCaseCmp(JUGGLERACE(i), name) != 0 && libc.StrStr(JUGGLERACE(i), name) == nil {
 					if !IS_NPC(ch) && !IS_NPC(i) && readIntro(ch, i) == 1 {
-						if C.strcasecmp(get_i_name(ch, i), name) != 0 && C.strstr(get_i_name(ch, i), name) == nil {
+						if libc.StrCaseCmp(get_i_name(ch, i), name) != 0 && libc.StrStr(get_i_name(ch, i), name) == nil {
 							continue
 						}
 					} else {
@@ -1518,14 +1499,14 @@ func get_char_room_vis(ch *char_data, name *byte, number *int) *char_data {
 		number = &num
 		num = get_number(&name)
 	}
-	if C.strcasecmp(name, libc.CString("self")) == 0 || C.strcasecmp(name, libc.CString("me")) == 0 {
+	if libc.StrCaseCmp(name, libc.CString("self")) == 0 || libc.StrCaseCmp(name, libc.CString("me")) == 0 {
 		return ch
 	}
 	if *number == 0 {
 		return get_player_vis(ch, name, nil, 1<<0)
 	}
 	for i = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; i != nil && *number != 0; i = i.Next_in_room {
-		if C.strcasecmp(name, libc.CString("last")) == 0 && i.Lasthit != 0 && i.Lasthit == int(ch.Idnum) {
+		if libc.StrCaseCmp(name, libc.CString("last")) == 0 && i.Lasthit != 0 && i.Lasthit == int(ch.Idnum) {
 			if CAN_SEE(ch, i) {
 				if func() int {
 					p := number
@@ -1555,7 +1536,7 @@ func get_char_room_vis(ch *char_data, name *byte, number *int) *char_data {
 					return i
 				}
 			}
-		} else if !IS_NPC(i) && !IS_NPC(ch) && C.strcasecmp(get_i_name(ch, i), CAP(name)) == 0 && i != ch {
+		} else if !IS_NPC(i) && !IS_NPC(ch) && libc.StrCaseCmp(get_i_name(ch, i), CAP(name)) == 0 && i != ch {
 			if CAN_SEE(ch, i) {
 				if func() int {
 					p := number
@@ -1565,7 +1546,7 @@ func get_char_room_vis(ch *char_data, name *byte, number *int) *char_data {
 					return i
 				}
 			}
-		} else if !IS_NPC(i) && !IS_NPC(ch) && C.strstr(get_i_name(ch, i), CAP(name)) != nil && i != ch {
+		} else if !IS_NPC(i) && !IS_NPC(ch) && libc.StrStr(get_i_name(ch, i), CAP(name)) != nil && i != ch {
 			if CAN_SEE(ch, i) {
 				if func() int {
 					p := number
@@ -1575,7 +1556,7 @@ func get_char_room_vis(ch *char_data, name *byte, number *int) *char_data {
 					return i
 				}
 			}
-		} else if !IS_NPC(i) && C.strcmp(JUGGLERACE(i), CAP(name)) == 0 && i != ch {
+		} else if !IS_NPC(i) && libc.StrCmp(JUGGLERACE(i), CAP(name)) == 0 && i != ch {
 			if CAN_SEE(ch, i) {
 				if func() int {
 					p := number
@@ -1585,7 +1566,7 @@ func get_char_room_vis(ch *char_data, name *byte, number *int) *char_data {
 					return i
 				}
 			}
-		} else if !IS_NPC(i) && C.strstr(JUGGLERACE(i), CAP(name)) != nil && i != ch {
+		} else if !IS_NPC(i) && libc.StrStr(JUGGLERACE(i), CAP(name)) != nil && i != ch {
 			if CAN_SEE(ch, i) {
 				if func() int {
 					p := number
@@ -1595,7 +1576,7 @@ func get_char_room_vis(ch *char_data, name *byte, number *int) *char_data {
 					return i
 				}
 			}
-		} else if !IS_NPC(i) && C.strcmp(JUGGLERACE(i), name) == 0 && i != ch {
+		} else if !IS_NPC(i) && libc.StrCmp(JUGGLERACE(i), name) == 0 && i != ch {
 			if CAN_SEE(ch, i) {
 				if func() int {
 					p := number
@@ -1605,7 +1586,7 @@ func get_char_room_vis(ch *char_data, name *byte, number *int) *char_data {
 					return i
 				}
 			}
-		} else if !IS_NPC(i) && C.strstr(JUGGLERACE(i), name) != nil && i != ch {
+		} else if !IS_NPC(i) && libc.StrStr(JUGGLERACE(i), name) != nil && i != ch {
 			if CAN_SEE(ch, i) {
 				if func() int {
 					p := number
@@ -1642,9 +1623,9 @@ func get_char_world_vis(ch *char_data, name *byte, number *int) *char_data {
 			continue
 		}
 		if ch.Admlevel < 1 && i.Admlevel < 1 && !IS_NPC(ch) && !IS_NPC(i) {
-			if C.strcasecmp(JUGGLERACE(i), name) != 0 && C.strstr(JUGGLERACE(i), name) == nil {
+			if libc.StrCaseCmp(JUGGLERACE(i), name) != 0 && libc.StrStr(JUGGLERACE(i), name) == nil {
 				if readIntro(ch, i) == 1 {
-					if C.strcasecmp(get_i_name(ch, i), name) != 0 && C.strstr(get_i_name(ch, i), name) == nil {
+					if libc.StrCaseCmp(get_i_name(ch, i), name) != 0 && libc.StrStr(get_i_name(ch, i), name) == nil {
 						continue
 					}
 				} else {
@@ -1653,10 +1634,10 @@ func get_char_world_vis(ch *char_data, name *byte, number *int) *char_data {
 			}
 		}
 		if ch.Admlevel >= 1 || i.Admlevel >= 1 || IS_NPC(ch) || IS_NPC(i) {
-			if C.strcasecmp(i.Name, name) != 0 && C.strstr(i.Name, name) == nil {
-				if C.strcasecmp(JUGGLERACE(i), name) != 0 && C.strstr(JUGGLERACE(i), name) == nil {
+			if libc.StrCaseCmp(i.Name, name) != 0 && libc.StrStr(i.Name, name) == nil {
+				if libc.StrCaseCmp(JUGGLERACE(i), name) != 0 && libc.StrStr(JUGGLERACE(i), name) == nil {
 					if !IS_NPC(ch) && !IS_NPC(i) && readIntro(ch, i) == 1 {
-						if C.strcasecmp(get_i_name(ch, i), name) != 0 && C.strstr(get_i_name(ch, i), name) == nil {
+						if libc.StrCaseCmp(get_i_name(ch, i), name) != 0 && libc.StrStr(get_i_name(ch, i), name) == nil {
 							continue
 						}
 					} else {
@@ -1699,7 +1680,7 @@ func get_obj_in_list_vis(ch *char_data, name *byte, number *int, list *obj_data)
 	}
 	for i = list; i != nil && *number != 0; i = i.Next_content {
 		if isname(name, i.Name) != 0 {
-			if CAN_SEE_OBJ(ch, i) || i.Type_flag == ITEM_LIGHT {
+			if CAN_SEE_OBJ(ch, i) || int(i.Type_flag) == ITEM_LIGHT {
 				if func() int {
 					p := number
 					*p--
@@ -1837,17 +1818,17 @@ func create_money(amount int) *obj_data {
 	obj = create_obj()
 	new_descr = new(extra_descr_data)
 	if amount == 1 {
-		obj.Name = C.strdup(libc.CString("zenni money"))
-		obj.Short_description = C.strdup(libc.CString("a single zenni"))
-		obj.Description = C.strdup(libc.CString("One miserable zenni is lying here"))
-		new_descr.Keyword = C.strdup(libc.CString("zenni money"))
-		new_descr.Description = C.strdup(libc.CString("It's just one miserable little zenni."))
+		obj.Name = libc.CString("zenni money")
+		obj.Short_description = libc.CString("a single zenni")
+		obj.Description = libc.CString("One miserable zenni is lying here")
+		new_descr.Keyword = libc.CString("zenni money")
+		new_descr.Description = libc.CString("It's just one miserable little zenni.")
 	} else {
-		obj.Name = C.strdup(libc.CString("zenni money"))
-		obj.Short_description = C.strdup(money_desc(amount))
+		obj.Name = libc.CString("zenni money")
+		obj.Short_description = libc.StrDup(money_desc(amount))
 		stdio.Snprintf(&buf[0], int(200), "%s is lying here", money_desc(amount))
-		obj.Description = C.strdup(CAP(&buf[0]))
-		new_descr.Keyword = C.strdup(libc.CString("zenni money"))
+		obj.Description = libc.StrDup(CAP(&buf[0]))
+		new_descr.Keyword = libc.CString("zenni money")
 		if amount < 10 {
 			stdio.Snprintf(&buf[0], int(200), "There is %d zenni.", amount)
 		} else if amount < 100 {
@@ -1857,9 +1838,9 @@ func create_money(amount int) *obj_data {
 		} else if amount < 100000 {
 			stdio.Snprintf(&buf[0], int(200), "You guess there is, maybe, %d zenni.", ((amount/1000)+rand_number(0, amount/1000))*1000)
 		} else {
-			C.strcpy(&buf[0], libc.CString("There are is LOT of zenni."))
+			libc.StrCpy(&buf[0], libc.CString("There are is LOT of zenni."))
 		}
-		new_descr.Description = C.strdup(&buf[0])
+		new_descr.Description = libc.StrDup(&buf[0])
 	}
 	new_descr.Next = nil
 	obj.Ex_description = new_descr
@@ -1965,10 +1946,10 @@ func generic_find(arg *byte, bitvector bitvector_t, ch *char_data, tar_ch **char
 	return 0
 }
 func find_all_dots(arg *byte) int {
-	if C.strcmp(arg, libc.CString("all")) == 0 {
+	if libc.StrCmp(arg, libc.CString("all")) == 0 {
 		return FIND_ALL
-	} else if C.strncmp(arg, libc.CString("all."), 4) == 0 {
-		C.strcpy(arg, (*byte)(unsafe.Add(unsafe.Pointer(arg), 4)))
+	} else if libc.StrNCmp(arg, libc.CString("all."), 4) == 0 {
+		libc.StrCpy(arg, (*byte)(unsafe.Add(unsafe.Pointer(arg), 4)))
 		return FIND_ALLDOT
 	} else {
 		return FIND_INDIV
@@ -2031,7 +2012,7 @@ func affectv_join(ch *char_data, af *affected_type, add_dur bool, avg_dur bool, 
 	)
 	for hjp = ch.Affectedv; !found && hjp != nil; hjp = next {
 		next = hjp.Next
-		if hjp.Type == af.Type && hjp.Location == af.Location {
+		if int(hjp.Type) == int(af.Type) && hjp.Location == af.Location {
 			if add_dur {
 				af.Duration += hjp.Duration
 			}

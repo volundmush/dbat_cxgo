@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"unicode"
 	"unsafe"
 )
 
@@ -68,7 +69,7 @@ func find_obj_target_room(obj *obj_data, rawroomstr *byte) room_rnum {
 	if roomstr[0] == 0 {
 		return -1
 	}
-	if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(roomstr[0])))))&int(uint16(int16(_ISdigit)))) != 0 && C.strchr(&roomstr[0], '.') == nil {
+	if unicode.IsDigit(rune(roomstr[0])) && libc.StrChr(&roomstr[0], '.') == nil {
 		tmp = libc.Atoi(libc.GoString(&roomstr[0]))
 		if (func() room_rnum {
 			location = real_room(room_vnum(tmp))
@@ -128,7 +129,7 @@ func do_oforce(obj *obj_data, argument *byte, cmd int, subcmd int) {
 		obj_log(obj, libc.CString("oforce called with too few args"))
 		return
 	}
-	if C.strcasecmp(&arg1[0], libc.CString("all")) == 0 {
+	if libc.StrCaseCmp(&arg1[0], libc.CString("all")) == 0 {
 		if (func() int {
 			room = int(obj_room(obj))
 			return room
@@ -227,7 +228,7 @@ func do_otimer(obj *obj_data, argument *byte, cmd int, subcmd int) {
 	one_argument(argument, &arg[0])
 	if arg[0] == 0 {
 		obj_log(obj, libc.CString("otimer: missing argument"))
-	} else if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(arg[0]))))) & int(uint16(int16(_ISdigit)))) == 0 {
+	} else if !unicode.IsDigit(rune(arg[0])) {
 		obj_log(obj, libc.CString("otimer: bad argument"))
 	} else {
 		obj.Timer = libc.Atoi(libc.GoString(&arg[0]))
@@ -244,7 +245,7 @@ func do_otransform(obj *obj_data, argument *byte, cmd int, subcmd int) {
 	one_argument(argument, &arg[0])
 	if arg[0] == 0 {
 		obj_log(obj, libc.CString("otransform: missing argument"))
-	} else if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(arg[0]))))) & int(uint16(int16(_ISdigit)))) == 0 {
+	} else if !unicode.IsDigit(rune(arg[0])) {
 		obj_log(obj, libc.CString("otransform: bad argument"))
 	} else {
 		o = read_object(obj_vnum(libc.Atoi(libc.GoString(&arg[0]))), VIRTUAL)
@@ -277,7 +278,7 @@ func do_otransform(obj *obj_data, argument *byte, cmd int, subcmd int) {
 	}
 }
 func do_dupe(obj *obj_data, argument *byte, cmd int, subcmd int) {
-	obj.Extra_flags[int(ITEM_DUPLICATE/32)] |= bitvector_t(1 << (int(ITEM_DUPLICATE % 32)))
+	obj.Extra_flags[int(ITEM_DUPLICATE/32)] |= bitvector_t(int32(1 << (int(ITEM_DUPLICATE % 32))))
 }
 func do_opurge(obj *obj_data, argument *byte, cmd int, subcmd int) {
 	var (
@@ -365,7 +366,7 @@ func do_oteleport(obj *obj_data, argument *byte, cmd int, subcmd int) {
 	target = find_obj_target_room(obj, &arg2[0])
 	if target == room_rnum(-1) {
 		obj_log(obj, libc.CString("oteleport target is an invalid room"))
-	} else if C.strcasecmp(&arg1[0], libc.CString("all")) == 0 {
+	} else if libc.StrCaseCmp(&arg1[0], libc.CString("all")) == 0 {
 		rm = obj_room(obj)
 		if target == rm {
 			obj_log(obj, libc.CString("oteleport target is itself"))
@@ -427,7 +428,7 @@ func do_dgoload(obj *obj_data, argument *byte, cmd int, subcmd int) {
 		if target == nil || *target == 0 {
 			rnum = room_rnum(room)
 		} else {
-			if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*target)))))&int(uint16(int16(_ISdigit)))) == 0 || (func() room_rnum {
+			if !unicode.IsDigit(rune(*target)) || (func() room_rnum {
 				rnum = real_room(room_vnum(libc.Atoi(libc.GoString(target))))
 				return rnum
 			}()) == room_rnum(-1) {
@@ -484,7 +485,7 @@ func do_dgoload(obj *obj_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 		cnt = get_obj_near_obj(obj, &arg1[0])
-		if cnt != nil && cnt.Type_flag == ITEM_CONTAINER {
+		if cnt != nil && int(cnt.Type_flag) == ITEM_CONTAINER {
 			obj_to_obj(object, cnt)
 			load_otrigger(object)
 			return
@@ -604,9 +605,9 @@ func do_odoor(obj *obj_data, argument *byte, cmd int, subcmd int) {
 			if newexit.General_description != nil {
 				libc.Free(unsafe.Pointer(newexit.General_description))
 			}
-			newexit.General_description = (*byte)(unsafe.Pointer(&make([]int8, int(C.strlen(value)+3))[0]))
-			C.strcpy(newexit.General_description, value)
-			C.strcat(newexit.General_description, libc.CString("\r\n"))
+			newexit.General_description = (*byte)(unsafe.Pointer(&make([]int8, libc.StrLen(value)+3)[0]))
+			libc.StrCpy(newexit.General_description, value)
+			libc.StrCat(newexit.General_description, libc.CString("\r\n"))
 		case 2:
 			newexit.Exit_info = bitvector_t(int16(uint16(asciiflag_conv(value))))
 		case 3:
@@ -615,8 +616,8 @@ func do_odoor(obj *obj_data, argument *byte, cmd int, subcmd int) {
 			if newexit.Keyword != nil {
 				libc.Free(unsafe.Pointer(newexit.Keyword))
 			}
-			newexit.Keyword = (*byte)(unsafe.Pointer(&make([]int8, int(C.strlen(value)+1))[0]))
-			C.strcpy(newexit.Keyword, value)
+			newexit.Keyword = (*byte)(unsafe.Pointer(&make([]int8, libc.StrLen(value)+1)[0]))
+			libc.StrCpy(newexit.Keyword, value)
 		case 5:
 			if (func() int {
 				to_room = int(real_room(room_vnum(libc.Atoi(libc.GoString(value)))))
@@ -667,7 +668,7 @@ func do_oat(obj *obj_data, argument *byte, cmd int, subcmd int) {
 		obj_log(obj, libc.CString("oat called without a command"))
 		return
 	}
-	if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(arg[0]))))) & int(uint16(int16(_ISdigit)))) != 0 {
+	if unicode.IsDigit(rune(arg[0])) {
 		loc = real_room(room_vnum(libc.Atoi(libc.GoString(&arg[0]))))
 	} else if (func() *char_data {
 		ch = get_char_by_obj(obj, &arg[0])
@@ -708,13 +709,13 @@ func obj_command_interpreter(obj *obj_data, argument *byte) {
 	}
 	line = any_one_arg(argument, &arg[0])
 	for func() int {
-		length = int(C.strlen(&arg[0]))
+		length = libc.StrLen(&arg[0])
 		return func() int {
 			cmd = 0
 			return cmd
 		}()
 	}(); *obj_cmd_info[cmd].Command != '\n'; cmd++ {
-		if C.strncmp(obj_cmd_info[cmd].Command, &arg[0], uint64(length)) == 0 {
+		if libc.StrNCmp(obj_cmd_info[cmd].Command, &arg[0], length) == 0 {
 			break
 		}
 	}

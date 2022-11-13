@@ -2,6 +2,8 @@ package main
 
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
+	"github.com/gotranspile/cxgo/runtime/stdio"
+	"unicode"
 	"unsafe"
 )
 
@@ -27,8 +29,8 @@ func do_oasis_sedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if buf1[0] == 0 {
 		send_to_char(ch, libc.CString("Specify a shop VNUM to edit.\r\n"))
 		return
-	} else if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(buf1[0]))))) & int(uint16(int16(_ISdigit)))) == 0 {
-		if C.strcasecmp(libc.CString("save"), &buf1[0]) != 0 {
+	} else if !unicode.IsDigit(rune(buf1[0])) {
+		if libc.StrCaseCmp(libc.CString("save"), &buf1[0]) != 0 {
 			send_to_char(ch, libc.CString("Yikes!  Stop that, someone will get hurt!\r\n"))
 			return
 		}
@@ -105,7 +107,7 @@ func do_oasis_sedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	sedit_disp_menu(d)
 	d.Connected = CON_SEDIT
 	act(libc.CString("$n starts using OLC."), TRUE, d.Character, nil, nil, TO_ROOM)
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(1 << (int(PLR_WRITING % 32)))
+	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
 	mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing zone %d allowed zone %d"), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number, ch.Player_specials.Olc_zone)
 }
 func sedit_setup_new(d *descriptor_data) {
@@ -115,13 +117,13 @@ func sedit_setup_new(d *descriptor_data) {
 	shop.Close1 = 28
 	shop.Profit_buy = 1.0
 	shop.Profit_sell = 1.0
-	shop.No_such_item1 = C.strdup(libc.CString("%s Sorry, I don't stock that item."))
-	shop.No_such_item2 = C.strdup(libc.CString("%s You don't seem to have that."))
-	shop.Missing_cash1 = C.strdup(libc.CString("%s I can't afford that!"))
-	shop.Missing_cash2 = C.strdup(libc.CString("%s You are too poor!"))
-	shop.Do_not_buy = C.strdup(libc.CString("%s I don't trade in such items."))
-	shop.Message_buy = C.strdup(libc.CString("%s That'll be %d zenni, thanks."))
-	shop.Message_sell = C.strdup(libc.CString("%s I'll give you %d zenni for that."))
+	shop.No_such_item1 = libc.CString("%s Sorry, I don't stock that item.")
+	shop.No_such_item2 = libc.CString("%s You don't seem to have that.")
+	shop.Missing_cash1 = libc.CString("%s I can't afford that!")
+	shop.Missing_cash2 = libc.CString("%s You are too poor!")
+	shop.Do_not_buy = libc.CString("%s I don't trade in such items.")
+	shop.Message_buy = libc.CString("%s That'll be %d zenni, thanks.")
+	shop.Message_sell = libc.CString("%s I'll give you %d zenni for that.")
 	shop.Producing = new(obj_vnum)
 	*(*obj_vnum)(unsafe.Add(unsafe.Pointer(shop.Producing), unsafe.Sizeof(obj_vnum(0))*0)) = -1
 	shop.In_room = (*room_vnum)(unsafe.Pointer(new(room_rnum)))
@@ -303,7 +305,7 @@ func sedit_disp_menu(d *descriptor_data) {
 func sedit_parse(d *descriptor_data, arg *byte) {
 	var i int
 	if d.Olc.Mode > SEDIT_NUMERICAL_RESPONSE {
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg)))))&int(uint16(int16(_ISdigit)))) == 0 && (*arg == '-' && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*(*byte)(unsafe.Add(unsafe.Pointer(arg), 1)))))))&int(uint16(int16(_ISdigit)))) == 0) {
+		if !unicode.IsDigit(rune(*arg)) && (*arg == '-' && !unicode.IsDigit(rune(*(*byte)(unsafe.Add(unsafe.Pointer(arg), 1))))) {
 			write_to_output(d, libc.CString("Field must be numerical, try again : "))
 			return
 		}
@@ -537,7 +539,7 @@ func sedit_parse(d *descriptor_data, arg *byte) {
 		if genolc_checkstring(d, arg) != 0 {
 			var new_entry shop_buy_data
 			new_entry.Type = d.Olc.Value
-			new_entry.Keywords = C.strdup(arg)
+			new_entry.Keywords = libc.StrDup(arg)
 			add_to_type_list(&d.Olc.Shop.Type, &new_entry)
 		}
 		sedit_namelist_menu(d)
@@ -575,9 +577,9 @@ func sedit_parse(d *descriptor_data, arg *byte) {
 	case SEDIT_CLOSE2:
 		d.Olc.Shop.Close2 = MIN(28, MAX(libc.Atoi(libc.GoString(arg)), 0))
 	case SEDIT_BUY_PROFIT:
-		__isoc99_sscanf(arg, libc.CString("%f"), &d.Olc.Shop.Profit_buy)
+		stdio.Sscanf(arg, "%f", &d.Olc.Shop.Profit_buy)
 	case SEDIT_SELL_PROFIT:
-		__isoc99_sscanf(arg, libc.CString("%f"), &d.Olc.Shop.Profit_sell)
+		stdio.Sscanf(arg, "%f", &d.Olc.Shop.Profit_sell)
 	case SEDIT_TYPE_MENU:
 		d.Olc.Value = MIN(int(NUM_ITEM_TYPES-1), MAX(libc.Atoi(libc.GoString(arg)), 0))
 		write_to_output(d, libc.CString("Enter namelist (return for none) :-\r\n] "))
@@ -636,7 +638,7 @@ func sedit_parse(d *descriptor_data, arg *byte) {
 			i = MIN(NUM_SHOP_FLAGS, MAX(libc.Atoi(libc.GoString(arg)), 0))
 			return i
 		}()) > 0 {
-			d.Olc.Shop.Bitvector ^= bitvector_t(1 << (i - 1))
+			d.Olc.Shop.Bitvector ^= bitvector_t(int32(1 << (i - 1)))
 			sedit_shop_flags_menu(d)
 			return
 		}

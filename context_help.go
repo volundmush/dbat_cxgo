@@ -371,7 +371,7 @@ func context_help(d *descriptor_data, arg *byte) int {
 		actbuf  [2048]byte
 		tmp     *byte
 	)
-	if C.strncmp(arg, libc.CString(CONTEXT_HELP_STRING), uint64(C.strlen(libc.CString(CONTEXT_HELP_STRING)))) != 0 {
+	if libc.StrNCmp(arg, libc.CString(CONTEXT_HELP_STRING), libc.StrLen(libc.CString(CONTEXT_HELP_STRING))) != 0 {
 		return FALSE
 	}
 	tmp = one_argument(arg, &actbuf[0])
@@ -381,14 +381,14 @@ func context_help(d *descriptor_data, arg *byte) int {
 	}
 	if context != int(-1) && context < NUM_CONTEXTS && *context_help_list[context] != 0 {
 		if *context_help_list[context] == FIND_HELP_CHAR {
-			C.strncpy(&actbuf[0], (*byte)(unsafe.Add(unsafe.Pointer(context_help_list[context]), 1)), uint64(2048-1))
+			libc.StrNCpy(&actbuf[0], (*byte)(unsafe.Add(unsafe.Pointer(context_help_list[context]), 1)), int(2048-1))
 			do_help(d.Character, &actbuf[0], 0, 0)
 		} else {
 			write_to_output(d, libc.CString("\r\n%s\r\n>  "), context_help_list[context])
 		}
 		return TRUE
 	}
-	C.strncpy(&actbuf[0], tmp, uint64(2048-1))
+	libc.StrNCpy(&actbuf[0], tmp, int(2048-1))
 	do_help(d.Character, &actbuf[0], 0, 0)
 	return TRUE
 }
@@ -396,23 +396,23 @@ func boot_context_help() {
 	var (
 		i    int
 		num  int
-		fl   *C.FILE
+		fl   *stdio.File
 		line [256]byte
 	)
-	fl = (*C.FILE)(unsafe.Pointer(stdio.FOpen(LIB_TEXT, "r")))
+	fl = stdio.FOpen(LIB_TEXT, "r")
 	for i = 0; i < NUM_CONTEXTS; i++ {
 		context_help_list[i] = NO_HELP
 	}
 	if fl == nil {
-		basic_mud_log(libc.CString("No context help found : %s"), C.strerror(*__errno_location()))
+		basic_mud_log(libc.CString("No context help found : %s"), libc.StrError(libc.Errno))
 		return
 	}
 	for get_line(fl, &line[0]) != 0 {
-		if __isoc99_sscanf(&line[0], libc.CString("#%d *"), &num) == 1 && num >= 0 && num < NUM_CONTEXTS {
+		if stdio.Sscanf(&line[0], "#%d *", &num) == 1 && num >= 0 && num < NUM_CONTEXTS {
 			context_help_list[num] = fread_string(fl, libc.CString("Context sensitive help"))
 		}
 	}
-	C.fclose(fl)
+	fl.Close()
 }
 func free_context_help() {
 	var i int

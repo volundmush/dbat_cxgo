@@ -191,11 +191,11 @@ func do_dig(ch *char_data, argument *byte, cmd int, subcmd int) {
 		d.Olc.Number = rvnum
 		d.Olc.Room = new(room_data)
 		if *new_room_name != 0 {
-			d.Olc.Room.Name = C.strdup(new_room_name)
+			d.Olc.Room.Name = libc.StrDup(new_room_name)
 		} else {
-			d.Olc.Room.Name = C.strdup(libc.CString("An unfinished room"))
+			d.Olc.Room.Name = libc.CString("An unfinished room")
 		}
-		d.Olc.Room.Description = C.strdup(libc.CString("You are in an unfinished room.\r\n"))
+		d.Olc.Room.Description = libc.CString("You are in an unfinished room.\r\n")
 		d.Olc.Room.Zone = d.Olc.Zone_num
 		d.Olc.Room.Number = -1
 		redit_save_internally(d)
@@ -343,9 +343,9 @@ func buildwalk(ch *char_data, dir int) int {
 			d.Olc.Zone_num = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone
 			d.Olc.Number = vnum
 			d.Olc.Room = new(room_data)
-			d.Olc.Room.Name = C.strdup(libc.CString("New BuildWalk Room"))
+			d.Olc.Room.Name = libc.CString("New BuildWalk Room")
 			stdio.Sprintf(&buf[0], "This unfinished room was created by %s.\r\n", GET_NAME(ch))
-			d.Olc.Room.Description = C.strdup(&buf[0])
+			d.Olc.Room.Description = libc.StrDup(&buf[0])
 			d.Olc.Room.Zone = d.Olc.Zone_num
 			d.Olc.Room.Number = -1
 			redit_save_internally(d)

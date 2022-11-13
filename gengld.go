@@ -98,7 +98,7 @@ func gedit_modify_string(str **byte, new_g *byte) {
 	if *str != nil {
 		libc.Free(unsafe.Pointer(*str))
 	}
-	*str = C.strdup(pointer)
+	*str = libc.StrDup(pointer)
 }
 func add_guild(ngld *guild_data) int {
 	var (
@@ -144,7 +144,7 @@ func save_guilds(zone_num zone_rnum) int {
 		i          int
 		j          int
 		rguild     int
-		guild_file *C.FILE
+		guild_file *stdio.File
 		fname      [64]byte
 		guild      *guild_data
 	)
@@ -153,8 +153,8 @@ func save_guilds(zone_num zone_rnum) int {
 		return FALSE
 	}
 	stdio.Snprintf(&fname[0], int(64), "%s%d.gld", LIB_WORLD, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number)
-	if (func() *C.FILE {
-		guild_file = (*C.FILE)(unsafe.Pointer(stdio.FOpen(libc.GoString(&fname[0]), "w")))
+	if (func() *stdio.File {
+		guild_file = stdio.FOpen(libc.GoString(&fname[0]), "w")
 		return guild_file
 	}()) == nil {
 		mudlog(BRF, ADMLVL_GOD, TRUE, libc.CString("SYSERR: OLC: Cannot open Guild file!"))
@@ -165,21 +165,21 @@ func save_guilds(zone_num zone_rnum) int {
 			rguild = int(real_guild(guild_vnum(i)))
 			return rguild
 		}()) != int(-1) {
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(guild_file)), "#%d~\n", i)
+			stdio.Fprintf(guild_file, "#%d~\n", i)
 			guild = (*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(rguild)))
 			for j = 0; j < SKILL_TABLE_SIZE; j++ {
 				if (guild.Skills[j]) != 0 {
-					stdio.Fprintf((*stdio.File)(unsafe.Pointer(guild_file)), "%d 1\n", j)
+					stdio.Fprintf(guild_file, "%d 1\n", j)
 				}
 			}
 			for j = 0; j < NUM_FEATS_DEFINED; j++ {
 				if (guild.Feats[j]) != 0 {
-					stdio.Fprintf((*stdio.File)(unsafe.Pointer(guild_file)), "%d 2\n", j)
+					stdio.Fprintf(guild_file, "%d 2\n", j)
 				}
 			}
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(guild_file)), "-1\n")
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(guild_file)), "%1.2f\n", guild.Charge)
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(guild_file)), "%s~\n%s~\n", func() *byte {
+			stdio.Fprintf(guild_file, "-1\n")
+			stdio.Fprintf(guild_file, "%1.2f\n", guild.Charge)
+			stdio.Fprintf(guild_file, "%s~\n%s~\n", func() *byte {
 				if guild.No_such_skill != nil {
 					return guild.No_such_skill
 				}
@@ -190,26 +190,26 @@ func save_guilds(zone_num zone_rnum) int {
 				}
 				return libc.CString("%s ERROR")
 			}())
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(guild_file)), "%d\n", guild.Minlvl)
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(guild_file)), "%d\n%d\n%d\n%d\n", func() mob_vnum {
+			stdio.Fprintf(guild_file, "%d\n", guild.Minlvl)
+			stdio.Fprintf(guild_file, "%d\n%d\n%d\n%d\n", func() mob_vnum {
 				if guild.Gm == mob_rnum(-1) {
 					return -1
 				}
 				return (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(guild.Gm)))).Vnum
 			}(), guild.With_who[0], guild.Open, guild.Close)
 			for j = 1; j < SW_ARRAY_MAX; j++ {
-				stdio.Fprintf((*stdio.File)(unsafe.Pointer(guild_file)), "%s%d", func() string {
+				stdio.Fprintf(guild_file, "%s%d", func() string {
 					if j == 1 {
 						return ""
 					}
 					return " "
 				}(), guild.With_who[j])
 			}
-			stdio.Fprintf((*stdio.File)(unsafe.Pointer(guild_file)), "\n")
+			stdio.Fprintf(guild_file, "\n")
 		}
 	}
-	stdio.Fprintf((*stdio.File)(unsafe.Pointer(guild_file)), "$~\n")
-	C.fclose(guild_file)
+	stdio.Fprintf(guild_file, "$~\n")
+	guild_file.Close()
 	if in_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number, SL_GLD) != 0 {
 		remove_from_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number, SL_GLD)
 		create_world_index(int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number), libc.CString("gld"))

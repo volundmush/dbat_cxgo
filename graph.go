@@ -72,12 +72,12 @@ func find_first_step(src room_rnum, target room_rnum) int {
 		return -2
 	}
 	for curr_room = 0; curr_room <= top_of_world; curr_room++ {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(curr_room)))).Room_flags[int(ROOM_BFS_MARK/32)] &= bitvector_t(^(1 << (int(ROOM_BFS_MARK % 32))))
+		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(curr_room)))).Room_flags[int(ROOM_BFS_MARK/32)] &= bitvector_t(int32(^(1 << (int(ROOM_BFS_MARK % 32)))))
 	}
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(src)))).Room_flags[int(ROOM_BFS_MARK/32)] |= bitvector_t(1 << (int(ROOM_BFS_MARK % 32)))
+	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(src)))).Room_flags[int(ROOM_BFS_MARK/32)] |= bitvector_t(int32(1 << (int(ROOM_BFS_MARK % 32))))
 	for curr_dir = 0; curr_dir < NUM_OF_DIRS; curr_dir++ {
 		if VALID_EDGE(src, curr_dir) != 0 {
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(src)))).Dir_option[curr_dir].To_room)))).Room_flags[int(ROOM_BFS_MARK/32)] |= bitvector_t(1 << (int(ROOM_BFS_MARK % 32)))
+			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(src)))).Dir_option[curr_dir].To_room)))).Room_flags[int(ROOM_BFS_MARK/32)] |= bitvector_t(int32(1 << (int(ROOM_BFS_MARK % 32))))
 			bfs_enqueue((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(src)))).Dir_option[curr_dir].To_room, curr_dir)
 		}
 	}
@@ -89,7 +89,7 @@ func find_first_step(src room_rnum, target room_rnum) int {
 		} else {
 			for curr_dir = 0; curr_dir < NUM_OF_DIRS; curr_dir++ {
 				if VALID_EDGE(bfs_queue_head.Room, curr_dir) != 0 {
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(bfs_queue_head.Room)))).Dir_option[curr_dir].To_room)))).Room_flags[int(ROOM_BFS_MARK/32)] |= bitvector_t(1 << (int(ROOM_BFS_MARK % 32)))
+					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(bfs_queue_head.Room)))).Dir_option[curr_dir].To_room)))).Room_flags[int(ROOM_BFS_MARK/32)] |= bitvector_t(int32(1 << (int(ROOM_BFS_MARK % 32))))
 					bfs_enqueue((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(bfs_queue_head.Room)))).Dir_option[curr_dir].To_room, int(bfs_queue_head.Dir))
 				}
 			}
@@ -159,42 +159,42 @@ func do_sradar(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if noship == FALSE {
-		if C.strcasecmp(&arg[0], libc.CString("earth")) == 0 || C.strcasecmp(&arg[0], libc.CString("Earth")) == 0 {
+		if libc.StrCaseCmp(&arg[0], libc.CString("earth")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("Earth")) == 0 {
 			dir = find_first_step(vehicle.In_room, real_room(0xA013))
 			stdio.Sprintf(&planet[0], "Earth")
-		} else if C.strcasecmp(&arg[0], libc.CString("frigid")) == 0 || C.strcasecmp(&arg[0], libc.CString("Frigid")) == 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("frigid")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("Frigid")) == 0 {
 			dir = find_first_step(vehicle.In_room, real_room(0x78A9))
 			stdio.Sprintf(&planet[0], "Frigid")
-		} else if C.strcasecmp(&arg[0], libc.CString("konack")) == 0 || C.strcasecmp(&arg[0], libc.CString("Konack")) == 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("konack")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("Konack")) == 0 {
 			dir = find_first_step(vehicle.In_room, real_room(0x69B9))
 			stdio.Sprintf(&planet[0], "Konack")
-		} else if C.strcasecmp(&arg[0], libc.CString("vegeta")) == 0 || C.strcasecmp(&arg[0], libc.CString("Vegeta")) == 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("vegeta")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("Vegeta")) == 0 {
 			dir = find_first_step(vehicle.In_room, real_room(0x7E6D))
 			stdio.Sprintf(&planet[0], "Vegeta")
-		} else if C.strcasecmp(&arg[0], libc.CString("aether")) == 0 || C.strcasecmp(&arg[0], libc.CString("Aether")) == 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("aether")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("Aether")) == 0 {
 			dir = find_first_step(vehicle.In_room, real_room(0xA3E7))
 			stdio.Sprintf(&planet[0], "Aether")
-		} else if C.strcasecmp(&arg[0], libc.CString("namek")) == 0 || C.strcasecmp(&arg[0], libc.CString("Namek")) == 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("namek")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("Namek")) == 0 {
 			dir = find_first_step(vehicle.In_room, real_room(0xA780))
 			stdio.Sprintf(&planet[0], "Namek")
-		} else if C.strcasecmp(&arg[0], libc.CString("buoy1")) == 0 && ch.Radar1 <= 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("buoy1")) == 0 && ch.Radar1 <= 0 {
 			send_to_char(ch, libc.CString("@wYou haven't launched that buoy.\r\n"))
 			return
-		} else if C.strcasecmp(&arg[0], libc.CString("buoy2")) == 0 && ch.Radar2 <= 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("buoy2")) == 0 && ch.Radar2 <= 0 {
 			send_to_char(ch, libc.CString("@wYou haven't launched that buoy.\r\n"))
 			return
-		} else if C.strcasecmp(&arg[0], libc.CString("buoy3")) == 0 && ch.Radar3 <= 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("buoy3")) == 0 && ch.Radar3 <= 0 {
 			send_to_char(ch, libc.CString("@wYou haven't launched that buoy.\r\n"))
 			return
-		} else if C.strcasecmp(&arg[0], libc.CString("buoy1")) == 0 && ch.Radar1 > 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("buoy1")) == 0 && ch.Radar1 > 0 {
 			var rad int = int(ch.Radar1)
 			dir = find_first_step(vehicle.In_room, real_room(room_vnum(rad)))
 			stdio.Sprintf(&planet[0], "Buoy One")
-		} else if C.strcasecmp(&arg[0], libc.CString("buoy2")) == 0 && ch.Radar2 > 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("buoy2")) == 0 && ch.Radar2 > 0 {
 			var rad int = int(ch.Radar2)
 			dir = find_first_step(vehicle.In_room, real_room(room_vnum(rad)))
 			stdio.Sprintf(&planet[0], "Buoy Two")
-		} else if C.strcasecmp(&arg[0], libc.CString("buoy3")) == 0 && ch.Radar3 > 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("buoy3")) == 0 && ch.Radar3 > 0 {
 			var rad int = int(ch.Radar3)
 			dir = find_first_step(vehicle.In_room, real_room(room_vnum(rad)))
 			stdio.Sprintf(&planet[0], "Buoy Three")
@@ -204,42 +204,42 @@ func do_sradar(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 	}
 	if noship == TRUE {
-		if C.strcasecmp(&arg[0], libc.CString("earth")) == 0 || C.strcasecmp(&arg[0], libc.CString("Earth")) == 0 {
+		if libc.StrCaseCmp(&arg[0], libc.CString("earth")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("Earth")) == 0 {
 			dir = find_first_step(ch.In_room, real_room(0xA013))
 			stdio.Sprintf(&planet[0], "Earth")
-		} else if C.strcasecmp(&arg[0], libc.CString("frigid")) == 0 || C.strcasecmp(&arg[0], libc.CString("Frigid")) == 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("frigid")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("Frigid")) == 0 {
 			dir = find_first_step(ch.In_room, real_room(0x78A9))
 			stdio.Sprintf(&planet[0], "Frigid")
-		} else if C.strcasecmp(&arg[0], libc.CString("konack")) == 0 || C.strcasecmp(&arg[0], libc.CString("Konack")) == 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("konack")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("Konack")) == 0 {
 			dir = find_first_step(ch.In_room, real_room(0x69B9))
 			stdio.Sprintf(&planet[0], "Konack")
-		} else if C.strcasecmp(&arg[0], libc.CString("vegeta")) == 0 || C.strcasecmp(&arg[0], libc.CString("Vegeta")) == 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("vegeta")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("Vegeta")) == 0 {
 			dir = find_first_step(ch.In_room, real_room(0x7E6D))
 			stdio.Sprintf(&planet[0], "Vegeta")
-		} else if C.strcasecmp(&arg[0], libc.CString("aether")) == 0 || C.strcasecmp(&arg[0], libc.CString("Aether")) == 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("aether")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("Aether")) == 0 {
 			dir = find_first_step(ch.In_room, real_room(0xA3E7))
 			stdio.Sprintf(&planet[0], "Aether")
-		} else if C.strcasecmp(&arg[0], libc.CString("namek")) == 0 || C.strcasecmp(&arg[0], libc.CString("Namek")) == 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("namek")) == 0 || libc.StrCaseCmp(&arg[0], libc.CString("Namek")) == 0 {
 			dir = find_first_step(ch.In_room, real_room(0xA780))
 			stdio.Sprintf(&planet[0], "Namek")
-		} else if C.strcasecmp(&arg[0], libc.CString("buoy1")) == 0 && ch.Radar1 <= 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("buoy1")) == 0 && ch.Radar1 <= 0 {
 			send_to_char(ch, libc.CString("@wYou haven't launched that buoy.\r\n"))
 			return
-		} else if C.strcasecmp(&arg[0], libc.CString("buoy2")) == 0 && ch.Radar2 <= 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("buoy2")) == 0 && ch.Radar2 <= 0 {
 			send_to_char(ch, libc.CString("@wYou haven't launched that buoy.\r\n"))
 			return
-		} else if C.strcasecmp(&arg[0], libc.CString("buoy3")) == 0 && ch.Radar3 <= 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("buoy3")) == 0 && ch.Radar3 <= 0 {
 			send_to_char(ch, libc.CString("@wYou haven't launched that buoy.\r\n"))
 			return
-		} else if C.strcasecmp(&arg[0], libc.CString("buoy1")) == 0 && ch.Radar1 > 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("buoy1")) == 0 && ch.Radar1 > 0 {
 			var rad int = int(ch.Radar1)
 			dir = find_first_step(ch.In_room, real_room(room_vnum(rad)))
 			stdio.Sprintf(&planet[0], "Buoy One")
-		} else if C.strcasecmp(&arg[0], libc.CString("buoy2")) == 0 && ch.Radar2 > 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("buoy2")) == 0 && ch.Radar2 > 0 {
 			var rad int = int(ch.Radar2)
 			dir = find_first_step(ch.In_room, real_room(room_vnum(rad)))
 			stdio.Sprintf(&planet[0], "Buoy Two")
-		} else if C.strcasecmp(&arg[0], libc.CString("buoy3")) == 0 && ch.Radar3 > 0 {
+		} else if libc.StrCaseCmp(&arg[0], libc.CString("buoy3")) == 0 && ch.Radar3 > 0 {
 			var rad int = int(ch.Radar3)
 			dir = find_first_step(ch.In_room, real_room(room_vnum(rad)))
 			stdio.Sprintf(&planet[0], "Buoy Three")
@@ -369,7 +369,7 @@ func do_track(ch *char_data, argument *byte, cmd int, subcmd int) {
 	} else if arg[0] == 0 && ch.Fighting != nil {
 		vict = ch.Fighting
 		send_to_char(ch, libc.CString("You focus on the one your are fighting.\r\n"))
-		if AFF_FLAGGED(vict, AFF_NOTRACK) || vict.Race == RACE_ANDROID {
+		if AFF_FLAGGED(vict, AFF_NOTRACK) || int(vict.Race) == RACE_ANDROID {
 			send_to_char(ch, libc.CString("You can't sense them.\r\n"))
 			return
 		}
@@ -380,7 +380,7 @@ func do_track(ch *char_data, argument *byte, cmd int, subcmd int) {
 		act(libc.CString("You look at $N@n intently for a moment."), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 		act(libc.CString("$n looks at you intently for a moment."), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 		act(libc.CString("$n looks at $N@n intently for a moment."), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-		if vict.Race != RACE_ANDROID {
+		if int(vict.Race) != RACE_ANDROID {
 			if vict.Alignment > 50 && vict.Alignment < 200 {
 				send_to_char(ch, libc.CString("You sense slightly pure and good ki from them.\r\n"))
 			} else if vict.Alignment > 200 && vict.Alignment < 500 {
@@ -428,11 +428,11 @@ func do_track(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		return
 	}
-	if C.strcasecmp(&arg[0], libc.CString("scan")) == 0 {
+	if libc.StrCaseCmp(&arg[0], libc.CString("scan")) == 0 {
 		for i = descriptor_list; i != nil; i = i.Next {
 			if i.Connected != CON_PLAYING {
 				continue
-			} else if i.Character.Race == RACE_ANDROID {
+			} else if int(i.Character.Race) == RACE_ANDROID {
 				continue
 			} else if i.Character == ch {
 				continue
@@ -504,7 +504,7 @@ func do_track(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("No one is around by that name.\r\n"))
 		return
 	}
-	if AFF_FLAGGED(vict, AFF_NOTRACK) || vict.Race == RACE_ANDROID {
+	if AFF_FLAGGED(vict, AFF_NOTRACK) || int(vict.Race) == RACE_ANDROID {
 		send_to_char(ch, libc.CString("You can't sense them.\r\n"))
 		return
 	}
@@ -521,7 +521,7 @@ func do_track(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		return
 	}
-	if (ch.Skills[SKILL_SENSE]) == 100 && (!ROOM_FLAGGED(ch.In_room, ROOM_YARDRAT) && ROOM_FLAGGED(vict.In_room, ROOM_YARDRAT)) {
+	if int(ch.Skills[SKILL_SENSE]) == 100 && (!ROOM_FLAGGED(ch.In_room, ROOM_YARDRAT) && ROOM_FLAGGED(vict.In_room, ROOM_YARDRAT)) {
 		send_to_char(ch, libc.CString("@WSense@D: @YYardrat@n\r\n"))
 		if func() *char_data {
 			vict = get_char_vis(ch, &arg[0], nil, 1<<1)
@@ -531,7 +531,7 @@ func do_track(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("@WSense@D: @Y%s@n\r\n"), blah)
 			libc.Free(unsafe.Pointer(blah))
 		}
-	} else if (ch.Skills[SKILL_SENSE]) == 100 && (!ROOM_FLAGGED(ch.In_room, ROOM_EARTH) && ROOM_FLAGGED(vict.In_room, ROOM_EARTH)) {
+	} else if int(ch.Skills[SKILL_SENSE]) == 100 && (!ROOM_FLAGGED(ch.In_room, ROOM_EARTH) && ROOM_FLAGGED(vict.In_room, ROOM_EARTH)) {
 		send_to_char(ch, libc.CString("@WSense@D: @GEarth@n\r\n"))
 		if func() *char_data {
 			vict = get_char_vis(ch, &arg[0], nil, 1<<1)
@@ -541,7 +541,7 @@ func do_track(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("@WSense@D: @Y%s@n\r\n"), blah)
 			libc.Free(unsafe.Pointer(blah))
 		}
-	} else if (ch.Skills[SKILL_SENSE]) == 100 && (!ROOM_FLAGGED(ch.In_room, ROOM_VEGETA) && ROOM_FLAGGED(vict.In_room, ROOM_VEGETA)) {
+	} else if int(ch.Skills[SKILL_SENSE]) == 100 && (!ROOM_FLAGGED(ch.In_room, ROOM_VEGETA) && ROOM_FLAGGED(vict.In_room, ROOM_VEGETA)) {
 		send_to_char(ch, libc.CString("@WSense@D: @YVegeta@n\r\n"))
 		if func() *char_data {
 			vict = get_char_vis(ch, &arg[0], nil, 1<<1)
@@ -551,7 +551,7 @@ func do_track(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("@WSense@D: @Y%s@n\r\n"), blah)
 			libc.Free(unsafe.Pointer(blah))
 		}
-	} else if (ch.Skills[SKILL_SENSE]) == 100 && (!ROOM_FLAGGED(ch.In_room, ROOM_NAMEK) && ROOM_FLAGGED(vict.In_room, ROOM_NAMEK)) {
+	} else if int(ch.Skills[SKILL_SENSE]) == 100 && (!ROOM_FLAGGED(ch.In_room, ROOM_NAMEK) && ROOM_FLAGGED(vict.In_room, ROOM_NAMEK)) {
 		send_to_char(ch, libc.CString("@WSense@D: @gNamek@n\r\n"))
 		if func() *char_data {
 			vict = get_char_vis(ch, &arg[0], nil, 1<<1)
@@ -561,7 +561,7 @@ func do_track(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("@WSense@D: @Y%s@n\r\n"), blah)
 			libc.Free(unsafe.Pointer(blah))
 		}
-	} else if (ch.Skills[SKILL_SENSE]) == 100 && (!ROOM_FLAGGED(ch.In_room, ROOM_FRIGID) && ROOM_FLAGGED(vict.In_room, ROOM_FRIGID)) {
+	} else if int(ch.Skills[SKILL_SENSE]) == 100 && (!ROOM_FLAGGED(ch.In_room, ROOM_FRIGID) && ROOM_FLAGGED(vict.In_room, ROOM_FRIGID)) {
 		send_to_char(ch, libc.CString("@WSense@D: @CFrigid@n\r\n"))
 		if func() *char_data {
 			vict = get_char_vis(ch, &arg[0], nil, 1<<1)
@@ -571,7 +571,7 @@ func do_track(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("@WSense@D: @Y%s@n\r\n"), blah)
 			libc.Free(unsafe.Pointer(blah))
 		}
-	} else if (ch.Skills[SKILL_SENSE]) == 100 && (!ROOM_FLAGGED(ch.In_room, ROOM_AETHER) && ROOM_FLAGGED(vict.In_room, ROOM_AETHER)) {
+	} else if int(ch.Skills[SKILL_SENSE]) == 100 && (!ROOM_FLAGGED(ch.In_room, ROOM_AETHER) && ROOM_FLAGGED(vict.In_room, ROOM_AETHER)) {
 		send_to_char(ch, libc.CString("@WSense@D: @mAetherh@n\r\n"))
 		if func() *char_data {
 			vict = get_char_vis(ch, &arg[0], nil, 1<<1)
@@ -581,7 +581,7 @@ func do_track(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("@WSense@D: @Y%s@n\r\n"), blah)
 			libc.Free(unsafe.Pointer(blah))
 		}
-	} else if (ch.Skills[SKILL_SENSE]) == 100 && (!ROOM_FLAGGED(ch.In_room, ROOM_KONACK) && ROOM_FLAGGED(vict.In_room, ROOM_KONACK)) {
+	} else if int(ch.Skills[SKILL_SENSE]) == 100 && (!ROOM_FLAGGED(ch.In_room, ROOM_KONACK) && ROOM_FLAGGED(vict.In_room, ROOM_KONACK)) {
 		send_to_char(ch, libc.CString("@WSense@D: @MKonack@n\r\n"))
 		if func() *char_data {
 			vict = get_char_vis(ch, &arg[0], nil, 1<<1)
@@ -591,7 +591,7 @@ func do_track(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("@WSense@D: @Y%s@n\r\n"), blah)
 			libc.Free(unsafe.Pointer(blah))
 		}
-	} else if (ch.Skills[SKILL_SENSE]) == 100 && (!ROOM_FLAGGED(ch.In_room, ROOM_KANASSA) && ROOM_FLAGGED(vict.In_room, ROOM_KANASSA)) {
+	} else if int(ch.Skills[SKILL_SENSE]) == 100 && (!ROOM_FLAGGED(ch.In_room, ROOM_KANASSA) && ROOM_FLAGGED(vict.In_room, ROOM_KANASSA)) {
 		send_to_char(ch, libc.CString("@WSense@D: @cKanassa@n\r\n"))
 		if func() *char_data {
 			vict = get_char_vis(ch, &arg[0], nil, 1<<1)
@@ -601,7 +601,7 @@ func do_track(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("@WSense@D: @Y%s@n\r\n"), blah)
 			libc.Free(unsafe.Pointer(blah))
 		}
-	} else if (ch.Skills[SKILL_SENSE]) == 100 && (!ROOM_FLAGGED(ch.In_room, ROOM_ARLIA) && ROOM_FLAGGED(vict.In_room, ROOM_ARLIA)) {
+	} else if int(ch.Skills[SKILL_SENSE]) == 100 && (!ROOM_FLAGGED(ch.In_room, ROOM_ARLIA) && ROOM_FLAGGED(vict.In_room, ROOM_ARLIA)) {
 		send_to_char(ch, libc.CString("@WSense@D: @yArlia@n\r\n"))
 		if func() *char_data {
 			vict = get_char_vis(ch, &arg[0], nil, 1<<1)
@@ -611,7 +611,7 @@ func do_track(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("@WSense@D: @Y%s@n\r\n"), blah)
 			libc.Free(unsafe.Pointer(blah))
 		}
-	} else if (ch.Skills[SKILL_SENSE]) == 100 && (((func() room_vnum {
+	} else if int(ch.Skills[SKILL_SENSE]) == 100 && (((func() room_vnum {
 		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
 			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
 		}
@@ -698,7 +698,7 @@ func do_track(ch *char_data, argument *byte, cmd int, subcmd int) {
 			act(libc.CString("You look at $N@n intently for a moment."), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 			act(libc.CString("$n looks at you intently for a moment."), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 			act(libc.CString("$n looks at $N intently for a moment."), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-			if vict.Race != RACE_ANDROID {
+			if int(vict.Race) != RACE_ANDROID {
 				if vict.Alignment > 50 && vict.Alignment < 200 {
 					send_to_char(ch, libc.CString("You sense slightly pure and good ki from them.\r\n"))
 				} else if vict.Alignment > 200 && vict.Alignment < 500 {
@@ -715,7 +715,7 @@ func do_track(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_char(ch, libc.CString("You sense slightly mild indefinable ki from them.\r\n"))
 				}
 			}
-			if vict.Race != RACE_ANDROID {
+			if int(vict.Race) != RACE_ANDROID {
 				if vict.Hit > ch.Hit*50 {
 					send_to_char(ch, libc.CString("Their power is so huge it boggles your mind and crushes your spirit to fight!\n"))
 				} else if vict.Hit > ch.Hit*25 {
@@ -755,7 +755,7 @@ func do_track(ch *char_data, argument *byte, cmd int, subcmd int) {
 		case (-4):
 			send_to_char(ch, libc.CString("You can't sense %s from here.\r\n"), HMHR(vict))
 		default:
-			if (ch.Skills[SKILL_SENSE]) >= 75 {
+			if int(ch.Skills[SKILL_SENSE]) >= 75 {
 				var blah *byte = sense_location(vict)
 				send_to_char(ch, libc.CString("You sense them %s from here!\r\n"), dirs[dir])
 				send_to_char(ch, libc.CString("@WSense@D: @Y%s@n\r\n"), blah)

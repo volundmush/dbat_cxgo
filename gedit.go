@@ -2,6 +2,8 @@ package main
 
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
+	"github.com/gotranspile/cxgo/runtime/stdio"
+	"unicode"
 	"unsafe"
 )
 
@@ -27,8 +29,8 @@ func do_oasis_gedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if buf1[0] == 0 {
 		send_to_char(ch, libc.CString("Specify a guild VNUM to edit.\r\n"))
 		return
-	} else if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(buf1[0]))))) & int(uint16(int16(_ISdigit)))) == 0 {
-		if C.strcasecmp(libc.CString("save"), &buf1[0]) != 0 {
+	} else if !unicode.IsDigit(rune(buf1[0])) {
+		if libc.StrCaseCmp(libc.CString("save"), &buf1[0]) != 0 {
 			send_to_char(ch, libc.CString("Yikes!  Stop that, someone will get hurt!\r\n"))
 			return
 		}
@@ -103,7 +105,7 @@ func do_oasis_gedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	d.Connected = CON_GEDIT
 	act(libc.CString("$n starts using OLC."), TRUE, d.Character, nil, nil, TO_ROOM)
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(1 << (int(PLR_WRITING % 32)))
+	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
 	mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing zone %d allowed zone %d"), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number, ch.Player_specials.Olc_zone)
 }
 func gedit_setup_new(d *descriptor_data) {
@@ -121,10 +123,10 @@ func gedit_setup_new(d *descriptor_data) {
 	}
 	guilddata.Func = nil
 	guilddata.Minlvl = 0
-	guilddata.No_such_skill = C.strdup(libc.CString("%s Sorry, but I don't know that one."))
-	guilddata.Not_enough_gold = C.strdup(libc.CString("%s Sorry, but I'm gonna need more zenni first."))
+	guilddata.No_such_skill = libc.CString("%s Sorry, but I don't know that one.")
+	guilddata.Not_enough_gold = libc.CString("%s Sorry, but I'm gonna need more zenni first.")
 	for i = 0; i < SKILL_TABLE_SIZE; i++ {
-		if spell_info[i].Skilltype == (1<<1) && C.strcmp(spell_info[i].Name, libc.CString("!UNUSED!")) != 0 {
+		if spell_info[i].Skilltype == (1<<1) && libc.StrCmp(spell_info[i].Name, libc.CString("!UNUSED!")) != 0 {
 			guilddata.Skills[i] = 0
 		}
 	}
@@ -152,7 +154,7 @@ func gedit_select_skills_menu(d *descriptor_data) {
 	clear_screen(d)
 	write_to_output(d, libc.CString("Skills known:\r\n"))
 	for i = 0; i < SKILL_TABLE_SIZE; i++ {
-		if spell_info[i].Skilltype == (1<<1) && C.strcmp(spell_info[i].Name, libc.CString("!UNUSED!")) != 0 {
+		if spell_info[i].Skilltype == (1<<1) && libc.StrCmp(spell_info[i].Name, libc.CString("!UNUSED!")) != 0 {
 			write_to_output(d, libc.CString("@n[@c%-3s@n] %-3d %-20.20s  "), func() string {
 				if (guilddata.Skills[i]) != 0 {
 					return "YES"
@@ -181,7 +183,7 @@ func gedit_select_spells_menu(d *descriptor_data) {
 	clear_screen(d)
 	write_to_output(d, libc.CString("Spells known:\r\n"))
 	for i = 0; i <= SKILL_TABLE_SIZE; i++ {
-		if (spell_info[i].Skilltype&(1<<0)) != 0 && C.strcmp(spell_info[i].Name, libc.CString("!UNUSED!")) != 0 {
+		if (spell_info[i].Skilltype&(1<<0)) != 0 && libc.StrCmp(spell_info[i].Name, libc.CString("!UNUSED!")) != 0 {
 			write_to_output(d, libc.CString("@n[@c%-3s@n] %-3d %-20.20s  "), func() string {
 				if (guilddata.Skills[i]) != 0 {
 					return "YES"
@@ -239,7 +241,7 @@ func gedit_select_lang_menu(d *descriptor_data) {
 	clear_screen(d)
 	write_to_output(d, libc.CString("Skills known:\r\n"))
 	for i = 0; i < SKILL_TABLE_SIZE; i++ {
-		if (spell_info[i].Skilltype&(1<<2)) != 0 && C.strcmp(spell_info[i].Name, libc.CString("!UNUSED!")) != 0 {
+		if (spell_info[i].Skilltype&(1<<2)) != 0 && libc.StrCmp(spell_info[i].Name, libc.CString("!UNUSED!")) != 0 {
 			write_to_output(d, libc.CString("@n[@c%-3s@n] %-3d %-20.20s  "), func() string {
 				if (guilddata.Skills[i]) != 0 {
 					return "YES"
@@ -268,7 +270,7 @@ func gedit_select_wp_menu(d *descriptor_data) {
 	clear_screen(d)
 	write_to_output(d, libc.CString("Skills known:\r\n"))
 	for i = 0; i < SKILL_TABLE_SIZE; i++ {
-		if (spell_info[i].Skilltype&(1<<3)) != 0 && C.strcmp(spell_info[i].Name, libc.CString("!UNUSED!")) != 0 {
+		if (spell_info[i].Skilltype&(1<<3)) != 0 && libc.StrCmp(spell_info[i].Name, libc.CString("!UNUSED!")) != 0 {
 			write_to_output(d, libc.CString("@n[@c%-3s@n] %-3d %-20.20s  "), func() string {
 				if (guilddata.Skills[i]) != 0 {
 					return "YES"
@@ -335,7 +337,7 @@ func gedit_disp_menu(d *descriptor_data) {
 func gedit_parse(d *descriptor_data, arg *byte) {
 	var i int
 	if d.Olc.Mode > GEDIT_NUMERICAL_RESPONSE {
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg)))))&int(uint16(int16(_ISdigit)))) == 0 && (*arg == '-' && (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*(*byte)(unsafe.Add(unsafe.Pointer(arg), 1)))))))&int(uint16(int16(_ISdigit)))) == 0) {
+		if !unicode.IsDigit(rune(*arg)) && (*arg == '-' && !unicode.IsDigit(rune(*(*byte)(unsafe.Add(unsafe.Pointer(arg), 1))))) {
 			write_to_output(d, libc.CString("Field must be numerical, try again : "))
 			return
 		}
@@ -442,7 +444,7 @@ func gedit_parse(d *descriptor_data, arg *byte) {
 	case GEDIT_NO_CASH:
 		gedit_modify_string(&d.Olc.Guild.Not_enough_gold, arg)
 	case GEDIT_TRAINER:
-		if (int(*(*uint16)(unsafe.Add(unsafe.Pointer(*__ctype_b_loc()), unsafe.Sizeof(uint16(0))*uintptr(int(*arg))))) & int(uint16(int16(_ISdigit)))) != 0 {
+		if unicode.IsDigit(rune(*arg)) {
 			i = libc.Atoi(libc.GoString(arg))
 			if (func() int {
 				i = libc.Atoi(libc.GoString(arg))
@@ -478,7 +480,7 @@ func gedit_parse(d *descriptor_data, arg *byte) {
 	case GEDIT_CLOSE:
 		d.Olc.Guild.Close = MIN(28, MAX(libc.Atoi(libc.GoString(arg)), 0))
 	case GEDIT_CHARGE:
-		__isoc99_sscanf(arg, libc.CString("%f"), &d.Olc.Guild.Charge)
+		stdio.Sscanf(arg, "%f", &d.Olc.Guild.Charge)
 	case GEDIT_NO_TRAIN:
 		if (func() int {
 			i = MIN(int(NUM_TRADERS-1), MAX(libc.Atoi(libc.GoString(arg)), 0))
