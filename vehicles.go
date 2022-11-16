@@ -3,79 +3,43 @@ package main
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
-	"unsafe"
 )
 
 func disp_ship_locations(ch *char_data, vehicle *obj_data) {
-	if (func() room_vnum {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-		}
-		return -1
-	}()) == 50 {
+	if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 50 {
 		send_to_char(ch, libc.CString("@D------------------[ @GEarth@D ]------------------@c\n"))
 		send_to_char(ch, libc.CString("Nexus City, South Ocean, Nexus field, Cherry Blossom Mountain,\n"))
 		send_to_char(ch, libc.CString("Sandy Desert, Northern Plains, Korin's Tower, Kami's Lookout,\n"))
 		send_to_char(ch, libc.CString("Shadow Forest, Decrepit Area, West City, Hercule Beach, Satan City.\n"))
 		send_to_char(ch, libc.CString("@D---------------------------------------------@n\n"))
-	} else if (func() room_vnum {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-		}
-		return -1
-	}()) == 51 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 51 {
 		send_to_char(ch, libc.CString("@D------------------[ @CFrigid@D ]------------------@c\n"))
 		send_to_char(ch, libc.CString("Ice Crown City, Ice Highway, Topica Snowfield, Glug's Volcano,\n"))
 		send_to_char(ch, libc.CString("Platonic Sea, Slave City, Acturian Woods, Desolate Demesne,\n"))
 		send_to_char(ch, libc.CString("Chateau Ishran, Wyrm Spine Mountain, Cloud Ruler Temple, Koltoan mine.\n"))
 		send_to_char(ch, libc.CString("@D---------------------------------------------@n\n"))
-	} else if (func() room_vnum {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-		}
-		return -1
-	}()) == 52 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 52 {
 		send_to_char(ch, libc.CString("@D------------------[ @MKonack@D ]------------------@c\n"))
 		send_to_char(ch, libc.CString("Great Oroist Temple, Elzthuan Forest, Mazori Farm, Dres,\n"))
 		send_to_char(ch, libc.CString("Colvian Farm, St Alucia, Meridius Memorial, Desert of Illusion,\n"))
 		send_to_char(ch, libc.CString("Plains of Confusion, Turlon Fair, Wetlands, Kerberos,\n"))
 		send_to_char(ch, libc.CString("Shaeras Mansion, Slavinus Ravine, Furian Citadel.\n"))
 		send_to_char(ch, libc.CString("@D---------------------------------------------@n\n"))
-	} else if (func() room_vnum {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-		}
-		return -1
-	}()) == 53 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 53 {
 		send_to_char(ch, libc.CString("@D------------------[ @YVegeta@D ]------------------@c\n"))
 		send_to_char(ch, libc.CString("Vegetos City, Blood Dunes, Ancestral Mountains, Destopa Swamp,\n"))
 		send_to_char(ch, libc.CString("Pride Forest, Pride tower, Ruby Cave.\n"))
 		send_to_char(ch, libc.CString("@D---------------------------------------------@n\n"))
-	} else if (func() room_vnum {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-		}
-		return -1
-	}()) == 198 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 198 {
 		send_to_char(ch, libc.CString("@D------------------[ @MCerria@D ]------------------@c\n"))
 		send_to_char(ch, libc.CString("Cerria Colony, Fistarl Volcano, Crystalline Forest.\n"))
 		send_to_char(ch, libc.CString("@D---------------------------------------------@n\n"))
-	} else if (func() room_vnum {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-		}
-		return -1
-	}()) == 54 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 54 {
 		send_to_char(ch, libc.CString("@D------------------[ @gNamek@D ]------------------@c\n"))
 		send_to_char(ch, libc.CString("Senzu Village, Guru's House, Crystalline Cave, Elder Village,\n"))
 		send_to_char(ch, libc.CString("Frieza's Ship, Kakureta Village.\n"))
 		send_to_char(ch, libc.CString("@D---------------------------------------------@n\n"))
-	} else if (func() room_vnum {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-		}
-		return -1
-	}()) == 55 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 55 {
 		send_to_char(ch, libc.CString("@D------------------[ @BAether@D ]-----------------@c\n"))
 		send_to_char(ch, libc.CString("Haven City, Serenity Lake, Kaiju Forest, Ortusian Temple,\n"))
 		send_to_char(ch, libc.CString("Silent Glade.\n"))
@@ -84,39 +48,19 @@ func disp_ship_locations(ch *char_data, vehicle *obj_data) {
 		send_to_char(ch, libc.CString("Haven City, Serenity Lake, Kaiju Forest, Ortusian Temple,\n"))
 		send_to_char(ch, libc.CString("Silent Glade.\n"))
 		send_to_char(ch, libc.CString("@D--------------------------------------------@n\n"))
-	} else if (func() room_vnum {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-		}
-		return -1
-	}()) == 56 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 56 {
 		send_to_char(ch, libc.CString("@D-----------------[ @mYardrat@D ]-----------------@c\n"))
 		send_to_char(ch, libc.CString("Yardra City, Jade Forest, Jade Cliffs, Mount Valaria.\n"))
 		send_to_char(ch, libc.CString("@D-------------------------------------------@n\n"))
-	} else if (func() room_vnum {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-		}
-		return -1
-	}()) == 57 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 57 {
 		send_to_char(ch, libc.CString("@D-----------------[ @CZennith@D ]-----------------@c\n"))
 		send_to_char(ch, libc.CString("Utatlan City, Zenith Jungle, Ancient Castle.\n"))
 		send_to_char(ch, libc.CString("@D-------------------------------------------@n\n"))
-	} else if (func() room_vnum {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-		}
-		return -1
-	}()) == 58 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 58 {
 		send_to_char(ch, libc.CString("@D-----------------[ @CKanassa@D ]-----------------@c\n"))
 		send_to_char(ch, libc.CString("Aquis City, Yunkai Pirate Base.\n"))
 		send_to_char(ch, libc.CString("@D-------------------------------------------@n\n"))
-	} else if (func() room_vnum {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-		}
-		return -1
-	}()) == 59 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 59 {
 		send_to_char(ch, libc.CString("@D------------------[ @MArlia@D ]------------------@c\n"))
 		send_to_char(ch, libc.CString("Janacre, Arlian Wasteland, Arlia Mine, Kemabra Wastes.\n"))
 		send_to_char(ch, libc.CString("@D---------------------------------------------@n\n"))
@@ -126,12 +70,7 @@ func disp_ship_locations(ch *char_data, vehicle *obj_data) {
 }
 func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 	var landspot int = 50
-	if (func() room_vnum {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-		}
-		return -1
-	}()) == 50 {
+	if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 50 {
 		if libc.StrCaseCmp(arg, libc.CString("Nexus City")) == 0 {
 			landspot = 300
 			landspot += rand_number(0, 63)
@@ -183,12 +122,7 @@ func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 			send_to_char(ch, libc.CString("You don't know where that made up place is, but decided to land anyway."))
 			return 300
 		}
-	} else if (func() room_vnum {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-		}
-		return -1
-	}()) == 51 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 51 {
 		if libc.StrCaseCmp(arg, libc.CString("Ice Crown City")) == 0 {
 			return 4264
 		} else if libc.StrCaseCmp(arg, libc.CString("Ice Highway")) == 0 {
@@ -217,12 +151,7 @@ func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 			send_to_char(ch, libc.CString("You don't know where that made up place is, but decided to land anyway."))
 			return 4264
 		}
-	} else if (func() room_vnum {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-		}
-		return -1
-	}()) == 52 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 52 {
 		if libc.StrCaseCmp(arg, libc.CString("Tiranoc City")) == 0 {
 			return 8006
 		} else if libc.StrCaseCmp(arg, libc.CString("Great Oroist Temple")) == 0 {
@@ -259,12 +188,7 @@ func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
 			return 8006
 		}
-	} else if (func() room_vnum {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-		}
-		return -1
-	}()) == 53 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 53 {
 		if libc.StrCaseCmp(arg, libc.CString("Vegetos City")) == 0 {
 			return 2226
 		} else if libc.StrCaseCmp(arg, libc.CString("Blood Dunes")) == 0 {
@@ -283,12 +207,7 @@ func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
 			return 2226
 		}
-	} else if (func() room_vnum {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-		}
-		return -1
-	}()) == 54 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 54 {
 		if libc.StrCaseCmp(arg, libc.CString("Senzu Village")) == 0 {
 			return 11600
 		} else if libc.StrCaseCmp(arg, libc.CString("Guru's House")) == 0 {
@@ -305,12 +224,7 @@ func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
 			return 11600
 		}
-	} else if (func() room_vnum {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-		}
-		return -1
-	}()) == 55 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 55 {
 		if libc.StrCaseCmp(arg, libc.CString("Haven City")) == 0 {
 			return 12010
 		} else if libc.StrCaseCmp(arg, libc.CString("Serenity Lake")) == 0 {
@@ -325,12 +239,7 @@ func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
 			return 12010
 		}
-	} else if (func() room_vnum {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-		}
-		return -1
-	}()) == 56 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 56 {
 		if libc.StrCaseCmp(arg, libc.CString("Yardra City")) == 0 {
 			return 0x36B8
 		} else if libc.StrCaseCmp(arg, libc.CString("Jade Forest")) == 0 {
@@ -343,12 +252,7 @@ func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
 			return 0x36B8
 		}
-	} else if (func() room_vnum {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-		}
-		return -1
-	}()) == 198 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 198 {
 		if libc.StrCaseCmp(arg, libc.CString("Cerria Colony")) == 0 {
 			return 0x447B
 		} else if libc.StrCaseCmp(arg, libc.CString("Crystalline Forest")) == 0 {
@@ -359,12 +263,7 @@ func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
 			return 0x447B
 		}
-	} else if (func() room_vnum {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-		}
-		return -1
-	}()) == 57 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 57 {
 		if libc.StrCaseCmp(arg, libc.CString("Utatlan City")) == 0 {
 			return 3412
 		} else if libc.StrCaseCmp(arg, libc.CString("Zenith Jungle")) == 0 {
@@ -375,12 +274,7 @@ func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
 			return 3412
 		}
-	} else if (func() room_vnum {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-		}
-		return -1
-	}()) == 58 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 58 {
 		if libc.StrCaseCmp(arg, libc.CString("Aquis City")) == 0 {
 			return 0x3A38
 		} else if libc.StrCaseCmp(arg, libc.CString("Yunkai Pirate Base")) == 0 {
@@ -389,12 +283,7 @@ func ship_land_location(ch *char_data, vehicle *obj_data, arg *byte) int {
 			send_to_char(ch, libc.CString("you don't know where that made up place is, but decided to land anyway."))
 			return 0x3A38
 		}
-	} else if (func() room_vnum {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-		}
-		return -1
-	}()) == 59 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 59 {
 		if libc.StrCaseCmp(arg, libc.CString("Janacre")) == 0 {
 			return 0x3E89
 		} else if libc.StrCaseCmp(arg, libc.CString("Arlian Wasteland")) == 0 {
@@ -447,15 +336,12 @@ func find_control(ch *char_data) *obj_data {
 	var (
 		controls *obj_data
 		obj      *obj_data
-		j        int
 	)
-	controls = get_obj_in_list_type(ITEM_CONTROL, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents)
+	_ = obj
+	var j int
+	controls = get_obj_in_list_type(ITEM_CONTROL, world[ch.In_room].Contents)
 	if controls == nil {
-		for obj = ch.Carrying; obj != nil && controls == nil; obj = obj.Next_content {
-			if CAN_SEE_OBJ(ch, obj) && int(obj.Type_flag) == ITEM_CONTROL {
-				controls = obj
-			}
-		}
+		controls = get_obj_in_list_type(ITEM_CONTROL, ch.Carrying)
 	}
 	if controls == nil {
 		for j = 0; j < NUM_WEARS && controls == nil; j++ {
@@ -478,7 +364,7 @@ func drive_into_vehicle(ch *char_data, vehicle *obj_data, arg *byte) {
 	if *arg == 0 {
 		send_to_char(ch, libc.CString("@wDrive into what?\r\n"))
 	} else if (func() *obj_data {
-		vehicle_in_out = get_obj_in_list_vis(ch, arg, nil, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Contents)
+		vehicle_in_out = get_obj_in_list_vis(ch, arg, nil, world[vehicle.In_room].Contents)
 		return vehicle_in_out
 	}()) == nil {
 		send_to_char(ch, libc.CString("@wNothing here by that name!\r\n"))
@@ -488,7 +374,7 @@ func drive_into_vehicle(ch *char_data, vehicle *obj_data, arg *byte) {
 		send_to_char(ch, libc.CString("@wMy, we are in a clever mood today, aren't we.\r\n"))
 	} else {
 		is_going_to = int(real_room(room_vnum(vehicle_in_out.Value[0])))
-		if !IS_SET_AR((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(is_going_to)))).Room_flags[:], ROOM_VEHICLE) {
+		if !IS_SET_AR(world[is_going_to].Room_flags[:], ROOM_VEHICLE) {
 			send_to_char(ch, libc.CString("@wThat ship can't carry other ships."))
 		} else {
 			stdio.Sprintf(&buf[0], "%s @wenters %s.\n\r", vehicle.Short_description, vehicle_in_out.Short_description)
@@ -514,7 +400,7 @@ func drive_outof_vehicle(ch *char_data, vehicle *obj_data) {
 		buf            [2048]byte
 	)
 	if (func() *obj_data {
-		hatch = get_obj_in_list_type(ITEM_HATCH, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Contents)
+		hatch = get_obj_in_list_type(ITEM_HATCH, world[vehicle.In_room].Contents)
 		return hatch
 	}()) == nil {
 		send_to_char(ch, libc.CString("@wNowhere to pilot out of.\r\n"))
@@ -536,7 +422,7 @@ func drive_outof_vehicle(ch *char_data, vehicle *obj_data) {
 		var door int
 		for door = 0; door < NUM_OF_DIRS; door++ {
 			if CAN_GO(ch, door) {
-				send_to_room((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door].To_room, libc.CString("@wThe @De@Wn@wg@Di@wn@We@Ds@w of the ship @rr@Ro@ra@Rr@w as it moves.\r\n"))
+				send_to_room(world[ch.In_room].Dir_option[door].To_room, libc.CString("@wThe @De@Wn@wg@Di@wn@We@Ds@w of the ship @rr@Ro@ra@Rr@w as it moves.\r\n"))
 			}
 		}
 		stdio.Sprintf(&buf[0], "%s @wflies out of %s.\r\n", vehicle.Short_description, vehicle_in_out.Short_description)
@@ -545,15 +431,15 @@ func drive_outof_vehicle(ch *char_data, vehicle *obj_data) {
 }
 func drive_in_direction(ch *char_data, vehicle *obj_data, dir int) {
 	var buf [2048]byte
-	if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Dir_option[dir]) == nil || ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Dir_option[dir]).To_room == room_rnum(-1) {
+	if (world[vehicle.In_room].Dir_option[dir]) == nil || (world[vehicle.In_room].Dir_option[dir]).To_room == room_rnum(-1) {
 		send_to_char(ch, libc.CString("@wApparently %s doesn't exist there.\r\n"), dirs[dir])
-	} else if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Dir_option[dir]).Exit_info & (1 << 1)) != 0 {
-		if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Dir_option[dir]).Keyword != nil {
-			send_to_char(ch, libc.CString("@wThe %s seems to be closed.\r\n"), fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Dir_option[dir]).Keyword))
+	} else if IS_SET((world[vehicle.In_room].Dir_option[dir]).Exit_info, 1<<1) {
+		if (world[vehicle.In_room].Dir_option[dir]).Keyword != nil {
+			send_to_char(ch, libc.CString("@wThe %s seems to be closed.\r\n"), fname((world[vehicle.In_room].Dir_option[dir]).Keyword))
 		} else {
 			send_to_char(ch, libc.CString("@wIt seems to be closed.\r\n"))
 		}
-	} else if !IS_SET_AR((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Dir_option[dir]).To_room)))).Room_flags[:], ROOM_VEHICLE) && !IS_SET_AR((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Dir_option[dir]).To_room)))).Room_flags[:], ROOM_SPACE) {
+	} else if !IS_SET_AR(world[(world[vehicle.In_room].Dir_option[dir]).To_room].Room_flags[:], ROOM_VEHICLE) && !IS_SET_AR(world[(world[vehicle.In_room].Dir_option[dir]).To_room].Room_flags[:], ROOM_SPACE) {
 		send_to_char(ch, libc.CString("@wThe ship can't fit there!\r\n"))
 	} else {
 		var (
@@ -564,7 +450,7 @@ func drive_in_direction(ch *char_data, vehicle *obj_data, dir int) {
 		send_to_room(vehicle.In_room, &buf[0])
 		was_in = int(vehicle.In_room)
 		obj_from_room(vehicle)
-		obj_to_room(vehicle, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(was_in)))).Dir_option[dir].To_room)
+		obj_to_room(vehicle, world[was_in].Dir_option[dir].To_room)
 		var controls *obj_data
 		if (func() *obj_data {
 			controls = find_control(ch)
@@ -581,13 +467,10 @@ func drive_in_direction(ch *char_data, vehicle *obj_data, dir int) {
 			}
 		}
 		var hatch *obj_data = nil
-		for hatch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(room_vnum(vehicle.Value[0])))))).Contents; hatch != nil; hatch = hatch.Next_content {
+		for hatch = world[real_room(room_vnum(vehicle.Value[0]))].Contents; hatch != nil; hatch = hatch.Next_content {
 			if int(hatch.Type_flag) == ITEM_HATCH {
-				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-					hatch.Value[3] = int((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number)
-				} else {
-					hatch.Value[3] = -1
-				}
+				hatch.Value[3] = int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room)))
+				break
 			}
 		}
 		is_in = int(vehicle.In_room)
@@ -610,7 +493,7 @@ func drive_in_direction(ch *char_data, vehicle *obj_data, dir int) {
 		var door int
 		for door = 0; door < NUM_OF_DIRS; door++ {
 			if CAN_GO(ch, door) {
-				send_to_room((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door].To_room, libc.CString("@wThe @De@Wn@wg@Di@wn@We@Ds@w of the ship @rr@Ro@ra@Rr@w as it moves.\r\n"))
+				send_to_room(world[ch.In_room].Dir_option[door].To_room, libc.CString("@wThe @De@Wn@wg@Di@wn@We@Ds@w of the ship @rr@Ro@ra@Rr@w as it moves.\r\n"))
 			}
 		}
 		stdio.Sprintf(&buf[0], "%s @wflies in from the %s.\r\n", vehicle.Short_description, dirs[rev_dir[dir]])
@@ -662,17 +545,7 @@ func do_warp(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	} else {
 		if libc.StrCaseCmp(&arg[0], libc.CString("earth")) == 0 {
-			if (func() room_vnum {
-				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-				}
-				return -1
-			}()) == 0xA013 || (func() room_vnum {
-				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-				}
-				return -1
-			}()) == 50 {
+			if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 0xA013 || int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 50 {
 				send_to_char(ch, libc.CString("Your ship is already there!\r\n"))
 				return
 			} else {
@@ -684,17 +557,7 @@ func do_warp(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_room(vehicle.In_room, libc.CString("@BSuddenly in a flash of blue light @n%s @B appears instantly!@n\r\n"), vehicle.Short_description)
 			}
 		} else if libc.StrCaseCmp(&arg[0], libc.CString("namek")) == 0 {
-			if (func() room_vnum {
-				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-				}
-				return -1
-			}()) == 0xA780 || (func() room_vnum {
-				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-				}
-				return -1
-			}()) == 54 {
+			if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 0xA780 || int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 54 {
 				send_to_char(ch, libc.CString("Your ship is already there!\r\n"))
 				return
 			} else {
@@ -706,17 +569,7 @@ func do_warp(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_room(vehicle.In_room, libc.CString("@BSuddenly in a flash of blue light @n%s @B appears instantly!@n\r\n"), vehicle.Short_description)
 			}
 		} else if libc.StrCaseCmp(&arg[0], libc.CString("frigid")) == 0 {
-			if (func() room_vnum {
-				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-				}
-				return -1
-			}()) == 0x78A9 || (func() room_vnum {
-				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-				}
-				return -1
-			}()) == 51 {
+			if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 0x78A9 || int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 51 {
 				send_to_char(ch, libc.CString("Your ship is already there!\r\n"))
 				return
 			} else {
@@ -728,17 +581,7 @@ func do_warp(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_room(vehicle.In_room, libc.CString("@BSuddenly in a flash of blue light @n%s @B appears instantly!@n\r\n"), vehicle.Short_description)
 			}
 		} else if libc.StrCaseCmp(&arg[0], libc.CString("konack")) == 0 {
-			if (func() room_vnum {
-				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-				}
-				return -1
-			}()) == 0x69B9 || (func() room_vnum {
-				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-				}
-				return -1
-			}()) == 52 {
+			if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 0x69B9 || int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 52 {
 				send_to_char(ch, libc.CString("Your ship is already there!\r\n"))
 				return
 			} else {
@@ -750,17 +593,7 @@ func do_warp(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_room(vehicle.In_room, libc.CString("@BSuddenly in a flash of blue light @n%s @B appears instantly!@n\r\n"), vehicle.Short_description)
 			}
 		} else if libc.StrCaseCmp(&arg[0], libc.CString("vegeta")) == 0 {
-			if (func() room_vnum {
-				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-				}
-				return -1
-			}()) == 0x7E6D || (func() room_vnum {
-				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-				}
-				return -1
-			}()) == 53 {
+			if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 0x7E6D || int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 53 {
 				send_to_char(ch, libc.CString("Your ship is already there!\r\n"))
 				return
 			} else {
@@ -772,17 +605,7 @@ func do_warp(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_room(vehicle.In_room, libc.CString("@BSuddenly in a flash of blue light @n%s @B appears instantly!@n\r\n"), vehicle.Short_description)
 			}
 		} else if libc.StrCaseCmp(&arg[0], libc.CString("aether")) == 0 {
-			if (func() room_vnum {
-				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-				}
-				return -1
-			}()) == 0xA3E7 || (func() room_vnum {
-				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-				}
-				return -1
-			}()) == 55 {
+			if int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 0xA3E7 || int(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == 55 {
 				send_to_char(ch, libc.CString("Your ship is already there!\r\n"))
 				return
 			} else {
@@ -797,12 +620,7 @@ func do_warp(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if ch.Radar1 <= 0 {
 				send_to_char(ch, libc.CString("You have not launched that buoy!\r\n"))
 				return
-			} else if (func() room_vnum {
-				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-				}
-				return -1
-			}()) == ch.Radar1 {
+			} else if room_vnum(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == ch.Radar1 {
 				send_to_char(ch, libc.CString("Your ship is already there!\r\n"))
 				return
 			} else {
@@ -817,12 +635,7 @@ func do_warp(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if ch.Radar2 <= 0 {
 				send_to_char(ch, libc.CString("You have not launched that buoy!\r\n"))
 				return
-			} else if (func() room_vnum {
-				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-				}
-				return -1
-			}()) == ch.Radar2 {
+			} else if room_vnum(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == ch.Radar2 {
 				send_to_char(ch, libc.CString("Your ship is already there!\r\n"))
 				return
 			} else {
@@ -837,12 +650,7 @@ func do_warp(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if ch.Radar3 <= 0 {
 				send_to_char(ch, libc.CString("You have not launched that buoy!\r\n"))
 				return
-			} else if (func() room_vnum {
-				if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-				}
-				return -1
-			}()) == ch.Radar3 {
+			} else if room_vnum(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room))) == ch.Radar3 {
 				send_to_char(ch, libc.CString("Your ship is already there!\r\n"))
 				return
 			} else {
@@ -882,7 +690,7 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 			act(libc.CString("@w$n stands up and stops piloting the ship."), TRUE, ch, nil, nil, TO_ROOM)
 			send_to_char(ch, libc.CString("@wYou stand up from the pilot's seat.\r\n"))
 			ch.Position = POS_STANDING
-			ch.Act[int(PLR_PILOTING/32)] &= bitvector_t(int32(^(1 << (int(PLR_PILOTING % 32)))))
+			REMOVE_BIT_AR(ch.Act[:], PLR_PILOTING)
 			return
 		}
 	}
@@ -925,7 +733,7 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 	}
 	if confirmed == TRUE {
-		ch.Act[int(PLR_PILOTING/32)] |= bitvector_t(int32(1 << (int(PLR_PILOTING % 32))))
+		SET_BIT_AR(ch.Act[:], PLR_PILOTING)
 		act(libc.CString("@w$n sits down and begins piloting the ship."), TRUE, ch, nil, nil, TO_ROOM)
 		ch.Position = POS_SITTING
 		send_to_char(ch, libc.CString("@wYou take a seat in the pilot's chair.\r\n"))
@@ -965,7 +773,7 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("@wPilot, yes, but where?\r\n"))
 		} else if is_abbrev(&arg[0], libc.CString("into")) != 0 || is_abbrev(&arg[0], libc.CString("onto")) != 0 {
 			drive_into_vehicle(ch, vehicle, &arg2[0])
-		} else if is_abbrev(&arg[0], libc.CString("out")) != 0 && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Dir_option[OUTDIR]) == nil {
+		} else if is_abbrev(&arg[0], libc.CString("out")) != 0 && (world[vehicle.In_room].Dir_option[OUTDIR]) == nil {
 			drive_outof_vehicle(ch, vehicle)
 		} else {
 			if !OBJVAL_FLAGGED(vehicle, 1<<2) {
@@ -1346,9 +1154,9 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 					send_to_room(vehicle.In_room, &buf3[0])
 				} else {
 					stdio.Sprintf(&buf3[0], "%s @wcomes in from above and slams into the ground!@n\r\n", vehicle.Short_description)
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Dmg += 1
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Dmg >= 10 {
-						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Dmg = 10
+					world[vehicle.In_room].Dmg += 1
+					if world[vehicle.In_room].Dmg >= 10 {
+						world[vehicle.In_room].Dmg = 10
 					}
 					look_at_room(vehicle.In_room, ch, 0)
 					send_to_room(vehicle.In_room, &buf3[0])
@@ -1372,32 +1180,7 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 					lnum = 6
 				} else if ROOM_FLAGGED(vehicle.In_room, ROOM_YARDRAT) {
 					lnum = 7
-				} else if (func() room_vnum {
-					if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-					}
-					return -1
-				}()) >= 3400 && (func() room_vnum {
-					if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-					}
-					return -1
-				}()) <= 3599 || (func() room_vnum {
-					if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-					}
-					return -1
-				}()) >= 62900 && (func() room_vnum {
-					if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-					}
-					return -1
-				}()) <= 0xF617 || (func() room_vnum {
-					if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-					}
-					return -1
-				}()) == 19600 {
+				} else if PLANET_ZENITH(vehicle.In_room) {
 					lnum = 8
 				} else if ROOM_FLAGGED(vehicle.In_room, ROOM_CERRIA) {
 					lnum = 11
@@ -1492,11 +1275,7 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 				} else if ch.Radar1 <= 0 && libc.StrCaseCmp(&arg2[0], libc.CString("1")) == 0 {
 					act(libc.CString("@wYou enter a unique code and launch a marker buoy.@n\r\n"), FALSE, ch, nil, nil, TO_CHAR)
 					act(libc.CString("@C$n@w manipulates the ship controls.@n\r\n"), FALSE, ch, nil, nil, TO_ROOM)
-					if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-						ch.Radar1 = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-					} else {
-						ch.Radar1 = -1
-					}
+					ch.Radar1 = room_vnum(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room)))
 				}
 				if ch.Radar2 > 0 && libc.StrCaseCmp(&arg2[0], libc.CString("2")) == 0 {
 					send_to_char(ch, libc.CString("@wYou need to 'deactivate' that marker.\r\n"))
@@ -1504,11 +1283,7 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 				} else if ch.Radar2 <= 0 && libc.StrCaseCmp(&arg2[0], libc.CString("2")) == 0 {
 					act(libc.CString("@wYou enter a unique code and launch a marker buoy.@n\r\n"), FALSE, ch, nil, nil, TO_CHAR)
 					act(libc.CString("@C$n@w manipulates the ship controls.@n\r\n"), FALSE, ch, nil, nil, TO_ROOM)
-					if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-						ch.Radar2 = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-					} else {
-						ch.Radar2 = -1
-					}
+					ch.Radar2 = room_vnum(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room)))
 				}
 				if ch.Radar3 > 0 && libc.StrCaseCmp(&arg2[0], libc.CString("3")) == 0 {
 					send_to_char(ch, libc.CString("@wYou need to 'deactivate' that marker.\r\n"))
@@ -1516,11 +1291,7 @@ func do_drive(ch *char_data, argument *byte, cmd int, subcmd int) {
 				} else if ch.Radar3 <= 0 && libc.StrCaseCmp(&arg2[0], libc.CString("3")) == 0 {
 					act(libc.CString("@wYou enter a unique code and launch a marker buoy.@n\r\n"), FALSE, ch, nil, nil, TO_CHAR)
 					act(libc.CString("@C$n@w manipulates the ship controls.@n\r\n"), FALSE, ch, nil, nil, TO_ROOM)
-					if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-						ch.Radar3 = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Number
-					} else {
-						ch.Radar3 = -1
-					}
+					ch.Radar3 = room_vnum(libc.BoolToInt(GET_ROOM_VNUM(vehicle.In_room)))
 				}
 			} else if libc.StrCaseCmp(&arg[0], libc.CString("deactivate")) == 0 {
 				if arg2[0] == 0 {
@@ -1588,21 +1359,5 @@ func do_ship_fire(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}()) == nil {
 		send_to_char(ch, libc.CString("@wSomething cosmic is jamming your signal! Quick call Iovan to repair it!\r\n"))
 		return
-	}
-	var obj *obj_data = nil
-	var obj2 *obj_data = nil
-	_ = obj2
-	var next_obj *obj_data = nil
-	var shot int = FALSE
-	for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; obj != nil; obj = next_obj {
-		next_obj = obj.Next_content
-		if shot == FALSE {
-			if int(obj.Type_flag) == ITEM_VEHICLE && obj != vehicle {
-				if libc.StrCaseCmp(&arg1[0], obj.Name) == 0 {
-					obj2 = obj
-					shot = TRUE
-				}
-			}
-		}
 	}
 }

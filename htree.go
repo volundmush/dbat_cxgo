@@ -122,13 +122,13 @@ func real_room_old(vnum room_vnum) room_rnum {
 	top = top_of_world
 	for {
 		mid = (bot + top) / 2
-		if ((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(mid)))).Number == vnum {
+		if world[mid].Number == vnum {
 			return mid
 		}
 		if bot >= top {
 			return -1
 		}
-		if ((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(mid)))).Number > vnum {
+		if world[mid].Number > vnum {
 			top = mid - 1
 		} else {
 			bot = mid + 1

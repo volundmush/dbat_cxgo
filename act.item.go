@@ -25,15 +25,7 @@ func do_refuel(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("@wYou need to be in the cockpit to place a new fuel canister into the ship.\r\n"))
 		return
 	}
-	var rep *obj_data = nil
-	var next_obj *obj_data = nil
-	var fuel *obj_data = nil
-	for rep = ch.Carrying; rep != nil; rep = next_obj {
-		next_obj = rep.Next_content
-		if GET_OBJ_VNUM(rep) == 17290 {
-			fuel = rep
-		}
-	}
+	var fuel *obj_data = find_obj_in_list_vnum(ch.Carrying, 17290)
 	if fuel == nil {
 		send_to_char(ch, libc.CString("You do not have any fuel canisters on you.\r\n"))
 		return
@@ -286,45 +278,12 @@ func do_garden(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	if arg[0] != 0 {
 		if libc.StrCaseCmp(&arg[0], libc.CString("collect")) == 0 {
-			var (
-				obj2   *obj_data
-				shovel *obj_data = nil
-			)
-			_ = shovel
-			var next_obj *obj_data
-			var found int = FALSE
-			for obj2 = ch.Carrying; obj2 != nil; obj2 = next_obj {
-				next_obj = obj2.Next_content
-				if GET_OBJ_VNUM(obj2) == 254 && !OBJ_FLAGGED(obj2, ITEM_BROKEN) && !OBJ_FLAGGED(obj2, ITEM_FORGED) {
-					found = TRUE
-					shovel = obj2
-				}
-			}
-			if found == FALSE {
+			var shovel *obj_data = find_obj_in_list_vnum_good(ch.Carrying, 254)
+			if shovel == nil {
 				send_to_char(ch, libc.CString("You need a shovel in order to collect soil.\r\n"))
 				return
 			}
-			if (func() int {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-				}
-				return SECT_INSIDE
-			}()) != SECT_FOREST && (func() int {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-				}
-				return SECT_INSIDE
-			}()) != SECT_FIELD && (func() int {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-				}
-				return SECT_INSIDE
-			}()) != SECT_MOUNTAIN && (func() int {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-				}
-				return SECT_INSIDE
-			}()) != SECT_HILLS {
+			if SECT(ch.In_room) != SECT_FOREST && SECT(ch.In_room) != SECT_FIELD && SECT(ch.In_room) != SECT_MOUNTAIN && SECT(ch.In_room) != SECT_HILLS {
 				send_to_char(ch, libc.CString("You can not collect soil from this area.\r\n"))
 				return
 			}
@@ -375,7 +334,7 @@ func do_garden(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 	} else {
 		if (func() *obj_data {
-			obj = get_obj_in_list_vis(ch, &arg[0], nil, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents)
+			obj = get_obj_in_list_vis(ch, &arg[0], nil, world[ch.In_room].Contents)
 			return obj
 		}()) == nil {
 			send_to_char(ch, libc.CString("That plant doesn't seem to be here.\r\n"))
@@ -393,20 +352,8 @@ func do_garden(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	} else {
 		if libc.StrCaseCmp(&arg2[0], libc.CString("water")) == 0 {
-			var (
-				obj2     *obj_data
-				water    *obj_data = nil
-				next_obj *obj_data
-				found    int = FALSE
-			)
-			for obj2 = ch.Carrying; obj2 != nil; obj2 = next_obj {
-				next_obj = obj2.Next_content
-				if GET_OBJ_VNUM(obj2) == 251 && !OBJ_FLAGGED(obj2, ITEM_FORGED) {
-					found = TRUE
-					water = obj2
-				}
-			}
-			if found == FALSE {
+			var water *obj_data = find_obj_in_list_vnum_good(ch.Carrying, 251)
+			if water == nil {
 				send_to_char(ch, libc.CString("You do not have any grow water!\r\n"))
 				return
 			} else if (obj.Value[VAL_WATERLEVEL]) >= 500 {
@@ -443,20 +390,8 @@ func do_garden(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return
 			}
 		} else if libc.StrCaseCmp(&arg2[0], libc.CString("harvest")) == 0 {
-			var (
-				obj2     *obj_data
-				clippers *obj_data = nil
-				next_obj *obj_data
-				found    int = FALSE
-			)
-			for obj2 = ch.Carrying; obj2 != nil; obj2 = next_obj {
-				next_obj = obj2.Next_content
-				if GET_OBJ_VNUM(obj2) == 253 && !OBJ_FLAGGED(obj2, ITEM_BROKEN) && !OBJ_FLAGGED(obj2, ITEM_FORGED) {
-					found = TRUE
-					clippers = obj2
-				}
-			}
-			if found == FALSE {
+			var clippers *obj_data = find_obj_in_list_vnum_good(ch.Carrying, 253)
+			if clippers == nil {
 				send_to_char(ch, libc.CString("You do not have any working gardening clippers!\r\n"))
 				return
 			} else if can_harvest(obj) == FALSE {
@@ -491,21 +426,8 @@ func do_garden(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return
 			}
 		} else if libc.StrCaseCmp(&arg2[0], libc.CString("dig")) == 0 {
-			var (
-				obj2   *obj_data
-				shovel *obj_data = nil
-			)
-			_ = shovel
-			var next_obj *obj_data
-			var found int = FALSE
-			for obj2 = ch.Carrying; obj2 != nil; obj2 = next_obj {
-				next_obj = obj2.Next_content
-				if GET_OBJ_VNUM(obj2) == 254 && !OBJ_FLAGGED(obj2, ITEM_BROKEN) && !OBJ_FLAGGED(obj2, ITEM_FORGED) {
-					found = TRUE
-					shovel = obj2
-				}
-			}
-			if found == FALSE {
+			var shovel *obj_data = find_obj_in_list_vnum_good(ch.Carrying, 254)
+			if shovel == nil {
 				send_to_char(ch, libc.CString("You do not have any working gardening shovels!\r\n"))
 				return
 			} else {
@@ -520,34 +442,13 @@ func do_garden(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return
 			}
 		} else if libc.StrCaseCmp(&arg2[0], libc.CString("plant")) == 0 {
-			var (
-				obj2   *obj_data
-				shovel *obj_data
-			)
-			_ = shovel
-			var next_obj *obj_data
-			var found int = FALSE
-			for obj2 = ch.Carrying; obj2 != nil; obj2 = next_obj {
-				next_obj = obj2.Next_content
-				if GET_OBJ_VNUM(obj2) == 254 && !OBJ_FLAGGED(obj2, ITEM_BROKEN) && !OBJ_FLAGGED(obj2, ITEM_FORGED) {
-					found = TRUE
-					shovel = obj2
-				}
-			}
-			if found == FALSE {
+			var shovel *obj_data = find_obj_in_list_vnum_good(ch.Carrying, 254)
+			if shovel == nil {
 				send_to_char(ch, libc.CString("You do not have any working gardening shovels!\r\n"))
 				return
 			}
-			found = FALSE
-			var soil *obj_data = nil
-			for obj2 = ch.Carrying; obj2 != nil; obj2 = next_obj {
-				next_obj = obj2.Next_content
-				if GET_OBJ_VNUM(obj2) == math.MaxUint8 && !OBJ_FLAGGED(obj2, ITEM_FORGED) {
-					found = TRUE
-					soil = obj2
-				}
-			}
-			if found == FALSE {
+			var soil *obj_data = find_obj_in_list_vnum_good(ch.Carrying, math.MaxUint8)
+			if soil == nil {
 				send_to_char(ch, libc.CString("You don't have any real soil.\r\n"))
 			} else if check_saveroom_count(ch, nil) > 7 && ROOM_FLAGGED(ch.In_room, ROOM_GARDEN1) {
 				send_to_char(ch, libc.CString("This room already has all its planters full. Try digging up some plants.\r\n"))
@@ -655,7 +556,7 @@ func do_pack(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if (func() *obj_data {
-		obj = get_obj_in_list_vis(ch, &arg[0], nil, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents)
+		obj = get_obj_in_list_vis(ch, &arg[0], nil, world[ch.In_room].Contents)
 		return obj
 	}()) == nil {
 		send_to_char(ch, libc.CString("That house item doesn't seem to be around.\r\n"))
@@ -702,8 +603,8 @@ func do_pack(ch *char_data, argument *byte, cmd int, subcmd int) {
 					}
 					money = 65000
 					for count < 4 {
-						for (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(room_vnum(rnum)))))).Contents != nil {
-							extract_obj((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(room_vnum(rnum)))))).Contents)
+						for world[real_room(room_vnum(rnum))].Contents != nil {
+							extract_obj(world[real_room(room_vnum(rnum))].Contents)
 						}
 						count++
 						rnum++
@@ -712,8 +613,8 @@ func do_pack(ch *char_data, argument *byte, cmd int, subcmd int) {
 					rnum = rnum - 1
 					money = 150000
 					for count < 4 {
-						for (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(room_vnum(rnum)))))).Contents != nil {
-							extract_obj((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(room_vnum(rnum)))))).Contents)
+						for world[real_room(room_vnum(rnum))].Contents != nil {
+							extract_obj(world[real_room(room_vnum(rnum))].Contents)
 						}
 						count++
 						rnum++
@@ -722,8 +623,8 @@ func do_pack(ch *char_data, argument *byte, cmd int, subcmd int) {
 					rnum = rnum - 1
 					money = 1000000
 					for count < 4 {
-						for (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(room_vnum(rnum)))))).Contents != nil {
-							extract_obj((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(room_vnum(rnum)))))).Contents)
+						for world[real_room(room_vnum(rnum))].Contents != nil {
+							extract_obj(world[real_room(room_vnum(rnum))].Contents)
 						}
 						count++
 						rnum++
@@ -731,8 +632,8 @@ func do_pack(ch *char_data, argument *byte, cmd int, subcmd int) {
 				}
 				var obj2 *obj_data = nil
 				var next_obj *obj_data
-				for obj2 = ch.Carrying; obj2 != nil; obj2 = next_obj {
-					next_obj = obj2.Next_content
+				_ = next_obj
+				for obj2 = ch.Carrying; obj2 != nil; obj2 = obj2.Next_content {
 					if GET_OBJ_VNUM(obj) == 0x4972 {
 						if GET_OBJ_VNUM(obj2) == 18800 {
 							extract_obj(obj2)
@@ -788,7 +689,7 @@ func check_saveroom_count(ch *char_data, cont *obj_data) int {
 	} else if !ROOM_FLAGGED(ch.In_room, ROOM_HOUSE) {
 		return 0
 	}
-	for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; obj != nil; obj = next_obj {
+	for obj = world[ch.In_room].Contents; obj != nil; obj = next_obj {
 		next_obj = obj.Next_content
 		count++
 		if !OBJ_FLAGGED(obj, ITEM_CARDCASE) {
@@ -851,27 +752,7 @@ func do_deploy(ch *char_data, argument *byte, cmd int, subcmd int) {
 	} else if furniture == TRUE && (ROOM_FLAGGED(ch.In_room, ROOM_GARDEN1) || ROOM_FLAGGED(ch.In_room, ROOM_GARDEN2)) {
 		send_to_char(ch, libc.CString("You can't deploy house furniture capsules here.\r\n"))
 		return
-	} else if furniture == FALSE && ((func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) == SECT_INSIDE || (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) == SECT_WATER_NOSWIM || (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) == SECT_WATER_SWIM || (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) == SECT_SPACE) {
+	} else if furniture == FALSE && (SECT(ch.In_room) == SECT_INSIDE || SECT(ch.In_room) == SECT_WATER_NOSWIM || SECT(ch.In_room) == SECT_WATER_SWIM || SECT(ch.In_room) == SECT_SPACE) {
 		send_to_char(ch, libc.CString("You can not deploy that in this kind of area. Try an area more suitable for a house.\r\n"))
 		return
 	}
@@ -896,12 +777,7 @@ func do_deploy(ch *char_data, argument *byte, cmd int, subcmd int) {
 			extract_obj(obj)
 			return
 		} else {
-			send_to_imm(libc.CString("ERROR: Furniture failed to deploy at %d."), func() room_vnum {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-				}
-				return -1
-			}())
+			send_to_imm(libc.CString("ERROR: Furniture failed to deploy at %d."), GET_ROOM_VNUM(ch.In_room))
 			return
 		}
 	}
@@ -909,6 +785,7 @@ func do_deploy(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var giveup int = FALSE
 	var cont int = FALSE
 	var found int = FALSE
+	_ = found
 	var type_ int = 0
 	if GET_OBJ_VNUM(obj) == 4 {
 		type_ = 0
@@ -921,13 +798,8 @@ func do_deploy(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	var final int = rnum + 99
 	for giveup == FALSE && cont == FALSE {
-		for obj3 = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(room_vnum(rnum)))))).Contents; obj3 != nil; obj3 = next_obj {
-			next_obj = obj3.Next_content
-			if GET_OBJ_VNUM(obj3) == 0x4971 {
-				found = TRUE
-			}
-		}
-		if found == TRUE && rnum < final {
+		obj3 = find_obj_in_list_vnum(world[real_room(room_vnum(rnum))].Contents, 0x4971)
+		if obj3 != nil && rnum < final {
 			if type_ == 0 {
 				rnum += 4
 			} else {
@@ -941,19 +813,10 @@ func do_deploy(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 	}
 	if cont == TRUE {
-		var hnum int = int(func() room_vnum {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-			}
-			return -1
-		}())
+		var hnum int = int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room)))
 		_ = hnum
 		var door *obj_data = read_object(0x4971, VIRTUAL)
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			door.Value[6] = int((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number)
-		} else {
-			door.Value[6] = -1
-		}
+		door.Value[6] = int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room)))
 		if rnum != 18800 {
 			door.Value[0] = rnum + 1
 		} else {
@@ -994,12 +857,12 @@ func do_twohand(ch *char_data, argument *byte, cmd int, subcmd int) {
 	} else if PLR_FLAGGED(ch, PLR_THANDW) {
 		send_to_char(ch, libc.CString("You stop wielding your weapon with both hands.\r\n"))
 		act(libc.CString("$n stops wielding $s weapon with both hands."), TRUE, ch, nil, nil, TO_ROOM)
-		ch.Act[int(PLR_THANDW/32)] &= bitvector_t(int32(^(1 << (int(PLR_THANDW % 32)))))
+		REMOVE_BIT_AR(ch.Act[:], PLR_THANDW)
 		return
 	} else {
 		send_to_char(ch, libc.CString("You grab your weapon with both hands.\r\n"))
 		act(libc.CString("$n starts wielding $s weapon with both hands."), TRUE, ch, nil, nil, TO_ROOM)
-		ch.Act[int(PLR_THANDW/32)] |= bitvector_t(int32(1 << (int(PLR_THANDW % 32))))
+		SET_BIT_AR(ch.Act[:], PLR_THANDW)
 		return
 	}
 }
@@ -1157,7 +1020,7 @@ func dball_load() {
 				found6 = TRUE
 			} else if GET_OBJ_VNUM(k) == 26 {
 				found7 = TRUE
-			} else if k.In_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k.In_room)))).Geffect == 6 && !OBJ_FLAGGED(k, ITEM_UNBREAKABLE) {
+			} else if k.In_room != room_rnum(-1) && world[k.In_room].Geffect == 6 && !OBJ_FLAGGED(k, ITEM_UNBREAKABLE) {
 				send_to_room(k.In_room, libc.CString("@R%s@r melts in the lava!@n\r\n"), k.Short_description)
 				extract_obj(k)
 			} else {
@@ -1652,7 +1515,7 @@ func do_bid(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Syntax: bid [ list | # ] (amt)\r\nOr...\r\nSyntax: bid appraise (list number)\r\n"))
 		return
 	}
-	for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(auct_room)))).Contents; obj != nil; obj = next_obj {
+	for obj = world[auct_room].Contents; obj != nil; obj = next_obj {
 		next_obj = obj.Next_content
 		if obj != nil {
 			list++
@@ -1663,7 +1526,7 @@ func do_bid(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if libc.StrCaseCmp(&arg[0], libc.CString("list")) == 0 {
 		send_to_char(ch, libc.CString("@Y                                   Auction@n\r\n"))
 		send_to_char(ch, libc.CString("@c------------------------------------------------------------------------------@n\r\n"))
-		for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(auct_room)))).Contents; obj != nil; obj = next_obj {
+		for obj = world[auct_room].Contents; obj != nil; obj = next_obj {
 			next_obj = obj.Next_content
 			if obj != nil {
 				if int(obj.Aucter) <= 0 {
@@ -1726,7 +1589,7 @@ func do_bid(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("That item number doesn't exist.\r\n"))
 			return
 		}
-		for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(auct_room)))).Contents; obj != nil; obj = next_obj {
+		for obj = world[auct_room].Contents; obj != nil; obj = next_obj {
 			next_obj = obj.Next_content
 			if obj != nil {
 				if int(obj.Aucter) <= 0 {
@@ -1841,7 +1704,7 @@ func do_bid(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("That item number is not found.\r\n"))
 			return
 		}
-		for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(auct_room)))).Contents; obj != nil; obj = next_obj {
+		for obj = world[auct_room].Contents; obj != nil; obj = next_obj {
 			next_obj = obj.Next_content
 			if obj != nil {
 				if int(obj.Aucter) <= 0 {
@@ -1979,6 +1842,9 @@ func auc_send_to_all(messg *byte, buyer bool) {
 		}
 	}
 }
+func lambda_toolsearch(obj *obj_data) bool {
+	return GET_OBJ_VNUM(obj) == 386 && (obj.Value[VAL_ALL_HEALTH]) > 0
+}
 func do_assemble(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var (
 		lVnum   int       = int(-1)
@@ -1987,28 +1853,17 @@ func do_assemble(ch *char_data, argument *byte, cmd int, subcmd int) {
 		roll    int = 0
 	)
 	skip_spaces(&argument)
-	var tools *obj_data = nil
-	var tool *obj_data = nil
-	var next_obj *obj_data
-	for tools = ch.Carrying; tools != nil; tools = next_obj {
-		next_obj = tools.Next_content
-		if GET_OBJ_VNUM(tools) == 386 && (tools.Value[VAL_ALL_HEALTH]) > 0 {
-			tool = tools
-			act(libc.CString("@WYou open up your toolkit and take out the necessary tools.@n"), TRUE, ch, nil, nil, TO_CHAR)
-			act(libc.CString("@C$n@W opens up $s toolkit and takes out the necessary tools.@n"), TRUE, ch, nil, nil, TO_ROOM)
-		}
-	}
 	if *argument == '\x00' {
-		send_to_char(ch, libc.CString("What would you like to %s?\r\n"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command)
+		send_to_char(ch, libc.CString("What would you like to %s?\r\n"), complete_cmd_info[cmd].Command)
 		return
 	} else if (func() int {
 		lVnum = assemblyFindAssembly(argument)
 		return lVnum
 	}()) < 0 {
-		send_to_char(ch, libc.CString("You can't %s %s %s.\r\n"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, AN(argument), argument)
+		send_to_char(ch, libc.CString("You can't %s %s %s.\r\n"), complete_cmd_info[cmd].Command, AN(argument), argument)
 		return
 	} else if assemblyGetType(lVnum) != subcmd {
-		send_to_char(ch, libc.CString("You can't %s %s %s.\r\n"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, AN(argument), argument)
+		send_to_char(ch, libc.CString("You can't %s %s %s.\r\n"), complete_cmd_info[cmd].Command, AN(argument), argument)
 		return
 	} else if !assemblyCheckComponents(lVnum, ch, FALSE) {
 		send_to_char(ch, libc.CString("You haven't got all the things you need.\r\n"))
@@ -2026,28 +1881,23 @@ func do_assemble(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 	}
-	if tool == nil {
+	var tool *obj_data = find_obj_in_list_lambda(ch.Carrying, lambda_toolsearch)
+	if tool != nil {
+		act(libc.CString("@WYou open up your toolkit and take out the necessary tools.@n"), TRUE, ch, nil, nil, TO_CHAR)
+		act(libc.CString("@C$n@W opens up $s toolkit and takes out the necessary tools.@n"), TRUE, ch, nil, nil, TO_ROOM)
+	} else {
 		send_to_char(ch, libc.CString("You wish you had tools, but make the best out of what you do have anyway...\r\n"))
 		roll = 20
 	}
+	var survival int = GET_SKILL(ch, SKILL_SURVIVAL)
 	if libc.StrCaseCmp(argument, libc.CString("campfire")) != 0 {
-		if ROOM_FLAGGED(ch.In_room, ROOM_SPACE) || (func() int {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_WATER_NOSWIM || ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Geffect < 0 || (func() int {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_UNDERWATER) {
+		if ROOM_FLAGGED(ch.In_room, ROOM_SPACE) || SECT(ch.In_room) == SECT_WATER_NOSWIM || SUNKEN(ch.In_room) {
 			send_to_char(ch, libc.CString("This area will not allow a fire to burn properly.\r\n"))
 			return
 		}
-		if GET_SKILL(ch, SKILL_SURVIVAL) >= 90 {
+		if survival >= 90 {
 			roll += axion_dice(0)
-		} else if GET_SKILL(ch, SKILL_SURVIVAL) < 90 {
+		} else if survival < 90 {
 			roll += axion_dice(0)
 		}
 		improve_skill(ch, SKILL_BUILD, 1)
@@ -2056,33 +1906,33 @@ func do_assemble(ch *char_data, argument *byte, cmd int, subcmd int) {
 				pObject = read_object(obj_vnum(lVnum), VIRTUAL)
 				return pObject
 			}()) == nil {
-				send_to_char(ch, libc.CString("You can't %s %s %s.\r\n"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, AN(argument), argument)
+				send_to_char(ch, libc.CString("You can't %s %s %s.\r\n"), complete_cmd_info[cmd].Command, AN(argument), argument)
 				return
 			}
 			extract_obj(pObject)
-			send_to_char(ch, libc.CString("You start to %s %s %s, but mess up royally!\r\n"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, AN(argument), argument)
+			send_to_char(ch, libc.CString("You start to %s %s %s, but mess up royally!\r\n"), complete_cmd_info[cmd].Command, AN(argument), argument)
 			if assemblyCheckComponents(lVnum, ch, TRUE) {
 				roll = 9001
 			}
 			return
 		}
 	} else {
-		if GET_SKILL(ch, SKILL_SURVIVAL) >= 90 {
+		if survival >= 90 {
 			roll += axion_dice(0)
-		} else if GET_SKILL(ch, SKILL_SURVIVAL) < 90 {
+		} else if survival < 90 {
 			roll += axion_dice(-10)
 		}
 		improve_skill(ch, SKILL_BUILD, 1)
-		if GET_SKILL(ch, SKILL_SURVIVAL) <= roll {
+		if survival <= roll {
 			if (func() *obj_data {
 				pObject = read_object(obj_vnum(lVnum), VIRTUAL)
 				return pObject
 			}()) == nil {
-				send_to_char(ch, libc.CString("You can't %s %s %s.\r\n"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, AN(argument), argument)
+				send_to_char(ch, libc.CString("You can't %s %s %s.\r\n"), complete_cmd_info[cmd].Command, AN(argument), argument)
 				return
 			}
 			extract_obj(pObject)
-			send_to_char(ch, libc.CString("You start to %s %s %s, but mess up royally!\r\n"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, AN(argument), argument)
+			send_to_char(ch, libc.CString("You start to %s %s %s, but mess up royally!\r\n"), complete_cmd_info[cmd].Command, AN(argument), argument)
 			if tool != nil && rand_number(1, 3) == 3 && (tool.Value[VAL_ALL_HEALTH]) > 0 {
 				tool.Value[VAL_ALL_HEALTH] -= rand_number(1, 5)
 				act(libc.CString("@RYour toolset is looking a bit more worn.@n"), TRUE, ch, nil, nil, TO_CHAR)
@@ -2101,11 +1951,11 @@ func do_assemble(ch *char_data, argument *byte, cmd int, subcmd int) {
 			pObject = read_object(obj_vnum(lVnum), VIRTUAL)
 			return pObject
 		}()) == nil {
-			send_to_char(ch, libc.CString("You can't %s %s %s.\r\n"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, AN(argument), argument)
+			send_to_char(ch, libc.CString("You can't %s %s %s.\r\n"), complete_cmd_info[cmd].Command, AN(argument), argument)
 			return
 		}
 		extract_obj(pObject)
-		send_to_char(ch, libc.CString("You start to %s %s %s, but forget a couple of steps. You take it apart and give up.\r\n"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, AN(argument), argument)
+		send_to_char(ch, libc.CString("You start to %s %s %s, but forget a couple of steps. You take it apart and give up.\r\n"), complete_cmd_info[cmd].Command, AN(argument), argument)
 		WAIT_STATE(ch, (int(1000000/OPT_USEC))*6)
 		return
 	} else if rand_number(1, 100) >= 92 {
@@ -2113,11 +1963,11 @@ func do_assemble(ch *char_data, argument *byte, cmd int, subcmd int) {
 			pObject = read_object(obj_vnum(lVnum), VIRTUAL)
 			return pObject
 		}()) == nil {
-			send_to_char(ch, libc.CString("You can't %s %s %s.\r\n"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, AN(argument), argument)
+			send_to_char(ch, libc.CString("You can't %s %s %s.\r\n"), complete_cmd_info[cmd].Command, AN(argument), argument)
 			return
 		}
 		extract_obj(pObject)
-		send_to_char(ch, libc.CString("You start to %s %s %s, but put it together wrong and have to stop. You take it apart and give up.\r\n"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, AN(argument), argument)
+		send_to_char(ch, libc.CString("You start to %s %s %s, but put it together wrong and have to stop. You take it apart and give up.\r\n"), complete_cmd_info[cmd].Command, AN(argument), argument)
 		WAIT_STATE(ch, (int(1000000/OPT_USEC))*4)
 		return
 	}
@@ -2125,7 +1975,7 @@ func do_assemble(ch *char_data, argument *byte, cmd int, subcmd int) {
 		pObject = read_object(obj_vnum(lVnum), VIRTUAL)
 		return pObject
 	}()) == nil {
-		send_to_char(ch, libc.CString("You can't %s %s %s.\r\n"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, AN(argument), argument)
+		send_to_char(ch, libc.CString("You can't %s %s %s.\r\n"), complete_cmd_info[cmd].Command, AN(argument), argument)
 		return
 	}
 	add_unique_id(pObject)
@@ -2168,9 +2018,9 @@ func do_assemble(ch *char_data, argument *byte, cmd int, subcmd int) {
 		obj_to_room(pObject, ch.In_room)
 		pObject.Timer = int(float64(GET_SKILL(ch, SKILL_SURVIVAL)) * 0.12)
 	}
-	stdio.Sprintf(&buf[0], "You %s $p.", (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command)
+	stdio.Sprintf(&buf[0], "You %s $p.", complete_cmd_info[cmd].Command)
 	act(&buf[0], FALSE, ch, pObject, nil, TO_CHAR)
-	stdio.Sprintf(&buf[0], "$n %ss $p.", (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command)
+	stdio.Sprintf(&buf[0], "$n %ss $p.", complete_cmd_info[cmd].Command)
 	act(&buf[0], FALSE, ch, pObject, nil, TO_ROOM)
 	if assemblyCheckComponents(lVnum, ch, TRUE) {
 		roll = 9001
@@ -2216,11 +2066,11 @@ func perform_put(ch *char_data, obj *obj_data, cont *obj_data) {
 		var (
 			obj2     *obj_data = nil
 			next_obj *obj_data = nil
-			count    int       = 0
-			minus    int       = 0
 		)
-		for obj2 = cont.Contains; obj2 != nil; obj2 = next_obj {
-			next_obj = obj2.Next_content
+		_ = next_obj
+		var count int = 0
+		var minus int = 0
+		for obj2 = cont.Contains; obj2 != nil; obj2 = obj2.Next_content {
 			minus += int(obj2.Weight)
 			count++
 		}
@@ -2261,7 +2111,7 @@ func perform_put(ch *char_data, obj *obj_data, cont *obj_data) {
 			act(libc.CString("$n puts an @DA@wd@cv@Ce@Wnt @DD@wu@ce@Cl @mC@Ma@Wr@wd@n in $P."), TRUE, ch, obj, unsafe.Pointer(cont), TO_ROOM)
 		}
 		if OBJ_FLAGGED(obj, ITEM_NODROP) && !OBJ_FLAGGED(cont, ITEM_NODROP) {
-			cont.Extra_flags[int(ITEM_NODROP/32)] |= bitvector_t(int32(1 << (int(ITEM_NODROP % 32))))
+			SET_BIT_AR(cont.Extra_flags[:], ITEM_NODROP)
 			act(libc.CString("You get a strange feeling as you put $p in $P."), FALSE, ch, obj, unsafe.Pointer(cont), TO_CHAR)
 		} else {
 			act(libc.CString("You put $p in $P."), FALSE, ch, obj, unsafe.Pointer(cont), TO_CHAR)
@@ -2374,7 +2224,7 @@ func can_take_obj(ch *char_data, obj *obj_data) int {
 	} else if (gear_weight(ch) + int(obj.Weight)) > int(max_carry_weight(ch)) {
 		act(libc.CString("$p: you can't carry that much weight."), FALSE, ch, obj, nil, TO_CHAR)
 		return 0
-	} else if (obj.Weight+int64((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity))+int64(gear_weight(ch)) > max_carry_weight(ch) {
+	} else if (obj.Weight+int64(world[ch.In_room].Gravity))+int64(gear_weight(ch)) > max_carry_weight(ch) {
 		act(libc.CString("$p: you can't carry that much weight because of the gravity."), FALSE, ch, obj, nil, TO_CHAR)
 		return 0
 	}
@@ -2434,7 +2284,7 @@ func perform_get_from_container(ch *char_data, obj *obj_data, cont *obj_data, mo
 					if (ch.Bonuses[BONUS_FIREPRONE]) > 0 {
 						ch.Hit = 1
 					}
-					ch.Affected_by[int(AFF_BURNED/32)] |= 1 << (int(AFF_BURNED % 32))
+					SET_BIT_AR(ch.Affected_by[:], AFF_BURNED)
 					act(libc.CString("@RYou are burned by it!@n"), TRUE, ch, nil, nil, TO_CHAR)
 					act(libc.CString("@R$n@R is burned by it!@n"), TRUE, ch, nil, nil, TO_ROOM)
 				}
@@ -2524,7 +2374,7 @@ func perform_get_from_room(ch *char_data, obj *obj_data) int {
 				if (ch.Bonuses[BONUS_FIREPRONE]) > 0 {
 					ch.Hit = 1
 				}
-				ch.Affected_by[int(AFF_BURNED/32)] |= 1 << (int(AFF_BURNED % 32))
+				SET_BIT_AR(ch.Affected_by[:], AFF_BURNED)
 				act(libc.CString("@RYou are burned by it!@n"), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("@R$n@R is burned by it!@n"), TRUE, ch, nil, nil, TO_ROOM)
 			}
@@ -2553,19 +2403,19 @@ func get_from_room(ch *char_data, arg *byte, howmany int) {
 		found    int = 0
 		descword *byte
 	)
-	if find_exdesc(arg, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Ex_description) != nil {
+	if find_exdesc(arg, world[ch.In_room].Ex_description) != nil {
 		send_to_char(ch, libc.CString("You can't take %s %s.\r\n"), AN(arg), arg)
 		return
 	}
 	dotmode = find_all_dots(arg)
 	if dotmode == FIND_INDIV {
 		if (func() *byte {
-			descword = find_exdesc_keywords(arg, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Ex_description)
+			descword = find_exdesc_keywords(arg, world[ch.In_room].Ex_description)
 			return descword
 		}()) != nil {
 			send_to_char(ch, libc.CString("%s: you can't take that!\r\n"), fname(descword))
 		} else if (func() *obj_data {
-			obj = get_obj_in_list_vis(ch, arg, nil, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents)
+			obj = get_obj_in_list_vis(ch, arg, nil, world[ch.In_room].Contents)
 			return obj
 		}()) == nil {
 			send_to_char(ch, libc.CString("You don't see %s %s here.\r\n"), AN(arg), arg)
@@ -2587,7 +2437,7 @@ func get_from_room(ch *char_data, arg *byte, howmany int) {
 			send_to_char(ch, libc.CString("Get all of what?\r\n"))
 			return
 		}
-		for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; obj != nil; obj = next_obj {
+		for obj = world[ch.In_room].Contents; obj != nil; obj = next_obj {
 			next_obj = obj.Next_content
 			if CAN_SEE_OBJ(ch, obj) && (dotmode == FIND_ALL || isname(arg, obj.Name) != 0) {
 				found = 1
@@ -2660,7 +2510,7 @@ func do_get(ch *char_data, argument *byte, cmd int, subcmd int) {
 					}
 				}
 			}
-			for cont = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; cont != nil; cont = cont.Next_content {
+			for cont = world[ch.In_room].Contents; cont != nil; cont = cont.Next_content {
 				if CAN_SEE_OBJ(ch, cont) && (cont_dotmode == FIND_ALL || isname(&arg2[0], cont.Name) != 0) {
 					if int(cont.Type_flag) == ITEM_CONTAINER {
 						get_from_container(ch, cont, &arg1[0], 1<<3, amount)
@@ -2711,18 +2561,8 @@ func perform_drop_gold(ch *char_data, amount int, mode int8, RDR room_rnum) {
 				send_to_char(ch, libc.CString("You drop some zenni.\r\n"))
 				obj_to_room(obj, ch.In_room)
 				if ch.Admlevel > 0 {
-					send_to_imm(libc.CString("IMM DROP: %s dropped %s in room [%d]"), GET_NAME(ch), obj.Short_description, func() room_vnum {
-						if obj.In_room != room_rnum(-1) && obj.In_room <= top_of_world {
-							return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj.In_room)))).Number
-						}
-						return -1
-					}())
-					log_imm_action(libc.CString("IMM DROP: %s dropped %s in room [%d]"), GET_NAME(ch), obj.Short_description, func() room_vnum {
-						if obj.In_room != room_rnum(-1) && obj.In_room <= top_of_world {
-							return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj.In_room)))).Number
-						}
-						return -1
-					}())
+					send_to_imm(libc.CString("IMM DROP: %s dropped %s in room [%d]"), GET_NAME(ch), obj.Short_description, GET_ROOM_VNUM(obj.In_room))
+					log_imm_action(libc.CString("IMM DROP: %s dropped %s in room [%d]"), GET_NAME(ch), obj.Short_description, GET_ROOM_VNUM(obj.In_room))
 					if check_insidebag(obj, 0.0) > 1 {
 						send_to_imm(libc.CString("IMM DROP: Object contains %d other items."), check_insidebag(obj, 0.0))
 						log_imm_action(libc.CString("IMM DROP: Object contains %d other items."), check_insidebag(obj, 0.0))
@@ -2805,43 +2645,23 @@ func perform_drop(ch *char_data, obj *obj_data, mode int8, sname *byte, RDR room
 	obj_from_char(obj)
 	switch mode {
 	case SCMD_DROP:
-		if !OBJ_FLAGGED(obj, ITEM_UNBREAKABLE) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Geffect == 6 {
+		if !OBJ_FLAGGED(obj, ITEM_UNBREAKABLE) && world[ch.In_room].Geffect == 6 {
 			act(libc.CString("$p melts in the lava!"), FALSE, ch, obj, nil, TO_CHAR)
 			act(libc.CString("$p melts in the lava!"), FALSE, ch, obj, nil, TO_ROOM)
 			extract_obj(obj)
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Geffect == 6 {
+		} else if world[ch.In_room].Geffect == 6 {
 			act(libc.CString("$p plops down on some cooled lava!"), FALSE, ch, obj, nil, TO_CHAR)
 			act(libc.CString("$p plops down on some cooled lava!"), FALSE, ch, obj, nil, TO_ROOM)
 			obj_to_room(obj, ch.In_room)
 			if ch.Admlevel > 0 {
-				send_to_imm(libc.CString("IMM DROP: %s dropped %s in room [%d]"), GET_NAME(ch), obj.Short_description, func() room_vnum {
-					if obj.In_room != room_rnum(-1) && obj.In_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj.In_room)))).Number
-					}
-					return -1
-				}())
-				log_imm_action(libc.CString("IMM DROP: %s dropped %s in room [%d]"), GET_NAME(ch), obj.Short_description, func() room_vnum {
-					if obj.In_room != room_rnum(-1) && obj.In_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj.In_room)))).Number
-					}
-					return -1
-				}())
+				send_to_imm(libc.CString("IMM DROP: %s dropped %s in room [%d]"), GET_NAME(ch), obj.Short_description, GET_ROOM_VNUM(obj.In_room))
+				log_imm_action(libc.CString("IMM DROP: %s dropped %s in room [%d]"), GET_NAME(ch), obj.Short_description, GET_ROOM_VNUM(obj.In_room))
 			}
 		} else {
 			obj_to_room(obj, ch.In_room)
 			if ch.Admlevel > 0 {
-				send_to_imm(libc.CString("IMM DROP: %s dropped %s in room [%d]"), GET_NAME(ch), obj.Short_description, func() room_vnum {
-					if obj.In_room != room_rnum(-1) && obj.In_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj.In_room)))).Number
-					}
-					return -1
-				}())
-				log_imm_action(libc.CString("IMM DROP: %s dropped %s in room [%d]"), GET_NAME(ch), obj.Short_description, func() room_vnum {
-					if obj.In_room != room_rnum(-1) && obj.In_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj.In_room)))).Number
-					}
-					return -1
-				}())
+				send_to_imm(libc.CString("IMM DROP: %s dropped %s in room [%d]"), GET_NAME(ch), obj.Short_description, GET_ROOM_VNUM(obj.In_room))
+				log_imm_action(libc.CString("IMM DROP: %s dropped %s in room [%d]"), GET_NAME(ch), obj.Short_description, GET_ROOM_VNUM(obj.In_room))
 			}
 		}
 		return 0
@@ -2850,7 +2670,7 @@ func perform_drop(ch *char_data, obj *obj_data, mode int8, sname *byte, RDR room
 		act(libc.CString("$p suddenly appears in a puff a smoke!"), FALSE, nil, obj, nil, TO_ROOM)
 		return 0
 	case SCMD_JUNK:
-		value = MAX(1, MIN(200, obj.Cost/16))
+		value = int(MAX(1, MIN(200, int64(obj.Cost/16))))
 		extract_obj(obj)
 		return value
 	default:
@@ -3042,7 +2862,7 @@ func perform_give(ch *char_data, vict *char_data, obj *obj_data) {
 		}
 		return
 	}
-	if (obj.Weight+int64((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Gravity))+int64(gear_weight(vict)) > max_carry_weight(vict) {
+	if (obj.Weight+int64(world[vict.In_room].Gravity))+int64(gear_weight(vict)) > max_carry_weight(vict) {
 		act(libc.CString("$E can't carry that much weight because of the gravity."), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 		if IS_NPC(ch) {
 			act(libc.CString("$n@n drops $p because you can't carry anymore."), TRUE, ch, obj, unsafe.Pointer(vict), TO_VICT)
@@ -3071,7 +2891,7 @@ func perform_give(ch *char_data, vict *char_data, obj *obj_data) {
 			if (vict.Bonuses[BONUS_FIREPRONE]) > 0 {
 				vict.Hit = 1
 			}
-			vict.Affected_by[int(AFF_BURNED/32)] |= 1 << (int(AFF_BURNED % 32))
+			SET_BIT_AR(vict.Affected_by[:], AFF_BURNED)
 			act(libc.CString("@RYou are burned by it!@n"), TRUE, vict, nil, nil, TO_CHAR)
 			act(libc.CString("@R$n@R is burned by it!@n"), TRUE, vict, nil, nil, TO_ROOM)
 		}
@@ -3291,7 +3111,7 @@ func name_from_drinkcon(obj *obj_data) {
 		}
 		libc.StrNCat(new_name, cur_name, cpylen)
 	}
-	if obj.Item_number == obj_vnum(-1) || obj.Name != (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(obj.Item_number)))).Name {
+	if obj.Item_number == obj_vnum(-1) || obj.Name != obj_proto[obj.Item_number].Name {
 		libc.Free(unsafe.Pointer(obj.Name))
 	}
 	obj.Name = new_name
@@ -3303,7 +3123,7 @@ func name_to_drinkcon(obj *obj_data, type_ int) {
 	}
 	new_name = (*byte)(unsafe.Pointer(&make([]int8, libc.StrLen(obj.Name)+libc.StrLen(drinknames[type_])+2)[0]))
 	stdio.Sprintf(new_name, "%s %s", obj.Name, drinknames[type_])
-	if obj.Item_number == obj_vnum(-1) || obj.Name != (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(obj.Item_number)))).Name {
+	if obj.Item_number == obj_vnum(-1) || obj.Name != obj_proto[obj.Item_number].Name {
 		libc.Free(unsafe.Pointer(obj.Name))
 	}
 	obj.Name = new_name
@@ -3337,12 +3157,7 @@ func do_drink(ch *char_data, argument *byte, cmd int, subcmd int) {
 	wasthirsty = int(ch.Player_specials.Conditions[THIRST])
 	if arg[0] == 0 && !IS_NPC(ch) {
 		var buf [64936]byte
-		switch func() int {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}() {
+		switch SECT(ch.In_room) {
 		case SECT_WATER_SWIM:
 			fallthrough
 		case SECT_WATER_NOSWIM:
@@ -3364,12 +3179,7 @@ func do_drink(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 			return
 		default:
-			if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Geffect >= 0 && (func() int {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-				}
-				return SECT_INSIDE
-			}()) != SECT_UNDERWATER {
+			if !SUNKEN(ch.In_room) {
 				send_to_char(ch, libc.CString("Drink from what?\r\n"))
 				return
 			} else {
@@ -3398,7 +3208,7 @@ func do_drink(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return temp
 	}()) == nil {
 		if (func() *obj_data {
-			temp = get_obj_in_list_vis(ch, &arg[0], nil, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents)
+			temp = get_obj_in_list_vis(ch, &arg[0], nil, world[ch.In_room].Contents)
 			return temp
 		}()) == nil {
 			send_to_char(ch, libc.CString("You can't find it!\r\n"))
@@ -3472,9 +3282,9 @@ func do_drink(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		amount = 1
 	}
-	amount = MIN(amount, temp.Value[VAL_DRINKCON_HOWFULL])
+	amount = int(MIN(int64(amount), int64(temp.Value[VAL_DRINKCON_HOWFULL])))
 	if (temp.Value[VAL_DRINKCON_CAPACITY]) > 0 {
-		weight = MIN(amount, int(temp.Weight))
+		weight = int(MIN(int64(amount), temp.Weight))
 		weight_change_object(temp, -weight)
 	}
 	gain_condition(ch, DRUNK, drink_aff[temp.Value[VAL_DRINKCON_LIQUID]][DRUNK]*amount)
@@ -4025,7 +3835,7 @@ func do_pour(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 		if (func() *obj_data {
-			from_obj = get_obj_in_list_vis(ch, &arg2[0], nil, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents)
+			from_obj = get_obj_in_list_vis(ch, &arg2[0], nil, world[ch.In_room].Contents)
 			return from_obj
 		}()) == nil {
 			send_to_char(ch, libc.CString("There doesn't seem to be %s %s here.\r\n"), AN(&arg2[0]), &arg2[0])
@@ -4458,7 +4268,7 @@ func perform_remove(ch *char_data, pos int) {
 			return
 		}
 		if pos == WEAR_WIELD1 && PLR_FLAGGED(ch, PLR_THANDW) {
-			ch.Act[int(PLR_THANDW/32)] &= bitvector_t(int32(^(1 << (int(PLR_THANDW % 32)))))
+			REMOVE_BIT_AR(ch.Act[:], PLR_THANDW)
 		}
 		obj_to_char(unequip_char(ch, pos), ch)
 		act(libc.CString("You stop using $p."), FALSE, ch, obj, nil, TO_CHAR)
@@ -4484,19 +4294,9 @@ func do_remove(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Remove what?\r\n"))
 		return
 	}
-	for obj = ch.Carrying; obj != nil; obj = obj.Next_content {
-		if int(obj.Type_flag) == ITEM_BOARD {
-			found = 1
-			break
-		}
-	}
+	obj = find_obj_in_list_type(ch.Carrying, ITEM_BOARD)
 	if obj == nil {
-		for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; obj != nil; obj = obj.Next_content {
-			if int(obj.Type_flag) == ITEM_BOARD {
-				found = 1
-				break
-			}
-		}
+		obj = find_obj_in_list_type(world[ch.In_room].Contents, ITEM_BOARD)
 	}
 	if found != 0 {
 		if !unicode.IsDigit(rune(arg[0])) || (func() int {
@@ -4559,7 +4359,7 @@ func do_sac(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if (func() *obj_data {
-		j = get_obj_in_list_vis(ch, &arg[0], nil, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents)
+		j = get_obj_in_list_vis(ch, &arg[0], nil, world[ch.In_room].Contents)
 		return j
 	}()) == nil && (func() *obj_data {
 		j = get_obj_in_list_vis(ch, &arg[0], nil, ch.Carrying)

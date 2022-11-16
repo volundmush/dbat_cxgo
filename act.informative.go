@@ -131,12 +131,7 @@ func see_plant(obj *obj_data, ch *char_data) {
 }
 func terrain_bonus(ch *char_data) float64 {
 	var bonus float64 = 0.0
-	switch func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}() {
+	switch SECT(ch.In_room) {
 	case SECT_FOREST:
 		bonus += 0.5
 	case SECT_SPACE:
@@ -173,7 +168,7 @@ func search_room(ch *char_data) {
 	reveal_hiding(ch, 0)
 	act(libc.CString("@y$n@Y begins searching the room carefully.@n"), TRUE, ch, nil, nil, TO_ROOM)
 	WAIT_STATE(ch, (int(1000000/OPT_USEC))*1)
-	for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; vict != nil; vict = next_v {
+	for vict = world[ch.In_room].People; vict != nil; vict = next_v {
 		next_v = vict.Next_in_room
 		if AFF_FLAGGED(vict, AFF_HIDE) && vict != ch {
 			if vict.Suppression >= 1 {
@@ -200,11 +195,11 @@ func search_room(ch *char_data) {
 		}
 	}
 	var obj *obj_data = nil
-	for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; obj != nil; obj = obj.Next_content {
+	for obj = world[ch.In_room].Contents; obj != nil; obj = obj.Next_content {
 		if OBJ_FLAGGED(obj, ITEM_BURIED) && float64(perc)*bonus > float64(rand_number(50, 200)) {
 			act(libc.CString("@YYou uncover @y$p@Y, which had been burried here.@n"), TRUE, ch, obj, nil, TO_CHAR)
 			act(libc.CString("@y$n@Y uncovers @y$p@Y, which had burried here.@n"), TRUE, ch, obj, nil, TO_ROOM)
-			obj.Extra_flags[int(ITEM_BURIED/32)] &= bitvector_t(int32(^(1 << (int(ITEM_BURIED % 32)))))
+			REMOVE_BIT_AR(obj.Extra_flags[:], ITEM_BURIED)
 			found++
 		}
 	}
@@ -362,7 +357,7 @@ func do_table(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if (func() *obj_data {
-		obj = get_obj_in_list_vis(ch, &arg[0], nil, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents)
+		obj = get_obj_in_list_vis(ch, &arg[0], nil, world[ch.In_room].Contents)
 		return obj
 	}()) == nil {
 		send_to_char(ch, libc.CString("You don't see that table here.\r\n"))
@@ -431,6 +426,7 @@ func do_shuffle(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var obj *obj_data = nil
 	var obj2 *obj_data = nil
 	var next_obj *obj_data = nil
+	_ = next_obj
 	var count int = 0
 	if (func() *obj_data {
 		obj = get_obj_in_list_vis(ch, libc.CString("case"), nil, ch.Carrying)
@@ -439,8 +435,7 @@ func do_shuffle(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You don't have a case.\r\n"))
 		return
 	}
-	for obj2 = obj.Contains; obj2 != nil; obj2 = next_obj {
-		next_obj = obj2.Next_content
+	for obj2 = obj.Contains; obj2 != nil; obj2 = obj2.Next_content {
 		if !OBJ_FLAGGED(obj2, ITEM_ANTI_HIEROPHANT) {
 			continue
 		}
@@ -451,14 +446,12 @@ func do_shuffle(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	var total int = count
-	for obj2 = obj.Contains; obj2 != nil; obj2 = next_obj {
-		next_obj = obj2.Next_content
+	for obj2 = obj.Contains; obj2 != nil; obj2 = obj2.Next_content {
 		obj_from_obj(obj2)
 		obj_to_room(obj2, real_room(48))
 	}
 	for count > 0 {
-		for obj2 = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(48))))).Contents; obj2 != nil; obj2 = next_obj {
-			next_obj = obj2.Next_content
+		for obj2 = world[real_room(48)].Contents; obj2 != nil; obj2 = obj2.Next_content {
 			if !OBJ_FLAGGED(obj2, ITEM_ANTI_HIEROPHANT) {
 				continue
 			}
@@ -481,9 +474,10 @@ func do_hand(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var (
 		obj      *obj_data
 		next_obj *obj_data
-		arg      [2048]byte
-		count    int = 0
 	)
+	_ = next_obj
+	var arg [2048]byte
+	var count int = 0
 	one_argument(argument, &arg[0])
 	if arg[0] == 0 {
 		send_to_char(ch, libc.CString("Syntax: hand (look | show)\r\n"))
@@ -491,8 +485,7 @@ func do_hand(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	if libc.StrCaseCmp(libc.CString("look"), &arg[0]) == 0 {
 		send_to_char(ch, libc.CString("@CYour hand contains:\r\n@D---------------------------@n\r\n"))
-		for obj = ch.Carrying; obj != nil; obj = next_obj {
-			next_obj = obj.Next_content
+		for obj = ch.Carrying; obj != nil; obj = obj.Next_content {
 			if obj != nil && !OBJ_FLAGGED(obj, ITEM_ANTI_HIEROPHANT) {
 				continue
 			}
@@ -516,8 +509,7 @@ func do_hand(ch *char_data, argument *byte, cmd int, subcmd int) {
 	} else if libc.StrCaseCmp(libc.CString("show"), &arg[0]) == 0 {
 		send_to_char(ch, libc.CString("You show off your hand to the room.\r\n"))
 		act(libc.CString("@C$n's hand contains:\r\n@D---------------------------@n"), TRUE, ch, nil, nil, TO_ROOM)
-		for obj = ch.Carrying; obj != nil; obj = next_obj {
-			next_obj = obj.Next_content
+		for obj = ch.Carrying; obj != nil; obj = obj.Next_content {
 			if obj != nil && !OBJ_FLAGGED(obj, ITEM_ANTI_HIEROPHANT) {
 				continue
 			}
@@ -566,17 +558,7 @@ func do_post(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if arg2[0] == 0 {
-		if (func() int {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) != SECT_INSIDE && (func() int {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) != SECT_CITY {
+		if SECT(ch.In_room) != SECT_INSIDE && SECT(ch.In_room) != SECT_CITY {
 			send_to_char(ch, libc.CString("You are not near any general structure you can post it on.\r\n"))
 			return
 		}
@@ -588,7 +570,7 @@ func do_post(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	} else {
 		if (func() *obj_data {
-			obj2 = get_obj_in_list_vis(ch, &arg2[0], nil, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents)
+			obj2 = get_obj_in_list_vis(ch, &arg2[0], nil, world[ch.In_room].Contents)
 			return obj2
 		}()) == nil {
 			send_to_char(ch, libc.CString("You can't seem to find the thing you want to post it on.\r\n"))
@@ -630,6 +612,7 @@ func do_play(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var obj2 *obj_data = nil
 	var obj3 *obj_data = nil
 	var next_obj *obj_data = nil
+	_ = next_obj
 	var arg [2048]byte
 	one_argument(argument, &arg[0])
 	if arg[0] == 0 {
@@ -643,10 +626,10 @@ func do_play(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You don't have that card to play.\r\n"))
 		return
 	}
-	for obj3 = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; obj3 != nil; obj3 = next_obj {
-		next_obj = obj3.Next_content
+	for obj3 = world[ch.In_room].Contents; obj3 != nil; obj3 = obj3.Next_content {
 		if GET_OBJ_VNUM(obj3) == GET_OBJ_VNUM(ch.Sits)-4 {
 			obj2 = obj3
+			break
 		}
 	}
 	if obj2 == nil {
@@ -657,6 +640,9 @@ func do_play(ch *char_data, argument *byte, cmd int, subcmd int) {
 	act(libc.CString("$n plays $p on $s table."), TRUE, ch, obj, nil, TO_ROOM)
 	obj_from_char(obj)
 	obj_to_obj(obj, obj2)
+}
+func obj_is_ship(obj *obj_data) bool {
+	return GET_OBJ_VNUM(obj) >= 45000 && GET_OBJ_VNUM(obj) <= 0xB3AF
 }
 func do_nickname(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var (
@@ -684,20 +670,8 @@ func do_nickname(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if libc.StrCaseCmp(&arg[0], libc.CString("ship")) == 0 {
-		var (
-			ship     *obj_data = nil
-			next_obj *obj_data = nil
-			ship2    *obj_data = nil
-			found    int       = FALSE
-		)
-		for ship = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; ship != nil; ship = next_obj {
-			next_obj = ship.Next_content
-			if GET_OBJ_VNUM(ship) >= 45000 && GET_OBJ_VNUM(ship) <= 0xB3AF && found == FALSE {
-				found = TRUE
-				ship2 = ship
-			}
-		}
-		if found == TRUE {
+		var ship2 *obj_data = find_obj_in_list_lambda(world[ch.In_room].Contents, obj_is_ship)
+		if ship2 != nil {
 			if libc.StrStr(&arg2[0], libc.CString("@")) != nil {
 				send_to_char(ch, libc.CString("You can't nickname a ship and use color codes. Sorry.\r\n"))
 				return
@@ -709,12 +683,7 @@ func do_nickname(ch *char_data, argument *byte, cmd int, subcmd int) {
 				for k = object_list; k != nil; k = k.Next {
 					if GET_OBJ_VNUM(k) == GET_OBJ_VNUM(ship2)+1000 {
 						extract_obj(k)
-						var was_in int = int(func() room_vnum {
-							if ship2.In_room != room_rnum(-1) && ship2.In_room <= top_of_world {
-								return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ship2.In_room)))).Number
-							}
-							return -1
-						}())
+						var was_in int = int(libc.BoolToInt(GET_ROOM_VNUM(ship2.In_room)))
 						obj_from_room(ship2)
 						obj_to_room(ship2, real_room(room_vnum(was_in)))
 					}
@@ -1247,7 +1216,7 @@ func bringdesc(ch *char_data, tch *char_data) {
 func map_draw_room(map_ [9][10]byte, x int, y int, rnum room_rnum, ch *char_data) {
 	var door int
 	for door = 0; door < NUM_OF_DIRS; door++ {
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door] != nil && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door], 1<<1) && !EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door], 1<<4)) {
+		if world[rnum].Dir_option[door] != nil && world[rnum].Dir_option[door].To_room != room_rnum(-1) && (EXIT_FLAGGED(world[rnum].Dir_option[door], 1<<1) && !EXIT_FLAGGED(world[rnum].Dir_option[door], 1<<4)) {
 			switch door {
 			case NORTH:
 				map_[y-1][x] = '8'
@@ -1266,988 +1235,468 @@ func map_draw_room(map_ [9][10]byte, x int, y int, rnum room_rnum, ch *char_data
 			case SOUTHWEST:
 				map_[y+1][x-1] = '8'
 			}
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door] != nil && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && !EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door], 1<<1) {
+		} else if world[rnum].Dir_option[door] != nil && world[rnum].Dir_option[door].To_room != room_rnum(-1) && !EXIT_FLAGGED(world[rnum].Dir_option[door], 1<<1) {
 			switch door {
 			case NORTH:
-				if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect < 0 || (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_UNDERWATER {
+				if SUNKEN(world[rnum].Dir_option[door].To_room) {
 					map_[y-1][x] = '='
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_INSIDE {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_INSIDE {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y-1][x] = '2'
 					} else {
 						map_[y-1][x] = 'i'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FIELD {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FIELD {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y-1][x] = '2'
 					} else {
 						map_[y-1][x] = 'p'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_DESERT {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_DESERT {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y-1][x] = '7'
 					} else {
 						map_[y-1][x] = '!'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_CITY {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_CITY {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y-1][x] = '1'
 					} else {
 						map_[y-1][x] = '('
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FOREST {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FOREST {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y-1][x] = '6'
 					} else {
 						map_[y-1][x] = 'f'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_MOUNTAIN {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_MOUNTAIN {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y-1][x] = '5'
 					} else {
 						map_[y-1][x] = '^'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_HILLS {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_HILLS {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y-1][x] = '3'
 					} else {
 						map_[y-1][x] = 'h'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FLYING {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FLYING {
 					map_[y-1][x] = 's'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_WATER_NOSWIM {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_WATER_NOSWIM {
 					map_[y-1][x] = '`'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_WATER_SWIM {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_WATER_SWIM {
 					map_[y-1][x] = '+'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_SHOP {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_SHOP {
 					map_[y-1][x] = '&'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_IMPORTANT {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_IMPORTANT {
 					map_[y-1][x] = '*'
 				} else {
 					map_[y-1][x] = '-'
 				}
 			case EAST:
-				if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect < 0 || (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_UNDERWATER {
+				if SUNKEN(world[rnum].Dir_option[door].To_room) {
 					map_[y][x+1] = '='
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_INSIDE {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_INSIDE {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y][x+1] = '2'
 					} else {
 						map_[y][x+1] = 'i'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FIELD {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FIELD {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y][x+1] = '2'
 					} else {
 						map_[y][x+1] = 'p'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_DESERT {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_DESERT {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y][x+1] = '7'
 					} else {
 						map_[y][x+1] = '!'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_CITY {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_CITY {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y][x+1] = '1'
 					} else {
 						map_[y][x+1] = '('
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FOREST {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FOREST {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y][x+1] = '6'
 					} else {
 						map_[y][x+1] = 'f'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_MOUNTAIN {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_MOUNTAIN {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y][x+1] = '5'
 					} else {
 						map_[y][x+1] = '^'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_HILLS {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_HILLS {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y][x+1] = '3'
 					} else {
 						map_[y][x+1] = 'h'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FLYING {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FLYING {
 					map_[y][x+1] = 's'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_WATER_NOSWIM {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_WATER_NOSWIM {
 					map_[y][x+1] = '`'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_WATER_SWIM {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_WATER_SWIM {
 					map_[y][x+1] = '+'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_SHOP {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_SHOP {
 					map_[y][x+1] = '&'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_IMPORTANT {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_IMPORTANT {
 					map_[y][x+1] = '*'
 				} else {
 					map_[y][x+1] = '-'
 				}
 			case SOUTH:
-				if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect < 0 || (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_UNDERWATER {
+				if SUNKEN(world[rnum].Dir_option[door].To_room) {
 					map_[y+1][x] = '='
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_INSIDE {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_INSIDE {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y+1][x] = '2'
 					} else {
 						map_[y+1][x] = 'i'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FIELD {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FIELD {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y+1][x] = '2'
 					} else {
 						map_[y+1][x] = 'p'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_DESERT {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_DESERT {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y+1][x] = '7'
 					} else {
 						map_[y+1][x] = '!'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_CITY {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_CITY {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y+1][x] = '1'
 					} else {
 						map_[y+1][x] = '('
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FOREST {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FOREST {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y+1][x] = '6'
 					} else {
 						map_[y+1][x] = 'f'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_MOUNTAIN {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_MOUNTAIN {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y+1][x] = '5'
 					} else {
 						map_[y+1][x] = '^'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_HILLS {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_HILLS {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y+1][x] = '3'
 					} else {
 						map_[y+1][x] = 'h'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FLYING {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FLYING {
 					map_[y+1][x] = 's'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_WATER_NOSWIM {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_WATER_NOSWIM {
 					map_[y+1][x] = '`'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_WATER_SWIM {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_WATER_SWIM {
 					map_[y+1][x] = '+'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_SHOP {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_SHOP {
 					map_[y+1][x] = '&'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_IMPORTANT {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_IMPORTANT {
 					map_[y+1][x] = '*'
 				} else {
 					map_[y+1][x] = '-'
 				}
 			case WEST:
-				if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect < 0 || (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_UNDERWATER {
+				if SUNKEN(world[rnum].Dir_option[door].To_room) {
 					map_[y][x-1] = '='
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_INSIDE {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_INSIDE {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y+1][x] = '2'
 					} else {
 						map_[y][x-1] = 'i'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FIELD {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FIELD {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y][x-1] = '2'
 					} else {
 						map_[y][x-1] = 'p'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_DESERT {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_DESERT {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y][x-1] = '7'
 					} else {
 						map_[y][x-1] = '!'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_CITY {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_CITY {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y][x-1] = '1'
 					} else {
 						map_[y][x-1] = '('
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FOREST {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FOREST {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y][x-1] = '6'
 					} else {
 						map_[y][x-1] = 'f'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_MOUNTAIN {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_MOUNTAIN {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y][x-1] = '5'
 					} else {
 						map_[y][x-1] = '^'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_HILLS {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_HILLS {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y][x-1] = '3'
 					} else {
 						map_[y][x-1] = 'h'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FLYING {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FLYING {
 					map_[y][x-1] = 's'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_WATER_NOSWIM {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_WATER_NOSWIM {
 					map_[y][x-1] = '`'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_WATER_SWIM {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_WATER_SWIM {
 					map_[y][x-1] = '+'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_SHOP {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_SHOP {
 					map_[y][x-1] = '&'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_IMPORTANT {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_IMPORTANT {
 					map_[y][x-1] = '*'
 				} else {
 					map_[y][x-1] = '-'
 				}
 			case NORTHEAST:
-				if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect < 0 || (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_UNDERWATER {
+				if SUNKEN(world[rnum].Dir_option[door].To_room) {
 					map_[y-1][x+1] = '='
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_INSIDE {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_INSIDE {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y-1][x+1] = '2'
 					} else {
 						map_[y-1][x+1] = 'i'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FIELD {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FIELD {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y-1][x+1] = '2'
 					} else {
 						map_[y-1][x+1] = 'p'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_DESERT {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_DESERT {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y-1][x+1] = '7'
 					} else {
 						map_[y-1][x+1] = '!'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_CITY {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_CITY {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y-1][x+1] = '1'
 					} else {
 						map_[y-1][x+1] = '('
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FOREST {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FOREST {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y-1][x+1] = '6'
 					} else {
 						map_[y-1][x+1] = 'f'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_MOUNTAIN {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_MOUNTAIN {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y-1][x+1] = '5'
 					} else {
 						map_[y-1][x+1] = '^'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_HILLS {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_HILLS {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y-1][x+1] = '3'
 					} else {
 						map_[y-1][x+1] = 'h'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FLYING {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FLYING {
 					map_[y-1][x+1] = 's'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_WATER_NOSWIM {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_WATER_NOSWIM {
 					map_[y-1][x+1] = '`'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_WATER_SWIM {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_WATER_SWIM {
 					map_[y-1][x+1] = '+'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_SHOP {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_SHOP {
 					map_[y-1][x+1] = '&'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_IMPORTANT {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_IMPORTANT {
 					map_[y-1][x+1] = '*'
 				} else {
 					map_[y-1][x+1] = '-'
 				}
 			case NORTHWEST:
-				if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect < 0 || (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_UNDERWATER {
+				if SUNKEN(world[rnum].Dir_option[door].To_room) {
 					map_[y-1][x-1] = '='
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_INSIDE {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_INSIDE {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y-1][x-1] = '2'
 					} else {
 						map_[y-1][x-1] = 'i'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FIELD {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FIELD {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y-1][x-1] = '2'
 					} else {
 						map_[y-1][x-1] = 'p'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_DESERT {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_DESERT {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y-1][x-1] = '7'
 					} else {
 						map_[y-1][x-1] = '!'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_CITY {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_CITY {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y-1][x-1] = '1'
 					} else {
 						map_[y-1][x-1] = '('
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FOREST {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FOREST {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y-1][x-1] = '6'
 					} else {
 						map_[y-1][x-1] = 'f'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_MOUNTAIN {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_MOUNTAIN {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y-1][x-1] = '5'
 					} else {
 						map_[y-1][x-1] = '^'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_HILLS {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_HILLS {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y-1][x-1] = '3'
 					} else {
 						map_[y-1][x-1] = 'h'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FLYING {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FLYING {
 					map_[y-1][x-1] = 's'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_WATER_NOSWIM {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_WATER_NOSWIM {
 					map_[y-1][x-1] = '`'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_WATER_SWIM {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_WATER_SWIM {
 					map_[y-1][x-1] = '+'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_SHOP {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_SHOP {
 					map_[y-1][x-1] = '&'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_IMPORTANT {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_IMPORTANT {
 					map_[y-1][x-1] = '*'
 				} else {
 					map_[y-1][x-1] = '-'
 				}
 			case SOUTHEAST:
-				if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect < 0 || (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_UNDERWATER {
+				if SUNKEN(world[rnum].Dir_option[door].To_room) {
 					map_[y+1][x+1] = '='
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_INSIDE {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_INSIDE {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y+1][x+1] = '2'
 					} else {
 						map_[y+1][x+1] = 'i'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FIELD {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FIELD {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y+1][x+1] = '2'
 					} else {
 						map_[y+1][x+1] = 'p'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_DESERT {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_DESERT {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y+1][x+1] = '7'
 					} else {
 						map_[y+1][x+1] = '!'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_CITY {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_CITY {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y+1][x+1] = '1'
 					} else {
 						map_[y+1][x+1] = '('
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FOREST {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FOREST {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y+1][x+1] = '6'
 					} else {
 						map_[y+1][x+1] = 'f'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_MOUNTAIN {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_MOUNTAIN {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y+1][x+1] = '5'
 					} else {
 						map_[y+1][x+1] = '^'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_HILLS {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_HILLS {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y+1][x+1] = '3'
 					} else {
 						map_[y+1][x+1] = 'h'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FLYING {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FLYING {
 					map_[y+1][x+1] = 's'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_WATER_NOSWIM {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_WATER_NOSWIM {
 					map_[y+1][x+1] = '`'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_WATER_SWIM {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_WATER_SWIM {
 					map_[y+1][x+1] = '+'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_SHOP {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_SHOP {
 					map_[y+1][x+1] = '&'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_IMPORTANT {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_IMPORTANT {
 					map_[y+1][x+1] = '*'
 				} else {
 					map_[y+1][x+1] = '-'
 				}
 			case SOUTHWEST:
-				if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect < 0 || (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_UNDERWATER {
+				if SUNKEN(world[rnum].Dir_option[door].To_room) {
 					map_[y+1][x-1] = '='
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_INSIDE {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_INSIDE {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y+1][x-1] = '2'
 					} else {
 						map_[y+1][x-1] = 'i'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FIELD {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FIELD {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y+1][x-1] = '2'
 					} else {
 						map_[y+1][x-1] = 'p'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_DESERT {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_DESERT {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y+1][x-1] = '7'
 					} else {
 						map_[y+1][x-1] = '!'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_CITY {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_CITY {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y+1][x-1] = '1'
 					} else {
 						map_[y+1][x-1] = '('
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FOREST {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FOREST {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y+1][x-1] = '6'
 					} else {
 						map_[y+1][x-1] = 'f'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_MOUNTAIN {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_MOUNTAIN {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y+1][x-1] = '5'
 					} else {
 						map_[y+1][x-1] = '^'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_HILLS {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Geffect >= 1 {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_HILLS {
+					if world[world[rnum].Dir_option[door].To_room].Geffect >= 1 {
 						map_[y+1][x-1] = '3'
 					} else {
 						map_[y+1][x-1] = 'h'
 					}
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_FLYING {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_FLYING {
 					map_[y+1][x-1] = 's'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_WATER_NOSWIM {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_WATER_NOSWIM {
 					map_[y+1][x-1] = '`'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_WATER_SWIM {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_WATER_SWIM {
 					map_[y+1][x-1] = '+'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_SHOP {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_SHOP {
 					map_[y+1][x-1] = '&'
-				} else if (func() int {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[door].To_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_IMPORTANT {
+				} else if SECT(world[rnum].Dir_option[door].To_room) == SECT_IMPORTANT {
 					map_[y+1][x-1] = '*'
 				} else {
 					map_[y+1][x-1] = '-'
@@ -2287,24 +1736,24 @@ func gen_map(ch *char_data, num int) {
 	}
 	map_draw_room(map_, 4, 4, ch.In_room, ch)
 	for door = 0; door < NUM_OF_DIRS; door++ {
-		if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door]) != nil && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door]).To_room != room_rnum(-1) && !EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door], 1<<1) {
+		if (world[ch.In_room].Dir_option[door]) != nil && (world[ch.In_room].Dir_option[door]).To_room != room_rnum(-1) && !EXIT_FLAGGED(world[ch.In_room].Dir_option[door], 1<<1) {
 			switch door {
 			case NORTH:
-				map_draw_room(map_, 4, 3, ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door]).To_room, ch)
+				map_draw_room(map_, 4, 3, (world[ch.In_room].Dir_option[door]).To_room, ch)
 			case EAST:
-				map_draw_room(map_, 5, 4, ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door]).To_room, ch)
+				map_draw_room(map_, 5, 4, (world[ch.In_room].Dir_option[door]).To_room, ch)
 			case SOUTH:
-				map_draw_room(map_, 4, 5, ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door]).To_room, ch)
+				map_draw_room(map_, 4, 5, (world[ch.In_room].Dir_option[door]).To_room, ch)
 			case WEST:
-				map_draw_room(map_, 3, 4, ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door]).To_room, ch)
+				map_draw_room(map_, 3, 4, (world[ch.In_room].Dir_option[door]).To_room, ch)
 			case NORTHEAST:
-				map_draw_room(map_, 5, 3, ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door]).To_room, ch)
+				map_draw_room(map_, 5, 3, (world[ch.In_room].Dir_option[door]).To_room, ch)
 			case NORTHWEST:
-				map_draw_room(map_, 3, 3, ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door]).To_room, ch)
+				map_draw_room(map_, 3, 3, (world[ch.In_room].Dir_option[door]).To_room, ch)
 			case SOUTHEAST:
-				map_draw_room(map_, 5, 5, ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door]).To_room, ch)
+				map_draw_room(map_, 5, 5, (world[ch.In_room].Dir_option[door]).To_room, ch)
 			case SOUTHWEST:
-				map_draw_room(map_, 3, 5, ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door]).To_room, ch)
+				map_draw_room(map_, 3, 5, (world[ch.In_room].Dir_option[door]).To_room, ch)
 			}
 		}
 	}
@@ -2320,8 +1769,8 @@ func gen_map(ch *char_data, num int) {
 		} else {
 			if i == 2 {
 				stdio.Sprintf(&buf2[0], "@w       @w|%s@w|           %s", func() string {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[0]) != nil && !EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[0], 1<<4) {
-						if EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[0], 1<<1) {
+					if (world[ch.In_room].Dir_option[0]) != nil && !EXIT_FLAGGED(world[ch.In_room].Dir_option[0], 1<<4) {
+						if EXIT_FLAGGED(world[ch.In_room].Dir_option[0], 1<<1) {
 							return " @rN "
 						}
 						return " @CN "
@@ -2331,24 +1780,24 @@ func gen_map(ch *char_data, num int) {
 			}
 			if i == 3 {
 				stdio.Sprintf(&buf2[0], "@w @w|%s@w| |%s@w| |%s@w|     %s", func() string {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[6]) != nil && !EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[6], 1<<4) {
-						if EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[6], 1<<1) {
+					if (world[ch.In_room].Dir_option[6]) != nil && !EXIT_FLAGGED(world[ch.In_room].Dir_option[6], 1<<4) {
+						if EXIT_FLAGGED(world[ch.In_room].Dir_option[6], 1<<1) {
 							return " @rNW"
 						}
 						return " @CNW"
 					}
 					return "   "
 				}(), func() string {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[4]) != nil && !EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[4], 1<<4) {
-						if EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[4], 1<<1) {
+					if (world[ch.In_room].Dir_option[4]) != nil && !EXIT_FLAGGED(world[ch.In_room].Dir_option[4], 1<<4) {
+						if EXIT_FLAGGED(world[ch.In_room].Dir_option[4], 1<<1) {
 							return " @yU "
 						}
 						return " @YU "
 					}
 					return "   "
 				}(), func() string {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[7]) != nil && !EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[7], 1<<4) {
-						if EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[7], 1<<4) {
+					if (world[ch.In_room].Dir_option[7]) != nil && !EXIT_FLAGGED(world[ch.In_room].Dir_option[7], 1<<4) {
+						if EXIT_FLAGGED(world[ch.In_room].Dir_option[7], 1<<4) {
 							return "@rNE "
 						}
 						return "@CNE "
@@ -2358,30 +1807,30 @@ func gen_map(ch *char_data, num int) {
 			}
 			if i == 4 {
 				stdio.Sprintf(&buf2[0], "@w @w|%s@w| |%s@w| |%s@w|     %s", func() string {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[3]) != nil && !EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[3], 1<<4) {
-						if EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[3], 1<<1) {
+					if (world[ch.In_room].Dir_option[3]) != nil && !EXIT_FLAGGED(world[ch.In_room].Dir_option[3], 1<<4) {
+						if EXIT_FLAGGED(world[ch.In_room].Dir_option[3], 1<<1) {
 							return "  @rW"
 						}
 						return "  @CW"
 					}
 					return "   "
 				}(), func() string {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[10]) != nil && !EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[10], 1<<4) {
-						if EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[10], 1<<1) {
+					if (world[ch.In_room].Dir_option[10]) != nil && !EXIT_FLAGGED(world[ch.In_room].Dir_option[10], 1<<4) {
+						if EXIT_FLAGGED(world[ch.In_room].Dir_option[10], 1<<1) {
 							return " @rI "
 						}
 						return " @mI "
 					}
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[11]) != nil && !EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[11], 1<<4) {
-						if EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[11], 1<<1) {
+					if (world[ch.In_room].Dir_option[11]) != nil && !EXIT_FLAGGED(world[ch.In_room].Dir_option[11], 1<<4) {
+						if EXIT_FLAGGED(world[ch.In_room].Dir_option[11], 1<<1) {
 							return "@rOUT"
 						}
 						return "@mOUT"
 					}
 					return "@r{ }"
 				}(), func() string {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[1]) != nil && !EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[1], 1<<4) {
-						if EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[1], 1<<1) {
+					if (world[ch.In_room].Dir_option[1]) != nil && !EXIT_FLAGGED(world[ch.In_room].Dir_option[1], 1<<4) {
+						if EXIT_FLAGGED(world[ch.In_room].Dir_option[1], 1<<1) {
 							return "@rE  "
 						}
 						return "@CE  "
@@ -2391,24 +1840,24 @@ func gen_map(ch *char_data, num int) {
 			}
 			if i == 5 {
 				stdio.Sprintf(&buf2[0], "@w @w|%s@w| |%s@w| |%s@w|     %s", func() string {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[9]) != nil && !EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[9], 1<<4) {
-						if EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[9], 1<<1) {
+					if (world[ch.In_room].Dir_option[9]) != nil && !EXIT_FLAGGED(world[ch.In_room].Dir_option[9], 1<<4) {
+						if EXIT_FLAGGED(world[ch.In_room].Dir_option[9], 1<<1) {
 							return " @rSW"
 						}
 						return " @CSW"
 					}
 					return "   "
 				}(), func() string {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[5]) != nil && !EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[5], 1<<4) {
-						if EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[5], 1<<1) {
+					if (world[ch.In_room].Dir_option[5]) != nil && !EXIT_FLAGGED(world[ch.In_room].Dir_option[5], 1<<4) {
+						if EXIT_FLAGGED(world[ch.In_room].Dir_option[5], 1<<1) {
 							return " @yD "
 						}
 						return " @YD "
 					}
 					return "   "
 				}(), func() string {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[8]) != nil && !EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[8], 1<<4) {
-						if EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[8], 1<<4) {
+					if (world[ch.In_room].Dir_option[8]) != nil && !EXIT_FLAGGED(world[ch.In_room].Dir_option[8], 1<<4) {
+						if EXIT_FLAGGED(world[ch.In_room].Dir_option[8], 1<<4) {
 							return "@rSE "
 						}
 						return "@CSE "
@@ -2418,8 +1867,8 @@ func gen_map(ch *char_data, num int) {
 			}
 			if i == 6 {
 				stdio.Sprintf(&buf2[0], "@w       @w|%s@w|           %s", func() string {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[2]) != nil && !EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[2], 1<<4) {
-						if EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[2], 1<<1) {
+					if (world[ch.In_room].Dir_option[2]) != nil && !EXIT_FLAGGED(world[ch.In_room].Dir_option[2], 1<<4) {
+						if EXIT_FLAGGED(world[ch.In_room].Dir_option[2], 1<<1) {
 							return " @rS "
 						}
 						return " @CS "
@@ -2483,11 +1932,11 @@ func display_spells(ch *char_data, obj *obj_data) {
 		return
 	}
 	for i = 0; i < SPELLBOOK_SIZE; i++ {
-		if (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(i)))).Spellname != 0 {
-			if (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(i)))).Spellname > SPELL_SENSU {
+		if obj.Sbinfo[i].Spellname != 0 {
+			if obj.Sbinfo[i].Spellname > SPELL_SENSU {
 				continue
 			}
-			send_to_char(ch, libc.CString("@y%-20s@n\t\t\t\t\t[@R%2d@n]\r\n"), spell_info[(*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(i)))).Spellname].Name, (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(i)))).Pages)
+			send_to_char(ch, libc.CString("@y%-20s@n\t\t\t\t\t[@R%2d@n]\r\n"), spell_info[obj.Sbinfo[i].Spellname].Name, obj.Sbinfo[i].Pages)
 		}
 	}
 	return
@@ -2512,12 +1961,7 @@ func show_obj_to_char(obj *obj_data, ch *char_data, mode int) {
 		if *obj.Description == '.' && (IS_NPC(ch) || !PRF_FLAGGED(ch, PRF_HOLYLIGHT)) {
 			return
 		}
-		if int(obj.Type_flag) == ITEM_VEHICLE && (func() room_vnum {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-			}
-			return -1
-		}()) == room_vnum(obj.Value[0]) {
+		if int(obj.Type_flag) == ITEM_VEHICLE && int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) == (obj.Value[0]) {
 			return
 		}
 		if obj.Sitting != nil && ch.Admlevel < 1 {
@@ -2545,20 +1989,10 @@ func show_obj_to_char(obj *obj_data, ch *char_data, mode int) {
 			} else {
 				stdio.Sprintf(&bury[0], "recent grave covered by")
 			}
-			if spotted == TRUE && (func() int {
-				if obj.In_room != room_rnum(-1) && obj.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj.In_room)))).Sector_type
-				}
-				return SECT_INSIDE
-			}()) != SECT_DESERT {
+			if spotted == TRUE && SECT(obj.In_room) != SECT_DESERT {
 				send_to_char(ch, libc.CString("@yA %s soft dirt is here.@n\r\n"), &bury[0])
 				return
-			} else if spotted == TRUE && (func() int {
-				if obj.In_room != room_rnum(-1) && obj.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj.In_room)))).Sector_type
-				}
-				return SECT_INSIDE
-			}()) == SECT_DESERT {
+			} else if spotted == TRUE && SECT(obj.In_room) == SECT_DESERT {
 				send_to_char(ch, libc.CString("@YA %s soft sand is here.@n\r\n"), &bury[0])
 				return
 			} else {
@@ -2952,7 +2386,7 @@ func show_obj_modifiers(obj *obj_data, ch *char_data) int {
 				)
 				dvnum[0] = '\x00'
 				stdio.Sprintf(&dvnum[0], "@D[@G%d@D] @w", GET_OBJ_VNUM(obj2))
-				send_to_char(ch, libc.CString("\n...%s%s has been posted to it."), &func() [200]byte {
+				send_to_char(ch, libc.CString("\n...%s%s has been posted to it."), func() [200]byte {
 					if PRF_FLAGGED(ch, PRF_ROOMFLAGS) {
 						return dvnum
 					}
@@ -3208,7 +2642,7 @@ func look_at_char(i *char_data, ch *char_data) {
 		clan = FALSE
 	}
 	if !IS_NPC(i) {
-		send_to_char(ch, libc.CString("            @D[@mClan        @D: @W%-20s@D]@n\r\n"), &func() [100]byte {
+		send_to_char(ch, libc.CString("            @D[@mClan        @D: @W%-20s@D]@n\r\n"), func() [100]byte {
 			if clan != 0 {
 				return buf
 			}
@@ -3338,10 +2772,10 @@ func look_at_char(i *char_data, ch *char_data) {
 					var (
 						obj2     *obj_data = nil
 						next_obj *obj_data = nil
-						sheath   *obj_data = (i.Equipment[j])
 					)
-					for obj2 = sheath.Contains; obj2 != nil; obj2 = next_obj {
-						next_obj = obj2.Next_content
+					_ = next_obj
+					var sheath *obj_data = (i.Equipment[j])
+					for obj2 = sheath.Contains; obj2 != nil; obj2 = obj2.Next_content {
 						if obj2 != nil {
 							send_to_char(ch, libc.CString("@D  ---- @YSheathed@D ----@c> @n"))
 							show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT)
@@ -3356,10 +2790,10 @@ func look_at_char(i *char_data, ch *char_data) {
 					var (
 						obj2     *obj_data = nil
 						next_obj *obj_data = nil
-						sheath   *obj_data = (i.Equipment[j])
 					)
-					for obj2 = sheath.Contains; obj2 != nil; obj2 = next_obj {
-						next_obj = obj2.Next_content
+					_ = next_obj
+					var sheath *obj_data = (i.Equipment[j])
+					for obj2 = sheath.Contains; obj2 != nil; obj2 = obj2.Next_content {
 						if obj2 != nil {
 							send_to_char(ch, libc.CString("@D  ---- @YSheathed@D ----@c> @n"))
 							show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT)
@@ -4034,17 +3468,7 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 		send_to_char(ch, libc.CString("@D------------------------------------------------------------------------@n\r\n"))
 	}
 	var space int = FALSE
-	if (func() int {
-		if target_room != room_rnum(-1) && target_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) == SECT_SPACE && (func() room_vnum {
-		if target_room != room_rnum(-1) && target_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Number
-		}
-		return -1
-	}()) >= 20000 {
+	if SECT(target_room) == SECT_SPACE && int(libc.BoolToInt(GET_ROOM_VNUM(target_room))) >= 20000 {
 		space = TRUE
 	}
 	if exit_mode == EXIT_NORMAL && space == FALSE && ch.In_room == target_room {
@@ -4087,40 +3511,35 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 			has_light = TRUE
 		}
 		for door = 0; door < NUM_OF_DIRS; door++ {
-			if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]) != nil && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room != room_rnum(-1) {
+			if (world[target_room].Dir_option[door]) != nil && (world[target_room].Dir_option[door]).To_room != room_rnum(-1) {
 				if ADM_FLAGGED(ch, ADM_SEESECRET) || ch.Admlevel > 4 {
 					door_found++
 					var blam [9]byte
 					stdio.Sprintf(&blam[0], "%s", dirs[door])
 					blam[0] = byte(int8(unicode.ToUpper(rune(blam[0]))))
 					if door == 6 {
-						stdio.Sprintf(&dlist1[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Number, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
-						if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<0)) != 0 || (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<4)) != 0 {
+						stdio.Sprintf(&dlist1[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], world[(world[target_room].Dir_option[door]).To_room].Number, world[(world[target_room].Dir_option[door]).To_room].Name)
+						if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<0) || IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
 							var argh [100]byte
-							if fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword) == nil {
+							if fname((world[target_room].Dir_option[door]).Keyword) == nil {
 								send_to_char(ch, libc.CString("@RREPORT THIS ERROR IMMEADIATLY FOR DIRECTION NORTHWEST@n\r\n"))
-								basic_mud_log(libc.CString("ERROR: %s found error direction NORTHWEST at room %d"), GET_NAME(ch), func() room_vnum {
-									if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-										return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-									}
-									return -1
-								}())
+								basic_mud_log(libc.CString("ERROR: %s found error direction NORTHWEST at room %d"), GET_NAME(ch), GET_ROOM_VNUM(ch.In_room))
 								return
 							}
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 							stdio.Sprintf(&dlist1[libc.StrLen(&dlist1[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
@@ -4129,17 +3548,17 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 								}
 								return "is"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 1)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<1) {
 									return "closed"
 								}
 								return "open"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 2)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<2) {
 									return "and locked"
 								}
 								return "and unlocked"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 3)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<3) {
 									return " (pickproof)"
 								}
 								return ""
@@ -4147,33 +3566,28 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 						}
 					}
 					if door == 0 {
-						stdio.Sprintf(&dlist2[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Number, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
-						if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<0)) != 0 || (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<4)) != 0 {
-							if fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword) == nil {
+						stdio.Sprintf(&dlist2[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], world[(world[target_room].Dir_option[door]).To_room].Number, world[(world[target_room].Dir_option[door]).To_room].Name)
+						if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<0) || IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
+							if fname((world[target_room].Dir_option[door]).Keyword) == nil {
 								send_to_char(ch, libc.CString("@RREPORT THIS ERROR IMMEADIATLY FOR DIRECTION NORTH@n\r\n"))
-								basic_mud_log(libc.CString("ERROR: %s found error direction NORTH at room %d"), GET_NAME(ch), func() room_vnum {
-									if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-										return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-									}
-									return -1
-								}())
+								basic_mud_log(libc.CString("ERROR: %s found error direction NORTH at room %d"), GET_NAME(ch), GET_ROOM_VNUM(ch.In_room))
 								return
 							}
 							var argh [200]byte
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 							stdio.Sprintf(&dlist2[libc.StrLen(&dlist2[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
@@ -4182,17 +3596,17 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 								}
 								return "is"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 1)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<1) {
 									return "closed"
 								}
 								return "open"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 2)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<2) {
 									return "and locked"
 								}
 								return "and unlocked"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 3)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<3) {
 									return " (pickproof)"
 								}
 								return ""
@@ -4200,33 +3614,28 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 						}
 					}
 					if door == 7 {
-						stdio.Sprintf(&dlist3[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Number, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
-						if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<0)) != 0 || (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<4)) != 0 {
-							if fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword) == nil {
+						stdio.Sprintf(&dlist3[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], world[(world[target_room].Dir_option[door]).To_room].Number, world[(world[target_room].Dir_option[door]).To_room].Name)
+						if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<0) || IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
+							if fname((world[target_room].Dir_option[door]).Keyword) == nil {
 								send_to_char(ch, libc.CString("@RREPORT THIS ERROR IMMEADIATLY FOR DIRECTION NORTHEAST@n\r\n"))
-								basic_mud_log(libc.CString("ERROR: %s found error direction NORTHEAST at room %d"), GET_NAME(ch), func() room_vnum {
-									if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-										return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-									}
-									return -1
-								}())
+								basic_mud_log(libc.CString("ERROR: %s found error direction NORTHEAST at room %d"), GET_NAME(ch), GET_ROOM_VNUM(ch.In_room))
 								return
 							}
 							var argh [100]byte
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 							stdio.Sprintf(&dlist3[libc.StrLen(&dlist3[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
@@ -4235,17 +3644,17 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 								}
 								return "is"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 1)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<1) {
 									return "closed"
 								}
 								return "open"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 2)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<2) {
 									return "and locked"
 								}
 								return "and unlocked"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 3)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<3) {
 									return " (pickproof)"
 								}
 								return ""
@@ -4253,33 +3662,28 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 						}
 					}
 					if door == 1 {
-						stdio.Sprintf(&dlist4[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Number, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
-						if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<0)) != 0 || (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<4)) != 0 {
-							if fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword) == nil {
+						stdio.Sprintf(&dlist4[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], world[(world[target_room].Dir_option[door]).To_room].Number, world[(world[target_room].Dir_option[door]).To_room].Name)
+						if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<0) || IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
+							if fname((world[target_room].Dir_option[door]).Keyword) == nil {
 								send_to_char(ch, libc.CString("@RREPORT THIS ERROR IMMEADIATLY FOR DIRECTION EAST@n\r\n"))
-								basic_mud_log(libc.CString("ERROR: %s found error direction EAST at room %d"), GET_NAME(ch), func() room_vnum {
-									if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-										return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-									}
-									return -1
-								}())
+								basic_mud_log(libc.CString("ERROR: %s found error direction EAST at room %d"), GET_NAME(ch), GET_ROOM_VNUM(ch.In_room))
 								return
 							}
 							var argh [100]byte
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 							stdio.Sprintf(&dlist4[libc.StrLen(&dlist4[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
@@ -4288,17 +3692,17 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 								}
 								return "is"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 1)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<1) {
 									return "closed"
 								}
 								return "open"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 2)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<2) {
 									return "and locked"
 								}
 								return "and unlocked"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 3)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<3) {
 									return " (pickproof)"
 								}
 								return ""
@@ -4306,33 +3710,28 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 						}
 					}
 					if door == 8 {
-						stdio.Sprintf(&dlist5[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Number, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
-						if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<0)) != 0 || (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<4)) != 0 {
-							if fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword) == nil {
+						stdio.Sprintf(&dlist5[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], world[(world[target_room].Dir_option[door]).To_room].Number, world[(world[target_room].Dir_option[door]).To_room].Name)
+						if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<0) || IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
+							if fname((world[target_room].Dir_option[door]).Keyword) == nil {
 								send_to_char(ch, libc.CString("@RREPORT THIS ERROR IMMEADIATLY FOR DIRECTION SOUTHEAST@n\r\n"))
-								basic_mud_log(libc.CString("ERROR: %s found error direction SOUTHEAST at room %d"), GET_NAME(ch), func() room_vnum {
-									if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-										return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-									}
-									return -1
-								}())
+								basic_mud_log(libc.CString("ERROR: %s found error direction SOUTHEAST at room %d"), GET_NAME(ch), GET_ROOM_VNUM(ch.In_room))
 								return
 							}
 							var argh [100]byte
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 							stdio.Sprintf(&dlist5[libc.StrLen(&dlist5[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
@@ -4341,17 +3740,17 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 								}
 								return "is"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 1)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<1) {
 									return "closed"
 								}
 								return "open"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 2)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<2) {
 									return "and locked"
 								}
 								return "and unlocked"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 3)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<3) {
 									return " (pickproof)"
 								}
 								return ""
@@ -4359,33 +3758,28 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 						}
 					}
 					if door == 2 {
-						stdio.Sprintf(&dlist6[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Number, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
-						if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<0)) != 0 || (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<4)) != 0 {
-							if fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword) == nil {
+						stdio.Sprintf(&dlist6[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], world[(world[target_room].Dir_option[door]).To_room].Number, world[(world[target_room].Dir_option[door]).To_room].Name)
+						if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<0) || IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
+							if fname((world[target_room].Dir_option[door]).Keyword) == nil {
 								send_to_char(ch, libc.CString("@RREPORT THIS ERROR IMMEADIATLY FOR DIRECTION SOUTH@n\r\n"))
-								basic_mud_log(libc.CString("ERROR: %s found error direction SOUTH at room %d"), GET_NAME(ch), func() room_vnum {
-									if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-										return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-									}
-									return -1
-								}())
+								basic_mud_log(libc.CString("ERROR: %s found error direction SOUTH at room %d"), GET_NAME(ch), GET_ROOM_VNUM(ch.In_room))
 								return
 							}
 							var argh [100]byte
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 							stdio.Sprintf(&dlist6[libc.StrLen(&dlist6[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
@@ -4394,17 +3788,17 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 								}
 								return "is"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 1)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<1) {
 									return "closed"
 								}
 								return "open"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 2)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<2) {
 									return "and locked"
 								}
 								return "and unlocked"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 3)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<3) {
 									return " (pickproof)"
 								}
 								return ""
@@ -4412,33 +3806,28 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 						}
 					}
 					if door == 9 {
-						stdio.Sprintf(&dlist7[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Number, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
-						if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<0)) != 0 || (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<4)) != 0 {
-							if fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword) == nil {
+						stdio.Sprintf(&dlist7[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], world[(world[target_room].Dir_option[door]).To_room].Number, world[(world[target_room].Dir_option[door]).To_room].Name)
+						if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<0) || IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
+							if fname((world[target_room].Dir_option[door]).Keyword) == nil {
 								send_to_char(ch, libc.CString("@RREPORT THIS ERROR IMMEADIATLY FOR DIRECTION SOUTHWEST@n\r\n"))
-								basic_mud_log(libc.CString("ERROR: %s found error direction SOUTHWEST at room %d"), GET_NAME(ch), func() room_vnum {
-									if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-										return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-									}
-									return -1
-								}())
+								basic_mud_log(libc.CString("ERROR: %s found error direction SOUTHWEST at room %d"), GET_NAME(ch), GET_ROOM_VNUM(ch.In_room))
 								return
 							}
 							var argh [100]byte
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 							stdio.Sprintf(&dlist7[libc.StrLen(&dlist7[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
@@ -4447,17 +3836,17 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 								}
 								return "is"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 1)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<1) {
 									return "closed"
 								}
 								return "open"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 2)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<2) {
 									return "and locked"
 								}
 								return "and unlocked"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 3)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<3) {
 									return " (pickproof)"
 								}
 								return ""
@@ -4465,33 +3854,28 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 						}
 					}
 					if door == 3 {
-						stdio.Sprintf(&dlist8[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Number, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
-						if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<0)) != 0 || (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<4)) != 0 {
-							if fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword) == nil {
+						stdio.Sprintf(&dlist8[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], world[(world[target_room].Dir_option[door]).To_room].Number, world[(world[target_room].Dir_option[door]).To_room].Name)
+						if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<0) || IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
+							if fname((world[target_room].Dir_option[door]).Keyword) == nil {
 								send_to_char(ch, libc.CString("@RREPORT THIS ERROR IMMEADIATLY FOR DIRECTION WEST@n\r\n"))
-								basic_mud_log(libc.CString("ERROR: %s found error direction WEST at room %d"), GET_NAME(ch), func() room_vnum {
-									if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-										return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-									}
-									return -1
-								}())
+								basic_mud_log(libc.CString("ERROR: %s found error direction WEST at room %d"), GET_NAME(ch), GET_ROOM_VNUM(ch.In_room))
 								return
 							}
 							var argh [100]byte
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 							stdio.Sprintf(&dlist8[libc.StrLen(&dlist8[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
@@ -4500,17 +3884,17 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 								}
 								return "is"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 1)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<1) {
 									return "closed"
 								}
 								return "open"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 2)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<2) {
 									return "and locked"
 								}
 								return "and unlocked"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 3)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<3) {
 									return " (pickproof)"
 								}
 								return ""
@@ -4518,33 +3902,28 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 						}
 					}
 					if door == 4 {
-						stdio.Sprintf(&dlist9[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Number, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
-						if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<0)) != 0 || (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<4)) != 0 {
-							if fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword) == nil {
+						stdio.Sprintf(&dlist9[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], world[(world[target_room].Dir_option[door]).To_room].Number, world[(world[target_room].Dir_option[door]).To_room].Name)
+						if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<0) || IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
+							if fname((world[target_room].Dir_option[door]).Keyword) == nil {
 								send_to_char(ch, libc.CString("@RREPORT THIS ERROR IMMEADIATLY FOR DIRECTION UP@n\r\n"))
-								basic_mud_log(libc.CString("ERROR: %s found error direction UP at room %d"), GET_NAME(ch), func() room_vnum {
-									if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-										return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-									}
-									return -1
-								}())
+								basic_mud_log(libc.CString("ERROR: %s found error direction UP at room %d"), GET_NAME(ch), GET_ROOM_VNUM(ch.In_room))
 								return
 							}
 							var argh [100]byte
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 							stdio.Sprintf(&dlist9[libc.StrLen(&dlist9[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
@@ -4553,17 +3932,17 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 								}
 								return "is"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 1)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<1) {
 									return "closed"
 								}
 								return "open"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 2)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<2) {
 									return "and locked"
 								}
 								return "and unlocked"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 3)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<3) {
 									return " (pickproof)"
 								}
 								return ""
@@ -4571,33 +3950,28 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 						}
 					}
 					if door == 5 {
-						stdio.Sprintf(&dlist10[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Number, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
-						if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<0)) != 0 || (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<4)) != 0 {
-							if fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword) == nil {
+						stdio.Sprintf(&dlist10[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], world[(world[target_room].Dir_option[door]).To_room].Number, world[(world[target_room].Dir_option[door]).To_room].Name)
+						if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<0) || IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
+							if fname((world[target_room].Dir_option[door]).Keyword) == nil {
 								send_to_char(ch, libc.CString("@RREPORT THIS ERROR IMMEADIATLY FOR DIRECTION DOWN@n\r\n"))
-								basic_mud_log(libc.CString("ERROR: %s found error direction DOWN at room %d"), GET_NAME(ch), func() room_vnum {
-									if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-										return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-									}
-									return -1
-								}())
+								basic_mud_log(libc.CString("ERROR: %s found error direction DOWN at room %d"), GET_NAME(ch), GET_ROOM_VNUM(ch.In_room))
 								return
 							}
 							var argh [100]byte
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 							stdio.Sprintf(&dlist10[libc.StrLen(&dlist10[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
@@ -4606,17 +3980,17 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 								}
 								return "is"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 1)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<1) {
 									return "closed"
 								}
 								return "open"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 2)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<2) {
 									return "and locked"
 								}
 								return "and unlocked"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 3)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<3) {
 									return " (pickproof)"
 								}
 								return ""
@@ -4624,33 +3998,28 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 						}
 					}
 					if door == 10 {
-						stdio.Sprintf(&dlist11[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Number, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
-						if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<0)) != 0 || (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<4)) != 0 {
-							if fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword) == nil {
+						stdio.Sprintf(&dlist11[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], world[(world[target_room].Dir_option[door]).To_room].Number, world[(world[target_room].Dir_option[door]).To_room].Name)
+						if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<0) || IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
+							if fname((world[target_room].Dir_option[door]).Keyword) == nil {
 								send_to_char(ch, libc.CString("@RREPORT THIS ERROR IMMEADIATLY FOR DIRECTION INSIDE@n\r\n"))
-								basic_mud_log(libc.CString("ERROR: %s found error direction INSIDE at room %d"), GET_NAME(ch), func() room_vnum {
-									if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-										return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-									}
-									return -1
-								}())
+								basic_mud_log(libc.CString("ERROR: %s found error direction INSIDE at room %d"), GET_NAME(ch), GET_ROOM_VNUM(ch.In_room))
 								return
 							}
 							var argh [100]byte
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 							stdio.Sprintf(&dlist11[libc.StrLen(&dlist11[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
@@ -4659,17 +4028,17 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 								}
 								return "is"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 1)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<1) {
 									return "closed"
 								}
 								return "open"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 2)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<2) {
 									return "and locked"
 								}
 								return "and unlocked"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 3)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<3) {
 									return " (pickproof)"
 								}
 								return ""
@@ -4677,33 +4046,28 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 						}
 					}
 					if door == 11 {
-						stdio.Sprintf(&dlist12[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Number, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
-						if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<0)) != 0 || (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<4)) != 0 {
-							if fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword) == nil {
+						stdio.Sprintf(&dlist12[0], "@c%-9s @D- [@Y%5d@D]@w %s.\r\n", &blam[0], world[(world[target_room].Dir_option[door]).To_room].Number, world[(world[target_room].Dir_option[door]).To_room].Name)
+						if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<0) || IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
+							if fname((world[target_room].Dir_option[door]).Keyword) == nil {
 								send_to_char(ch, libc.CString("@RREPORT THIS ERROR IMMEADIATLY FOR DIRECTION OUTSIDE@n\r\n"))
-								basic_mud_log(libc.CString("ERROR: %s found error direction OUTSIDE at room %d"), GET_NAME(ch), func() room_vnum {
-									if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-										return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-									}
-									return -1
-								}())
+								basic_mud_log(libc.CString("ERROR: %s found error direction OUTSIDE at room %d"), GET_NAME(ch), GET_ROOM_VNUM(ch.In_room))
 								return
 							}
 							var argh [100]byte
 							stdio.Sprintf(&argh[0], "%s ", func() *byte {
-								if libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 							stdio.Sprintf(&dlist12[libc.StrLen(&dlist12[0])], "                    The %s%s %s %s %s%s.\r\n", func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 4)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
 									return "@rsecret@w "
 								}
 								return ""
 							}(), func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil && libc.StrCaseCmp(fname((world[target_room].Dir_option[door]).Keyword), libc.CString("undefined")) != 0 {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}(), func() string {
@@ -4712,17 +4076,17 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 								}
 								return "is"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 1)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<1) {
 									return "closed"
 								}
 								return "open"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 2)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<2) {
 									return "and locked"
 								}
 								return "and unlocked"
 							}(), func() string {
-								if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 3)) != 0 {
+								if IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<3) {
 									return " (pickproof)"
 								}
 								return ""
@@ -4730,204 +4094,204 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 						}
 					}
 				} else {
-					if (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info & (1 << 1)) == 0 {
+					if !IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<1) {
 						door_found++
 						var blam [9]byte
 						stdio.Sprintf(&blam[0], "%s", dirs[door])
 						blam[0] = byte(int8(unicode.ToUpper(rune(blam[0]))))
 						if door == 6 {
 							stdio.Sprintf(&dlist1[0], "@c%-9s @D-@w %s\r\n", &blam[0], func() string {
-								if room_is_dark(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
+								if room_is_dark((world[target_room].Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
 									return "@bToo dark to tell.@w"
 								}
-								return libc.GoString((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
+								return libc.GoString(world[(world[target_room].Dir_option[door]).To_room].Name)
 							}())
 						}
 						if door == 0 {
 							stdio.Sprintf(&dlist2[0], "@c%-9s @D-@w %s\r\n", &blam[0], func() string {
-								if room_is_dark(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
+								if room_is_dark((world[target_room].Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
 									return "@bToo dark to tell.@w"
 								}
-								return libc.GoString((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
+								return libc.GoString(world[(world[target_room].Dir_option[door]).To_room].Name)
 							}())
 						}
 						if door == 7 {
 							stdio.Sprintf(&dlist3[0], "@c%-9s @D-@w %s\r\n", &blam[0], func() string {
-								if room_is_dark(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
+								if room_is_dark((world[target_room].Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
 									return "@bToo dark to tell.@w"
 								}
-								return libc.GoString((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
+								return libc.GoString(world[(world[target_room].Dir_option[door]).To_room].Name)
 							}())
 						}
 						if door == 1 {
 							stdio.Sprintf(&dlist4[0], "@c%-9s @D-@w %s\r\n", &blam[0], func() string {
-								if room_is_dark(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
+								if room_is_dark((world[target_room].Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
 									return "@bToo dark to tell.@w"
 								}
-								return libc.GoString((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
+								return libc.GoString(world[(world[target_room].Dir_option[door]).To_room].Name)
 							}())
 						}
 						if door == 8 {
 							stdio.Sprintf(&dlist5[0], "@c%-9s @D-@w %s\r\n", &blam[0], func() string {
-								if room_is_dark(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
+								if room_is_dark((world[target_room].Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
 									return "@bToo dark to tell.@w"
 								}
-								return libc.GoString((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
+								return libc.GoString(world[(world[target_room].Dir_option[door]).To_room].Name)
 							}())
 						}
 						if door == 2 {
 							stdio.Sprintf(&dlist6[0], "@c%-9s @D-@w %s\r\n", &blam[0], func() string {
-								if room_is_dark(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
+								if room_is_dark((world[target_room].Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
 									return "@bToo dark to tell.@w"
 								}
-								return libc.GoString((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
+								return libc.GoString(world[(world[target_room].Dir_option[door]).To_room].Name)
 							}())
 						}
 						if door == 9 {
 							stdio.Sprintf(&dlist7[0], "@c%-9s @D-@w %s\r\n", &blam[0], func() string {
-								if room_is_dark(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
+								if room_is_dark((world[target_room].Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
 									return "@bToo dark to tell.@w"
 								}
-								return libc.GoString((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
+								return libc.GoString(world[(world[target_room].Dir_option[door]).To_room].Name)
 							}())
 						}
 						if door == 3 {
 							stdio.Sprintf(&dlist8[0], "@c%-9s @D-@w %s\r\n", &blam[0], func() string {
-								if room_is_dark(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
+								if room_is_dark((world[target_room].Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
 									return "@bToo dark to tell.@w"
 								}
-								return libc.GoString((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
+								return libc.GoString(world[(world[target_room].Dir_option[door]).To_room].Name)
 							}())
 						}
 						if door == 4 {
 							stdio.Sprintf(&dlist9[0], "@c%-9s @D-@w %s\r\n", &blam[0], func() string {
-								if room_is_dark(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
+								if room_is_dark((world[target_room].Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
 									return "@bToo dark to tell.@w"
 								}
-								return libc.GoString((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
+								return libc.GoString(world[(world[target_room].Dir_option[door]).To_room].Name)
 							}())
 						}
 						if door == 5 {
 							stdio.Sprintf(&dlist10[0], "@c%-9s @D-@w %s\r\n", &blam[0], func() string {
-								if room_is_dark(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
+								if room_is_dark((world[target_room].Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
 									return "@bToo dark to tell.@w"
 								}
-								return libc.GoString((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
+								return libc.GoString(world[(world[target_room].Dir_option[door]).To_room].Name)
 							}())
 						}
 						if door == 10 {
 							stdio.Sprintf(&dlist11[0], "@c%-9s @D-@w %s\r\n", &blam[0], func() string {
-								if room_is_dark(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
+								if room_is_dark((world[target_room].Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
 									return "@bToo dark to tell.@w"
 								}
-								return libc.GoString((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
+								return libc.GoString(world[(world[target_room].Dir_option[door]).To_room].Name)
 							}())
 						}
 						if door == 11 {
 							stdio.Sprintf(&dlist12[0], "@c%-9s @D-@w %s\r\n", &blam[0], func() string {
-								if room_is_dark(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
+								if room_is_dark((world[target_room].Dir_option[door]).To_room) != 0 && !CAN_SEE_IN_DARK(ch) && has_light == 0 {
 									return "@bToo dark to tell.@w"
 								}
-								return libc.GoString((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room)))).Name)
+								return libc.GoString(world[(world[target_room].Dir_option[door]).To_room].Name)
 							}())
 						}
-					} else if config_info.Play.Disp_closed_doors != 0 && (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Exit_info&(1<<4)) == 0 {
+					} else if config_info.Play.Disp_closed_doors != 0 && !IS_SET((world[target_room].Dir_option[door]).Exit_info, 1<<4) {
 						door_found++
 						var blam [9]byte
 						stdio.Sprintf(&blam[0], "%s", dirs[door])
 						blam[0] = byte(int8(unicode.ToUpper(rune(blam[0]))))
 						if door == 6 {
 							stdio.Sprintf(&dlist1[0], "@c%-9s @D-@w The %s appears @rclosed.@n\r\n", &blam[0], func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 						}
 						if door == 0 {
 							stdio.Sprintf(&dlist2[0], "@c%-9s @D-@w The %s appears @rclosed.@n\r\n", &blam[0], func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 						}
 						if door == 7 {
 							stdio.Sprintf(&dlist3[0], "@c%-9s @D-@w The %s appears @rclosed.@n\r\n", &blam[0], func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 						}
 						if door == 1 {
 							stdio.Sprintf(&dlist4[0], "@c%-9s @D-@w The %s appears @rclosed.@n\r\n", &blam[0], func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 						}
 						if door == 8 {
 							stdio.Sprintf(&dlist5[0], "@c%-9s @D-@w The %s appears @rclosed.@n\r\n", &blam[0], func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 						}
 						if door == 2 {
 							stdio.Sprintf(&dlist6[0], "@c%-9s @D-@w The %s appears @rclosed.@n\r\n", &blam[0], func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 						}
 						if door == 9 {
 							stdio.Sprintf(&dlist7[0], "@c%-9s @D-@w The %s appears @rclosed.@n\r\n", &blam[0], func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 						}
 						if door == 3 {
 							stdio.Sprintf(&dlist8[0], "@c%-9s @D-@w The %s appears @rclosed.@n\r\n", &blam[0], func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 						}
 						if door == 4 {
 							stdio.Sprintf(&dlist9[0], "@c%-9s @D-@w The %s appears @rclosed.@n\r\n", &blam[0], func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 						}
 						if door == 5 {
 							stdio.Sprintf(&dlist10[0], "@c%-9s @D-@w The %s appears @rclosed.@n\r\n", &blam[0], func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 						}
 						if door == 10 {
 							stdio.Sprintf(&dlist11[0], "@c%-9s @D-@w The %s appears @rclosed.@n\r\n", &blam[0], func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
 						}
 						if door == 11 {
 							stdio.Sprintf(&dlist12[0], "@c%-9s @D-@w The %s appears @rclosed.@n\r\n", &blam[0], func() *byte {
-								if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword != nil {
-									return fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).Keyword)
+								if (world[target_room].Dir_option[door]).Keyword != nil {
+									return fname((world[target_room].Dir_option[door]).Keyword)
 								}
 								return libc.CString("opening")
 							}())
@@ -4997,94 +4361,19 @@ func do_auto_exits(target_room room_rnum, ch *char_data, exit_mode int) {
 		if ROOM_FLAGGED(target_room, ROOM_HOUSE) && !ROOM_FLAGGED(target_room, ROOM_GARDEN1) && ROOM_FLAGGED(target_room, ROOM_GARDEN2) {
 			send_to_char(ch, libc.CString("@D[@GPlants Planted@D: @g%d@W, @GMAX@D: @R20@D]@n\r\n"), check_saveroom_count(ch, nil))
 		}
-		if ch.Radar1 == (func() room_vnum {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Number
-			}
-			return -1
-		}()) && ch.Radar2 == (func() room_vnum {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Number
-			}
-			return -1
-		}()) && ch.Radar3 != (func() room_vnum {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Number
-			}
-			return -1
-		}()) {
+		if ch.Radar1 == room_vnum(libc.BoolToInt(GET_ROOM_VNUM(target_room))) && ch.Radar2 == room_vnum(libc.BoolToInt(GET_ROOM_VNUM(target_room))) && ch.Radar3 != room_vnum(libc.BoolToInt(GET_ROOM_VNUM(target_room))) {
 			send_to_char(ch, libc.CString("@CTwo of your buoys are floating here.@n\r\n"))
-		} else if ch.Radar1 == (func() room_vnum {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Number
-			}
-			return -1
-		}()) && ch.Radar2 != (func() room_vnum {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Number
-			}
-			return -1
-		}()) && ch.Radar3 == (func() room_vnum {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Number
-			}
-			return -1
-		}()) {
+		} else if ch.Radar1 == room_vnum(libc.BoolToInt(GET_ROOM_VNUM(target_room))) && ch.Radar2 != room_vnum(libc.BoolToInt(GET_ROOM_VNUM(target_room))) && ch.Radar3 == room_vnum(libc.BoolToInt(GET_ROOM_VNUM(target_room))) {
 			send_to_char(ch, libc.CString("@CTwo of your buoys are floating here.@n\r\n"))
-		} else if ch.Radar1 != (func() room_vnum {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Number
-			}
-			return -1
-		}()) && ch.Radar2 == (func() room_vnum {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Number
-			}
-			return -1
-		}()) && ch.Radar3 == (func() room_vnum {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Number
-			}
-			return -1
-		}()) {
+		} else if ch.Radar1 != room_vnum(libc.BoolToInt(GET_ROOM_VNUM(target_room))) && ch.Radar2 == room_vnum(libc.BoolToInt(GET_ROOM_VNUM(target_room))) && ch.Radar3 == room_vnum(libc.BoolToInt(GET_ROOM_VNUM(target_room))) {
 			send_to_char(ch, libc.CString("@CTwo of your buoys are floating here.@n\r\n"))
-		} else if ch.Radar1 == (func() room_vnum {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Number
-			}
-			return -1
-		}()) && ch.Radar2 == (func() room_vnum {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Number
-			}
-			return -1
-		}()) && ch.Radar3 == (func() room_vnum {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Number
-			}
-			return -1
-		}()) && target_room != 0 {
+		} else if ch.Radar1 == room_vnum(libc.BoolToInt(GET_ROOM_VNUM(target_room))) && ch.Radar2 == room_vnum(libc.BoolToInt(GET_ROOM_VNUM(target_room))) && ch.Radar3 == room_vnum(libc.BoolToInt(GET_ROOM_VNUM(target_room))) && target_room != 0 {
 			send_to_char(ch, libc.CString("@CAll three of your buoys are floating here. Why?@n\r\n"))
-		} else if ch.Radar1 == (func() room_vnum {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Number
-			}
-			return -1
-		}()) {
+		} else if ch.Radar1 == room_vnum(libc.BoolToInt(GET_ROOM_VNUM(target_room))) {
 			send_to_char(ch, libc.CString("@CYour @cBuoy #1@C is floating here.@n\r\n"))
-		} else if ch.Radar2 == (func() room_vnum {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Number
-			}
-			return -1
-		}()) {
+		} else if ch.Radar2 == room_vnum(libc.BoolToInt(GET_ROOM_VNUM(target_room))) {
 			send_to_char(ch, libc.CString("@CYour @cBuoy #2@C is floating here.@n\r\n"))
-		} else if ch.Radar3 == (func() room_vnum {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Number
-			}
-			return -1
-		}()) {
+		} else if ch.Radar3 == room_vnum(libc.BoolToInt(GET_ROOM_VNUM(target_room))) {
 			send_to_char(ch, libc.CString("@CYour @cBuoy #3@C is floating here.@n\r\n"))
 		}
 	}
@@ -5096,10 +4385,10 @@ func do_auto_exits2(target_room room_rnum, ch *char_data) {
 	)
 	send_to_char(ch, libc.CString("\nExits: "))
 	for door = 0; door < NUM_OF_DIRS; door++ {
-		if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]) == nil || ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door]).To_room == room_rnum(-1) {
+		if (world[target_room].Dir_option[door]) == nil || (world[target_room].Dir_option[door]).To_room == room_rnum(-1) {
 			continue
 		}
-		if EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dir_option[door], 1<<1) {
+		if EXIT_FLAGGED(world[target_room].Dir_option[door], 1<<1) {
 			continue
 		}
 		send_to_char(ch, libc.CString("%s "), abbr_dirs[door])
@@ -5159,14 +4448,14 @@ func do_autoexit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	switch tp {
 	case EXIT_OFF:
-		ch.Player_specials.Pref[int(PRF_AUTOEXIT/32)] &= bitvector_t(int32(^(1 << (int(PRF_AUTOEXIT % 32)))))
-		ch.Player_specials.Pref[int(PRF_FULL_EXIT/32)] &= bitvector_t(int32(^(1 << (int(PRF_FULL_EXIT % 32)))))
+		REMOVE_BIT_AR(ch.Player_specials.Pref[:], PRF_AUTOEXIT)
+		REMOVE_BIT_AR(ch.Player_specials.Pref[:], PRF_FULL_EXIT)
 	case EXIT_NORMAL:
-		ch.Player_specials.Pref[int(PRF_AUTOEXIT/32)] |= bitvector_t(int32(1 << (int(PRF_AUTOEXIT % 32))))
-		ch.Player_specials.Pref[int(PRF_FULL_EXIT/32)] &= bitvector_t(int32(^(1 << (int(PRF_FULL_EXIT % 32)))))
+		SET_BIT_AR(ch.Player_specials.Pref[:], PRF_AUTOEXIT)
+		REMOVE_BIT_AR(ch.Player_specials.Pref[:], PRF_FULL_EXIT)
 	case EXIT_COMPLETE:
-		ch.Player_specials.Pref[int(PRF_AUTOEXIT/32)] |= bitvector_t(int32(1 << (int(PRF_AUTOEXIT % 32))))
-		ch.Player_specials.Pref[int(PRF_FULL_EXIT/32)] |= bitvector_t(int32(1 << (int(PRF_FULL_EXIT % 32))))
+		SET_BIT_AR(ch.Player_specials.Pref[:], PRF_AUTOEXIT)
+		SET_BIT_AR(ch.Player_specials.Pref[:], PRF_FULL_EXIT)
 	}
 	send_to_char(ch, libc.CString("Your @rautoexit level@n is now %s.\r\n"), exitlevels[func() int {
 		if !IS_NPC(ch) {
@@ -5187,7 +4476,7 @@ func do_autoexit(ch *char_data, argument *byte, cmd int, subcmd int) {
 }
 func look_at_room(target_room room_rnum, ch *char_data, ignore_brief int) {
 	var (
-		rm *room_data = (*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))
+		rm *room_data = &world[ch.In_room]
 		t  *trig_data
 	)
 	if ch.Desc == nil {
@@ -5209,25 +4498,20 @@ func look_at_room(target_room room_rnum, ch *char_data, ignore_brief int) {
 			buf2 [64936]byte
 			buf3 [64936]byte
 		)
-		sprintbitarray((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Room_flags[:], room_bits[:], RF_ARRAY_MAX, &buf[0])
+		sprintbitarray(world[target_room].Room_flags[:], room_bits[:], RF_ARRAY_MAX, &buf[0])
 		sprinttype(rm.Sector_type, sector_types[:], &buf2[0], uint64(64936))
 		if !IS_NPC(ch) && !PRF_FLAGGED(ch, PRF_NODEC) {
 			send_to_char(ch, libc.CString("\r\n@wO----------------------------------------------------------------------O@n\r\n"))
 		}
-		send_to_char(ch, libc.CString("@wLocation: @G%-70s@w\r\n"), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Name)
+		send_to_char(ch, libc.CString("@wLocation: @G%-70s@w\r\n"), world[target_room].Name)
 		if rm.Script != nil {
 			send_to_char(ch, libc.CString("@D[@GTriggers"))
 			for t = rm.Script.Trig_list; t != nil; t = t.Next {
-				send_to_char(ch, libc.CString(" %d"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(t.Nr)))).Vnum)
+				send_to_char(ch, libc.CString(" %d"), trig_index[t.Nr].Vnum)
 			}
 			send_to_char(ch, libc.CString("@D] "))
 		}
-		stdio.Sprintf(&buf3[0], "@D[ @G%s@D] @wSector: @D[ @G%s @D] @wVnum: @D[@G%5d@D]@n", &buf[0], &buf2[0], func() room_vnum {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Number
-			}
-			return -1
-		}())
+		stdio.Sprintf(&buf3[0], "@D[ @G%s@D] @wSector: @D[ @G%s @D] @wVnum: @D[@G%5d@D]@n", &buf[0], &buf2[0], GET_ROOM_VNUM(target_room))
 		send_to_char(ch, libc.CString("@wFlags: %-70s@w\r\n"), &buf3[0])
 		if !IS_NPC(ch) && !PRF_FLAGGED(ch, PRF_NODEC) {
 			send_to_char(ch, libc.CString("@wO----------------------------------------------------------------------O@n\r\n"))
@@ -5236,37 +4520,12 @@ func look_at_room(target_room room_rnum, ch *char_data, ignore_brief int) {
 		if !IS_NPC(ch) && !PRF_FLAGGED(ch, PRF_NODEC) {
 			send_to_char(ch, libc.CString("@wO----------------------------------------------------------------------O@n\r\n"))
 		}
-		send_to_char(ch, libc.CString("@wLocation: %-70s@n\r\n"), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Name)
+		send_to_char(ch, libc.CString("@wLocation: %-70s@n\r\n"), world[target_room].Name)
 		if ROOM_FLAGGED(target_room, ROOM_EARTH) {
 			send_to_char(ch, libc.CString("@wPlanet: @GEarth@n\r\n"))
 		} else if ROOM_FLAGGED(target_room, ROOM_CERRIA) {
 			send_to_char(ch, libc.CString("@wPlanet: @RCerria@n\r\n"))
-		} else if (func() room_vnum {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Number
-			}
-			return -1
-		}()) >= 3400 && (func() room_vnum {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Number
-			}
-			return -1
-		}()) <= 3599 || (func() room_vnum {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Number
-			}
-			return -1
-		}()) >= 62900 && (func() room_vnum {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Number
-			}
-			return -1
-		}()) <= 0xF617 || (func() room_vnum {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Number
-			}
-			return -1
-		}()) == 19600 {
+		} else if PLANET_ZENITH(target_room) {
 			send_to_char(ch, libc.CString("@wPlanet: @BZenith@n\r\n"))
 		} else if ROOM_FLAGGED(target_room, ROOM_AETHER) {
 			send_to_char(ch, libc.CString("@wPlanet: @MAether@n\r\n"))
@@ -5297,33 +4556,33 @@ func look_at_room(target_room room_rnum, ch *char_data, ignore_brief int) {
 		} else {
 			send_to_char(ch, libc.CString("@wPlanet: @WUNKNOWN@n\r\n"))
 		}
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Gravity <= 0 {
+		if world[target_room].Gravity <= 0 {
 			send_to_char(ch, libc.CString("@wGravity: @WNormal@n\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Gravity == 10 {
+		} else if world[target_room].Gravity == 10 {
 			send_to_char(ch, libc.CString("@wGravity: @W10x@n\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Gravity == 20 {
+		} else if world[target_room].Gravity == 20 {
 			send_to_char(ch, libc.CString("@wGravity: @W20x@n\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Gravity == 30 {
+		} else if world[target_room].Gravity == 30 {
 			send_to_char(ch, libc.CString("@wGravity: @W30x@n\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Gravity == 40 {
+		} else if world[target_room].Gravity == 40 {
 			send_to_char(ch, libc.CString("@wGravity: @W40x@n\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Gravity == 50 {
+		} else if world[target_room].Gravity == 50 {
 			send_to_char(ch, libc.CString("@wGravity: @W50x@n\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Gravity == 100 {
+		} else if world[target_room].Gravity == 100 {
 			send_to_char(ch, libc.CString("@wGravity: @W100x@n\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Gravity == 200 {
+		} else if world[target_room].Gravity == 200 {
 			send_to_char(ch, libc.CString("@wGravity: @W200x@n\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Gravity == 300 {
+		} else if world[target_room].Gravity == 300 {
 			send_to_char(ch, libc.CString("@wGravity: @W300x@n\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Gravity == 400 {
+		} else if world[target_room].Gravity == 400 {
 			send_to_char(ch, libc.CString("@wGravity: @W400x@n\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Gravity == 500 {
+		} else if world[target_room].Gravity == 500 {
 			send_to_char(ch, libc.CString("@wGravity: @W500x@n\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Gravity == 1000 {
+		} else if world[target_room].Gravity == 1000 {
 			send_to_char(ch, libc.CString("@wGravity: @W1,000x@n\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Gravity == 5000 {
+		} else if world[target_room].Gravity == 5000 {
 			send_to_char(ch, libc.CString("@wGravity: @W5,000x@n\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Gravity == 10000 {
+		} else if world[target_room].Gravity == 10000 {
 			send_to_char(ch, libc.CString("@wGravity: @W10,000x@n\r\n"))
 		}
 		if ROOM_FLAGGED(target_room, ROOM_REGEN) {
@@ -5340,176 +4599,116 @@ func look_at_room(target_room room_rnum, ch *char_data, ignore_brief int) {
 		}
 	}
 	if !IS_NPC(ch) && !PRF_FLAGGED(ch, PRF_BRIEF) || ROOM_FLAGGED(target_room, ROOM_DEATH) {
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 99 {
-			send_to_char(ch, libc.CString("@w%s@n"), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Description)
+		if world[target_room].Dmg <= 99 {
+			send_to_char(ch, libc.CString("@w%s@n"), world[target_room].Description)
 		}
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg == 100 && ((func() int {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_WATER_SWIM || ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Geffect < 0 || (func() int {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_UNDERWATER) || (func() int {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_FLYING || (func() int {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_SHOP || (func() int {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_IMPORTANT) {
-			send_to_char(ch, libc.CString("@w%s@n"), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Description)
+		if world[target_room].Dmg == 100 && (SECT(target_room) == SECT_WATER_SWIM || SUNKEN(target_room) || SECT(target_room) == SECT_FLYING || SECT(target_room) == SECT_SHOP || SECT(target_room) == SECT_IMPORTANT) {
+			send_to_char(ch, libc.CString("@w%s@n"), world[target_room].Description)
 		}
-		if (func() int {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_INSIDE && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg > 0 {
+		if SECT(target_room) == SECT_INSIDE && world[target_room].Dmg > 0 {
 			send_to_char(ch, libc.CString("\r\n"))
-			if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 2 {
+			if world[target_room].Dmg <= 2 {
 				send_to_char(ch, libc.CString("@wA small hole with chunks of debris that can be seen scarring the floor.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 4 {
+			} else if world[target_room].Dmg <= 4 {
 				send_to_char(ch, libc.CString("@wA couple small holes with chunks of debris that can be seen scarring the floor.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 6 {
+			} else if world[target_room].Dmg <= 6 {
 				send_to_char(ch, libc.CString("@wA few small holes with chunks of debris that can be seen scarring the floor.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 10 {
+			} else if world[target_room].Dmg <= 10 {
 				send_to_char(ch, libc.CString("@wThere are several small holes with chunks of debris that can be seen scarring the floor.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 20 {
+			} else if world[target_room].Dmg <= 20 {
 				send_to_char(ch, libc.CString("@wMany holes fill the floor of this area, many of which have burn marks.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 30 {
+			} else if world[target_room].Dmg <= 30 {
 				send_to_char(ch, libc.CString("@wThe floor is severely damaged with many large holes.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 50 {
+			} else if world[target_room].Dmg <= 50 {
 				send_to_char(ch, libc.CString("@wBattle damage covers the entire area. Displayed as a tribute to the battles that have\r\nbeen waged here.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 75 {
+			} else if world[target_room].Dmg <= 75 {
 				send_to_char(ch, libc.CString("@wThis entire area is falling apart, it has been damaged so badly.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 99 {
+			} else if world[target_room].Dmg <= 99 {
 				send_to_char(ch, libc.CString("@wThis area can not withstand much more damage. Everything has been damaged so badly it\r\nis hard to recognise any particular details about their former quality.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg >= 100 {
+			} else if world[target_room].Dmg >= 100 {
 				send_to_char(ch, libc.CString("@wThis area is completely destroyed. Nothing is recognisable. Chunks of debris\r\nlitter the ground, filling up holes, and overflowing onto what is left of the\r\nfloor. A haze of smoke is wafting through the air, creating a chilling atmosphere..@n"))
 			}
 			send_to_char(ch, libc.CString("\r\n"))
-		} else if ((func() int {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_CITY || (func() int {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_FIELD || (func() int {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_HILLS || (func() int {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_IMPORTANT) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg > 0 {
+		} else if (SECT(target_room) == SECT_CITY || SECT(target_room) == SECT_FIELD || SECT(target_room) == SECT_HILLS || SECT(target_room) == SECT_IMPORTANT) && world[target_room].Dmg > 0 {
 			send_to_char(ch, libc.CString("\r\n"))
-			if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 2 {
+			if world[target_room].Dmg <= 2 {
 				send_to_char(ch, libc.CString("@wA small hole with chunks of debris that can be seen scarring the ground.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 4 {
+			} else if world[target_room].Dmg <= 4 {
 				send_to_char(ch, libc.CString("@wA couple small craters with chunks of debris that can be seen scarring the ground.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 6 {
+			} else if world[target_room].Dmg <= 6 {
 				send_to_char(ch, libc.CString("@wA few small craters with chunks of debris that can be seen scarring the ground.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 10 {
+			} else if world[target_room].Dmg <= 10 {
 				send_to_char(ch, libc.CString("@wThere are several small craters with chunks of debris that can be seen scarring the ground.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 20 {
+			} else if world[target_room].Dmg <= 20 {
 				send_to_char(ch, libc.CString("@wMany craters fill the ground of this area, many of which have burn marks.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 30 {
+			} else if world[target_room].Dmg <= 30 {
 				send_to_char(ch, libc.CString("@wThe ground is severely damaged with many large craters.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 50 {
+			} else if world[target_room].Dmg <= 50 {
 				send_to_char(ch, libc.CString("@wBattle damage covers the entire area. Displayed as a tribute to the battles that have\r\nbeen waged here.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 75 {
+			} else if world[target_room].Dmg <= 75 {
 				send_to_char(ch, libc.CString("@wThis entire area is falling apart, it has been damaged so badly.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 99 {
+			} else if world[target_room].Dmg <= 99 {
 				send_to_char(ch, libc.CString("@wThis area can not withstand much more damage. Everything has been damaged so badly it\r\nis hard to recognise any particular details about their former quality.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg >= 100 {
+			} else if world[target_room].Dmg >= 100 {
 				send_to_char(ch, libc.CString("@wThis area is completely destroyed. Nothing is recognisable. Chunks of debris\r\nlitter the ground, filling up craters, and overflowing onto what is left of the\r\nground. A haze of smoke is wafting through the air, creating a chilling atmosphere..@n"))
 			}
 			send_to_char(ch, libc.CString("\r\n"))
-		} else if (func() int {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_FOREST && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg > 0 {
+		} else if SECT(target_room) == SECT_FOREST && world[target_room].Dmg > 0 {
 			send_to_char(ch, libc.CString("\r\n"))
-			if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 2 {
+			if world[target_room].Dmg <= 2 {
 				send_to_char(ch, libc.CString("@wA small tree sits in a little crater here.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 4 {
+			} else if world[target_room].Dmg <= 4 {
 				send_to_char(ch, libc.CString("@wTrees have been uprooted by craters in the ground.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 6 {
+			} else if world[target_room].Dmg <= 6 {
 				send_to_char(ch, libc.CString("@wSeveral trees have been reduced to chunks of debris and are\r\nlaying in a few craters here. @n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 10 {
+			} else if world[target_room].Dmg <= 10 {
 				send_to_char(ch, libc.CString("@wA large patch of trees have been destroyed and are laying in craters here.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 20 {
+			} else if world[target_room].Dmg <= 20 {
 				send_to_char(ch, libc.CString("@wSeveral craters have merged into one large crater in one part of this forest.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 30 {
+			} else if world[target_room].Dmg <= 30 {
 				send_to_char(ch, libc.CString("@wThe open sky can easily be seen through a hole of trees destroyed\r\nand resting at the bottom of several craters here.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 50 {
+			} else if world[target_room].Dmg <= 50 {
 				send_to_char(ch, libc.CString("@wA good deal of burning tree pieces can be found strewn across the cratered ground here.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 75 {
+			} else if world[target_room].Dmg <= 75 {
 				send_to_char(ch, libc.CString("@wVery few trees are left standing in this area, replaced instead by large craters.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 99 {
+			} else if world[target_room].Dmg <= 99 {
 				send_to_char(ch, libc.CString("@wSingle solitary trees can be found still standing here or there in the area.\r\nThe rest have been almost completely obliterated in recent conflicts.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg >= 100 {
+			} else if world[target_room].Dmg >= 100 {
 				send_to_char(ch, libc.CString("@w  One massive crater fills this area. This desolate crater leaves no\r\nevidence of what used to be found in the area. Smoke slowly wafts into\r\nthe sky from the central point of the crater, creating an oppressive\r\natmosphere.@n"))
 			}
 			send_to_char(ch, libc.CString("\r\n"))
-		} else if (func() int {
-			if target_room != room_rnum(-1) && target_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_MOUNTAIN && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg > 0 {
+		} else if SECT(target_room) == SECT_MOUNTAIN && world[target_room].Dmg > 0 {
 			send_to_char(ch, libc.CString("\r\n"))
-			if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 2 {
+			if world[target_room].Dmg <= 2 {
 				send_to_char(ch, libc.CString("@wA small crater has been burned into the side of this mountain.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 4 {
+			} else if world[target_room].Dmg <= 4 {
 				send_to_char(ch, libc.CString("@wA couple craters have been burned into the side of this mountain.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 6 {
+			} else if world[target_room].Dmg <= 6 {
 				send_to_char(ch, libc.CString("@wBurned bits of boulders can be seen lying at the bottom of a few nearby craters.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 10 {
+			} else if world[target_room].Dmg <= 10 {
 				send_to_char(ch, libc.CString("@wSeveral bad craters can be seen in the side of the mountain here.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 20 {
+			} else if world[target_room].Dmg <= 20 {
 				send_to_char(ch, libc.CString("@wLarge boulders have rolled down the mountain side and collected in many nearby craters.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 30 {
+			} else if world[target_room].Dmg <= 30 {
 				send_to_char(ch, libc.CString("@wMany craters are covering the mountainside here.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 50 {
+			} else if world[target_room].Dmg <= 50 {
 				send_to_char(ch, libc.CString("@wThe mountain side has partially collapsed, shedding rubble down towards its base.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 75 {
+			} else if world[target_room].Dmg <= 75 {
 				send_to_char(ch, libc.CString("@wA peak of the mountain has been blown off, leaving behind a smoldering tip.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg <= 99 {
+			} else if world[target_room].Dmg <= 99 {
 				send_to_char(ch, libc.CString("@wThe mountain side here has completely collapsed, shedding dangerous rubble down to its base.@n"))
-			} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Dmg >= 100 {
+			} else if world[target_room].Dmg >= 100 {
 				send_to_char(ch, libc.CString("@w  Half the mountain has been blown away, leaving a scarred and jagged\r\nrock in its place. Billowing smoke wafts up from several parts of the\r\nmountain, filling the nearby skies and blotting out the sun.@n"))
 			}
 			send_to_char(ch, libc.CString("\r\n"))
 		}
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Geffect >= 1 && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Geffect <= 5 {
+		if world[target_room].Geffect >= 1 && world[target_room].Geffect <= 5 {
 			send_to_char(ch, libc.CString("@rLava@w is pooling in someplaces here...@n\r\n"))
 		}
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Geffect >= 6 {
+		if world[target_room].Geffect >= 6 {
 			send_to_char(ch, libc.CString("@RLava@r covers pretty much the entire area!@n\r\n"))
 		}
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Geffect < 0 {
+		if world[target_room].Geffect < 0 {
 			send_to_char(ch, libc.CString("@cThe entire area is flooded with a @Cmystical@c cube of @Bwater!@n\r\n"))
 		}
 	}
@@ -5541,37 +4740,26 @@ func look_at_room(target_room room_rnum, ch *char_data, ignore_brief int) {
 	} else if ROOM_FLAGGED(target_room, ROOM_HOUSE) {
 		send_to_char(ch, libc.CString("@D[@GItems Stored@D: @g%d@D]@n\r\n"), check_saveroom_count(ch, nil))
 	}
-	list_obj_to_char((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).Contents, ch, SHOW_OBJ_LONG, FALSE)
-	list_char_to_char((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target_room)))).People, ch)
+	list_obj_to_char(world[target_room].Contents, ch, SHOW_OBJ_LONG, FALSE)
+	list_char_to_char(world[target_room].People, ch)
 }
 func look_in_direction(ch *char_data, dir int) {
-	if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]) != nil {
-		if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]).General_description != nil {
-			send_to_char(ch, libc.CString("%s"), ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]).General_description)
+	if (world[ch.In_room].Dir_option[dir]) != nil {
+		if (world[ch.In_room].Dir_option[dir]).General_description != nil {
+			send_to_char(ch, libc.CString("%s"), (world[ch.In_room].Dir_option[dir]).General_description)
 		} else {
-			var (
-				obj      *obj_data
-				next_obj *obj_data
-				founded  int = FALSE
-			)
-			for obj = ch.Carrying; obj != nil; obj = next_obj {
-				next_obj = obj.Next_content
-				if GET_OBJ_VNUM(obj) == 17 {
-					founded = TRUE
-				}
-			}
-			if founded == FALSE {
+			var obj *obj_data = find_obj_in_list_vnum(ch.Carrying, 17)
+			if obj == nil {
 				send_to_char(ch, libc.CString("You were unable to discern anything about that direction. Try looking again...\r\n"))
-				var obj *obj_data
 				obj = read_object(17, VIRTUAL)
 				obj_to_char(obj, ch)
 			}
 		}
-		if EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir], 1<<0) && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]).Keyword != nil {
-			if !EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir], 1<<4) && EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir], 1<<1) {
-				send_to_char(ch, libc.CString("The %s is closed.\r\n"), fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]).Keyword))
-			} else if !EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir], 1<<1) {
-				send_to_char(ch, libc.CString("The %s is open.\r\n"), fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]).Keyword))
+		if EXIT_FLAGGED(world[ch.In_room].Dir_option[dir], 1<<0) && (world[ch.In_room].Dir_option[dir]).Keyword != nil {
+			if !EXIT_FLAGGED(world[ch.In_room].Dir_option[dir], 1<<4) && EXIT_FLAGGED(world[ch.In_room].Dir_option[dir], 1<<1) {
+				send_to_char(ch, libc.CString("The %s is closed.\r\n"), fname((world[ch.In_room].Dir_option[dir]).Keyword))
+			} else if !EXIT_FLAGGED(world[ch.In_room].Dir_option[dir], 1<<1) {
+				send_to_char(ch, libc.CString("The %s is open.\r\n"), fname((world[ch.In_room].Dir_option[dir]).Keyword))
 			}
 		}
 	} else {
@@ -5602,7 +4790,7 @@ func look_in_obj(ch *char_data, arg *byte) {
 			} else if room_is_dark(portal_dest) != 0 && !CAN_SEE_IN_DARK(ch) && !PLR_FLAGGED(ch, PLR_AURALIGHT) {
 				send_to_char(ch, libc.CString("You see nothing but infinite darkness...\r\n"))
 			} else {
-				send_to_char(ch, libc.CString("After seconds of concentration you see the image of %s.\r\n"), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(portal_dest)))).Name)
+				send_to_char(ch, libc.CString("After seconds of concentration you see the image of %s.\r\n"), world[portal_dest].Name)
 			}
 		} else if (obj.Value[VAL_PORTAL_APPEAR]) < MAX_PORTAL_TYPES {
 			send_to_char(ch, libc.CString("%s\r\n"), portal_appearance[obj.Value[VAL_PORTAL_APPEAR]])
@@ -5715,19 +4903,9 @@ func look_at_target(ch *char_data, arg *byte, cmread int) {
 		return
 	}
 	if cmread != 0 {
-		for obj = ch.Carrying; obj != nil; obj = obj.Next_content {
-			if int(obj.Type_flag) == ITEM_BOARD {
-				found = TRUE
-				break
-			}
-		}
+		obj = find_obj_in_list_type(ch.Carrying, ITEM_BOARD)
 		if obj == nil {
-			for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; obj != nil; obj = obj.Next_content {
-				if int(obj.Type_flag) == ITEM_BOARD {
-					found = TRUE
-					break
-				}
-			}
+			obj = find_obj_in_list_type(world[ch.In_room].Contents, ITEM_BOARD)
 		}
 		if obj != nil {
 			arg = one_argument(arg, &number[0])
@@ -5767,7 +4945,7 @@ func look_at_target(ch *char_data, arg *byte, cmread int) {
 			return
 		}
 		if (func() *byte {
-			desc = find_exdesc(arg, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Ex_description)
+			desc = find_exdesc(arg, world[ch.In_room].Ex_description)
 			return desc
 		}()) != nil && func() int {
 			p := &i
@@ -5837,7 +5015,7 @@ func look_at_target(ch *char_data, arg *byte, cmread int) {
 				}
 			}
 		}
-		for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; obj != nil && found == 0; obj = obj.Next_content {
+		for obj = world[ch.In_room].Contents; obj != nil && found == 0; obj = obj.Next_content {
 			if CAN_SEE_OBJ(ch, obj) {
 				if (func() *byte {
 					desc = find_exdesc(arg, obj.Ex_description)
@@ -5925,7 +5103,7 @@ func look_out_window(ch *char_data, arg *byte) {
 		send_to_char(ch, libc.CString("But you are already outside.\r\n"))
 		return
 	} else {
-		for i = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; i != nil; i = i.Next_content {
+		for i = world[ch.In_room].Contents; i != nil; i = i.Next_content {
 			if int(i.Type_flag) == ITEM_WINDOW && isname(libc.CString("window"), i.Name) != 0 {
 				viewport = i
 				continue
@@ -5940,10 +5118,10 @@ func look_out_window(ch *char_data, arg *byte) {
 		if (viewport.Value[VAL_WINDOW_UNUSED1]) < 0 {
 			if (viewport.Value[VAL_WINDOW_UNUSED4]) < 0 {
 				for door = 0; door < NUM_OF_DIRS; door++ {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door]) != nil {
-						if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door]).To_room != room_rnum(-1) {
-							if !ROOM_FLAGGED(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door]).To_room, ROOM_INDOORS) {
-								target_room = ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door]).To_room
+					if (world[ch.In_room].Dir_option[door]) != nil {
+						if (world[ch.In_room].Dir_option[door]).To_room != room_rnum(-1) {
+							if !ROOM_FLAGGED((world[ch.In_room].Dir_option[door]).To_room, ROOM_INDOORS) {
+								target_room = (world[ch.In_room].Dir_option[door]).To_room
 								continue
 							}
 						}
@@ -6039,7 +5217,7 @@ func do_rptrans(ch *char_data, argument *byte, cmd int, subcmd int) {
 	ch.Desc.Rpp -= amt
 	userWrite(ch.Desc, 0, 0, 0, libc.CString("index"))
 	send_to_char(ch, libc.CString("@WYou exchange @C%d@W RPP to user @c%s@W for a warm fuzzy feeling.\r\n"), amt, CAP(&arg[0]))
-	mudlog(NRM, MAX(ADMLVL_IMPL, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("EXCHANGE: %s gave %d RPP to user %s"), GET_NAME(ch), amt, &arg[0])
+	mudlog(NRM, int(MAX(ADMLVL_IMPL, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("EXCHANGE: %s gave %d RPP to user %s"), GET_NAME(ch), amt, &arg[0])
 	save_char(ch)
 }
 func do_rpbank(ch *char_data, argument *byte, cmd int, subcmd int) {
@@ -6067,7 +5245,7 @@ func do_rpbank(ch *char_data, argument *byte, cmd int, subcmd int) {
 	ch.Rbank += amt
 	ch.Desc.Rbank += amt
 	send_to_char(ch, libc.CString("You send %d to your RPP Bank. Your total is now %d.\r\n"), amt, ch.Rbank)
-	mudlog(NRM, MAX(ADMLVL_IMMORT, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("RPP Bank: %s has put %d RPP into their bank"), GET_NAME(ch), amt)
+	mudlog(NRM, int(MAX(ADMLVL_IMMORT, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("RPP Bank: %s has put %d RPP into their bank"), GET_NAME(ch), amt)
 }
 func do_rbanktrans(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var (
@@ -6119,7 +5297,7 @@ func do_rbanktrans(ch *char_data, argument *byte, cmd int, subcmd int) {
 	ch.Desc.Rbank -= amt
 	userWrite(ch.Desc, 0, 0, 0, libc.CString("index"))
 	send_to_char(ch, libc.CString("@wWELL @xGOLLY @xGEE @xWILLICKERS@x! @wYOU @RZ@YIM @RZ@YAMMED @C%d @wRIPROOZLES TO @C%s!@n\r\n"), amt, CAP(&arg[0]))
-	mudlog(NRM, MAX(ADMLVL_IMPL, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("EXCHANGE: %s gave %d Banked RPP to user %s"), GET_NAME(ch), amt, &arg[0])
+	mudlog(NRM, int(MAX(ADMLVL_IMPL, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("EXCHANGE: %s gave %d Banked RPP to user %s"), GET_NAME(ch), amt, &arg[0])
 	save_char(ch)
 }
 func do_rdisplay(ch *char_data, argument *byte, cmd int, subcmd int) {
@@ -6261,7 +5439,7 @@ func do_look(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You can't see a damned thing, your eyes are closed!\r\n"))
 	} else if room_is_dark(ch.In_room) != 0 && !CAN_SEE_IN_DARK(ch) && !PLR_FLAGGED(ch, PLR_AURALIGHT) {
 		send_to_char(ch, libc.CString("It is pitch black...\r\n"))
-		list_char_to_char((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People, ch)
+		list_char_to_char(world[ch.In_room].People, ch)
 	} else {
 		var (
 			arg  [2048]byte
@@ -6287,7 +5465,7 @@ func do_look(ch *char_data, argument *byte, cmd int, subcmd int) {
 					act(libc.CString("@w$n@w looks around the room.@n"), TRUE, ch, nil, nil, TO_ROOM)
 				}
 			}
-		} else if is_abbrev(&arg[0], libc.CString("inside")) != 0 && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[INDIR]) != nil && arg2[0] == 0 {
+		} else if is_abbrev(&arg[0], libc.CString("inside")) != 0 && (world[ch.In_room].Dir_option[INDIR]) != nil && arg2[0] == 0 {
 			if subcmd == SCMD_SEARCH {
 				search_in_direction(ch, INDIR)
 			} else {
@@ -6299,7 +5477,7 @@ func do_look(ch *char_data, argument *byte, cmd int, subcmd int) {
 			look_in_obj(ch, &arg2[0])
 		} else if (is_abbrev(&arg[0], libc.CString("outside")) != 0 || is_abbrev(&arg[0], libc.CString("through")) != 0 || is_abbrev(&arg[0], libc.CString("thru")) != 0) && subcmd == SCMD_LOOK && arg2[0] != 0 {
 			look_out_window(ch, &arg2[0])
-		} else if is_abbrev(&arg[0], libc.CString("outside")) != 0 && subcmd == SCMD_LOOK && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[OUTDIR]) == nil {
+		} else if is_abbrev(&arg[0], libc.CString("outside")) != 0 && subcmd == SCMD_LOOK && (world[ch.In_room].Dir_option[OUTDIR]) == nil {
 			look_out_window(ch, &arg2[0])
 		} else if (func() int {
 			look_type = search_block(&arg[0], &dirs[0], FALSE)
@@ -6336,7 +5514,7 @@ func do_look(ch *char_data, argument *byte, cmd int, subcmd int) {
 				i     *extra_descr_data
 				found int = 0
 			)
-			for i = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Ex_description; i != nil; i = i.Next {
+			for i = world[ch.In_room].Ex_description; i != nil; i = i.Next {
 				if *i.Keyword != '.' {
 					send_to_char(ch, libc.CString("%s%s:\r\n%s"), func() string {
 						if found != 0 {
@@ -6350,7 +5528,7 @@ func do_look(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if found == 0 {
 				send_to_char(ch, libc.CString("You couldn't find anything noticeable.\r\n"))
 			}
-		} else if find_exdesc(&arg[0], (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Ex_description) != nil {
+		} else if find_exdesc(&arg[0], world[ch.In_room].Ex_description) != nil {
 			look_at_target(ch, &arg[0], 0)
 		} else {
 			if subcmd == SCMD_SEARCH {
@@ -7346,7 +6524,7 @@ func do_inventory(ch *char_data, argument *byte, cmd int, subcmd int) {
 	send_to_char(ch, libc.CString("@w              @YInventory\r\n@D-------------------------------------@w\r\n"))
 	if !IS_NPC(ch) {
 		if PLR_FLAGGED(ch, PLR_STOLEN) {
-			ch.Act[int(PLR_STOLEN/32)] &= bitvector_t(int32(^(1 << (int(PLR_STOLEN % 32)))))
+			REMOVE_BIT_AR(ch.Act[:], PLR_STOLEN)
 			send_to_char(ch, libc.CString("@r   --------------------------------------------------@n\n"))
 			send_to_char(ch, libc.CString("@R    You notice that you have been robbed sometime recently!\n"))
 			send_to_char(ch, libc.CString("@r   --------------------------------------------------@n\n"))
@@ -7368,10 +6546,10 @@ func do_equipment(ch *char_data, argument *byte, cmd int, subcmd int) {
 					var (
 						obj2     *obj_data = nil
 						next_obj *obj_data = nil
-						sheath   *obj_data = (ch.Equipment[i])
 					)
-					for obj2 = sheath.Contains; obj2 != nil; obj2 = next_obj {
-						next_obj = obj2.Next_content
+					_ = next_obj
+					var sheath *obj_data = (ch.Equipment[i])
+					for obj2 = sheath.Contains; obj2 != nil; obj2 = obj2.Next_content {
 						if obj2 != nil {
 							send_to_char(ch, libc.CString("@D  ---- @YSheathed@D ----@c> @n"))
 							show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT)
@@ -7386,10 +6564,10 @@ func do_equipment(ch *char_data, argument *byte, cmd int, subcmd int) {
 					var (
 						obj2     *obj_data = nil
 						next_obj *obj_data = nil
-						sheath   *obj_data = (ch.Equipment[i])
 					)
-					for obj2 = sheath.Contains; obj2 != nil; obj2 = next_obj {
-						next_obj = obj2.Next_content
+					_ = next_obj
+					var sheath *obj_data = (ch.Equipment[i])
+					for obj2 = sheath.Contains; obj2 != nil; obj2 = obj2.Next_content {
 						if obj2 != nil {
 							send_to_char(ch, libc.CString("@D  ---- @YSheathed@D ----> @n"))
 							show_obj_to_char(obj2, ch, SHOW_OBJ_SHORT)
@@ -7483,16 +6661,16 @@ func search_help(argument *byte, level int) int {
 	for bot <= top {
 		mid = (bot + top) / 2
 		if (func() int {
-			chk = libc.StrNCaseCmp(argument, (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid)))).Keywords, minlen)
+			chk = libc.StrNCaseCmp(argument, help_table[mid].Keywords, minlen)
 			return chk
 		}()) == 0 {
-			for mid > 0 && libc.StrNCaseCmp(argument, (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid-1)))).Keywords, minlen) == 0 {
+			for mid > 0 && libc.StrNCaseCmp(argument, help_table[mid-1].Keywords, minlen) == 0 {
 				mid--
 			}
-			for level < (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid)))).Min_level && mid < (bot+top)/2 {
+			for level < help_table[mid].Min_level && mid < (bot+top)/2 {
 				mid++
 			}
-			if libc.StrNCaseCmp(argument, (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid)))).Keywords, minlen) != 0 {
+			if libc.StrNCaseCmp(argument, help_table[mid].Keywords, minlen) != 0 {
 				break
 			}
 			return mid
@@ -7536,34 +6714,34 @@ func do_help(ch *char_data, argument *byte, cmd int, subcmd int) {
 		)
 		send_to_char(ch, libc.CString("There is no help on that word.\r\n"))
 		if ch.Admlevel < 3 {
-			mudlog(NRM, MAX(ADMLVL_IMPL, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("%s tried to get help on %s"), GET_NAME(ch), argument)
+			mudlog(NRM, int(MAX(ADMLVL_IMPL, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("%s tried to get help on %s"), GET_NAME(ch), argument)
 		}
 		for i = 0; i <= top_of_helpt; i++ {
-			if (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(i)))).Min_level > ch.Admlevel {
+			if help_table[i].Min_level > ch.Admlevel {
 				continue
 			}
-			if *argument != *(*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(i)))).Keywords {
+			if *argument != *help_table[i].Keywords {
 				continue
 			}
-			if levenshtein_distance(argument, (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(i)))).Keywords) <= 2 {
+			if levenshtein_distance(argument, help_table[i].Keywords) <= 2 {
 				if found == 0 {
 					send_to_char(ch, libc.CString("\r\nDid you mean:\r\n"))
 					found = 1
 				}
-				send_to_char(ch, libc.CString("  %s\r\n"), (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(i)))).Keywords)
+				send_to_char(ch, libc.CString("  %s\r\n"), help_table[i].Keywords)
 			}
 		}
 		return
 	}
-	if (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid)))).Min_level > ch.Admlevel {
+	if help_table[mid].Min_level > ch.Admlevel {
 		send_to_char(ch, libc.CString("There is no help on that word.\r\n"))
 		return
 	}
 	stdio.Sprintf(&buf[0], "@b~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~@n\n")
-	stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "%s", (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid)))).Entry)
+	stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "%s", help_table[mid].Entry)
 	stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "@b~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~@n\n")
 	if ch.Admlevel > 0 {
-		stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "@WHelp File Level@w: @D(@R%d@D)@n\n", (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid)))).Min_level)
+		stdio.Sprintf(&buf[libc.StrLen(&buf[0])], "@WHelp File Level@w: @D(@R%d@D)@n\n", help_table[mid].Min_level)
 	}
 	page_string(ch.Desc, &buf[0], 0)
 }
@@ -7647,7 +6825,7 @@ func do_who(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if questwho != 0 && !PRF_FLAGGED(tch, PRF_QUEST) {
 				continue
 			}
-			if localwho != 0 && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone != (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(tch.In_room)))).Zone {
+			if localwho != 0 && world[ch.In_room].Zone != world[tch.In_room].Zone {
 				continue
 			}
 			if PRF_FLAGGED(tch, PRF_HIDE) && tch != ch && ch.Admlevel < ADMLVL_IMMORT {
@@ -7709,7 +6887,7 @@ func do_who(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if questwho != 0 && !PRF_FLAGGED(tch, PRF_QUEST) {
 				continue
 			}
-			if localwho != 0 && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone != (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(tch.In_room)))).Zone {
+			if localwho != 0 && world[ch.In_room].Zone != world[tch.In_room].Zone {
 				continue
 			}
 			if who_room != 0 && tch.In_room != ch.In_room {
@@ -7761,7 +6939,7 @@ func do_who(ch *char_data, argument *byte, cmd int, subcmd int) {
 						return GET_USER(tch)
 					}
 					return libc.CString("NULL")
-				}(), &func() [100]byte {
+				}(), func() [100]byte {
 					if ch.Admlevel > 0 {
 						return usr
 					}
@@ -8022,7 +7200,7 @@ func do_users(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 			return libc.CString("UNKNOWN")
 		}(), &state[0], &idletime[0], timeptr, "N")
-		if d.Host != nil && d.Host[0] != 0 {
+		if d.Host[0] != 0 {
 			stdio.Sprintf(&line[libc.StrLen(&line[0])], "\n%3d [%s Site: %s]\r\n", d.Desc_num, func() *byte {
 				if d.User != nil {
 					return d.User
@@ -8115,23 +7293,23 @@ func perform_mortal_where(ch *char_data, arg *byte) {
 			if i.In_room == room_rnum(-1) || !CAN_SEE(ch, i) {
 				continue
 			}
-			if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone != (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i.In_room)))).Zone {
+			if world[ch.In_room].Zone != world[i.In_room].Zone {
 				continue
 			}
-			send_to_char(ch, libc.CString("%-20s - %s\r\n"), GET_NAME(i), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i.In_room)))).Name)
+			send_to_char(ch, libc.CString("%-20s - %s\r\n"), GET_NAME(i), world[i.In_room].Name)
 		}
 	} else {
 		for i = character_list; i != nil; i = i.Next {
 			if i.In_room == room_rnum(-1) || i == ch {
 				continue
 			}
-			if !CAN_SEE(ch, i) || (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i.In_room)))).Zone != (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone {
+			if !CAN_SEE(ch, i) || world[i.In_room].Zone != world[ch.In_room].Zone {
 				continue
 			}
 			if isname(arg, i.Name) == 0 {
 				continue
 			}
-			send_to_char(ch, libc.CString("%-25s - %s\r\n"), GET_NAME(i), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i.In_room)))).Name)
+			send_to_char(ch, libc.CString("%-25s - %s\r\n"), GET_NAME(i), world[i.In_room].Name)
 			return
 		}
 		send_to_char(ch, libc.CString("Nobody around by that name.\r\n"))
@@ -8147,26 +7325,11 @@ func print_object_location(num int, obj *obj_data, ch *char_data, recur int) {
 		send_to_char(ch, libc.CString("[T%d]"), obj.Proto_script.Vnum)
 	}
 	if obj.In_room != room_rnum(-1) {
-		send_to_char(ch, libc.CString("[%5d] %s\r\n"), func() room_vnum {
-			if obj.In_room != room_rnum(-1) && obj.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj.In_room)))).Number
-			}
-			return -1
-		}(), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj.In_room)))).Name)
+		send_to_char(ch, libc.CString("[%5d] %s\r\n"), GET_ROOM_VNUM(obj.In_room), world[obj.In_room].Name)
 	} else if obj.Carried_by != nil {
-		send_to_char(ch, libc.CString("carried by %s in room [%d]\r\n"), PERS(obj.Carried_by, ch), func() room_vnum {
-			if obj.Carried_by.In_room != room_rnum(-1) && obj.Carried_by.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj.Carried_by.In_room)))).Number
-			}
-			return -1
-		}())
+		send_to_char(ch, libc.CString("carried by %s in room [%d]\r\n"), PERS(obj.Carried_by, ch), GET_ROOM_VNUM(obj.Carried_by.In_room))
 	} else if obj.Worn_by != nil {
-		send_to_char(ch, libc.CString("worn by %s in room [%d]\r\n"), PERS(obj.Worn_by, ch), func() room_vnum {
-			if obj.Worn_by.In_room != room_rnum(-1) && obj.Worn_by.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj.Worn_by.In_room)))).Number
-			}
-			return -1
-		}())
+		send_to_char(ch, libc.CString("worn by %s in room [%d]\r\n"), PERS(obj.Worn_by, ch), GET_ROOM_VNUM(obj.Worn_by.In_room))
 	} else if obj.In_obj != nil {
 		send_to_char(ch, libc.CString("inside %s%s\r\n"), obj.In_obj.Short_description, func() string {
 			if recur != 0 {
@@ -8192,7 +7355,7 @@ func perform_immort_where(ch *char_data, arg *byte) {
 		planet [11]*byte = [11]*byte{libc.CString("@GEarth@n"), libc.CString("@CFrigid@n"), libc.CString("@YVegeta@n"), libc.CString("@MKonack@n"), libc.CString("@gNamek@n"), libc.CString("@mAether@n"), libc.CString("@mArlia@n"), libc.CString("@CZenith@n"), libc.CString("@YYardrat@n"), libc.CString("@cKanassa@n"), libc.CString("@RUNKOWN@n")}
 	)
 	if *arg == 0 {
-		mudlog(NRM, MAX(ADMLVL_GRGOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("GODCMD: %s has checked where to check player locations"), GET_NAME(ch))
+		mudlog(NRM, int(MAX(ADMLVL_GRGOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("GODCMD: %s has checked where to check player locations"), GET_NAME(ch))
 		send_to_char(ch, libc.CString("Players                  Vnum    Planet        Location\r\n-------                 ------   ----------    ----------------\r\n"))
 		for d = descriptor_list; d != nil; d = d.Next {
 			if IS_PLAYING(d) {
@@ -8211,32 +7374,7 @@ func perform_immort_where(ch *char_data, arg *byte) {
 						num2 = 5
 					} else if ROOM_FLAGGED(d.Character.In_room, ROOM_ARLIA) {
 						num2 = 6
-					} else if (func() room_vnum {
-						if d.Character.In_room != room_rnum(-1) && d.Character.In_room <= top_of_world {
-							return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(d.Character.In_room)))).Number
-						}
-						return -1
-					}()) >= 3400 && (func() room_vnum {
-						if d.Character.In_room != room_rnum(-1) && d.Character.In_room <= top_of_world {
-							return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(d.Character.In_room)))).Number
-						}
-						return -1
-					}()) <= 3599 || (func() room_vnum {
-						if d.Character.In_room != room_rnum(-1) && d.Character.In_room <= top_of_world {
-							return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(d.Character.In_room)))).Number
-						}
-						return -1
-					}()) >= 62900 && (func() room_vnum {
-						if d.Character.In_room != room_rnum(-1) && d.Character.In_room <= top_of_world {
-							return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(d.Character.In_room)))).Number
-						}
-						return -1
-					}()) <= 0xF617 || (func() room_vnum {
-						if d.Character.In_room != room_rnum(-1) && d.Character.In_room <= top_of_world {
-							return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(d.Character.In_room)))).Number
-						}
-						return -1
-					}()) == 19600 {
+					} else if PLANET_ZENITH(d.Character.In_room) {
 						num2 = 7
 					} else if ROOM_FLAGGED(d.Character.In_room, ROOM_YARDRAT) {
 						num2 = 8
@@ -8253,25 +7391,15 @@ func perform_immort_where(ch *char_data, arg *byte) {
 				}
 				if i != nil && CAN_SEE(ch, i) && i.In_room != room_rnum(-1) {
 					if d.Original != nil {
-						send_to_char(ch, libc.CString("%-20s - [%5d]   %s (in %s)\r\n"), GET_NAME(i), func() room_vnum {
-							if d.Character.In_room != room_rnum(-1) && d.Character.In_room <= top_of_world {
-								return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(d.Character.In_room)))).Number
-							}
-							return -1
-						}(), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(d.Character.In_room)))).Name, GET_NAME(d.Character))
+						send_to_char(ch, libc.CString("%-20s - [%5d]   %s (in %s)\r\n"), GET_NAME(i), GET_ROOM_VNUM(d.Character.In_room), world[d.Character.In_room].Name, GET_NAME(d.Character))
 					} else {
-						send_to_char(ch, libc.CString("%-20s - [%5d]   %-14s %s\r\n"), GET_NAME(i), func() room_vnum {
-							if i.In_room != room_rnum(-1) && i.In_room <= top_of_world {
-								return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i.In_room)))).Number
-							}
-							return -1
-						}(), planet[num2], (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i.In_room)))).Name)
+						send_to_char(ch, libc.CString("%-20s - [%5d]   %-14s %s\r\n"), GET_NAME(i), GET_ROOM_VNUM(i.In_room), planet[num2], world[i.In_room].Name)
 					}
 				}
 			}
 		}
 	} else {
-		mudlog(NRM, MAX(ADMLVL_GRGOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("GODCMD: %s has checked where for the location of %s"), GET_NAME(ch), arg)
+		mudlog(NRM, int(MAX(ADMLVL_GRGOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("GODCMD: %s has checked where for the location of %s"), GET_NAME(ch), arg)
 		for i = character_list; i != nil; i = i.Next {
 			if CAN_SEE(ch, i) && i.In_room != room_rnum(-1) && isname(arg, i.Name) != 0 {
 				found = 1
@@ -8279,15 +7407,10 @@ func perform_immort_where(ch *char_data, arg *byte) {
 					p := &num
 					*p++
 					return *p
-				}(), GET_NAME(i), func() room_vnum {
-					if i.In_room != room_rnum(-1) && i.In_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i.In_room)))).Number
-					}
-					return -1
-				}(), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i.In_room)))).Name)
+				}(), GET_NAME(i), GET_ROOM_VNUM(i.In_room), world[i.In_room].Name)
 				if IS_NPC(i) && i.Script != nil {
 					if i.Script.Trig_list.Next == nil {
-						send_to_char(ch, libc.CString("[T%5d] "), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i.Script.Trig_list.Nr)))).Vnum)
+						send_to_char(ch, libc.CString("[T%5d] "), trig_index[i.Script.Trig_list.Nr].Vnum)
 					} else {
 						send_to_char(ch, libc.CString("[TRIGS] "))
 					}
@@ -8761,9 +7884,9 @@ func do_color(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	switch tp {
 	case C_OFF:
-		ch.Player_specials.Pref[int(PRF_COLOR/32)] &= bitvector_t(int32(^(1 << (int(PRF_COLOR % 32)))))
+		REMOVE_BIT_AR(ch.Player_specials.Pref[:], PRF_COLOR)
 	case C_ON:
-		ch.Player_specials.Pref[int(PRF_COLOR/32)] |= bitvector_t(int32(1 << (int(PRF_COLOR % 32))))
+		SET_BIT_AR(ch.Player_specials.Pref[:], PRF_COLOR)
 	}
 	send_to_char(ch, libc.CString("Your color is now @o%s@n.\r\n"), ctypes[tp])
 }
@@ -8940,14 +8063,14 @@ func do_toggle(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 }
 func sort_commands_helper(a unsafe.Pointer, b unsafe.Pointer) int {
-	return libc.StrCmp((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(*(*int)(a))))).Sort_as, (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(*(*int)(b))))).Sort_as)
+	return libc.StrCmp(complete_cmd_info[*(*int)(a)].Sort_as, complete_cmd_info[*(*int)(b)].Sort_as)
 }
 func sort_commands() {
 	var (
 		a           int
 		num_of_cmds int = 0
 	)
-	for *(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(num_of_cmds)))).Command != '\n' {
+	for *complete_cmd_info[num_of_cmds].Command != '\n' {
 		num_of_cmds++
 	}
 	num_of_cmds++
@@ -9012,24 +8135,24 @@ func do_commands(ch *char_data, argument *byte, cmd int, subcmd int) {
 			cmd_num = 1
 			return cmd_num
 		}()
-	}(); *(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(*(*int)(unsafe.Add(unsafe.Pointer(cmd_sort_info), unsafe.Sizeof(int(0))*uintptr(cmd_num))))))).Command != '\n'; cmd_num++ {
+	}(); *complete_cmd_info[*(*int)(unsafe.Add(unsafe.Pointer(cmd_sort_info), unsafe.Sizeof(int(0))*uintptr(cmd_num)))].Command != '\n'; cmd_num++ {
 		i = *(*int)(unsafe.Add(unsafe.Pointer(cmd_sort_info), unsafe.Sizeof(int(0))*uintptr(cmd_num)))
-		if int((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Minimum_level) < 0 || GET_LEVEL(vict) < int((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Minimum_level) {
+		if int(complete_cmd_info[i].Minimum_level) < 0 || GET_LEVEL(vict) < int(complete_cmd_info[i].Minimum_level) {
 			continue
 		}
-		if int((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Minimum_admlevel) < 0 || vict.Admlevel < int((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Minimum_admlevel) {
+		if int(complete_cmd_info[i].Minimum_admlevel) < 0 || vict.Admlevel < int(complete_cmd_info[i].Minimum_admlevel) {
 			continue
 		}
-		if int(libc.BoolToInt(int((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Minimum_admlevel) >= ADMLVL_IMMORT)) != wizhelp {
+		if int(libc.BoolToInt(int(complete_cmd_info[i].Minimum_admlevel) >= ADMLVL_IMMORT)) != wizhelp {
 			continue
 		}
-		if wizhelp == 0 && socials != int(libc.BoolToInt(libc.FuncAddr((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Command_pointer) == libc.FuncAddr(do_action) || libc.FuncAddr((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Command_pointer) == libc.FuncAddr(do_insult))) {
+		if wizhelp == 0 && socials != int(libc.BoolToInt(libc.FuncAddr(complete_cmd_info[i].Command_pointer) == libc.FuncAddr(do_action) || libc.FuncAddr(complete_cmd_info[i].Command_pointer) == libc.FuncAddr(do_insult))) {
 			continue
 		}
-		if check_disabled((*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))) != 0 {
-			stdio.Sprintf(&arg[0], "(%s)", (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Command)
+		if check_disabled(&complete_cmd_info[i]) != 0 {
+			stdio.Sprintf(&arg[0], "(%s)", complete_cmd_info[i].Command)
 		} else {
-			stdio.Sprintf(&arg[0], "%s", (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Command)
+			stdio.Sprintf(&arg[0], "%s", complete_cmd_info[i].Command)
 		}
 		send_to_char(ch, libc.CString("%-11s%s"), &arg[0], func() string {
 			if func() int {
@@ -9103,14 +8226,14 @@ func add_history(ch *char_data, str *byte, type_ int) {
 		time_str [64936]byte
 		buf      [64936]byte
 		tmp      *txt_block
-		ct       libc.Time
+		//ct       libc.Time
 	)
 	if IS_NPC(ch) {
 		return
 	}
 	tmp = ch.Player_specials.Comm_hist[type_]
-	ct = libc.GetTime(nil)
-	strftime(&time_str[0], uint64(64936), libc.CString("%H:%M "), libc.LocalTime(&ct))
+	//ct = libc.GetTime(nil)
+	//strftime(&time_str[0], uint64(64936), libc.CString("%H:%M "), libc.LocalTime(&ct))
 	stdio.Sprintf(&buf[0], "%s%s", &time_str[0], str)
 	if tmp == nil {
 		ch.Player_specials.Comm_hist[type_] = new(txt_block)
@@ -9167,13 +8290,13 @@ func do_scan(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	for i = 0; i < 10; i++ {
-		if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[i]) != nil {
+		if (world[ch.In_room].Dir_option[i]) != nil {
 			if room_is_dark(ch.In_room) != 0 && ch.Admlevel < ADMLVL_IMMORT && !AFF_FLAGGED(ch, AFF_INFRAVISION) {
 				send_to_char(ch, libc.CString("%s: DARK\n\r"), dirnames[i])
 				continue
 			}
 			if CAN_GO(ch, i) {
-				newroom = int((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[i].To_room)
+				newroom = int(world[ch.In_room].Dir_option[i].To_room)
 				send_to_char(ch, libc.CString("@w-----------------------------------------@n\r\n"))
 				send_to_char(ch, libc.CString("          %s%s: %s %s\n\r"), func() string {
 					if (func() int {
@@ -9189,8 +8312,8 @@ func do_scan(ch *char_data, argument *byte, cmd int, subcmd int) {
 					}
 					return KNUL
 				}(), dirnames[i], func() *byte {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(newroom)))).Name != nil {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(newroom)))).Name
+					if world[newroom].Name != nil {
+						return world[newroom].Name
 					}
 					return libc.CString("You don't think you saw what you just saw.")
 				}(), func() string {
@@ -9208,18 +8331,18 @@ func do_scan(ch *char_data, argument *byte, cmd int, subcmd int) {
 					return KNUL
 				}())
 				send_to_char(ch, libc.CString("@W          -----------------          @n\r\n"))
-				list_obj_to_char((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(newroom)))).Contents, ch, SHOW_OBJ_LONG, FALSE)
-				list_char_to_char((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(newroom)))).People, ch)
-				if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(newroom)))).Geffect >= 1 && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(newroom)))).Geffect <= 5 {
+				list_obj_to_char(world[newroom].Contents, ch, SHOW_OBJ_LONG, FALSE)
+				list_char_to_char(world[newroom].People, ch)
+				if world[newroom].Geffect >= 1 && world[newroom].Geffect <= 5 {
 					send_to_char(ch, libc.CString("@rLava@w is pooling in someplaces here...@n\r\n"))
 				}
-				if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(newroom)))).Geffect >= 6 {
+				if world[newroom].Geffect >= 6 {
 					send_to_char(ch, libc.CString("@RLava@r covers pretty much the entire area!@n\r\n"))
 				}
-				if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[i]).To_room)))).Dir_option[i]) != nil && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[i]).To_room)))).Dir_option[i]).To_room != 0 {
-					newroom = int(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[i]).To_room)))).Dir_option[i]).To_room)
-					if newroom != int(-1) && (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[i]).To_room)))).Dir_option[i]).Exit_info&(1<<1)) == 0 {
-						if room_is_dark(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[i]).To_room)))).Dir_option[i]).To_room) == 0 {
+				if (world[(world[ch.In_room].Dir_option[i]).To_room].Dir_option[i]) != nil && (world[(world[ch.In_room].Dir_option[i]).To_room].Dir_option[i]).To_room != 0 {
+					newroom = int((world[(world[ch.In_room].Dir_option[i]).To_room].Dir_option[i]).To_room)
+					if newroom != int(-1) && !IS_SET((world[(world[ch.In_room].Dir_option[i]).To_room].Dir_option[i]).Exit_info, 1<<1) {
+						if room_is_dark((world[(world[ch.In_room].Dir_option[i]).To_room].Dir_option[i]).To_room) == 0 {
 							send_to_char(ch, libc.CString("@w-----------------------------------------@n\r\n"))
 							send_to_char(ch, libc.CString("          %sFar %s: %s %s\n\r"), func() string {
 								if (func() int {
@@ -9235,8 +8358,8 @@ func do_scan(ch *char_data, argument *byte, cmd int, subcmd int) {
 								}
 								return KNUL
 							}(), dirnames[i], func() *byte {
-								if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(newroom)))).Name != nil {
-									return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(newroom)))).Name
+								if world[newroom].Name != nil {
+									return world[newroom].Name
 								}
 								return libc.CString("You don't think you saw what you just saw.")
 							}(), func() string {
@@ -9254,12 +8377,12 @@ func do_scan(ch *char_data, argument *byte, cmd int, subcmd int) {
 								return KNUL
 							}())
 							send_to_char(ch, libc.CString("@W          -----------------          @n\r\n"))
-							list_obj_to_char((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(newroom)))).Contents, ch, SHOW_OBJ_LONG, FALSE)
-							list_char_to_char((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(newroom)))).People, ch)
-							if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(newroom)))).Geffect >= 1 && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(newroom)))).Geffect <= 5 {
+							list_obj_to_char(world[newroom].Contents, ch, SHOW_OBJ_LONG, FALSE)
+							list_char_to_char(world[newroom].People, ch)
+							if world[newroom].Geffect >= 1 && world[newroom].Geffect <= 5 {
 								send_to_char(ch, libc.CString("@rLava@w is pooling in someplaces here...@n\r\n"))
 							}
-							if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(newroom)))).Geffect >= 6 {
+							if world[newroom].Geffect >= 6 {
 								send_to_char(ch, libc.CString("@RLava@r covers pretty much the entire area!@n\r\n"))
 							}
 						} else {
@@ -9475,7 +8598,7 @@ func do_whois(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_char(ch, libc.CString("@cImm Level@D: @G%s\r\n"), immlevels[victim.Admlevel])
 				send_to_char(ch, libc.CString("@cTitle    @D: @G%s\r\n"), GET_TITLE(victim))
 			} else {
-				send_to_char(ch, libc.CString("@cName  @D: @w%s\r\n@cSensei@D: @w%s\r\n@cRace  @D: @w%s\r\n@cTitle @D: @w%s@n\r\n@cClan  @D: @w%s@n\r\n"), GET_NAME(victim), pc_class_types[int(victim.Chclass)], pc_race_types[int(victim.Race)], GET_TITLE(victim), &func() [2048]byte {
+				send_to_char(ch, libc.CString("@cName  @D: @w%s\r\n@cSensei@D: @w%s\r\n@cRace  @D: @w%s\r\n@cTitle @D: @w%s@n\r\n@cClan  @D: @w%s@n\r\n"), GET_NAME(victim), pc_class_types[int(victim.Chclass)], pc_race_types[int(victim.Race)], GET_TITLE(victim), func() [2048]byte {
 					if clan != 0 {
 						return buf
 					}
@@ -9513,20 +8636,20 @@ func search_in_direction(ch *char_data, dir int) {
 	if int(ch.Race) == RACE_HALFBREED {
 		skill_lvl = skill_lvl + 1
 	}
-	if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]) != nil {
-		dchide = ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]).Dchide
+	if (world[ch.In_room].Dir_option[dir]) != nil {
+		dchide = (world[ch.In_room].Dir_option[dir]).Dchide
 	}
 	if skill_lvl > dchide {
 		check = TRUE
 	}
-	if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]) != nil {
-		if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]).General_description != nil && !EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir], 1<<4) {
-			send_to_char(ch, ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]).General_description)
-		} else if !EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir], 1<<4) {
+	if (world[ch.In_room].Dir_option[dir]) != nil {
+		if (world[ch.In_room].Dir_option[dir]).General_description != nil && !EXIT_FLAGGED(world[ch.In_room].Dir_option[dir], 1<<4) {
+			send_to_char(ch, (world[ch.In_room].Dir_option[dir]).General_description)
+		} else if !EXIT_FLAGGED(world[ch.In_room].Dir_option[dir], 1<<4) {
 			send_to_char(ch, libc.CString("There is a normal exit there.\r\n"))
-		} else if EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir], 1<<0) && EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir], 1<<4) && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]).Keyword != nil && check == TRUE {
-			send_to_char(ch, libc.CString("There is a hidden door keyword: '%s' %sthere.\r\n"), fname(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]).Keyword), func() string {
-				if EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir], 1<<1) {
+		} else if EXIT_FLAGGED(world[ch.In_room].Dir_option[dir], 1<<0) && EXIT_FLAGGED(world[ch.In_room].Dir_option[dir], 1<<4) && (world[ch.In_room].Dir_option[dir]).Keyword != nil && check == TRUE {
+			send_to_char(ch, libc.CString("There is a hidden door keyword: '%s' %sthere.\r\n"), fname((world[ch.In_room].Dir_option[dir]).Keyword), func() string {
+				if EXIT_FLAGGED(world[ch.In_room].Dir_option[dir], 1<<1) {
 					return ""
 				}
 				return "open "

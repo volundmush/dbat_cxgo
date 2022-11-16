@@ -18,11 +18,7 @@ func do_oasis_zedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	)
 	buf3 = two_arguments(argument, &buf1[0], &buf2[0])
 	if buf1[0] == 0 {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			number = int((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number)
-		} else {
-			number = -1
-		}
+		number = int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room)))
 	} else if !unicode.IsDigit(rune(buf1[0])) {
 		if libc.StrCaseCmp(libc.CString("save"), &buf1[0]) == 0 {
 			save = TRUE
@@ -98,14 +94,14 @@ func do_oasis_zedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if can_edit_zone(ch, d.Olc.Zone_num) == 0 {
-		send_cannot_edit(ch, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number)
+		send_cannot_edit(ch, zone_table[d.Olc.Zone_num].Number)
 		libc.Free(unsafe.Pointer(d.Olc))
 		d.Olc = nil
 		return
 	}
 	if save != 0 {
-		send_to_char(ch, libc.CString("Saving all zone information for zone %d.\r\n"), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number)
-		mudlog(CMP, MAX(ADMLVL_BUILDER, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("OLC: %s saves zone information for zone %d."), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number)
+		send_to_char(ch, libc.CString("Saving all zone information for zone %d.\r\n"), zone_table[d.Olc.Zone_num].Number)
+		mudlog(CMP, int(MAX(ADMLVL_BUILDER, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("OLC: %s saves zone information for zone %d."), GET_NAME(ch), zone_table[d.Olc.Zone_num].Number)
 		save_zone(d.Olc.Zone_num)
 		libc.Free(unsafe.Pointer(d.Olc))
 		d.Olc = nil
@@ -124,8 +120,8 @@ func do_oasis_zedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	zedit_setup(d, real_num)
 	d.Connected = CON_ZEDIT
 	act(libc.CString("$n starts using OLC."), TRUE, d.Character, nil, nil, TO_ROOM)
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
-	mudlog(CMP, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing zone %d allowed zone %d"), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number, ch.Player_specials.Olc_zone)
+	SET_BIT_AR(ch.Act[:], PLR_WRITING)
+	mudlog(CMP, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing zone %d allowed zone %d"), GET_NAME(ch), zone_table[d.Olc.Zone_num].Number, ch.Player_specials.Olc_zone)
 }
 func zedit_setup(d *descriptor_data, room_num int) {
 	var (
@@ -135,26 +131,26 @@ func zedit_setup(d *descriptor_data, room_num int) {
 		cmd_room int = int(-1)
 	)
 	zone = new(zone_data)
-	zone.Name = libc.StrDup((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Name)
-	if (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Builders != nil {
-		zone.Builders = libc.StrDup((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Builders)
+	zone.Name = libc.StrDup(zone_table[d.Olc.Zone_num].Name)
+	if zone_table[d.Olc.Zone_num].Builders != nil {
+		zone.Builders = libc.StrDup(zone_table[d.Olc.Zone_num].Builders)
 	}
-	zone.Lifespan = (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Lifespan
-	zone.Bot = (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Bot
-	zone.Top = (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Top
-	zone.Reset_mode = (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Reset_mode
-	zone.Zone_flags[0] = (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Zone_flags[0]
-	zone.Zone_flags[1] = (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Zone_flags[1]
-	zone.Zone_flags[2] = (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Zone_flags[2]
-	zone.Zone_flags[3] = (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Zone_flags[3]
-	zone.Min_level = (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Min_level
-	zone.Max_level = (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Max_level
+	zone.Lifespan = zone_table[d.Olc.Zone_num].Lifespan
+	zone.Bot = zone_table[d.Olc.Zone_num].Bot
+	zone.Top = zone_table[d.Olc.Zone_num].Top
+	zone.Reset_mode = zone_table[d.Olc.Zone_num].Reset_mode
+	zone.Zone_flags[0] = zone_table[d.Olc.Zone_num].Zone_flags[0]
+	zone.Zone_flags[1] = zone_table[d.Olc.Zone_num].Zone_flags[1]
+	zone.Zone_flags[2] = zone_table[d.Olc.Zone_num].Zone_flags[2]
+	zone.Zone_flags[3] = zone_table[d.Olc.Zone_num].Zone_flags[3]
+	zone.Min_level = zone_table[d.Olc.Zone_num].Min_level
+	zone.Max_level = zone_table[d.Olc.Zone_num].Max_level
 	zone.Number = 0
 	zone.Age = 0
-	zone.Cmd = new(reset_com)
-	(*(*reset_com)(unsafe.Add(unsafe.Pointer(zone.Cmd), unsafe.Sizeof(reset_com{})*0))).Command = 'S'
-	for int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command) != 'S' {
-		switch (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command {
+	zone.Cmd = make([]reset_com, 0)
+	zone.Cmd[0].Command = 'S'
+	for int(zone_table[d.Olc.Zone_num].Cmd[subcmd].Command) != 'S' {
+		switch zone_table[d.Olc.Zone_num].Cmd[subcmd].Command {
 		case 'M':
 			fallthrough
 		case 'O':
@@ -162,15 +158,15 @@ func zedit_setup(d *descriptor_data, room_num int) {
 		case 'T':
 			fallthrough
 		case 'V':
-			cmd_room = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg3)
+			cmd_room = int(zone_table[d.Olc.Zone_num].Cmd[subcmd].Arg3)
 		case 'D':
 			fallthrough
 		case 'R':
-			cmd_room = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)
+			cmd_room = int(zone_table[d.Olc.Zone_num].Cmd[subcmd].Arg1)
 		default:
 		}
 		if cmd_room == room_num {
-			add_cmd_to_list(&zone.Cmd, (*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd))), count)
+			add_cmd_to_list((**reset_com)(unsafe.Pointer(&zone.Cmd[0])), &zone_table[d.Olc.Zone_num].Cmd[subcmd], count)
 			count++
 		}
 		subcmd++
@@ -235,7 +231,7 @@ func zedit_new_zone(ch *char_data, vzone_num zone_vnum, bottom room_vnum, top ro
 		}
 	}
 	zedit_save_to_disk(result)
-	mudlog(BRF, MAX(ADMLVL_BUILDER, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("OLC: %s creates new zone #%d"), GET_NAME(ch), vzone_num)
+	mudlog(BRF, int(MAX(ADMLVL_BUILDER, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("OLC: %s creates new zone #%d"), GET_NAME(ch), vzone_num)
 	write_to_output(ch.Desc, libc.CString("Zone created successfully.\r\n"))
 }
 func zedit_save_internally(d *descriptor_data) {
@@ -250,8 +246,8 @@ func zedit_save_internally(d *descriptor_data) {
 		return
 	}
 	remove_room_zone_commands(d.Olc.Zone_num, room_num)
-	for subcmd = 0; int((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command) != 'S'; subcmd++ {
-		switch (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command {
+	for subcmd = 0; int((d.Olc.Zone.Cmd[subcmd]).Command) != 'S'; subcmd++ {
+		switch (d.Olc.Zone.Cmd[subcmd]).Command {
 		case 'G':
 			fallthrough
 		case 'E':
@@ -276,25 +272,25 @@ func zedit_save_internally(d *descriptor_data) {
 				return objloaded
 			}()
 		}
-		add_cmd_to_list(&(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Cmd, (*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd))), subcmd)
+		add_cmd_to_list((**reset_com)(unsafe.Pointer(&zone_table[d.Olc.Zone_num].Cmd[0])), &(d.Olc.Zone.Cmd[subcmd]), subcmd)
 	}
 	if d.Olc.Zone.Number != 0 {
-		libc.Free(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Name))
-		libc.Free(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Builders))
-		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Name = libc.StrDup(d.Olc.Zone.Name)
-		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Builders = libc.StrDup(d.Olc.Zone.Builders)
-		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Bot = d.Olc.Zone.Bot
-		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Top = d.Olc.Zone.Top
-		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Reset_mode = d.Olc.Zone.Reset_mode
-		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Lifespan = d.Olc.Zone.Lifespan
-		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Zone_flags[0] = d.Olc.Zone.Zone_flags[0]
-		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Zone_flags[1] = d.Olc.Zone.Zone_flags[1]
-		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Zone_flags[2] = d.Olc.Zone.Zone_flags[2]
-		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Zone_flags[3] = d.Olc.Zone.Zone_flags[3]
-		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Min_level = d.Olc.Zone.Min_level
-		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Max_level = d.Olc.Zone.Max_level
+		libc.Free(unsafe.Pointer(zone_table[d.Olc.Zone_num].Name))
+		libc.Free(unsafe.Pointer(zone_table[d.Olc.Zone_num].Builders))
+		zone_table[d.Olc.Zone_num].Name = libc.StrDup(d.Olc.Zone.Name)
+		zone_table[d.Olc.Zone_num].Builders = libc.StrDup(d.Olc.Zone.Builders)
+		zone_table[d.Olc.Zone_num].Bot = d.Olc.Zone.Bot
+		zone_table[d.Olc.Zone_num].Top = d.Olc.Zone.Top
+		zone_table[d.Olc.Zone_num].Reset_mode = d.Olc.Zone.Reset_mode
+		zone_table[d.Olc.Zone_num].Lifespan = d.Olc.Zone.Lifespan
+		zone_table[d.Olc.Zone_num].Zone_flags[0] = d.Olc.Zone.Zone_flags[0]
+		zone_table[d.Olc.Zone_num].Zone_flags[1] = d.Olc.Zone.Zone_flags[1]
+		zone_table[d.Olc.Zone_num].Zone_flags[2] = d.Olc.Zone.Zone_flags[2]
+		zone_table[d.Olc.Zone_num].Zone_flags[3] = d.Olc.Zone.Zone_flags[3]
+		zone_table[d.Olc.Zone_num].Min_level = d.Olc.Zone.Min_level
+		zone_table[d.Olc.Zone_num].Max_level = d.Olc.Zone.Max_level
 	}
-	add_to_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number, SL_ZON)
+	add_to_save_list(zone_table[d.Olc.Zone_num].Number, SL_ZON)
 }
 func zedit_save_to_disk(zone int) {
 	save_zone(zone_rnum(zone))
@@ -317,7 +313,7 @@ func zedit_disp_menu(d *descriptor_data) {
 	clear_screen(d)
 	room = int(real_room(d.Olc.Number))
 	sprintbitarray(d.Olc.Zone.Zone_flags[:], zone_bits[:], ZF_ARRAY_MAX, &buf1[0])
-	send_to_char(d.Character, libc.CString("Room number: [@c%d@n]\t\tRoom zone: @c%d\r\n@g1@n) Builders       : @y%s\r\n@gA@n) Zone name      : @y%s\r\n@gL@n) Lifespan       : @y%d minutes\r\n@gB@n) Bottom of zone : @y%d\r\n@gT@n) Top of zone    : @y%d\r\n@gR@n) Reset Mode     : @y%s@n\r\n@gF@n) Zone Flags     : @y%s@n\r\n@gM@n) Min Level      : @y%d@n\r\n@gX@n) Max Level      : @y%d@n\r\n@gZ@n) Wiznet         :\r\n[Command list]\r\n"), d.Olc.Number, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number, func() *byte {
+	send_to_char(d.Character, libc.CString("Room number: [@c%d@n]\t\tRoom zone: @c%d\r\n@g1@n) Builders       : @y%s\r\n@gA@n) Zone name      : @y%s\r\n@gL@n) Lifespan       : @y%d minutes\r\n@gB@n) Bottom of zone : @y%d\r\n@gT@n) Top of zone    : @y%d\r\n@gR@n) Reset Mode     : @y%s@n\r\n@gF@n) Zone Flags     : @y%s@n\r\n@gM@n) Min Level      : @y%d@n\r\n@gX@n) Max Level      : @y%d@n\r\n@gZ@n) Wiznet         :\r\n[Command list]\r\n"), d.Olc.Number, zone_table[d.Olc.Zone_num].Number, func() *byte {
 		if d.Olc.Zone.Builders != nil {
 			return d.Olc.Zone.Builders
 		}
@@ -336,65 +332,65 @@ func zedit_disp_menu(d *descriptor_data) {
 		}
 		return "Never reset"
 	}(), &buf1[0], d.Olc.Zone.Min_level, d.Olc.Zone.Max_level)
-	for int((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command) != 'S' {
+	for int((d.Olc.Zone.Cmd[subcmd]).Command) != 'S' {
 		write_to_output(d, libc.CString("@n%d - @y"), func() int {
 			p := &counter
 			x := *p
 			*p++
 			return x
 		}())
-		switch (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command {
+		switch (d.Olc.Zone.Cmd[subcmd]).Command {
 		case 'M':
 			write_to_output(d, libc.CString("%sLoad %s@y [@c%d@y], Max : %d, MaxR %d, Chance %d"), func() string {
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag {
+				if (d.Olc.Zone.Cmd[subcmd]).If_flag {
 					return " then "
 				}
 				return ""
-			}(), (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Short_descr, (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Vnum, (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2, (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg4, (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg5)
+			}(), mob_proto[(d.Olc.Zone.Cmd[subcmd]).Arg1].Short_descr, mob_index[(d.Olc.Zone.Cmd[subcmd]).Arg1].Vnum, (d.Olc.Zone.Cmd[subcmd]).Arg2, (d.Olc.Zone.Cmd[subcmd]).Arg4, (d.Olc.Zone.Cmd[subcmd]).Arg5)
 		case 'G':
 			write_to_output(d, libc.CString("%sGive it %s@y [@c%d@y], Max : %d, Chance %d"), func() string {
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag {
+				if (d.Olc.Zone.Cmd[subcmd]).If_flag {
 					return " then "
 				}
 				return ""
-			}(), (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Short_description, (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Vnum, (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2, (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg5)
+			}(), obj_proto[(d.Olc.Zone.Cmd[subcmd]).Arg1].Short_description, obj_index[(d.Olc.Zone.Cmd[subcmd]).Arg1].Vnum, (d.Olc.Zone.Cmd[subcmd]).Arg2, (d.Olc.Zone.Cmd[subcmd]).Arg5)
 		case 'O':
 			write_to_output(d, libc.CString("%sLoad %s@y [@c%d@y], Max : %d, MaxR %d, Chance %d"), func() string {
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag {
+				if (d.Olc.Zone.Cmd[subcmd]).If_flag {
 					return " then "
 				}
 				return ""
-			}(), (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Short_description, (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Vnum, (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2, (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg4, (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg5)
+			}(), obj_proto[(d.Olc.Zone.Cmd[subcmd]).Arg1].Short_description, obj_index[(d.Olc.Zone.Cmd[subcmd]).Arg1].Vnum, (d.Olc.Zone.Cmd[subcmd]).Arg2, (d.Olc.Zone.Cmd[subcmd]).Arg4, (d.Olc.Zone.Cmd[subcmd]).Arg5)
 		case 'E':
 			write_to_output(d, libc.CString("%sEquip with %s@y [@c%d@n], %s, Max : %d, Chance %d"), func() string {
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag {
+				if (d.Olc.Zone.Cmd[subcmd]).If_flag {
 					return " then "
 				}
 				return ""
-			}(), (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Short_description, (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Vnum, equipment_types[(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg3], (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2, (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg5)
+			}(), obj_proto[(d.Olc.Zone.Cmd[subcmd]).Arg1].Short_description, obj_index[(d.Olc.Zone.Cmd[subcmd]).Arg1].Vnum, equipment_types[(d.Olc.Zone.Cmd[subcmd]).Arg3], (d.Olc.Zone.Cmd[subcmd]).Arg2, (d.Olc.Zone.Cmd[subcmd]).Arg5)
 		case 'P':
 			write_to_output(d, libc.CString("%sPut %s@y [@c%d@n] in %s [@c%d@n], Max : %d, %% Chance %d"), func() string {
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag {
+				if (d.Olc.Zone.Cmd[subcmd]).If_flag {
 					return " then "
 				}
 				return ""
-			}(), (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Short_description, (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Vnum, (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg3)))).Short_description, (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg3)))).Vnum, (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2, (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg5)
+			}(), obj_proto[(d.Olc.Zone.Cmd[subcmd]).Arg1].Short_description, obj_index[(d.Olc.Zone.Cmd[subcmd]).Arg1].Vnum, obj_proto[(d.Olc.Zone.Cmd[subcmd]).Arg3].Short_description, obj_index[(d.Olc.Zone.Cmd[subcmd]).Arg3].Vnum, (d.Olc.Zone.Cmd[subcmd]).Arg2, (d.Olc.Zone.Cmd[subcmd]).Arg5)
 		case 'R':
 			write_to_output(d, libc.CString("%sRemove %s@y [@c%d@n] from room."), func() string {
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag {
+				if (d.Olc.Zone.Cmd[subcmd]).If_flag {
 					return " then "
 				}
 				return ""
-			}(), (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2)))).Short_description, (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2)))).Vnum)
+			}(), obj_proto[(d.Olc.Zone.Cmd[subcmd]).Arg2].Short_description, obj_index[(d.Olc.Zone.Cmd[subcmd]).Arg2].Vnum)
 		case 'D':
 			write_to_output(d, libc.CString("%sSet door %s@y as %s."), func() string {
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag {
+				if (d.Olc.Zone.Cmd[subcmd]).If_flag {
 					return " then "
 				}
 				return ""
-			}(), dirs[(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2], func() string {
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg3 != 0 {
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg3 == 1 {
+			}(), dirs[(d.Olc.Zone.Cmd[subcmd]).Arg2], func() string {
+				if (d.Olc.Zone.Cmd[subcmd]).Arg3 != 0 {
+					if (d.Olc.Zone.Cmd[subcmd]).Arg3 == 1 {
 						return "closed"
 					}
 					return "locked"
@@ -403,40 +399,40 @@ func zedit_disp_menu(d *descriptor_data) {
 			}())
 		case 'T':
 			write_to_output(d, libc.CString("%sAttach trigger @c%s@y [@c%d@y] to %s, %% Chance %d"), func() string {
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag {
+				if (d.Olc.Zone.Cmd[subcmd]).If_flag {
 					return " then "
 				}
 				return ""
-			}(), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2)))).Proto.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2)))).Vnum, func() string {
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1 == MOB_TRIGGER {
+			}(), trig_index[(d.Olc.Zone.Cmd[subcmd]).Arg2].Proto.Name, trig_index[(d.Olc.Zone.Cmd[subcmd]).Arg2].Vnum, func() string {
+				if (d.Olc.Zone.Cmd[subcmd]).Arg1 == MOB_TRIGGER {
 					return "mobile"
 				}
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1 == OBJ_TRIGGER {
+				if (d.Olc.Zone.Cmd[subcmd]).Arg1 == OBJ_TRIGGER {
 					return "object"
 				}
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1 == WLD_TRIGGER {
+				if (d.Olc.Zone.Cmd[subcmd]).Arg1 == WLD_TRIGGER {
 					return "room"
 				}
 				return "????"
-			}(), (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg5)
+			}(), (d.Olc.Zone.Cmd[subcmd]).Arg5)
 		case 'V':
 			write_to_output(d, libc.CString("%sAssign global %s:%d to %s = %s, %% Chance %d"), func() string {
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag {
+				if (d.Olc.Zone.Cmd[subcmd]).If_flag {
 					return " then "
 				}
 				return ""
-			}(), (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Sarg1, (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2, func() string {
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1 == MOB_TRIGGER {
+			}(), (d.Olc.Zone.Cmd[subcmd]).Sarg1, (d.Olc.Zone.Cmd[subcmd]).Arg2, func() string {
+				if (d.Olc.Zone.Cmd[subcmd]).Arg1 == MOB_TRIGGER {
 					return "mobile"
 				}
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1 == OBJ_TRIGGER {
+				if (d.Olc.Zone.Cmd[subcmd]).Arg1 == OBJ_TRIGGER {
 					return "object"
 				}
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1 == WLD_TRIGGER {
+				if (d.Olc.Zone.Cmd[subcmd]).Arg1 == WLD_TRIGGER {
 					return "room"
 				}
 				return "????"
-			}(), (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Sarg2, (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg5)
+			}(), (d.Olc.Zone.Cmd[subcmd]).Sarg2, (d.Olc.Zone.Cmd[subcmd]).Arg5)
 		default:
 			write_to_output(d, libc.CString("<Unknown Command>"))
 		}
@@ -453,7 +449,7 @@ func zedit_disp_comtype(d *descriptor_data) {
 }
 func zedit_disp_arg1(d *descriptor_data) {
 	write_to_output(d, libc.CString("\r\n"))
-	switch (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command {
+	switch (d.Olc.Zone.Cmd[d.Olc.Value]).Command {
 	case 'M':
 		write_to_output(d, libc.CString("Input mob's vnum : "))
 		d.Olc.Mode = ZEDIT_ARG1
@@ -469,7 +465,7 @@ func zedit_disp_arg1(d *descriptor_data) {
 	case 'D':
 		fallthrough
 	case 'R':
-		(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Arg1 = vnum(real_room(d.Olc.Number))
+		(d.Olc.Zone.Cmd[d.Olc.Value]).Arg1 = vnum(real_room(d.Olc.Number))
 		zedit_disp_arg2(d)
 	case 'T':
 		fallthrough
@@ -485,7 +481,7 @@ func zedit_disp_arg1(d *descriptor_data) {
 }
 func zedit_disp_arg2(d *descriptor_data) {
 	var i int
-	switch (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command {
+	switch (d.Olc.Zone.Cmd[d.Olc.Value]).Command {
 	case 'M':
 		fallthrough
 	case 'O':
@@ -518,7 +514,7 @@ func zedit_disp_arg2(d *descriptor_data) {
 func zedit_disp_arg3(d *descriptor_data) {
 	var i int = 0
 	write_to_output(d, libc.CString("\r\n"))
-	switch (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command {
+	switch (d.Olc.Zone.Cmd[d.Olc.Value]).Command {
 	case 'E':
 		for *equipment_types[i] != '\n' {
 			write_to_output(d, libc.CString("%2d) %26.26s %2d) %26.26s\r\n"), i, equipment_types[i], i+1, func() *byte {
@@ -560,7 +556,7 @@ func zedit_disp_arg3(d *descriptor_data) {
 }
 func zedit_disp_arg4(d *descriptor_data) {
 	write_to_output(d, libc.CString("\r\n"))
-	switch (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command {
+	switch (d.Olc.Zone.Cmd[d.Olc.Value]).Command {
 	case 'M':
 		fallthrough
 	case 'O':
@@ -585,7 +581,7 @@ func zedit_disp_arg4(d *descriptor_data) {
 }
 func zedit_disp_arg5(d *descriptor_data) {
 	write_to_output(d, libc.CString("\r\n"))
-	switch (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command {
+	switch (d.Olc.Zone.Cmd[d.Olc.Value]).Command {
 	case 'M':
 		fallthrough
 	case 'O':
@@ -627,7 +623,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 			} else {
 				write_to_output(d, libc.CString("Saving zone info in memory.\r\n"))
 			}
-			mudlog(CMP, MAX(ADMLVL_BUILDER, int(d.Character.Player_specials.Invis_level)), TRUE, libc.CString("OLC: %s edits zone info for room %d."), GET_NAME(d.Character), d.Olc.Number)
+			mudlog(CMP, int(MAX(ADMLVL_BUILDER, int64(d.Character.Player_specials.Invis_level))), TRUE, libc.CString("OLC: %s edits zone info for room %d."), GET_NAME(d.Character), d.Olc.Number)
 			fallthrough
 		case 'n':
 			fallthrough
@@ -652,7 +648,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 		case 'n':
 			fallthrough
 		case 'N':
-			if int((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*0))).Command) == 'S' {
+			if int(d.Olc.Zone.Cmd[0].Command) == 'S' {
 				if new_command(d.Olc.Zone, 0) != 0 && start_change_command(d, 0) != 0 {
 					zedit_disp_comtype(d)
 					d.Olc.Zone.Age = 1
@@ -753,8 +749,8 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 		zedit_disp_menu(d)
 	case ZEDIT_CHANGE_ENTRY:
 		if unicode.ToUpper(rune(*arg)) == 'A' {
-			if int((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command) == 'N' {
-				(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command = '*'
+			if int((d.Olc.Zone.Cmd[d.Olc.Value]).Command) == 'N' {
+				(d.Olc.Zone.Cmd[d.Olc.Value]).Command = '*'
 			}
 			zedit_disp_menu(d)
 			break
@@ -767,20 +763,20 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 			zedit_disp_menu(d)
 		}
 	case ZEDIT_COMMAND_TYPE:
-		(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command = int8(unicode.ToUpper(rune(*arg)))
-		if int((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command) == 0 || libc.StrChr(libc.CString("MOPEDGRTV"), byte((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command)) == nil {
+		(d.Olc.Zone.Cmd[d.Olc.Value]).Command = int8(unicode.ToUpper(rune(*arg)))
+		if int((d.Olc.Zone.Cmd[d.Olc.Value]).Command) == 0 || libc.StrChr(libc.CString("MOPEDGRTV"), byte((d.Olc.Zone.Cmd[d.Olc.Value]).Command)) == nil {
 			write_to_output(d, libc.CString("Invalid choice, try again : "))
 		} else {
 			if d.Olc.Value != 0 {
-				if int((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command) == 'T' || int((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command) == 'V' {
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).If_flag = true
+				if int((d.Olc.Zone.Cmd[d.Olc.Value]).Command) == 'T' || int((d.Olc.Zone.Cmd[d.Olc.Value]).Command) == 'V' {
+					(d.Olc.Zone.Cmd[d.Olc.Value]).If_flag = true
 					zedit_disp_arg1(d)
 				} else {
 					write_to_output(d, libc.CString("Is this command dependent on the success of the previous one? (y/n)\r\n"))
 					d.Olc.Mode = ZEDIT_IF_FLAG
 				}
 			} else {
-				(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).If_flag = false
+				(d.Olc.Zone.Cmd[d.Olc.Value]).If_flag = false
 				zedit_disp_arg1(d)
 			}
 		}
@@ -789,11 +785,11 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 		case 'y':
 			fallthrough
 		case 'Y':
-			(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).If_flag = true
+			(d.Olc.Zone.Cmd[d.Olc.Value]).If_flag = true
 		case 'n':
 			fallthrough
 		case 'N':
-			(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).If_flag = false
+			(d.Olc.Zone.Cmd[d.Olc.Value]).If_flag = false
 		default:
 			write_to_output(d, libc.CString("Try again : "))
 			return
@@ -804,13 +800,13 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("Must be a numeric value, try again : "))
 			return
 		}
-		switch (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command {
+		switch (d.Olc.Zone.Cmd[d.Olc.Value]).Command {
 		case 'M':
 			if (func() int {
 				pos = int(real_mobile(mob_vnum(libc.Atoi(libc.GoString(arg)))))
 				return pos
 			}()) != int(-1) {
-				(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Arg1 = vnum(pos)
+				(d.Olc.Zone.Cmd[d.Olc.Value]).Arg1 = vnum(pos)
 				zedit_disp_arg2(d)
 			} else {
 				write_to_output(d, libc.CString("That mobile does not exist, try again : "))
@@ -826,7 +822,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 				pos = int(real_object(obj_vnum(libc.Atoi(libc.GoString(arg)))))
 				return pos
 			}()) != int(-1) {
-				(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Arg1 = vnum(pos)
+				(d.Olc.Zone.Cmd[d.Olc.Value]).Arg1 = vnum(pos)
 				zedit_disp_arg2(d)
 			} else {
 				write_to_output(d, libc.CString("That object does not exist, try again : "))
@@ -837,7 +833,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 			if libc.Atoi(libc.GoString(arg)) < MOB_TRIGGER || libc.Atoi(libc.GoString(arg)) > WLD_TRIGGER {
 				write_to_output(d, libc.CString("Invalid input."))
 			} else {
-				(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Arg1 = vnum(libc.Atoi(libc.GoString(arg)))
+				(d.Olc.Zone.Cmd[d.Olc.Value]).Arg1 = vnum(libc.Atoi(libc.GoString(arg)))
 				zedit_disp_arg2(d)
 			}
 		case 'D':
@@ -854,30 +850,30 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("Must be a numeric value, try again : "))
 			return
 		}
-		switch (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command {
+		switch (d.Olc.Zone.Cmd[d.Olc.Value]).Command {
 		case 'M':
 			fallthrough
 		case 'O':
-			(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Arg2 = vnum(MIN(MAX_DUPLICATES, libc.Atoi(libc.GoString(arg))))
-			(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Arg3 = vnum(real_room(d.Olc.Number))
+			(d.Olc.Zone.Cmd[d.Olc.Value]).Arg2 = vnum(MIN(MAX_DUPLICATES, int64(libc.Atoi(libc.GoString(arg)))))
+			(d.Olc.Zone.Cmd[d.Olc.Value]).Arg3 = vnum(real_room(d.Olc.Number))
 			zedit_disp_arg4(d)
 		case 'G':
-			(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Arg2 = vnum(MIN(MAX_DUPLICATES, libc.Atoi(libc.GoString(arg))))
+			(d.Olc.Zone.Cmd[d.Olc.Value]).Arg2 = vnum(MIN(MAX_DUPLICATES, int64(libc.Atoi(libc.GoString(arg)))))
 			zedit_disp_arg5(d)
 		case 'P':
 			fallthrough
 		case 'E':
-			(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Arg2 = vnum(MIN(MAX_DUPLICATES, libc.Atoi(libc.GoString(arg))))
+			(d.Olc.Zone.Cmd[d.Olc.Value]).Arg2 = vnum(MIN(MAX_DUPLICATES, int64(libc.Atoi(libc.GoString(arg)))))
 			zedit_disp_arg3(d)
 		case 'V':
-			(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Arg2 = vnum(libc.Atoi(libc.GoString(arg)))
-			(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Arg3 = vnum(real_room(d.Olc.Number))
+			(d.Olc.Zone.Cmd[d.Olc.Value]).Arg2 = vnum(libc.Atoi(libc.GoString(arg)))
+			(d.Olc.Zone.Cmd[d.Olc.Value]).Arg3 = vnum(real_room(d.Olc.Number))
 			write_to_output(d, libc.CString("Enter the global name : "))
 			d.Olc.Mode = ZEDIT_SARG1
 		case 'T':
 			if real_trigger(trig_vnum(libc.Atoi(libc.GoString(arg)))) != trig_rnum(-1) {
-				(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Arg2 = vnum(real_trigger(trig_vnum(libc.Atoi(libc.GoString(arg)))))
-				(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Arg3 = vnum(real_room(d.Olc.Number))
+				(d.Olc.Zone.Cmd[d.Olc.Value]).Arg2 = vnum(real_trigger(trig_vnum(libc.Atoi(libc.GoString(arg)))))
+				(d.Olc.Zone.Cmd[d.Olc.Value]).Arg3 = vnum(real_room(d.Olc.Number))
 				zedit_disp_menu(d)
 			} else {
 				write_to_output(d, libc.CString("That trigger does not exist, try again : "))
@@ -887,7 +883,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 			if pos < 0 || pos > NUM_OF_DIRS {
 				write_to_output(d, libc.CString("Try again : "))
 			} else {
-				(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Arg2 = vnum(pos)
+				(d.Olc.Zone.Cmd[d.Olc.Value]).Arg2 = vnum(pos)
 				zedit_disp_arg3(d)
 			}
 		case 'R':
@@ -895,7 +891,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 				pos = int(real_object(obj_vnum(libc.Atoi(libc.GoString(arg)))))
 				return pos
 			}()) != int(-1) {
-				(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Arg2 = vnum(pos)
+				(d.Olc.Zone.Cmd[d.Olc.Value]).Arg2 = vnum(pos)
 				zedit_disp_menu(d)
 			} else {
 				write_to_output(d, libc.CString("That object does not exist, try again : "))
@@ -910,7 +906,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("Must be a numeric value, try again : "))
 			return
 		}
-		switch (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command {
+		switch (d.Olc.Zone.Cmd[d.Olc.Value]).Command {
 		case 'E':
 			pos = libc.Atoi(libc.GoString(arg))
 			for *equipment_types[i] != '\n' {
@@ -919,7 +915,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 			if pos < 0 || pos > i {
 				write_to_output(d, libc.CString("Try again : "))
 			} else {
-				(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Arg3 = vnum(pos)
+				(d.Olc.Zone.Cmd[d.Olc.Value]).Arg3 = vnum(pos)
 				zedit_disp_arg5(d)
 			}
 		case 'P':
@@ -927,7 +923,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 				pos = int(real_object(obj_vnum(libc.Atoi(libc.GoString(arg)))))
 				return pos
 			}()) != int(-1) {
-				(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Arg3 = vnum(pos)
+				(d.Olc.Zone.Cmd[d.Olc.Value]).Arg3 = vnum(pos)
 				zedit_disp_arg5(d)
 			} else {
 				write_to_output(d, libc.CString("That object does not exist, try again : "))
@@ -937,7 +933,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 			if pos < 0 || pos > 2 {
 				write_to_output(d, libc.CString("Try again : "))
 			} else {
-				(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Arg3 = vnum(pos)
+				(d.Olc.Zone.Cmd[d.Olc.Value]).Arg3 = vnum(pos)
 				zedit_disp_menu(d)
 			}
 		case 'M':
@@ -965,11 +961,11 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("Must be a numeric value, try again : "))
 			return
 		}
-		switch (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command {
+		switch (d.Olc.Zone.Cmd[d.Olc.Value]).Command {
 		case 'M':
 			fallthrough
 		case 'O':
-			(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Arg4 = vnum(MIN(MAX_FROM_ROOM, libc.Atoi(libc.GoString(arg))))
+			(d.Olc.Zone.Cmd[d.Olc.Value]).Arg4 = vnum(MIN(MAX_FROM_ROOM, int64(libc.Atoi(libc.GoString(arg)))))
 			zedit_disp_arg5(d)
 		case 'G':
 			fallthrough
@@ -995,7 +991,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("Value must be from 0 to 100"))
 			return
 		}
-		switch (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Command {
+		switch (d.Olc.Zone.Cmd[d.Olc.Value]).Command {
 		case 'M':
 			fallthrough
 		case 'O':
@@ -1005,7 +1001,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 		case 'P':
 			fallthrough
 		case 'E':
-			(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Arg5 = vnum(libc.Atoi(libc.GoString(arg)))
+			(d.Olc.Zone.Cmd[d.Olc.Value]).Arg5 = vnum(libc.Atoi(libc.GoString(arg)))
 			zedit_disp_menu(d)
 		case 'V':
 			fallthrough
@@ -1018,10 +1014,10 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 		}
 	case ZEDIT_SARG1:
 		if libc.StrLen(arg) != 0 {
-			if (*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Sarg1 != nil {
-				libc.Free(unsafe.Pointer((*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Sarg1))
+			if (d.Olc.Zone.Cmd[d.Olc.Value]).Sarg1 != nil {
+				libc.Free(unsafe.Pointer((d.Olc.Zone.Cmd[d.Olc.Value]).Sarg1))
 			}
-			(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Sarg1 = libc.StrDup(arg)
+			(d.Olc.Zone.Cmd[d.Olc.Value]).Sarg1 = libc.StrDup(arg)
 			d.Olc.Mode = ZEDIT_SARG2
 			write_to_output(d, libc.CString("Enter the global value : "))
 		} else {
@@ -1029,7 +1025,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 		}
 	case ZEDIT_SARG2:
 		if libc.StrLen(arg) != 0 {
-			(*(*reset_com)(unsafe.Add(unsafe.Pointer(d.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(d.Olc.Value)))).Sarg2 = libc.StrDup(arg)
+			(d.Olc.Zone.Cmd[d.Olc.Value]).Sarg2 = libc.StrDup(arg)
 			zedit_disp_arg4(d)
 		} else {
 			write_to_output(d, libc.CString("Must have some value to set it to :"))
@@ -1076,17 +1072,17 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 		}
 	case ZEDIT_ZONE_BOT:
 		if d.Olc.Zone_num == 0 {
-			d.Olc.Zone.Bot = room_vnum(MIN(int(d.Olc.Zone.Top), MAX(libc.Atoi(libc.GoString(arg)), 0)))
+			d.Olc.Zone.Bot = room_vnum(MIN(int64(d.Olc.Zone.Top), MAX(int64(libc.Atoi(libc.GoString(arg))), 0)))
 		} else {
-			d.Olc.Zone.Bot = room_vnum(MIN(int(d.Olc.Zone.Top), MAX(libc.Atoi(libc.GoString(arg)), int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num-1)))).Top+1))))
+			d.Olc.Zone.Bot = room_vnum(MIN(int64(d.Olc.Zone.Top), MAX(int64(libc.Atoi(libc.GoString(arg))), int64(zone_table[d.Olc.Zone_num-1].Top+1))))
 		}
 		d.Olc.Zone.Number = 1
 		zedit_disp_menu(d)
 	case ZEDIT_ZONE_TOP:
 		if d.Olc.Zone_num == top_of_zone_table {
-			d.Olc.Zone.Top = room_vnum(MIN(65000, MAX(libc.Atoi(libc.GoString(arg)), int(genolc_zonep_bottom(d.Olc.Zone)))))
+			d.Olc.Zone.Top = room_vnum(MIN(65000, MAX(int64(libc.Atoi(libc.GoString(arg))), int64(genolc_zonep_bottom(d.Olc.Zone)))))
 		} else {
-			d.Olc.Zone.Top = room_vnum(MIN(int(genolc_zone_bottom(d.Olc.Zone_num+1)-1), MAX(libc.Atoi(libc.GoString(arg)), int(genolc_zonep_bottom(d.Olc.Zone)))))
+			d.Olc.Zone.Top = room_vnum(MIN(int64(genolc_zone_bottom(d.Olc.Zone_num+1)-1), MAX(int64(libc.Atoi(libc.GoString(arg))), int64(genolc_zonep_bottom(d.Olc.Zone)))))
 		}
 		d.Olc.Zone.Number = 1
 		zedit_disp_menu(d)
@@ -1099,7 +1095,7 @@ func zedit_parse(d *descriptor_data, arg *byte) {
 			zedit_disp_menu(d)
 			break
 		} else {
-			d.Olc.Zone.Zone_flags[(number-1)/32] = d.Olc.Zone.Zone_flags[(number-1)/32] ^ 1<<((number-1)%32)
+			TOGGLE_BIT_AR(d.Olc.Zone.Zone_flags[:], bitvector_t(int32(number-1)))
 			d.Olc.Zone.Number = 1
 			zedit_disp_flag_menu(d)
 		}

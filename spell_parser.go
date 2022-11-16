@@ -23,13 +23,13 @@ func mag_manacost(ch *char_data, spellnum int) int {
 	var min int
 	var tval int
 	if config_info.Advance.Allow_multiclass != 0 {
-		min = MAX(spell_info[spellnum].Mana_max-spell_info[spellnum].Mana_change*(GET_LEVEL(ch)-spell_info[spellnum].Min_level[(ch.Chclasses[ch.Chclass])+(ch.Epicclasses[ch.Chclass])]), spell_info[spellnum].Mana_min)
+		min = int(MAX(int64(spell_info[spellnum].Mana_max-spell_info[spellnum].Mana_change*(GET_LEVEL(ch)-spell_info[spellnum].Min_level[(ch.Chclasses[ch.Chclass])+(ch.Epicclasses[ch.Chclass])])), int64(spell_info[spellnum].Mana_min)))
 		whichclass = int(ch.Chclass)
 		for i = 0; i < NUM_CLASSES; i++ {
 			if ((ch.Chclasses[i]) + (ch.Epicclasses[i])) == 0 {
 				continue
 			}
-			tval = MAX(spell_info[spellnum].Mana_max-spell_info[spellnum].Mana_change*(((ch.Chclasses[i])+(ch.Epicclasses[i]))-spell_info[spellnum].Min_level[i]), spell_info[spellnum].Mana_min)
+			tval = int(MAX(int64(spell_info[spellnum].Mana_max-spell_info[spellnum].Mana_change*(((ch.Chclasses[i])+(ch.Epicclasses[i]))-spell_info[spellnum].Min_level[i])), int64(spell_info[spellnum].Mana_min)))
 			if tval < min {
 				min = tval
 				whichclass = i
@@ -37,7 +37,7 @@ func mag_manacost(ch *char_data, spellnum int) int {
 		}
 		return min
 	} else {
-		return MAX(spell_info[spellnum].Mana_max-spell_info[spellnum].Mana_change*(GET_LEVEL(ch)-spell_info[spellnum].Min_level[int(ch.Chclass)]), spell_info[spellnum].Mana_min)
+		return int(MAX(int64(spell_info[spellnum].Mana_max-spell_info[spellnum].Mana_change*(GET_LEVEL(ch)-spell_info[spellnum].Min_level[int(ch.Chclass)])), int64(spell_info[spellnum].Mana_min)))
 	}
 }
 func mag_kicost(ch *char_data, spellnum int) int {
@@ -47,13 +47,13 @@ func mag_kicost(ch *char_data, spellnum int) int {
 	var min int
 	var tval int
 	if config_info.Advance.Allow_multiclass != 0 {
-		min = MAX(spell_info[spellnum].Ki_max-spell_info[spellnum].Ki_change*(GET_LEVEL(ch)-spell_info[spellnum].Min_level[(ch.Chclasses[ch.Chclass])+(ch.Epicclasses[ch.Chclass])]), spell_info[spellnum].Ki_min)
+		min = int(MAX(int64(spell_info[spellnum].Ki_max-spell_info[spellnum].Ki_change*(GET_LEVEL(ch)-spell_info[spellnum].Min_level[(ch.Chclasses[ch.Chclass])+(ch.Epicclasses[ch.Chclass])])), int64(spell_info[spellnum].Ki_min)))
 		whichclass = int(ch.Chclass)
 		for i = 0; i < NUM_CLASSES; i++ {
 			if ((ch.Chclasses[i]) + (ch.Epicclasses[i])) == 0 {
 				continue
 			}
-			tval = MAX(spell_info[spellnum].Ki_max-spell_info[spellnum].Ki_change*(((ch.Chclasses[i])+(ch.Epicclasses[i]))-spell_info[spellnum].Min_level[i]), spell_info[spellnum].Ki_min)
+			tval = int(MAX(int64(spell_info[spellnum].Ki_max-spell_info[spellnum].Ki_change*(((ch.Chclasses[i])+(ch.Epicclasses[i]))-spell_info[spellnum].Min_level[i])), int64(spell_info[spellnum].Ki_min)))
 			if tval < min {
 				min = tval
 				whichclass = i
@@ -61,7 +61,7 @@ func mag_kicost(ch *char_data, spellnum int) int {
 		}
 		return min
 	} else {
-		return MAX(spell_info[spellnum].Ki_max-spell_info[spellnum].Ki_change*(GET_LEVEL(ch)-spell_info[spellnum].Min_level[int(ch.Chclass)]), spell_info[spellnum].Ki_min)
+		return int(MAX(int64(spell_info[spellnum].Ki_max-spell_info[spellnum].Ki_change*(GET_LEVEL(ch)-spell_info[spellnum].Min_level[int(ch.Chclass)])), int64(spell_info[spellnum].Ki_min)))
 	}
 }
 func mag_nextstrike(level int, caster *char_data, spellnum int) {
@@ -115,7 +115,7 @@ func say_spell(ch *char_data, spellnum int, tch *char_data, tobj *obj_data) {
 	}
 	stdio.Snprintf(&buf1[0], int(256), libc.GoString(format), skill_name(spellnum))
 	stdio.Snprintf(&buf2[0], int(256), libc.GoString(format), &buf[0])
-	for i = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; i != nil; i = i.Next_in_room {
+	for i = world[ch.In_room].People; i != nil; i = i.Next_in_room {
 		if i == ch || i == tch || i.Desc == nil || !AWAKE(i) {
 			continue
 		}
@@ -188,48 +188,48 @@ func call_magic(caster *char_data, cvict *char_data, ovict *obj_data, spellnum i
 	if cast_mtrigger(caster, cvict, spellnum) == 0 {
 		return 0
 	}
-	if ROOM_FLAGGED(caster.In_room, ROOM_PEACEFUL) && caster.Admlevel < ADMLVL_IMPL && (int(spell_info[spellnum].Violent) != 0 || (spell_info[spellnum].Routines&(1<<0)) != 0) {
+	if ROOM_FLAGGED(caster.In_room, ROOM_PEACEFUL) && caster.Admlevel < ADMLVL_IMPL && (int(spell_info[spellnum].Violent) != 0 || IS_SET(bitvector_t(int32(spell_info[spellnum].Routines)), 1<<0)) {
 		send_to_char(caster, libc.CString("A flash of white light fills the room, dispelling your violent magic!\r\n"))
 		act(libc.CString("White light from no particular source suddenly fills the room, then vanishes."), FALSE, caster, nil, nil, TO_ROOM)
 		return 0
 	}
-	if (spell_info[spellnum].Routines&(1<<15)) != 0 && casttype != CAST_STRIKE {
+	if IS_SET(bitvector_t(int32(spell_info[spellnum].Routines)), 1<<15) && casttype != CAST_STRIKE {
 		mag_nextstrike(level, caster, spellnum)
 		return 1
 	}
-	if (spell_info[spellnum].Routines & (1 << 0)) != 0 {
+	if IS_SET(bitvector_t(int32(spell_info[spellnum].Routines)), 1<<0) {
 		if mag_damage(level, caster, cvict, spellnum) == -1 {
 			return -1
 		}
 	}
-	if (spell_info[spellnum].Routines & (1 << 1)) != 0 {
+	if IS_SET(bitvector_t(int32(spell_info[spellnum].Routines)), 1<<1) {
 		mag_affects(level, caster, cvict, spellnum)
 	}
-	if (spell_info[spellnum].Routines & (1 << 2)) != 0 {
+	if IS_SET(bitvector_t(int32(spell_info[spellnum].Routines)), 1<<2) {
 		mag_unaffects(level, caster, cvict, spellnum)
 	}
-	if (spell_info[spellnum].Routines & (1 << 3)) != 0 {
+	if IS_SET(bitvector_t(int32(spell_info[spellnum].Routines)), 1<<3) {
 		mag_points(level, caster, cvict, spellnum)
 	}
-	if (spell_info[spellnum].Routines & (1 << 4)) != 0 {
+	if IS_SET(bitvector_t(int32(spell_info[spellnum].Routines)), 1<<4) {
 		mag_alter_objs(level, caster, ovict, spellnum)
 	}
-	if (spell_info[spellnum].Routines & (1 << 5)) != 0 {
+	if IS_SET(bitvector_t(int32(spell_info[spellnum].Routines)), 1<<5) {
 		mag_groups(level, caster, spellnum)
 	}
-	if (spell_info[spellnum].Routines & (1 << 6)) != 0 {
+	if IS_SET(bitvector_t(int32(spell_info[spellnum].Routines)), 1<<6) {
 		mag_masses(level, caster, spellnum)
 	}
-	if (spell_info[spellnum].Routines & (1 << 7)) != 0 {
+	if IS_SET(bitvector_t(int32(spell_info[spellnum].Routines)), 1<<7) {
 		mag_areas(level, caster, spellnum)
 	}
-	if (spell_info[spellnum].Routines & (1 << 8)) != 0 {
+	if IS_SET(bitvector_t(int32(spell_info[spellnum].Routines)), 1<<8) {
 		mag_summons(level, caster, ovict, spellnum, arg)
 	}
-	if (spell_info[spellnum].Routines & (1 << 9)) != 0 {
+	if IS_SET(bitvector_t(int32(spell_info[spellnum].Routines)), 1<<9) {
 		mag_creations(level, caster, spellnum)
 	}
-	if (spell_info[spellnum].Routines & (1 << 10)) != 0 {
+	if IS_SET(bitvector_t(int32(spell_info[spellnum].Routines)), 1<<10) {
 		switch spellnum {
 		case SPELL_CHARM:
 			spell_charm(level, caster, cvict, ovict, arg)
@@ -255,7 +255,7 @@ func call_magic(caster *char_data, cvict *char_data, ovict *obj_data, spellnum i
 			art_abundant_step(level, caster, cvict, ovict, arg)
 		}
 	}
-	if (spell_info[spellnum].Routines & (1 << 11)) != 0 {
+	if IS_SET(bitvector_t(int32(spell_info[spellnum].Routines)), 1<<11) {
 		mag_affectsv(level, caster, cvict, spellnum)
 	}
 	return 1
@@ -284,17 +284,17 @@ func mag_objectmagic(ch *char_data, obj *obj_data, argument *byte) {
 			act(libc.CString("Nothing seems to happen."), FALSE, ch, obj, nil, TO_ROOM)
 		} else {
 			(obj.Value[VAL_STAFF_CHARGES])--
-			ch.Affected_by[int(AFF_NEXTNOACTION/32)] |= 1 << (int(AFF_NEXTNOACTION % 32))
+			SET_BIT_AR(ch.Affected_by[:], AFF_NEXTNOACTION)
 			if (obj.Value[VAL_STAFF_LEVEL]) != 0 {
 				k = obj.Value[VAL_STAFF_LEVEL]
 			} else {
 				k = DEFAULT_STAFF_LVL
 			}
-			if (spell_info[obj.Value[VAL_STAFF_SPELL]].Routines & ((1 << 6) | 1<<7)) != 0 {
+			if IS_SET(bitvector_t(int32(spell_info[obj.Value[VAL_STAFF_SPELL]].Routines)), (1<<6)|1<<7) {
 				for func() *char_data {
 					i = 0
 					return func() *char_data {
-						tch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People
+						tch = world[ch.In_room].People
 						return tch
 					}()
 				}(); tch != nil; tch = tch.Next_in_room {
@@ -309,7 +309,7 @@ func mag_objectmagic(ch *char_data, obj *obj_data, argument *byte) {
 					call_magic(ch, nil, nil, obj.Value[VAL_STAFF_SPELL], k, CAST_STAFF, nil)
 				}
 			} else {
-				for tch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; tch != nil; tch = next_tch {
+				for tch = world[ch.In_room].People; tch != nil; tch = next_tch {
 					next_tch = tch.Next_in_room
 					if ch != tch {
 						call_magic(ch, tch, nil, obj.Value[VAL_STAFF_SPELL], k, CAST_STAFF, nil)
@@ -337,7 +337,7 @@ func mag_objectmagic(ch *char_data, obj *obj_data, argument *byte) {
 			} else {
 				act(libc.CString("$n points $p at $P."), TRUE, ch, obj, unsafe.Pointer(tobj), TO_ROOM)
 			}
-		} else if (spell_info[obj.Value[VAL_WAND_SPELL]].Routines & ((1 << 7) | 1<<6)) != 0 {
+		} else if IS_SET(bitvector_t(int32(spell_info[obj.Value[VAL_WAND_SPELL]].Routines)), (1<<7)|1<<6) {
 			act(libc.CString("You point $p outward."), FALSE, ch, obj, nil, TO_CHAR)
 			act(libc.CString("$n points $p outward."), TRUE, ch, obj, nil, TO_ROOM)
 		} else {
@@ -350,7 +350,7 @@ func mag_objectmagic(ch *char_data, obj *obj_data, argument *byte) {
 			return
 		}
 		(obj.Value[VAL_WAND_CHARGES])--
-		ch.Affected_by[int(AFF_NEXTNOACTION/32)] |= 1 << (int(AFF_NEXTNOACTION % 32))
+		SET_BIT_AR(ch.Affected_by[:], AFF_NEXTNOACTION)
 		if (obj.Value[VAL_WAND_LEVEL]) != 0 {
 			call_magic(ch, tch, tobj, obj.Value[VAL_WAND_SPELL], obj.Value[VAL_WAND_LEVEL], CAST_WAND, nil)
 		} else {
@@ -371,7 +371,7 @@ func mag_objectmagic(ch *char_data, obj *obj_data, argument *byte) {
 		} else {
 			act(libc.CString("$n recites $p."), FALSE, ch, obj, nil, TO_ROOM)
 		}
-		ch.Affected_by[int(AFF_NEXTNOACTION/32)] |= 1 << (int(AFF_NEXTNOACTION % 32))
+		SET_BIT_AR(ch.Affected_by[:], AFF_NEXTNOACTION)
 		for i = 1; i <= 3; i++ {
 			if call_magic(ch, tch, tobj, obj.Value[i], obj.Value[VAL_SCROLL_LEVEL], CAST_SCROLL, nil) <= 0 {
 				break
@@ -391,7 +391,7 @@ func mag_objectmagic(ch *char_data, obj *obj_data, argument *byte) {
 		} else {
 			act(libc.CString("$n swallows $p."), TRUE, ch, obj, nil, TO_ROOM)
 		}
-		ch.Affected_by[int(AFF_NEXTNOACTION/32)] |= 1 << (int(AFF_NEXTNOACTION % 32))
+		SET_BIT_AR(ch.Affected_by[:], AFF_NEXTNOACTION)
 		for i = 1; i <= 3; i++ {
 			if call_magic(ch, ch, nil, obj.Value[i], obj.Value[VAL_POTION_LEVEL], CAST_POTION, nil) <= 0 {
 				break
@@ -415,7 +415,7 @@ func cast_spell(ch *char_data, tch *char_data, tobj *obj_data, spellnum int, arg
 		basic_mud_log(libc.CString("SYSERR: cast_spell trying to call out of range spellnum %d/%d."), spellnum, SKILL_TABLE_SIZE)
 		return 0
 	}
-	if (spell_info[spellnum].Skilltype & ((1 << 0) | 1<<4)) == 0 {
+	if !IS_SET(bitvector_t(int32(spell_info[spellnum].Skilltype)), (1<<0)|1<<4) {
 		basic_mud_log(libc.CString("SYSERR: cast_spell trying to call nonspell spellnum %d/%d."), spellnum, SKILL_TABLE_SIZE)
 		return 0
 	}
@@ -438,19 +438,19 @@ func cast_spell(ch *char_data, tch *char_data, tobj *obj_data, spellnum int, arg
 		send_to_char(ch, libc.CString("You are afraid you might hurt your master!\r\n"))
 		return 0
 	}
-	if tch != ch && (spell_info[spellnum].Targets&(1<<5)) != 0 {
+	if tch != ch && IS_SET(bitvector_t(int32(spell_info[spellnum].Targets)), 1<<5) {
 		send_to_char(ch, libc.CString("You can only cast this spell upon yourself!\r\n"))
 		return 0
 	}
-	if tch == ch && (spell_info[spellnum].Targets&(1<<6)) != 0 {
+	if tch == ch && IS_SET(bitvector_t(int32(spell_info[spellnum].Targets)), 1<<6) {
 		send_to_char(ch, libc.CString("You cannot cast this spell upon yourself!\r\n"))
 		return 0
 	}
-	if (spell_info[spellnum].Routines&(1<<5)) != 0 && !AFF_FLAGGED(ch, AFF_GROUP) {
+	if IS_SET(bitvector_t(int32(spell_info[spellnum].Routines)), 1<<5) && !AFF_FLAGGED(ch, AFF_GROUP) {
 		send_to_char(ch, libc.CString("You can't cast this spell if you're not in a group!\r\n"))
 		return 0
 	}
-	if (spell_info[spellnum].Skilltype & (1 << 0)) != 0 {
+	if IS_SET(bitvector_t(int32(spell_info[spellnum].Skilltype)), 1<<0) {
 		for i = 0; i < NUM_CLASSES; i++ {
 			j = ((ch.Chclasses[i]) + (ch.Epicclasses[i])) - spell_info[spellnum].Min_level[i]
 			if j > diff {
@@ -459,13 +459,13 @@ func cast_spell(ch *char_data, tch *char_data, tobj *obj_data, spellnum int, arg
 				lvl = (ch.Chclasses[i]) + (ch.Epicclasses[i])
 			}
 		}
-	} else if (spell_info[spellnum].Skilltype & (1 << 4)) != 0 {
+	} else if IS_SET(bitvector_t(int32(spell_info[spellnum].Skilltype)), 1<<4) {
 		lvl = ((ch.Chclasses[CLASS_KABITO]) + (ch.Epicclasses[CLASS_KABITO])) / 2
 	} else {
 		lvl = GET_LEVEL(ch)
 	}
 	send_to_char(ch, libc.CString("%s"), config_info.Play.OK)
-	if (spell_info[spellnum].Skilltype & (1 << 0)) != 0 {
+	if IS_SET(bitvector_t(int32(spell_info[spellnum].Skilltype)), 1<<0) {
 		say_spell(ch, spellnum, tch, tobj)
 	}
 	return call_magic(ch, tch, tobj, spellnum, lvl, CAST_SPELL, arg)
@@ -541,10 +541,10 @@ func do_cast(ch *char_data, argument *byte, cmd int, subcmd int) {
 		one_argument(&arg[0], t)
 		skip_spaces(&t)
 	}
-	if (spell_info[spellnum].Targets & (1 << 0)) != 0 {
+	if IS_SET(bitvector_t(int32(spell_info[spellnum].Targets)), 1<<0) {
 		target = TRUE
 	} else if t != nil && *t != 0 {
-		if target == 0 && (spell_info[spellnum].Targets&(1<<1)) != 0 {
+		if target == 0 && IS_SET(bitvector_t(int32(spell_info[spellnum].Targets)), 1<<1) {
 			if (func() *char_data {
 				tch = get_char_vis(ch, t, nil, 1<<0)
 				return tch
@@ -552,7 +552,7 @@ func do_cast(ch *char_data, argument *byte, cmd int, subcmd int) {
 				target = TRUE
 			}
 		}
-		if target == 0 && (spell_info[spellnum].Targets&(1<<2)) != 0 {
+		if target == 0 && IS_SET(bitvector_t(int32(spell_info[spellnum].Targets)), 1<<2) {
 			if (func() *char_data {
 				tch = get_char_vis(ch, t, nil, 1<<1)
 				return tch
@@ -560,7 +560,7 @@ func do_cast(ch *char_data, argument *byte, cmd int, subcmd int) {
 				target = TRUE
 			}
 		}
-		if target == 0 && (spell_info[spellnum].Targets&(1<<7)) != 0 {
+		if target == 0 && IS_SET(bitvector_t(int32(spell_info[spellnum].Targets)), 1<<7) {
 			if (func() *obj_data {
 				tobj = get_obj_in_list_vis(ch, t, nil, ch.Carrying)
 				return tobj
@@ -568,7 +568,7 @@ func do_cast(ch *char_data, argument *byte, cmd int, subcmd int) {
 				target = TRUE
 			}
 		}
-		if target == 0 && (spell_info[spellnum].Targets&(1<<10)) != 0 {
+		if target == 0 && IS_SET(bitvector_t(int32(spell_info[spellnum].Targets)), 1<<10) {
 			for i = 0; target == 0 && i < NUM_WEARS; i++ {
 				if (ch.Equipment[i]) != nil && isname(t, (ch.Equipment[i]).Name) != 0 {
 					tobj = ch.Equipment[i]
@@ -576,15 +576,15 @@ func do_cast(ch *char_data, argument *byte, cmd int, subcmd int) {
 				}
 			}
 		}
-		if target == 0 && (spell_info[spellnum].Targets&(1<<8)) != 0 {
+		if target == 0 && IS_SET(bitvector_t(int32(spell_info[spellnum].Targets)), 1<<8) {
 			if (func() *obj_data {
-				tobj = get_obj_in_list_vis(ch, t, nil, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents)
+				tobj = get_obj_in_list_vis(ch, t, nil, world[ch.In_room].Contents)
 				return tobj
 			}()) != nil {
 				target = TRUE
 			}
 		}
-		if target == 0 && (spell_info[spellnum].Targets&(1<<9)) != 0 {
+		if target == 0 && IS_SET(bitvector_t(int32(spell_info[spellnum].Targets)), 1<<9) {
 			if (func() *obj_data {
 				tobj = get_obj_vis(ch, t, nil)
 				return tobj
@@ -593,25 +593,25 @@ func do_cast(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 		}
 	} else {
-		if target == 0 && (spell_info[spellnum].Targets&(1<<3)) != 0 {
+		if target == 0 && IS_SET(bitvector_t(int32(spell_info[spellnum].Targets)), 1<<3) {
 			if ch.Fighting != nil {
 				tch = ch
 				target = TRUE
 			}
 		}
-		if target == 0 && (spell_info[spellnum].Targets&(1<<4)) != 0 {
+		if target == 0 && IS_SET(bitvector_t(int32(spell_info[spellnum].Targets)), 1<<4) {
 			if ch.Fighting != nil {
 				tch = ch.Fighting
 				target = TRUE
 			}
 		}
-		if target == 0 && (spell_info[spellnum].Targets&(1<<1)) != 0 && int(spell_info[spellnum].Violent) == 0 {
+		if target == 0 && IS_SET(bitvector_t(int32(spell_info[spellnum].Targets)), 1<<1) && int(spell_info[spellnum].Violent) == 0 {
 			tch = ch
 			target = TRUE
 		}
 		if target == 0 {
 			send_to_char(ch, libc.CString("Upon %s should the spell be cast?\r\n"), func() string {
-				if (spell_info[spellnum].Targets & ((1 << 8) | 1<<7 | 1<<9 | 1<<10)) != 0 {
+				if IS_SET(bitvector_t(int32(spell_info[spellnum].Targets)), (1<<8)|1<<7|1<<9|1<<10) {
 					return "what"
 				}
 				return "who"
@@ -638,22 +638,22 @@ func do_cast(ch *char_data, argument *byte, cmd int, subcmd int) {
 			set_fighting(ch, tch)
 		}
 	}
-	if (spell_info[spellnum].Comp_flags&(1<<4)) != 0 && rand_number(1, 100) <= int(ch.Spellfail) {
-		if (spell_info[spellnum].Routines & ((1 << 14) | 1<<13)) != 0 {
-			ch.Affected_by[int(AFF_NEXTPARTIAL/32)] |= 1 << (int(AFF_NEXTPARTIAL % 32))
-		} else if (spell_info[spellnum].Routines & ((1 << 14) | 1<<14)) != 0 {
-			ch.Affected_by[int(AFF_NEXTNOACTION/32)] |= 1 << (int(AFF_NEXTNOACTION % 32))
+	if IS_SET(bitvector_t(int32(spell_info[spellnum].Comp_flags)), 1<<4) && rand_number(1, 100) <= int(ch.Spellfail) {
+		if IS_SET(bitvector_t(int32(spell_info[spellnum].Routines)), (1<<14)|1<<13) {
+			SET_BIT_AR(ch.Affected_by[:], AFF_NEXTPARTIAL)
+		} else if IS_SET(bitvector_t(int32(spell_info[spellnum].Routines)), (1<<14)|1<<14) {
+			SET_BIT_AR(ch.Affected_by[:], AFF_NEXTNOACTION)
 		}
 		send_to_char(ch, libc.CString("Your armor interferes with your casting, and you fail!\r\n"))
 	} else {
 		if ki > 0 {
-			ch.Ki = int64(MAX(0, MIN(int(ch.Max_ki), int(ch.Ki-int64(ki)))))
+			ch.Ki = MAX(0, MIN(ch.Max_ki, ch.Ki-int64(ki)))
 		}
 		if cast_spell(ch, tch, tobj, spellnum, t) != 0 && ch.Admlevel < ADMLVL_IMMORT {
-			if (spell_info[spellnum].Routines & ((1 << 14) | 1<<13)) != 0 {
-				ch.Affected_by[int(AFF_NEXTPARTIAL/32)] |= 1 << (int(AFF_NEXTPARTIAL % 32))
-			} else if (spell_info[spellnum].Routines & ((1 << 14) | 1<<14)) != 0 {
-				ch.Affected_by[int(AFF_NEXTNOACTION/32)] |= 1 << (int(AFF_NEXTNOACTION % 32))
+			if IS_SET(bitvector_t(int32(spell_info[spellnum].Routines)), (1<<14)|1<<13) {
+				SET_BIT_AR(ch.Affected_by[:], AFF_NEXTPARTIAL)
+			} else if IS_SET(bitvector_t(int32(spell_info[spellnum].Routines)), (1<<14)|1<<14) {
+				SET_BIT_AR(ch.Affected_by[:], AFF_NEXTNOACTION)
 			}
 			if subcmd == SCMD_CAST {
 				send_to_char(ch, libc.CString("The magical energy from the spell leaves your mind.\r\n"))

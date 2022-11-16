@@ -40,7 +40,7 @@ func smash_numb(str *byte) {
 }
 func string_write(d *descriptor_data, writeto **byte, len_ uint64, mailto int, data unsafe.Pointer) {
 	if d.Character != nil && !IS_NPC(d.Character) {
-		d.Character.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
+		SET_BIT_AR(d.Character.Act[:], PLR_WRITING)
 	}
 	if CONFIG_IMPROVED_EDITOR != 0 {
 		d.Backstr = (*byte)(data)
@@ -155,8 +155,8 @@ func string_add(d *descriptor_data, str *byte) {
 		d.Mail_to = 0
 		d.Max_str = 0
 		if d.Character != nil && !IS_NPC(d.Character) {
-			d.Character.Act[int(PLR_MAILING/32)] &= bitvector_t(int32(^(1 << (int(PLR_MAILING % 32)))))
-			d.Character.Act[int(PLR_WRITING/32)] &= bitvector_t(int32(^(1 << (int(PLR_WRITING % 32)))))
+			REMOVE_BIT_AR(d.Character.Act[:], PLR_MAILING)
+			REMOVE_BIT_AR(d.Character.Act[:], PLR_WRITING)
 		}
 	} else if action != STRINGADD_ACTION && libc.StrLen(*d.Str)+3 <= int(d.Max_str) {
 		libc.StrCat(*d.Str, libc.CString("\r\n"))
@@ -288,7 +288,7 @@ func do_skillset(ch *char_data, argument *byte, cmd int, subcmd int) {
 			i += print_skills_by_type(vict, &help[i], int(64936-uintptr(i)), (1<<1)|1<<2, nil)
 		}
 		if i >= int(64936) {
-			libc.StrCpy((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(&help[64936]), -libc.StrLen(libc.CString("** OVERFLOW **"))))), -1)), libc.CString("** OVERFLOW **"))
+			libc.StrCpy((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(&help[64935]), -libc.StrLen(libc.CString("** OVERFLOW **"))))), -1)), libc.CString("** OVERFLOW **"))
 		}
 		page_string(ch.Desc, &help[0], TRUE)
 		return
@@ -436,11 +436,11 @@ func show_string(d *descriptor_data, input *byte) {
 		}
 		return
 	} else if unicode.ToLower(rune(buf[0])) == 'r' {
-		d.Showstr_page = MAX(0, d.Showstr_page-1)
+		d.Showstr_page = int(MAX(0, int64(d.Showstr_page-1)))
 	} else if unicode.ToLower(rune(buf[0])) == 'b' {
-		d.Showstr_page = MAX(0, d.Showstr_page-2)
+		d.Showstr_page = int(MAX(0, int64(d.Showstr_page-2)))
 	} else if unicode.IsDigit(rune(buf[0])) {
-		d.Showstr_page = MAX(0, MIN(libc.Atoi(libc.GoString(&buf[0]))-1, d.Showstr_count-1))
+		d.Showstr_page = int(MAX(0, MIN(int64(libc.Atoi(libc.GoString(&buf[0]))-1), int64(d.Showstr_count-1))))
 	} else if buf[0] != 0 {
 		send_to_char(d.Character, libc.CString("Valid commands while paging are RETURN, Q, R, B, or a numeric value.\r\n"))
 		return

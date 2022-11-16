@@ -18,30 +18,30 @@ type guild_data struct {
 	Not_enough_gold *byte
 	Minlvl          int
 	Gm              mob_rnum
-	With_who        [4]int
+	With_who        [4]bitvector_t
 	Open            int
 	Close           int
-	Func            func(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int
+	Func            SpecialFunc
 	Feats           [252]int
 }
 
 var spell_sort_info [1001]int
 var top_guild int = -1
-var guild_index *guild_data
+var guild_index []guild_data
 
 func calculate_skill_cost(ch *char_data, skill int) int {
 	var cost int = 0
-	if (spell_info[skill].Flags & (1 << 10)) != 0 {
+	if IS_SET(bitvector_t(int32(spell_info[skill].Flags)), 1<<10) {
 		cost = 8
-	} else if (spell_info[skill].Flags & (1 << 11)) != 0 {
+	} else if IS_SET(bitvector_t(int32(spell_info[skill].Flags)), 1<<11) {
 		cost = 15
-	} else if (spell_info[skill].Flags & (1 << 12)) != 0 {
+	} else if IS_SET(bitvector_t(int32(spell_info[skill].Flags)), 1<<12) {
 		if int(ch.Skills[skill]) == 0 {
 			cost = 200
 		} else {
 			cost = 25
 		}
-	} else if (spell_info[skill].Flags & (1 << 13)) != 0 {
+	} else if IS_SET(bitvector_t(int32(spell_info[skill].Flags)), 1<<13) {
 		if int(ch.Skills[skill]) == 0 {
 			cost = 300
 		} else {
@@ -454,14 +454,14 @@ func list_skills(ch *char_data, arg *byte) {
 		len_ += uint64(stdio.Snprintf(&buf2[len_], int(64936-uintptr(len_)), "\r\n@DSkill Slots@W: @M%d@W/@m%d", slot_count(ch), ch.Skill_slots))
 	}
 	if len_ >= uint64(64936) {
-		libc.StrCpy((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(&buf2[64936]), -libc.StrLen(overflow)))), -1)), overflow)
+		libc.StrCpy((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(&buf2[64935]), -libc.StrLen(overflow)))), -1)), overflow)
 	}
 	page_string(ch.Desc, &buf2[0], TRUE)
 }
 func is_guild_open(keeper *char_data, guild_nr int, msg int) int {
 	var buf [200]byte
 	buf[0] = 0
-	if (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).Open > time_info.Hours && (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).Close < time_info.Hours {
+	if guild_index[guild_nr].Open > time_info.Hours && guild_index[guild_nr].Close < time_info.Hours {
 		strlcpy(&buf[0], libc.CString(MSG_TRAINER_NOT_OPEN), uint64(200))
 	}
 	if buf[0] == 0 {
@@ -478,12 +478,12 @@ func is_guild_ok_char(keeper *char_data, ch *char_data, guild_nr int) int {
 		do_say(keeper, libc.CString(MSG_TRAINER_NO_SEE_CH), cmd_say, 0)
 		return FALSE
 	}
-	if GET_LEVEL(ch) < (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).Minlvl {
+	if GET_LEVEL(ch) < guild_index[guild_nr].Minlvl {
 		stdio.Snprintf(&buf[0], int(200), "%s %s", GET_NAME(ch), MSG_TRAINER_MINLVL)
 		do_tell(keeper, &buf[0], cmd_tell, 0)
 		return FALSE
 	}
-	if IS_GOOD(ch) && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOGOOD) || IS_EVIL(ch) && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOEVIL) || IS_NEUTRAL(ch) && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NONEUTRAL) {
+	if IS_GOOD(ch) && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOGOOD) || IS_EVIL(ch) && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOEVIL) || IS_NEUTRAL(ch) && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NONEUTRAL) {
 		stdio.Snprintf(&buf[0], int(200), "%s %s", GET_NAME(ch), MSG_TRAINER_DISLIKE_ALIGN)
 		do_tell(keeper, &buf[0], cmd_tell, 0)
 		return FALSE
@@ -491,17 +491,17 @@ func is_guild_ok_char(keeper *char_data, ch *char_data, guild_nr int) int {
 	if IS_NPC(ch) {
 		return FALSE
 	}
-	if int(ch.Chclass) == CLASS_ROSHI && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOWIZARD) || int(ch.Chclass) == CLASS_PICCOLO && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOCLERIC) || int(ch.Chclass) == CLASS_KRANE && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOROGUE) || int(ch.Chclass) == CLASS_NAIL && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOFIGHTER) || int(ch.Chclass) == CLASS_GINYU && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOPALADIN) || int(ch.Chclass) == CLASS_FRIEZA && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOSORCERER) || int(ch.Chclass) == CLASS_TAPION && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NODRUID) || int(ch.Chclass) == CLASS_ANDSIX && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOBARD) || int(ch.Chclass) == CLASS_DABURA && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NORANGER) || int(ch.Chclass) == CLASS_BARDOCK && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOMONK) || int(ch.Chclass) == CLASS_KABITO && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOBARBARIAN) || int(ch.Chclass) == CLASS_JINTO && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOARCANE_ARCHER) || int(ch.Chclass) == CLASS_TSUNA && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOARCANE_TRICKSTER) || int(ch.Chclass) == CLASS_KURZAK && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOARCHMAGE) || ((ch.Chclasses[CLASS_ASSASSIN])+(ch.Epicclasses[CLASS_ASSASSIN])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOASSASSIN) || ((ch.Chclasses[CLASS_BLACKGUARD])+(ch.Epicclasses[CLASS_BLACKGUARD])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOBLACKGUARD) || ((ch.Chclasses[CLASS_DRAGON_DISCIPLE])+(ch.Epicclasses[CLASS_DRAGON_DISCIPLE])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NODRAGON_DISCIPLE) || ((ch.Chclasses[CLASS_DUELIST])+(ch.Epicclasses[CLASS_DUELIST])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NODUELIST) || ((ch.Chclasses[CLASS_DWARVEN_DEFENDER])+(ch.Epicclasses[CLASS_DWARVEN_DEFENDER])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NODWARVEN_DEFENDER) || ((ch.Chclasses[CLASS_ELDRITCH_KNIGHT])+(ch.Epicclasses[CLASS_ELDRITCH_KNIGHT])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOELDRITCH_KNIGHT) || ((ch.Chclasses[CLASS_HIEROPHANT])+(ch.Epicclasses[CLASS_HIEROPHANT])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOHIEROPHANT) || ((ch.Chclasses[CLASS_HORIZON_WALKER])+(ch.Epicclasses[CLASS_HORIZON_WALKER])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOHORIZON_WALKER) || ((ch.Chclasses[CLASS_LOREMASTER])+(ch.Epicclasses[CLASS_LOREMASTER])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOLOREMASTER) || ((ch.Chclasses[CLASS_MYSTIC_THEURGE])+(ch.Epicclasses[CLASS_MYSTIC_THEURGE])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOMYSTIC_THEURGE) || ((ch.Chclasses[CLASS_SHADOWDANCER])+(ch.Epicclasses[CLASS_SHADOWDANCER])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOSHADOWDANCER) || ((ch.Chclasses[CLASS_THAUMATURGIST])+(ch.Epicclasses[CLASS_THAUMATURGIST])) > 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOTHAUMATURGIST) {
+	if int(ch.Chclass) == CLASS_ROSHI && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOWIZARD) || int(ch.Chclass) == CLASS_PICCOLO && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOCLERIC) || int(ch.Chclass) == CLASS_KRANE && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOROGUE) || int(ch.Chclass) == CLASS_NAIL && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOFIGHTER) || int(ch.Chclass) == CLASS_GINYU && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOPALADIN) || int(ch.Chclass) == CLASS_FRIEZA && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOSORCERER) || int(ch.Chclass) == CLASS_TAPION && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NODRUID) || int(ch.Chclass) == CLASS_ANDSIX && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOBARD) || int(ch.Chclass) == CLASS_DABURA && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NORANGER) || int(ch.Chclass) == CLASS_BARDOCK && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOMONK) || int(ch.Chclass) == CLASS_KABITO && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOBARBARIAN) || int(ch.Chclass) == CLASS_JINTO && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOARCANE_ARCHER) || int(ch.Chclass) == CLASS_TSUNA && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOARCANE_TRICKSTER) || int(ch.Chclass) == CLASS_KURZAK && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOARCHMAGE) || ((ch.Chclasses[CLASS_ASSASSIN])+(ch.Epicclasses[CLASS_ASSASSIN])) > 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOASSASSIN) || ((ch.Chclasses[CLASS_BLACKGUARD])+(ch.Epicclasses[CLASS_BLACKGUARD])) > 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOBLACKGUARD) || ((ch.Chclasses[CLASS_DRAGON_DISCIPLE])+(ch.Epicclasses[CLASS_DRAGON_DISCIPLE])) > 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NODRAGON_DISCIPLE) || ((ch.Chclasses[CLASS_DUELIST])+(ch.Epicclasses[CLASS_DUELIST])) > 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NODUELIST) || ((ch.Chclasses[CLASS_DWARVEN_DEFENDER])+(ch.Epicclasses[CLASS_DWARVEN_DEFENDER])) > 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NODWARVEN_DEFENDER) || ((ch.Chclasses[CLASS_ELDRITCH_KNIGHT])+(ch.Epicclasses[CLASS_ELDRITCH_KNIGHT])) > 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOELDRITCH_KNIGHT) || ((ch.Chclasses[CLASS_HIEROPHANT])+(ch.Epicclasses[CLASS_HIEROPHANT])) > 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOHIEROPHANT) || ((ch.Chclasses[CLASS_HORIZON_WALKER])+(ch.Epicclasses[CLASS_HORIZON_WALKER])) > 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOHORIZON_WALKER) || ((ch.Chclasses[CLASS_LOREMASTER])+(ch.Epicclasses[CLASS_LOREMASTER])) > 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOLOREMASTER) || ((ch.Chclasses[CLASS_MYSTIC_THEURGE])+(ch.Epicclasses[CLASS_MYSTIC_THEURGE])) > 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOMYSTIC_THEURGE) || ((ch.Chclasses[CLASS_SHADOWDANCER])+(ch.Epicclasses[CLASS_SHADOWDANCER])) > 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOSHADOWDANCER) || ((ch.Chclasses[CLASS_THAUMATURGIST])+(ch.Epicclasses[CLASS_THAUMATURGIST])) > 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOTHAUMATURGIST) {
 		stdio.Snprintf(&buf[0], int(200), "%s %s", GET_NAME(ch), MSG_TRAINER_DISLIKE_CLASS)
 		do_tell(keeper, &buf[0], cmd_tell, 0)
 		return FALSE
 	}
-	if int(ch.Chclass) != CLASS_ROSHI && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYWIZARD) || int(ch.Chclass) != CLASS_PICCOLO && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYCLERIC) || int(ch.Chclass) != CLASS_KRANE && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYROGUE) || int(ch.Chclass) != CLASS_BARDOCK && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYMONK) || int(ch.Chclass) != CLASS_GINYU && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYPALADIN) || int(ch.Chclass) != CLASS_NAIL && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYFIGHTER) || int(ch.Chclass) != CLASS_FRIEZA && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYSORCERER) || int(ch.Chclass) != CLASS_TAPION && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYDRUID) || int(ch.Chclass) != CLASS_ANDSIX && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYBARD) || int(ch.Chclass) != CLASS_DABURA && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYRANGER) || int(ch.Chclass) != CLASS_KABITO && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYBARBARIAN) || int(ch.Chclass) != CLASS_JINTO && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYARCANE_ARCHER) || int(ch.Chclass) != CLASS_TSUNA && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYARCANE_TRICKSTER) || int(ch.Chclass) != CLASS_KURZAK && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYARCHMAGE) || ((ch.Chclasses[CLASS_ASSASSIN])+(ch.Epicclasses[CLASS_ASSASSIN])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYASSASSIN) || ((ch.Chclasses[CLASS_BLACKGUARD])+(ch.Epicclasses[CLASS_BLACKGUARD])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYBLACKGUARD) || ((ch.Chclasses[CLASS_DRAGON_DISCIPLE])+(ch.Epicclasses[CLASS_DRAGON_DISCIPLE])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYDRAGON_DISCIPLE) || ((ch.Chclasses[CLASS_DUELIST])+(ch.Epicclasses[CLASS_DUELIST])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYDUELIST) || ((ch.Chclasses[CLASS_DWARVEN_DEFENDER])+(ch.Epicclasses[CLASS_DWARVEN_DEFENDER])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYDWARVEN_DEFENDER) || ((ch.Chclasses[CLASS_ELDRITCH_KNIGHT])+(ch.Epicclasses[CLASS_ELDRITCH_KNIGHT])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYELDRITCH_KNIGHT) || ((ch.Chclasses[CLASS_HIEROPHANT])+(ch.Epicclasses[CLASS_HIEROPHANT])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYHIEROPHANT) || ((ch.Chclasses[CLASS_HORIZON_WALKER])+(ch.Epicclasses[CLASS_HORIZON_WALKER])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYHORIZON_WALKER) || ((ch.Chclasses[CLASS_LOREMASTER])+(ch.Epicclasses[CLASS_LOREMASTER])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYLOREMASTER) || ((ch.Chclasses[CLASS_MYSTIC_THEURGE])+(ch.Epicclasses[CLASS_MYSTIC_THEURGE])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYMYSTIC_THEURGE) || ((ch.Chclasses[CLASS_SHADOWDANCER])+(ch.Epicclasses[CLASS_SHADOWDANCER])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYSHADOWDANCER) || ((ch.Chclasses[CLASS_THAUMATURGIST])+(ch.Epicclasses[CLASS_THAUMATURGIST])) <= 0 && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_ONLYTHAUMATURGIST) {
+	if int(ch.Chclass) != CLASS_ROSHI && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYWIZARD) || int(ch.Chclass) != CLASS_PICCOLO && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYCLERIC) || int(ch.Chclass) != CLASS_KRANE && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYROGUE) || int(ch.Chclass) != CLASS_BARDOCK && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYMONK) || int(ch.Chclass) != CLASS_GINYU && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYPALADIN) || int(ch.Chclass) != CLASS_NAIL && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYFIGHTER) || int(ch.Chclass) != CLASS_FRIEZA && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYSORCERER) || int(ch.Chclass) != CLASS_TAPION && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYDRUID) || int(ch.Chclass) != CLASS_ANDSIX && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYBARD) || int(ch.Chclass) != CLASS_DABURA && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYRANGER) || int(ch.Chclass) != CLASS_KABITO && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYBARBARIAN) || int(ch.Chclass) != CLASS_JINTO && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYARCANE_ARCHER) || int(ch.Chclass) != CLASS_TSUNA && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYARCANE_TRICKSTER) || int(ch.Chclass) != CLASS_KURZAK && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYARCHMAGE) || ((ch.Chclasses[CLASS_ASSASSIN])+(ch.Epicclasses[CLASS_ASSASSIN])) <= 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYASSASSIN) || ((ch.Chclasses[CLASS_BLACKGUARD])+(ch.Epicclasses[CLASS_BLACKGUARD])) <= 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYBLACKGUARD) || ((ch.Chclasses[CLASS_DRAGON_DISCIPLE])+(ch.Epicclasses[CLASS_DRAGON_DISCIPLE])) <= 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYDRAGON_DISCIPLE) || ((ch.Chclasses[CLASS_DUELIST])+(ch.Epicclasses[CLASS_DUELIST])) <= 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYDUELIST) || ((ch.Chclasses[CLASS_DWARVEN_DEFENDER])+(ch.Epicclasses[CLASS_DWARVEN_DEFENDER])) <= 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYDWARVEN_DEFENDER) || ((ch.Chclasses[CLASS_ELDRITCH_KNIGHT])+(ch.Epicclasses[CLASS_ELDRITCH_KNIGHT])) <= 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYELDRITCH_KNIGHT) || ((ch.Chclasses[CLASS_HIEROPHANT])+(ch.Epicclasses[CLASS_HIEROPHANT])) <= 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYHIEROPHANT) || ((ch.Chclasses[CLASS_HORIZON_WALKER])+(ch.Epicclasses[CLASS_HORIZON_WALKER])) <= 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYHORIZON_WALKER) || ((ch.Chclasses[CLASS_LOREMASTER])+(ch.Epicclasses[CLASS_LOREMASTER])) <= 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYLOREMASTER) || ((ch.Chclasses[CLASS_MYSTIC_THEURGE])+(ch.Epicclasses[CLASS_MYSTIC_THEURGE])) <= 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYMYSTIC_THEURGE) || ((ch.Chclasses[CLASS_SHADOWDANCER])+(ch.Epicclasses[CLASS_SHADOWDANCER])) <= 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYSHADOWDANCER) || ((ch.Chclasses[CLASS_THAUMATURGIST])+(ch.Epicclasses[CLASS_THAUMATURGIST])) <= 0 && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_ONLYTHAUMATURGIST) {
 		stdio.Snprintf(&buf[0], int(200), "%s %s", GET_NAME(ch), MSG_TRAINER_DISLIKE_CLASS)
 		do_tell(keeper, &buf[0], cmd_tell, 0)
 		return FALSE
 	}
-	if int(ch.Race) == RACE_HUMAN && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOHUMAN) || int(ch.Race) == RACE_SAIYAN && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOSAIYAN) || int(ch.Race) == RACE_ICER && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOICER) || int(ch.Race) == RACE_KONATSU && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOKONATSU) || int(ch.Race) == RACE_NAMEK && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NONAMEK) || int(ch.Race) == RACE_MUTANT && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOMUTANT) || int(ch.Race) == RACE_KANASSAN && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOKANASSAN) || int(ch.Race) == RACE_ANDROID && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOANDROID) || int(ch.Race) == RACE_BIO && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOBIO) || int(ch.Race) == RACE_DEMON && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NODEMON) || int(ch.Race) == RACE_MAJIN && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOMAJIN) || int(ch.Race) == RACE_KAI && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOKAI) || int(ch.Race) == RACE_TRUFFLE && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOTRUFFLE) || int(ch.Race) == RACE_HOSHIJIN && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOGOBLIN) || int(ch.Race) == RACE_ANIMAL && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOANIMAL) || int(ch.Race) == RACE_ORC && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOORC) || int(ch.Race) == RACE_SNAKE && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOSNAKE) || int(ch.Race) == RACE_TROLL && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOTROLL) || int(ch.Race) == RACE_HALFBREED && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOHALFBREED) || int(ch.Race) == RACE_MINOTAUR && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOMINOTAUR) || int(ch.Race) == RACE_ARLIAN && IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], TRADE_NOKOBOLD) {
+	if int(ch.Race) == RACE_HUMAN && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOHUMAN) || int(ch.Race) == RACE_SAIYAN && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOSAIYAN) || int(ch.Race) == RACE_ICER && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOICER) || int(ch.Race) == RACE_KONATSU && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOKONATSU) || int(ch.Race) == RACE_NAMEK && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NONAMEK) || int(ch.Race) == RACE_MUTANT && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOMUTANT) || int(ch.Race) == RACE_KANASSAN && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOKANASSAN) || int(ch.Race) == RACE_ANDROID && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOANDROID) || int(ch.Race) == RACE_BIO && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOBIO) || int(ch.Race) == RACE_DEMON && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NODEMON) || int(ch.Race) == RACE_MAJIN && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOMAJIN) || int(ch.Race) == RACE_KAI && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOKAI) || int(ch.Race) == RACE_TRUFFLE && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOTRUFFLE) || int(ch.Race) == RACE_HOSHIJIN && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOGOBLIN) || int(ch.Race) == RACE_ANIMAL && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOANIMAL) || int(ch.Race) == RACE_ORC && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOORC) || int(ch.Race) == RACE_SNAKE && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOSNAKE) || int(ch.Race) == RACE_TROLL && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOTROLL) || int(ch.Race) == RACE_HALFBREED && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOHALFBREED) || int(ch.Race) == RACE_MINOTAUR && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOMINOTAUR) || int(ch.Race) == RACE_ARLIAN && IS_SET_AR(guild_index[guild_nr].With_who[:], TRADE_NOKOBOLD) {
 		stdio.Snprintf(&buf[0], int(200), "%s %s", GET_NAME(ch), MSG_TRAINER_DISLIKE_RACE)
 		do_tell(keeper, &buf[0], cmd_tell, 0)
 		return FALSE
@@ -515,10 +515,10 @@ func is_guild_ok(keeper *char_data, ch *char_data, guild_nr int) int {
 	return FALSE
 }
 func does_guild_know(guild_nr int, i int) int {
-	return (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).Skills[i]
+	return guild_index[guild_nr].Skills[i]
 }
 func does_guild_know_feat(guild_nr int, i int) int {
-	return (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).Feats[i]
+	return guild_index[guild_nr].Feats[i]
 }
 func sort_spells() {
 	var a int
@@ -621,7 +621,7 @@ func what_does_guild_know(guild_nr int, ch *char_data) {
 		len_ += uint64(stdio.Snprintf(&buf2[len_], int(64936-uintptr(len_)), "\r\nand the following languages:\r\n"))
 		for sortpos = 0; sortpos < SKILL_TABLE_SIZE; sortpos++ {
 			i = sortpos
-			if does_guild_know(guild_nr, i) != 0 && (skill_type(i)&(1<<2)) != 0 {
+			if does_guild_know(guild_nr, i) != 0 && IS_SET(bitvector_t(int32(skill_type(i))), 1<<2) {
 				for func() int {
 					canknow = 0
 					return func() int {
@@ -650,7 +650,7 @@ func what_does_guild_know(guild_nr int, ch *char_data) {
 		}
 	}
 	if len_ >= uint64(64936) {
-		libc.StrCpy((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(&buf2[64936]), -libc.StrLen(overflow)))), -1)), overflow)
+		libc.StrCpy((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(&buf2[64935]), -libc.StrLen(overflow)))), -1)), overflow)
 	}
 	page_string(ch.Desc, &buf2[0], TRUE)
 }
@@ -690,14 +690,14 @@ func prereq_pass(ch *char_data, snum int) int {
 			send_to_char(ch, libc.CString("You can not train that skill until you at least have trained focus to Skill LVL 30."))
 			return 0
 		}
-	} else if (spell_info[snum].Flags&(1<<10)) != 0 || (spell_info[snum].Flags&(1<<11)) != 0 {
+	} else if IS_SET(bitvector_t(int32(spell_info[snum].Flags)), 1<<10) || IS_SET(bitvector_t(int32(spell_info[snum].Flags)), 1<<11) {
 		if snum != 530 && snum != 531 {
 			if int(ch.Skills[SKILL_TSUIHIDAN]) < 40 || int(ch.Skills[SKILL_RENZO]) < 40 || int(ch.Skills[SKILL_SHOGEKIHA]) < 40 {
 				send_to_char(ch, libc.CString("You can not train that skill until you at least have trained Tsuihidan, Renzokou Energy Dan, and Shogekiha to Skill LVL 40."))
 				return 0
 			}
 		}
-	} else if (spell_info[snum].Flags & (1 << 12)) != 0 {
+	} else if IS_SET(bitvector_t(int32(spell_info[snum].Flags)), 1<<12) {
 		if int(ch.Chclass) == CLASS_ROSHI && (int(ch.Skills[SKILL_KAMEHAMEHA]) < 40 || int(ch.Skills[SKILL_KIENZAN]) < 40) {
 			send_to_char(ch, libc.CString("You can not train that skill until you at least have trained Kamehameha and Kienzan to Skill LVL 40."))
 			return 0
@@ -738,7 +738,7 @@ func prereq_pass(ch *char_data, snum int) int {
 			send_to_char(ch, libc.CString("You can not train that skill until you at least have trained Star Breaker to Skill LVL 40."))
 			return 0
 		}
-	} else if (spell_info[snum].Flags & (1 << 13)) != 0 {
+	} else if IS_SET(bitvector_t(int32(spell_info[snum].Flags)), 1<<13) {
 		if int(ch.Skills[SKILL_FOCUS]) < 60 || int(ch.Skills[SKILL_CONCENTRATION]) < 80 {
 			send_to_char(ch, libc.CString("You can not train that skill until you at least have trained focus to Skill LVL 60 and concentration to Skill LVL 80."))
 			return 0
@@ -746,7 +746,7 @@ func prereq_pass(ch *char_data, snum int) int {
 	}
 	return 1
 }
-func handle_forget(keeper *char_data, guild_nr int, ch *char_data, argument *byte) {
+func handle_forget(keeper *char_data, guild_nr int, ch *char_data, argument *byte, unused int) {
 	var skill_num int
 	skip_spaces(&argument)
 	if *argument == 0 {
@@ -777,7 +777,7 @@ func handle_forget(keeper *char_data, guild_nr int, ch *char_data, argument *byt
 		ch.Forgeting = skill_num
 	}
 }
-func handle_grand(keeper *char_data, guild_nr int, ch *char_data, argument *byte) {
+func handle_grand(keeper *char_data, guild_nr int, ch *char_data, argument *byte, unused int) {
 	var skill_num int
 	skip_spaces(&argument)
 	if !CAN_GRAND_MASTER(ch) {
@@ -791,7 +791,7 @@ func handle_grand(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 	skill_num = find_skill_num(argument, 1<<1)
 	var buf [64936]byte
 	if does_guild_know(guild_nr, skill_num) == 0 {
-		stdio.Snprintf(&buf[0], int(64936), libc.GoString((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).No_such_skill), GET_NAME(ch))
+		stdio.Snprintf(&buf[0], int(64936), libc.GoString(guild_index[guild_nr].No_such_skill), GET_NAME(ch))
 		do_tell(keeper, &buf[0], cmd_tell, 0)
 		return
 	}
@@ -853,11 +853,11 @@ func handle_practice(keeper *char_data, guild_nr int, ch *char_data, argument *b
 		return
 	}
 	if does_guild_know(guild_nr, skill_num) == 0 {
-		stdio.Snprintf(&buf[0], int(64936), libc.GoString((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).No_such_skill), GET_NAME(ch))
+		stdio.Snprintf(&buf[0], int(64936), libc.GoString(guild_index[guild_nr].No_such_skill), GET_NAME(ch))
 		do_tell(keeper, &buf[0], cmd_tell, 0)
 		return
 	}
-	if (spell_info[skill_num].Skilltype & (1 << 1)) != 0 {
+	if IS_SET(bitvector_t(int32(spell_info[skill_num].Skilltype)), 1<<1) {
 		for func() int {
 			learntype = 0
 			return func() int {
@@ -871,7 +871,7 @@ func handle_practice(keeper *char_data, guild_nr int, ch *char_data, argument *b
 		}
 		switch learntype {
 		case SKLEARN_CANT:
-			stdio.Snprintf(&buf[0], int(64936), libc.GoString((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).No_such_skill), GET_NAME(ch))
+			stdio.Snprintf(&buf[0], int(64936), libc.GoString(guild_index[guild_nr].No_such_skill), GET_NAME(ch))
 			do_tell(keeper, &buf[0], cmd_tell, 0)
 			return
 		case SKLEARN_CROSSCLASS:
@@ -1024,7 +1024,7 @@ func handle_practice(keeper *char_data, guild_nr int, ch *char_data, argument *b
 			}())
 		}
 	} else {
-		stdio.Snprintf(&buf[0], int(64936), libc.GoString((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).No_such_skill), GET_NAME(ch))
+		stdio.Snprintf(&buf[0], int(64936), libc.GoString(guild_index[guild_nr].No_such_skill), GET_NAME(ch))
 		do_tell(keeper, &buf[0], cmd_tell, 0)
 	}
 }
@@ -1070,7 +1070,7 @@ func handle_train(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 	affect_total(ch)
 	return
 }
-func handle_gain(keeper *char_data, guild_nr int, ch *char_data, argument *byte) {
+func handle_gain(keeper *char_data, guild_nr int, ch *char_data, argument *byte, unused int) {
 	var whichclass int = int(ch.Chclass)
 	skip_spaces(&argument)
 	if GET_LEVEL(ch) < 100 && ch.Exp >= int64(level_exp(ch, GET_LEVEL(ch)+1)) {
@@ -1121,9 +1121,8 @@ func rpp_to_level(ch *char_data) int {
 		} else if GET_LEVEL(ch) == 99 {
 			return 5
 		}
-	} else {
-		return 0
 	}
+	return 0
 }
 func handle_exp(keeper *char_data, guild_nr int, ch *char_data, argument *byte) {
 	if (ch.Player_specials.Class_skill_points[ch.Chclass]) < 25 {
@@ -1152,7 +1151,7 @@ func handle_exp(keeper *char_data, guild_nr int, ch *char_data, argument *byte) 
 		return
 	}
 }
-func handle_study(keeper *char_data, guild_nr int, ch *char_data, argument *byte) {
+func handle_study(keeper *char_data, guild_nr int, ch *char_data, argument *byte, unused int) {
 	var (
 		expcost    int = 25000
 		goldcost   int = 750
@@ -1235,7 +1234,7 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 		*ptr = ':'
 	}
 	if does_guild_know_feat(guild_nr, feat_num) == 0 {
-		stdio.Snprintf(&buf[0], int(64936), libc.GoString((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).No_such_skill), GET_NAME(ch))
+		stdio.Snprintf(&buf[0], int(64936), libc.GoString(guild_index[guild_nr].No_such_skill), GET_NAME(ch))
 		do_tell(keeper, &buf[0], cmd_tell, 0)
 		return
 	}
@@ -1331,12 +1330,13 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 			page_string(ch.Desc, &buf[0], TRUE)
 			return
 		}
-		subval = search_block(ptr, &func() [11]*byte {
-			if sftype == 2 {
-				return spell_schools
-			}
-			return ([11]*byte)(weapon_type)
-		}()[0], FALSE)
+		// todo: figure thi sout
+		//subval = search_block(ptr, func() [11]*byte {
+		//	if sftype == 2 {
+		//		return spell_schools
+		//	}
+		//	return ([11]*byte)(weapon_type)
+		//}()[0], FALSE)
 		if subval == -1 {
 			basic_mud_log(libc.CString("bad subval: %s"), ptr)
 			if sftype == 2 {
@@ -1370,13 +1370,13 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 				send_to_char(ch, libc.CString("You already have that weapon feat.\r\n"))
 				return
 			}
-			(ch.Combat_feats[subfeat])[subval/32] |= 1 << (subval % 32)
+			SET_BIT_AR(ch.Combat_feats[subfeat][:], bitvector_t(int32(subval)))
 		} else if sftype == 2 {
-			if ((ch.School_feats[subfeat]) & subval) != 0 {
+			if IS_SET(bitvector_t(int32(ch.School_feats[subfeat])), bitvector_t(int32(subval))) {
 				send_to_char(ch, libc.CString("You already have that spell school feat.\r\n"))
 				return
 			}
-			ch.School_feats[subfeat] |= subval
+			ch.School_feats[subfeat] |= bitvector_t(subval)
 		} else {
 			basic_mud_log(libc.CString("unknown feat subtype %d in subfeat code"), sftype)
 			send_to_char(ch, libc.CString("That feat is not yet ready for use.\r\n"))
@@ -1468,7 +1468,7 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 				break
 			}
 		}
-		ch.Player_specials.Spell_mastery_points += MAX(1, int(ability_mod_value(int(ch.Aff_abils.Intel))))
+		ch.Player_specials.Spell_mastery_points += int(MAX(1, int64(ability_mod_value(int(ch.Aff_abils.Intel)))))
 	case FEAT_ACROBATIC:
 		subval = int(ch.Feats[feat_num]) + 1
 		for {
@@ -1692,30 +1692,31 @@ func handle_learn(keeper *char_data, guild_nr int, ch *char_data, argument *byte
 	send_to_char(ch, libc.CString("Your training has given you the %s feat!\r\n"), feat_list[feat_num].Name)
 	return
 }
+
+type GuildCmd struct {
+	Cmd  *byte
+	Func func(*char_data, int, *char_data, *byte, int)
+}
+
+var guild_cmd_tab = []GuildCmd{{Cmd: libc.CString("practice"), Func: handle_practice}, {Cmd: libc.CString("gain"), Func: handle_gain}, {Cmd: libc.CString("forget"), Func: handle_forget}, {Cmd: libc.CString("study"), Func: handle_study}, {Cmd: libc.CString("grand"), Func: handle_grand}}
+
 func guild(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 	var (
-		arg           [2048]byte
-		guild_nr      int
-		i             int
-		keeper        *char_data = (*char_data)(me)
-		guild_cmd_tab [6]struct {
-			Cmd  *byte
-			Func func(*char_data, int, *char_data, *byte)
-		} = [6]struct {
-			Cmd  *byte
-			Func func(*char_data, int, *char_data, *byte)
-		}{{Cmd: libc.CString("practice"), Func: handle_practice}, {Cmd: libc.CString("gain"), Func: handle_gain}, {Cmd: libc.CString("forget"), Func: handle_forget}, {Cmd: libc.CString("study"), Func: handle_study}, {Cmd: libc.CString("grand"), Func: handle_grand}, {}}
+		arg      [2048]byte
+		guild_nr int
+		i        int
+		keeper   *char_data = (*char_data)(me)
 	)
 	for guild_nr = 0; guild_nr <= top_guild; guild_nr++ {
-		if (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).Gm == keeper.Nr {
+		if guild_index[guild_nr].Gm == keeper.Nr {
 			break
 		}
 	}
 	if guild_nr > top_guild {
 		return FALSE
 	}
-	if (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).Func != nil {
-		if (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).Func(ch, me, cmd, &arg[0]) != 0 {
+	if guild_index[guild_nr].Func != nil {
+		if guild_index[guild_nr].Func(ch, me, cmd, &arg[0]) != 0 {
 			return TRUE
 		}
 	}
@@ -1723,7 +1724,7 @@ func guild(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 		return FALSE
 	}
 	for i = 0; guild_cmd_tab[i].Cmd != nil; i++ {
-		if libc.StrCmp(guild_cmd_tab[i].Cmd, (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+		if libc.StrCmp(guild_cmd_tab[i].Cmd, complete_cmd_info[cmd].Command) == 0 {
 			break
 		}
 	}
@@ -1733,19 +1734,19 @@ func guild(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 	if is_guild_ok(keeper, ch, guild_nr) == 0 {
 		return TRUE
 	}
-	guild_cmd_tab[i].Func(keeper, guild_nr, ch, argument)
+	guild_cmd_tab[i].Func(keeper, guild_nr, ch, argument, 0)
 	return TRUE
 }
 func clear_skills(gdindex int) {
 	var i int
 	for i = 0; i < SKILL_TABLE_SIZE; i++ {
-		(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gdindex)))).Skills[i] = 0
+		guild_index[gdindex].Skills[i] = 0
 	}
 }
 func read_guild_line(gm_f *stdio.File, string_ *byte, data unsafe.Pointer, type_ *byte) {
 	var buf [64936]byte
 	if get_line(gm_f, &buf[0]) == 0 || stdio.Sscanf(&buf[0], libc.GoString(string_), data) == 0 {
-		stdio.Fprintf(stdio.Stderr(), "Error in guild #%d, Could not get %s\n", (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).Vnum, type_)
+		stdio.Fprintf(stdio.Stderr(), "Error in guild #%d, Could not get %s\n", guild_index[top_guild].Vnum, type_)
 		os.Exit(1)
 	}
 }
@@ -1771,20 +1772,20 @@ func boot_the_guilds(gm_f *stdio.File, filename *byte, rec_count int) {
 			libc.Free(unsafe.Pointer(buf))
 			top_guild++
 			if top_guild == 0 {
-				guild_index = &make([]guild_data, rec_count)[0]
+				guild_index = make([]guild_data, rec_count)
 			}
-			(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).Vnum = room_vnum(temp)
+			guild_index[top_guild].Vnum = room_vnum(temp)
 			clear_skills(top_guild)
 			get_line(gm_f, &buf3[0])
 			rv = stdio.Sscanf(&buf3[0], "%d %d", &t1, &t2)
 			for t1 > -1 {
 				if rv == 1 {
-					(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).Skills[t1] = 1
+					guild_index[top_guild].Skills[t1] = 1
 				} else if rv == 2 {
 					if t2 == 1 {
-						(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).Skills[t1] = 1
+						guild_index[top_guild].Skills[t1] = 1
 					} else if t2 == 2 {
-						(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).Feats[t1] = 1
+						guild_index[top_guild].Feats[t1] = 1
 					} else {
 						basic_mud_log(libc.CString("SYSERR: Invalid 2nd arg in guild file!"))
 						os.Exit(1)
@@ -1796,16 +1797,16 @@ func boot_the_guilds(gm_f *stdio.File, filename *byte, rec_count int) {
 				get_line(gm_f, &buf3[0])
 				rv = stdio.Sscanf(&buf3[0], "%d %d", &t1, &t2)
 			}
-			read_guild_line(gm_f, libc.CString("%f"), unsafe.Pointer(&(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).Charge), libc.CString("GM_CHARGE"))
-			(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).No_such_skill = fread_string(gm_f, &buf2[0])
-			(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).Not_enough_gold = fread_string(gm_f, &buf2[0])
-			read_guild_line(gm_f, libc.CString("%d"), unsafe.Pointer(&(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).Minlvl), libc.CString("GM_MINLVL"))
-			read_guild_line(gm_f, libc.CString("%d"), unsafe.Pointer(&(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).Gm), libc.CString("GM_TRAINER"))
-			(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).Gm = real_mobile(mob_vnum((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).Gm))
-			read_guild_line(gm_f, libc.CString("%d"), unsafe.Pointer(&(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).With_who[0]), libc.CString("GM_WITH_WHO"))
-			read_guild_line(gm_f, libc.CString("%d"), unsafe.Pointer(&(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).Open), libc.CString("GM_OPEN"))
-			read_guild_line(gm_f, libc.CString("%d"), unsafe.Pointer(&(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).Close), libc.CString("GM_CLOSE"))
-			(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).Func = nil
+			read_guild_line(gm_f, libc.CString("%f"), unsafe.Pointer(&guild_index[top_guild].Charge), libc.CString("GM_CHARGE"))
+			guild_index[top_guild].No_such_skill = fread_string(gm_f, &buf2[0])
+			guild_index[top_guild].Not_enough_gold = fread_string(gm_f, &buf2[0])
+			read_guild_line(gm_f, libc.CString("%d"), unsafe.Pointer(&guild_index[top_guild].Minlvl), libc.CString("GM_MINLVL"))
+			read_guild_line(gm_f, libc.CString("%d"), unsafe.Pointer(&guild_index[top_guild].Gm), libc.CString("GM_TRAINER"))
+			guild_index[top_guild].Gm = real_mobile(mob_vnum(guild_index[top_guild].Gm))
+			read_guild_line(gm_f, libc.CString("%d"), unsafe.Pointer(&guild_index[top_guild].With_who[0]), libc.CString("GM_WITH_WHO"))
+			read_guild_line(gm_f, libc.CString("%d"), unsafe.Pointer(&guild_index[top_guild].Open), libc.CString("GM_OPEN"))
+			read_guild_line(gm_f, libc.CString("%d"), unsafe.Pointer(&guild_index[top_guild].Close), libc.CString("GM_CLOSE"))
+			guild_index[top_guild].Func = nil
 			buf = (*byte)(unsafe.Pointer(&make([]int8, READ_SIZE)[0]))
 			get_line(gm_f, buf)
 			if buf != nil && *buf != '#' && *buf != '$' {
@@ -1818,7 +1819,7 @@ func boot_the_guilds(gm_f *stdio.File, filename *byte, rec_count int) {
 						basic_mud_log(libc.CString("SYSERR: Can't parse GM_WITH_WHO line in %s: '%s'"), &buf2[0], buf)
 						break
 					}
-					(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).With_who[temp] = val
+					guild_index[top_guild].With_who[temp] = bitvector_t(int32(val))
 					for unicode.IsDigit(rune(*p)) || *p == '-' {
 						p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1))
 					}
@@ -1827,7 +1828,7 @@ func boot_the_guilds(gm_f *stdio.File, filename *byte, rec_count int) {
 					}
 				}
 				for temp < GW_ARRAY_MAX {
-					(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(top_guild)))).With_who[func() int {
+					guild_index[top_guild].With_who[func() int {
 						p := &temp
 						x := *p
 						*p++
@@ -1850,13 +1851,17 @@ func assign_the_guilds() {
 	cmd_say = find_command(libc.CString("say"))
 	cmd_tell = find_command(libc.CString("tell"))
 	for gdindex = 0; gdindex <= top_guild; gdindex++ {
-		if (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gdindex)))).Gm == mob_rnum(-1) {
+		if guild_index[gdindex].Gm == mob_rnum(-1) {
 			continue
 		}
-		if (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gdindex)))).Gm)))).Func != nil && libc.FuncAddr((*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gdindex)))).Gm)))).Func) != libc.FuncAddr(guild) {
-			(*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gdindex)))).Func = (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gdindex)))).Gm)))).Func
+		if mob_index[guild_index[gdindex].Gm].Func != nil && libc.FuncAddr(mob_index[guild_index[gdindex].Gm].Func) != libc.FuncAddr(guild) {
+			guild_index[gdindex].Func = mob_index[guild_index[gdindex].Gm].Func
 		}
-		(*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gdindex)))).Gm)))).Func = guild
+		mob_index[guild_index[gdindex].Gm].Func = func(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
+			return func(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
+				return guild(ch, me, cmd, argument)
+			}(ch, me, cmd, argument)
+		}
 	}
 }
 func guild_customer_string(guild_nr int, detailed int) *byte {
@@ -1869,7 +1874,7 @@ func guild_customer_string(guild_nr int, detailed int) *byte {
 	)
 	for *trade_letters[gindex] != '\n' && len_+1 < uint64(64936) {
 		if detailed != 0 {
-			if !IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], bitvector_t(int32(flag))) {
+			if !IS_SET_AR(guild_index[guild_nr].With_who[:], bitvector_t(int32(flag))) {
 				nlen = stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), ", %s", trade_letters[gindex])
 				if len_+uint64(nlen) >= uint64(64936) || nlen < 0 {
 					break
@@ -1883,7 +1888,7 @@ func guild_customer_string(guild_nr int, detailed int) *byte {
 				*p++
 				return x
 			}()] = func() byte {
-				if IS_SET_AR((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(guild_nr)))).With_who[:], bitvector_t(int32(flag))) {
+				if IS_SET_AR(guild_index[guild_nr].With_who[:], bitvector_t(int32(flag))) {
 					return '_'
 				}
 				return *trade_letters[gindex]
@@ -1917,12 +1922,12 @@ func list_all_guilds(ch *char_data) {
 			libc.StrCpy(&buf[len_], list_all_guilds_header)
 			len_ += uint64(headerlen)
 		}
-		if (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gm_nr)))).Gm == mob_rnum(-1) {
+		if guild_index[gm_nr].Gm == mob_rnum(-1) {
 			libc.StrCpy(&buf1[0], libc.CString("<NONE>"))
 		} else {
-			stdio.Sprintf(&buf1[0], "%6d", (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gm_nr)))).Gm)))).Vnum)
+			stdio.Sprintf(&buf1[0], "%6d", mob_index[guild_index[gm_nr].Gm].Vnum)
 		}
-		len_ += uint64(stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "%6d\t%s\t\t%5.2f\t%s\r\n", (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gm_nr)))).Vnum, &buf1[0], (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gm_nr)))).Charge, guild_customer_string(gm_nr, FALSE)))
+		len_ += uint64(stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "%6d\t%s\t\t%5.2f\t%s\r\n", guild_index[gm_nr].Vnum, &buf1[0], guild_index[gm_nr].Charge, guild_customer_string(gm_nr, FALSE)))
 	}
 	page_string(ch.Desc, &buf[0], TRUE)
 }
@@ -1933,14 +1938,14 @@ func list_detailed_guild(ch *char_data, gm_nr int) {
 		buf1 [64936]byte
 		buf2 [64936]byte
 	)
-	if (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gm_nr)))).Gm < mob_rnum(-1) {
+	if guild_index[gm_nr].Gm < mob_rnum(-1) {
 		libc.StrCpy(&buf1[0], libc.CString("<NONE>"))
 	} else {
-		stdio.Sprintf(&buf1[0], "%6d   ", (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gm_nr)))).Gm)))).Vnum)
+		stdio.Sprintf(&buf1[0], "%6d   ", mob_index[guild_index[gm_nr].Gm].Vnum)
 	}
 	stdio.Sprintf(&buf[0], " Guild Master: %s\r\n", &buf1[0])
-	stdio.Sprintf(&buf[0], "%s Hours: %4d to %4d,  Surcharge: %5.2f\r\n", &buf[0], (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gm_nr)))).Open, (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gm_nr)))).Close, (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gm_nr)))).Charge)
-	stdio.Sprintf(&buf[0], "%s Min Level will train: %d\r\n", &buf[0], (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gm_nr)))).Minlvl)
+	stdio.Sprintf(&buf[0], "%s Hours: %4d to %4d,  Surcharge: %5.2f\r\n", &buf[0], guild_index[gm_nr].Open, guild_index[gm_nr].Close, guild_index[gm_nr].Charge)
+	stdio.Sprintf(&buf[0], "%s Min Level will train: %d\r\n", &buf[0], guild_index[gm_nr].Minlvl)
 	stdio.Sprintf(&buf[0], "%s Whom will train: %s\r\n", &buf[0], guild_customer_string(gm_nr, TRUE))
 	stdio.Sprintf(&buf[0], "%s The GM can teach the following:\r\n", &buf[0])
 	buf2[0] = '\x00'
@@ -1967,7 +1972,7 @@ func show_guild(ch *char_data, arg *byte) {
 		}
 		if gm_num > 0 {
 			for gm_nr = 0; gm_nr <= top_guild; gm_nr++ {
-				if gm_num == int((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(gm_nr)))).Vnum) {
+				if gm_num == int(guild_index[gm_nr].Vnum) {
 					break
 				}
 			}
@@ -1987,8 +1992,8 @@ func list_guilds(ch *char_data, rnum zone_rnum, vmin guild_vnum, vmax guild_vnum
 		counter int = 0
 	)
 	if rnum != zone_rnum(-1) {
-		bottom = int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(rnum)))).Bot)
-		top = int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(rnum)))).Top)
+		bottom = int(zone_table[rnum].Bot)
+		top = int(zone_table[rnum].Top)
 	} else {
 		bottom = int(vmin)
 		top = int(vmax)
@@ -1998,19 +2003,19 @@ func list_guilds(ch *char_data, rnum zone_rnum, vmin guild_vnum, vmax guild_vnum
 		return
 	}
 	for i = 0; i <= top_guild; i++ {
-		if (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(i)))).Vnum >= room_vnum(bottom) && (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(i)))).Vnum <= room_vnum(top) {
+		if guild_index[i].Vnum >= room_vnum(bottom) && guild_index[i].Vnum <= room_vnum(top) {
 			counter++
-			send_to_char(ch, libc.CString("@g%4d@n) [@c%-5d@n]"), counter, (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(i)))).Vnum)
+			send_to_char(ch, libc.CString("@g%4d@n) [@c%-5d@n]"), counter, guild_index[i].Vnum)
 			send_to_char(ch, libc.CString(" @c[@y%d@c]@y %s@n"), func() mob_vnum {
-				if (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(i)))).Gm == mob_rnum(-1) {
+				if guild_index[i].Gm == mob_rnum(-1) {
 					return -1
 				}
-				return (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(i)))).Gm)))).Vnum
+				return mob_index[guild_index[i].Gm].Vnum
 			}(), func() string {
-				if (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(i)))).Gm == mob_rnum(-1) {
+				if guild_index[i].Gm == mob_rnum(-1) {
 					return ""
 				}
-				return libc.GoString((*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(i)))).Gm)))).Short_descr)
+				return libc.GoString(mob_proto[guild_index[i].Gm].Short_descr)
 			}())
 			send_to_char(ch, libc.CString("\r\n"))
 		}
@@ -2025,14 +2030,14 @@ func destroy_guilds() {
 		return
 	}
 	for cnt = 0; cnt <= int64(top_guild); cnt++ {
-		if (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(cnt)))).No_such_skill != nil {
-			libc.Free(unsafe.Pointer((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(cnt)))).No_such_skill))
+		if guild_index[cnt].No_such_skill != nil {
+			libc.Free(unsafe.Pointer(guild_index[cnt].No_such_skill))
 		}
-		if (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(cnt)))).Not_enough_gold != nil {
-			libc.Free(unsafe.Pointer((*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(cnt)))).Not_enough_gold))
+		if guild_index[cnt].Not_enough_gold != nil {
+			libc.Free(unsafe.Pointer(guild_index[cnt].Not_enough_gold))
 		}
 	}
-	libc.Free(unsafe.Pointer(guild_index))
+	libc.Free(unsafe.Pointer(&guild_index[0]))
 	guild_index = nil
 	top_guild = -1
 }
@@ -2044,8 +2049,8 @@ func count_guilds(low guild_vnum, high guild_vnum) int {
 	for i = func() int {
 		j = 0
 		return j
-	}(); (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(i)))).Vnum <= room_vnum(high) && i <= top_guild; i++ {
-		if (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(i)))).Vnum >= room_vnum(low) {
+	}(); guild_index[i].Vnum <= room_vnum(high) && i <= top_guild; i++ {
+		if guild_index[i].Vnum >= room_vnum(low) {
 			j++
 		}
 	}

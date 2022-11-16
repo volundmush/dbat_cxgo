@@ -95,7 +95,7 @@ func do_oasis_copy(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if can_edit_zone(ch, d.Olc.Zone_num) == 0 {
-		send_cannot_edit(ch, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number)
+		send_cannot_edit(ch, zone_table[d.Olc.Zone_num].Number)
 		libc.Free(unsafe.Pointer(d.Olc))
 		d.Olc = nil
 		return
@@ -138,7 +138,7 @@ func do_dig(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}()) < 0 {
 		dir = search_block(&sdir[0], &dirs[0], FALSE)
 	}
-	zone = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone
+	zone = world[ch.In_room].Zone
 	if dir < 0 {
 		send_to_char(ch, libc.CString("Cannot create an exit to the '%s'.\r\n"), &sdir[0])
 		return
@@ -152,23 +152,23 @@ func do_dig(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if rvnum == room_vnum(-1) {
-		if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]) != nil {
-			if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]).General_description != nil {
-				libc.Free(unsafe.Pointer(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]).General_description))
+		if (world[ch.In_room].Dir_option[dir]) != nil {
+			if (world[ch.In_room].Dir_option[dir]).General_description != nil {
+				libc.Free(unsafe.Pointer((world[ch.In_room].Dir_option[dir]).General_description))
 			}
-			if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]).Keyword != nil {
-				libc.Free(unsafe.Pointer(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]).Keyword))
+			if (world[ch.In_room].Dir_option[dir]).Keyword != nil {
+				libc.Free(unsafe.Pointer((world[ch.In_room].Dir_option[dir]).Keyword))
 			}
-			libc.Free(unsafe.Pointer((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]))
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir] = nil
-			add_to_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone)))).Number, SL_WLD)
+			libc.Free(unsafe.Pointer(world[ch.In_room].Dir_option[dir]))
+			world[ch.In_room].Dir_option[dir] = nil
+			add_to_save_list(zone_table[world[ch.In_room].Zone].Number, SL_WLD)
 			send_to_char(ch, libc.CString("You remove the exit to the %s.\r\n"), dirs[dir])
 			return
 		}
 		send_to_char(ch, libc.CString("There is no exit to the %s.\r\nNo exit removed.\r\n"), dirs[dir])
 		return
 	}
-	if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]) != nil {
+	if (world[ch.In_room].Dir_option[dir]) != nil {
 		send_to_char(ch, libc.CString("There already is an exit to the %s.\r\n"), dirs[dir])
 		return
 	}
@@ -205,22 +205,22 @@ func do_dig(ch *char_data, argument *byte, cmd int, subcmd int) {
 		update_space()
 		rrnum = real_room(rvnum)
 	}
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir] = new(room_direction_data)
-	((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]).General_description = nil
-	((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]).Keyword = nil
-	((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]).To_room = rrnum
-	add_to_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone)))).Number, SL_WLD)
-	save_rooms(zone_rnum((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Zone)))).Number))
-	send_to_char(ch, libc.CString("You make an exit %s to room %d (%s).\r\n"), dirs[dir], rvnum, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Name)
-	if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Dir_option[rev_dir[dir]]) != nil {
+	world[ch.In_room].Dir_option[dir] = new(room_direction_data)
+	(world[ch.In_room].Dir_option[dir]).General_description = nil
+	(world[ch.In_room].Dir_option[dir]).Keyword = nil
+	(world[ch.In_room].Dir_option[dir]).To_room = rrnum
+	add_to_save_list(zone_table[world[ch.In_room].Zone].Number, SL_WLD)
+	save_rooms(zone_rnum(zone_table[world[rrnum].Zone].Number))
+	send_to_char(ch, libc.CString("You make an exit %s to room %d (%s).\r\n"), dirs[dir], rvnum, world[rrnum].Name)
+	if (world[rrnum].Dir_option[rev_dir[dir]]) != nil {
 		send_to_char(ch, libc.CString("You cannot dig from %d to here. The target room already has an exit to the %s.\r\n"), rvnum, dirs[rev_dir[dir]])
 	} else {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Dir_option[rev_dir[dir]] = new(room_direction_data)
-		((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Dir_option[rev_dir[dir]]).General_description = nil
-		((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Dir_option[rev_dir[dir]]).Keyword = nil
-		((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Dir_option[rev_dir[dir]]).To_room = ch.In_room
-		add_to_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Zone)))).Number, SL_WLD)
-		save_rooms(zone_rnum((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Zone)))).Number))
+		world[rrnum].Dir_option[rev_dir[dir]] = new(room_direction_data)
+		(world[rrnum].Dir_option[rev_dir[dir]]).General_description = nil
+		(world[rrnum].Dir_option[rev_dir[dir]]).Keyword = nil
+		(world[rrnum].Dir_option[rev_dir[dir]]).To_room = ch.In_room
+		add_to_save_list(zone_table[world[rrnum].Zone].Number, SL_WLD)
+		save_rooms(zone_rnum(zone_table[world[rrnum].Zone].Number))
 	}
 }
 func do_rcopy(ch *char_data, argument *byte, cmd int, subcmd int) {
@@ -235,18 +235,14 @@ func do_rcopy(ch *char_data, argument *byte, cmd int, subcmd int) {
 		i     int
 	)
 	two_arguments(argument, &arg[0], &arg2[0])
-	if arg == nil || arg[0] == 0 {
+	if arg[0] == 0 {
 		send_to_char(ch, libc.CString("Syntax: rclone <base rnum> <target rnum>\r\nOr be in the room you wish to be the target and provide base vnum.\r\n"))
 		return
 	}
-	if arg2 == nil || arg2[0] == 0 {
+	if arg2[0] == 0 {
 		tvnum = room_rnum(libc.Atoi(libc.GoString(&arg[0])))
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			rvnum = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		} else {
-			rvnum = -1
-		}
-	} else if arg2 != nil || arg2[0] != 0 {
+		rvnum = room_vnum(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room)))
+	} else if arg2[0] != 0 {
 		rvnum = room_vnum(libc.Atoi(libc.GoString(&arg2[0])))
 		tvnum = room_rnum(libc.Atoi(libc.GoString(&arg[0])))
 	}
@@ -268,35 +264,35 @@ func do_rcopy(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Could not find target room: %d\r\n"), rvnum)
 		return
 	}
-	zone = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Zone
+	zone = world[rrnum].Zone
 	if zone == zone_rnum(-1) || can_edit_zone(ch, zone) == 0 {
 		send_to_char(ch, libc.CString("\r\n"))
 		send_cannot_edit(ch, zone_vnum(zone))
 		return
 	}
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Name != nil {
-		libc.Free(unsafe.Pointer((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Name))
+	if world[rrnum].Name != nil {
+		libc.Free(unsafe.Pointer(world[rrnum].Name))
 	}
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Description != nil {
-		libc.Free(unsafe.Pointer((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Description))
+	if world[rrnum].Description != nil {
+		libc.Free(unsafe.Pointer(world[rrnum].Description))
 	}
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Ex_description != nil {
-		free_ex_descriptions((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Ex_description)
+	if world[rrnum].Ex_description != nil {
+		free_ex_descriptions(world[rrnum].Ex_description)
 	}
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Sector_type = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(trnum)))).Sector_type
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Description = str_udup((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(trnum)))).Description)
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Name = str_udup((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(trnum)))).Name)
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(trnum)))).Ex_description != nil {
-		copy_ex_descriptions(&(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Ex_description, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(trnum)))).Ex_description)
+	world[rrnum].Sector_type = world[trnum].Sector_type
+	world[rrnum].Description = str_udup(world[trnum].Description)
+	world[rrnum].Name = str_udup(world[trnum].Name)
+	if world[trnum].Ex_description != nil {
+		copy_ex_descriptions(&world[rrnum].Ex_description, world[trnum].Ex_description)
 	} else {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Ex_description = nil
+		world[rrnum].Ex_description = nil
 	}
 	for i = 0; i < AF_ARRAY_MAX; i++ {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Room_flags[i] = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(trnum)))).Room_flags[i]
+		world[rrnum].Room_flags[i] = world[trnum].Room_flags[i]
 	}
 	send_to_imm(libc.CString("Log: %s has copied room [%d] to room [%d]."), GET_NAME(ch), tvnum, rvnum)
-	add_to_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Zone)))).Number, SL_WLD)
-	save_rooms(zone_rnum((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Zone)))).Number))
+	add_to_save_list(zone_table[world[rrnum].Zone].Number, SL_WLD)
+	save_rooms(zone_rnum(zone_table[world[rrnum].Zone].Number))
 	send_to_char(ch, libc.CString("Room [%d] copied to room [%d].\r\n"), tvnum, rvnum)
 }
 func redit_find_new_vnum(zone zone_rnum) room_vnum {
@@ -308,10 +304,10 @@ func redit_find_new_vnum(zone zone_rnum) room_vnum {
 		return -1
 	}
 	for {
-		if vnum > (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top {
+		if vnum > zone_table[zone].Top {
 			return -1
 		}
-		if rnum > top_of_world || (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Number > vnum {
+		if rnum > top_of_world || world[rnum].Number > vnum {
 			break
 		}
 		rnum++
@@ -326,10 +322,10 @@ func buildwalk(ch *char_data, dir int) int {
 		rnum room_rnum
 	)
 	if !IS_NPC(ch) && PRF_FLAGGED(ch, PRF_BUILDWALK) && ch.Admlevel >= ADMLVL_IMMORT {
-		if can_edit_zone(ch, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone) == 0 {
-			send_cannot_edit(ch, zone_vnum((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone))
+		if can_edit_zone(ch, world[ch.In_room].Zone) == 0 {
+			send_cannot_edit(ch, zone_vnum(world[ch.In_room].Zone))
 		} else if (func() room_vnum {
-			vnum = redit_find_new_vnum((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone)
+			vnum = redit_find_new_vnum(world[ch.In_room].Zone)
 			return vnum
 		}()) == room_vnum(-1) {
 			send_to_char(ch, libc.CString("No free vnums are available in this zone!\r\n"))
@@ -340,7 +336,7 @@ func buildwalk(ch *char_data, dir int) int {
 				libc.Free(unsafe.Pointer(d.Olc))
 			}
 			d.Olc = new(oasis_olc_data)
-			d.Olc.Zone_num = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone
+			d.Olc.Zone_num = world[ch.In_room].Zone
 			d.Olc.Number = vnum
 			d.Olc.Room = new(room_data)
 			d.Olc.Room.Name = libc.CString("New BuildWalk Room")
@@ -351,10 +347,10 @@ func buildwalk(ch *char_data, dir int) int {
 			redit_save_internally(d)
 			d.Olc.Value = 0
 			rnum = real_room(vnum)
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir] = new(room_direction_data)
-			((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]).To_room = rnum
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[rev_dir[dir]] = new(room_direction_data)
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[rev_dir[dir]].To_room = ch.In_room
+			world[ch.In_room].Dir_option[dir] = new(room_direction_data)
+			(world[ch.In_room].Dir_option[dir]).To_room = rnum
+			world[rnum].Dir_option[rev_dir[dir]] = new(room_direction_data)
+			world[rnum].Dir_option[rev_dir[dir]].To_room = ch.In_room
 			send_to_char(ch, libc.CString("@yRoom #%d created by BuildWalk.@n\r\n"), vnum)
 			cleanup_olc(d, CLEANUP_STRUCTS)
 			update_space()

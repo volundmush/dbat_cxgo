@@ -130,15 +130,15 @@ func do_start(ch *char_data) {
 		ch.Player_specials.Conditions[HUNGER] = 48
 		ch.Player_specials.Conditions[DRUNK] = 0
 	}
-	ch.Player_specials.Pref[int(PRF_AUTOEXIT/32)] |= bitvector_t(int32(1 << (int(PRF_AUTOEXIT % 32))))
-	ch.Player_specials.Pref[int(PRF_HINTS/32)] |= bitvector_t(int32(1 << (int(PRF_HINTS % 32))))
-	ch.Player_specials.Pref[int(PRF_NOMUSIC/32)] |= bitvector_t(int32(1 << (int(PRF_NOMUSIC % 32))))
-	ch.Player_specials.Pref[int(PRF_DISPHP/32)] |= bitvector_t(int32(1 << (int(PRF_DISPHP % 32))))
+	SET_BIT_AR(ch.Player_specials.Pref[:], PRF_AUTOEXIT)
+	SET_BIT_AR(ch.Player_specials.Pref[:], PRF_HINTS)
+	SET_BIT_AR(ch.Player_specials.Pref[:], PRF_NOMUSIC)
+	SET_BIT_AR(ch.Player_specials.Pref[:], PRF_DISPHP)
 	ch.Limb_condition[0] = 100
 	ch.Limb_condition[1] = 100
 	ch.Limb_condition[2] = 100
 	ch.Limb_condition[3] = 100
-	ch.Act[int(PLR_HEAD/32)] |= bitvector_t(int32(1 << (int(PLR_HEAD % 32))))
+	SET_BIT_AR(ch.Act[:], PLR_HEAD)
 	ch.Skill_slots = 30
 	if int(ch.Race) == RACE_HUMAN {
 		ch.Skill_slots += 1
@@ -164,11 +164,11 @@ func do_start(ch *char_data) {
 	}
 	if int(ch.Race) == RACE_SAIYAN || int(ch.Race) == RACE_HALFBREED {
 		if int(ch.Race) != RACE_HALFBREED || int(ch.Race) == RACE_HALFBREED && ch.Player_specials.Racial_pref != 1 {
-			ch.Act[int(PLR_STAIL/32)] |= bitvector_t(int32(1 << (int(PLR_STAIL % 32))))
+			SET_BIT_AR(ch.Act[:], PLR_STAIL)
 		}
 	}
 	if int(ch.Race) == RACE_ICER || int(ch.Race) == RACE_BIO {
-		ch.Act[int(PLR_TAIL/32)] |= bitvector_t(int32(1 << (int(PLR_TAIL % 32))))
+		SET_BIT_AR(ch.Act[:], PLR_TAIL)
 	}
 	if int(ch.Race) == RACE_MAJIN {
 		ch.Absorbs = 0
@@ -177,11 +177,11 @@ func do_start(ch *char_data) {
 	if int(ch.Race) == RACE_BIO {
 		ch.Absorbs = 3
 	}
-	ch.Player_specials.Pref[int(PRF_VIEWORDER/32)] |= bitvector_t(int32(1 << (int(PRF_VIEWORDER % 32))))
-	ch.Player_specials.Pref[int(PRF_DISPMOVE/32)] |= bitvector_t(int32(1 << (int(PRF_DISPMOVE % 32))))
-	ch.Player_specials.Pref[int(PRF_DISPKI/32)] |= bitvector_t(int32(1 << (int(PRF_DISPKI % 32))))
-	ch.Player_specials.Pref[int(PRF_DISPEXP/32)] |= bitvector_t(int32(1 << (int(PRF_DISPEXP % 32))))
-	ch.Player_specials.Pref[int(PRF_DISPTNL/32)] |= bitvector_t(int32(1 << (int(PRF_DISPTNL % 32))))
+	SET_BIT_AR(ch.Player_specials.Pref[:], PRF_VIEWORDER)
+	SET_BIT_AR(ch.Player_specials.Pref[:], PRF_DISPMOVE)
+	SET_BIT_AR(ch.Player_specials.Pref[:], PRF_DISPKI)
+	SET_BIT_AR(ch.Player_specials.Pref[:], PRF_DISPEXP)
+	SET_BIT_AR(ch.Player_specials.Pref[:], PRF_DISPTNL)
 	if !PLR_FLAGGED(ch, PLR_FORGET) {
 		if ch.Choice == 1 {
 			punch = rand_number(30, 40)
@@ -326,7 +326,7 @@ func do_start(ch *char_data) {
 			}
 		}
 	} else {
-		ch.Act[int(PLR_FORGET/32)] &= bitvector_t(int32(^(1 << (int(PLR_FORGET % 32)))))
+		REMOVE_BIT_AR(ch.Act[:], PLR_FORGET)
 	}
 	if int(ch.Race) == RACE_KAI || int(ch.Race) == RACE_KANASSAN {
 		punch = rand_number(15, 30)
@@ -449,7 +449,7 @@ func do_start(ch *char_data) {
 			}
 		}
 	case RACE_ANDROID:
-		ch.Affected_by[int(AFF_INFRAVISION/32)] |= 1 << (int(AFF_INFRAVISION % 32))
+		SET_BIT_AR(ch.Affected_by[:], AFF_INFRAVISION)
 		for {
 			ch.Skills[SKILL_LANG_COMMON] = 1
 			if true {
@@ -563,10 +563,10 @@ func do_start(ch *char_data) {
 	}
 	ch.Transclass = rand_number(1, 3)
 	if config_info.Operation.Siteok_everyone != 0 {
-		ch.Act[int(PLR_SITEOK/32)] |= bitvector_t(int32(1 << (int(PLR_SITEOK % 32))))
+		SET_BIT_AR(ch.Act[:], PLR_SITEOK)
 	}
 	if int(ch.Race) == RACE_SAIYAN && rand_number(1, 100) >= 95 {
-		ch.Act[int(PLR_LSSJ/32)] |= bitvector_t(int32(1 << (int(PLR_LSSJ % 32))))
+		SET_BIT_AR(ch.Act[:], PLR_LSSJ)
 		write_to_output(ch.Desc, libc.CString("@GYou were one of the few born a Legendary Super Saiyan!@n\r\n"))
 	}
 	ch.Player_specials.Olc_zone = -1
@@ -788,22 +788,22 @@ func advance_level(ch *char_data, whichclass int) {
 		add_prac = int(prac_reward + float64(ch.Aff_abils.Intel))
 	}
 	if add_hp >= 300000 && add_hp < 600000 {
-		add_hp *= int64(0.75)
+		add_hp += int64(float64(add_hp) * 0.75)
 		if add_hp < 300000 {
 			add_hp = int64(rand_number(300000, 330000))
 		}
 	} else if add_hp >= 600000 && add_hp < 1000000 {
-		add_hp *= int64(0.7)
+		add_hp += int64(float64(add_hp) * 0.7)
 		if add_hp < 600000 {
 			add_hp = int64(rand_number(600000, 650000))
 		}
 	} else if add_hp >= 1000000 && add_hp < 2000000 {
-		add_hp *= int64(0.65)
+		add_hp += int64(float64(add_hp) * 0.65)
 		if add_hp < 1000000 {
 			add_hp = int64(rand_number(1000000, 1250000))
 		}
 	} else if add_hp >= 2000000 {
-		add_hp *= int64(0.45)
+		add_hp += int64(float64(add_hp) * 0.45)
 		if add_hp < 2000000 {
 			add_hp = int64(rand_number(2000000, 2250000))
 		}
@@ -812,22 +812,22 @@ func advance_level(ch *char_data, whichclass int) {
 		add_hp = 15000000
 	}
 	if add_move >= 300000 && add_move < 600000 {
-		add_move *= int64(0.75)
+		add_move += int64(float64(add_move) * 0.75)
 		if add_move < 300000 {
 			add_move = int64(rand_number(300000, 330000))
 		}
 	} else if add_move >= 600000 && add_move < 1000000 {
-		add_move *= int64(0.7)
+		add_move += int64(float64(add_move) * 0.7)
 		if add_move < 600000 {
 			add_move = int64(rand_number(600000, 650000))
 		}
 	} else if add_move >= 1000000 && add_move < 2000000 {
-		add_move *= int64(0.65)
+		add_move += int64(float64(add_move) * 0.65)
 		if add_move < 1000000 {
 			add_move = int64(rand_number(1000000, 1250000))
 		}
 	} else if add_move >= 2000000 {
-		add_move *= int64(0.45)
+		add_move += int64(float64(add_move) * 0.45)
 		if add_move < 2000000 {
 			add_move = int64(rand_number(2000000, 2250000))
 		}
@@ -836,22 +836,22 @@ func advance_level(ch *char_data, whichclass int) {
 		add_move = 15000000
 	}
 	if add_mana >= 300000 && add_mana < 600000 {
-		add_mana *= int64(0.75)
+		add_mana += int64(float64(add_mana) * 0.75)
 		if add_mana < 300000 {
 			add_mana = int64(rand_number(300000, 330000))
 		}
 	} else if add_mana >= 600000 && add_mana < 1000000 {
-		add_mana *= int64(0.7)
+		add_mana += int64(float64(add_mana) * 0.7)
 		if add_mana < 600000 {
 			add_mana = int64(rand_number(600000, 650000))
 		}
 	} else if add_mana >= 1000000 && add_mana < 2000000 {
-		add_mana *= int64(0.65)
+		add_mana += int64(float64(add_mana) * 0.65)
 		if add_mana < 1000000 {
 			add_mana = int64(rand_number(1000000, 1250000))
 		}
 	} else if add_mana >= 2000000 {
-		add_mana *= int64(0.45)
+		add_mana += int64(float64(add_mana) * 0.45)
 		if add_mana < 2000000 {
 			add_mana = int64(rand_number(2000000, 2250000))
 		}
@@ -933,7 +933,7 @@ func advance_level(ch *char_data, whichclass int) {
 		ch.Basest = ch.Max_hit
 		add_prac = 5
 		if PLR_FLAGGED(ch, PLR_SKILLP) {
-			ch.Act[int(PLR_SKILLP/32)] &= bitvector_t(int32(^(1 << (int(PLR_SKILLP % 32)))))
+			REMOVE_BIT_AR(ch.Act[:], PLR_SKILLP)
 			add_prac *= 5
 		} else {
 			add_prac *= 2
@@ -955,17 +955,17 @@ func advance_level(ch *char_data, whichclass int) {
 		add_mana *= 2
 		add_move *= 2
 	} else if (int(ch.Race) == RACE_DEMON || int(ch.Race) == RACE_KANASSAN) && GET_LEVEL(ch) > 60 {
-		add_hp *= int64(1.75)
-		add_mana *= int64(1.75)
-		add_move *= int64(1.75)
+		add_hp += int64(float64(add_hp) * 1.75)
+		add_mana += int64(float64(add_mana) * 1.75)
+		add_move += int64(float64(add_move) * 1.75)
 	} else if (int(ch.Race) == RACE_DEMON || int(ch.Race) == RACE_KANASSAN) && GET_LEVEL(ch) > 50 {
-		add_hp *= int64(1.5)
-		add_mana *= int64(1.5)
-		add_move *= int64(1.5)
+		add_hp += int64(float64(add_hp) * 1.5)
+		add_mana += int64(float64(add_mana) * 1.5)
+		add_move += int64(float64(add_move) * 1.5)
 	} else if (int(ch.Race) == RACE_DEMON || int(ch.Race) == RACE_KANASSAN) && GET_LEVEL(ch) > 40 {
-		add_hp *= int64(1.25)
-		add_mana *= int64(1.25)
-		add_move *= int64(1.25)
+		add_hp += int64(float64(add_hp) * 1.25)
+		add_mana += int64(float64(add_mana) * 1.25)
+		add_move += int64(float64(add_move) * 1.25)
 	}
 	llog.Mana_roll = int8(add_mana)
 	llog.Move_roll = int8(add_move)
@@ -1007,9 +1007,9 @@ func advance_level(ch *char_data, whichclass int) {
 		add_move *= 3
 		add_mana *= 3
 	} else if int(ch.Race) == RACE_BIO && PLR_FLAGGED(ch, PLR_TRANS3) {
-		add_hp *= int64(3.5)
-		add_move *= int64(3.5)
-		add_mana *= int64(3.5)
+		add_hp += int64(float64(add_hp) * 3.5)
+		add_move += int64(float64(add_move) * 3.5)
+		add_mana += int64(float64(add_mana) * 3.5)
 	} else if int(ch.Race) == RACE_BIO && PLR_FLAGGED(ch, PLR_TRANS4) {
 		add_hp *= 4
 		add_move *= 4
@@ -1023,9 +1023,9 @@ func advance_level(ch *char_data, whichclass int) {
 		add_move *= 3
 		add_mana *= 3
 	} else if int(ch.Race) == RACE_MAJIN && PLR_FLAGGED(ch, PLR_TRANS3) {
-		add_hp *= int64(4.5)
-		add_move *= int64(4.5)
-		add_mana *= int64(4.5)
+		add_hp += int64(float64(add_hp) * 4.5)
+		add_move += int64(float64(add_move) * 4.5)
+		add_mana += int64(float64(add_mana) * 4.5)
 	}
 	ch.Max_hit += add_hp
 	ch.Max_move += add_move
@@ -1048,7 +1048,7 @@ func advance_level(ch *char_data, whichclass int) {
 		for i = 0; i < 3; i++ {
 			ch.Player_specials.Conditions[i] = -1
 		}
-		ch.Player_specials.Pref[int(PRF_HOLYLIGHT/32)] |= bitvector_t(int32(1 << (int(PRF_HOLYLIGHT % 32))))
+		SET_BIT_AR(ch.Player_specials.Pref[:], PRF_HOLYLIGHT)
 	}
 	stdio.Sprintf(&buf[0], "@D[@YGain@D: @RPl@D(@G%s@D) @gSt@D(@G%s@D) @CKi@D(@G%s@D) @bPS@D(@G%s@D)]", add_commas(add_hp), add_commas(add_move), add_commas(add_mana), add_commas(int64(add_prac)))
 	if (ch.Bonuses[BONUS_GMEMORY]) != 0 && (GET_LEVEL(ch) == 20 || GET_LEVEL(ch) == 40 || GET_LEVEL(ch) == 60 || GET_LEVEL(ch) == 80 || GET_LEVEL(ch) == 100) {
@@ -1565,7 +1565,7 @@ func dex_mod_capped(ch *char_data) int8 {
 	mod = ability_mod_value(int(ch.Aff_abils.Dex))
 	armor = ch.Equipment[WEAR_BODY]
 	if armor != nil && int(armor.Type_flag) == ITEM_ARMOR {
-		mod = int8(MIN(int(mod), armor.Value[VAL_ARMOR_MAXDEXMOD]))
+		mod = int8(MIN(int64(mod), int64(armor.Value[VAL_ARMOR_MAXDEXMOD])))
 	}
 	return mod
 }
@@ -1581,84 +1581,7 @@ func comp_rank(a unsafe.Pointer, b unsafe.Pointer) int {
 	second = *(*int)(b)
 	return cabbr_ranktable[second] - cabbr_ranktable[first]
 }
-func class_desc_str(ch *char_data, howlong int, wantthe int) *byte {
-	var (
-		str       [64936]byte
-		ptr       *byte = &str[0]
-		i         int
-		rank      int
-		j         int
-		rankorder [31]int
-		buf       *byte
-		buf2      *byte
-		buf3      *byte
-	)
-	if IS_NPC(ch) {
-		stdio.Snprintf(ptr, int(64936-uintptr(uintptr(unsafe.Pointer(ptr-str)))), "%s%d", class_abbrevs[ch.Chclass], GET_LEVEL(ch))
-		return &str[0]
-	}
-	if wantthe != 0 {
-		ptr = (*byte)(unsafe.Add(unsafe.Pointer(ptr), stdio.Sprintf(&str[0], "the ")))
-	}
-	if howlong != 0 {
-		buf2 = func() *byte {
-			buf = func() *byte {
-				buf3 = libc.CString("")
-				return buf3
-			}()
-			return buf
-		}()
-		if howlong == 2 {
-			buf3 = libc.CString(" ")
-			if ch.Level >= LVL_EPICSTART {
-				ptr = (*byte)(unsafe.Add(unsafe.Pointer(ptr), stdio.Sprintf(ptr, "Epic ")))
-			}
-		}
-		for i = 0; i < NUM_CLASSES; i++ {
-			cabbr_ranktable[i] = (ch.Chclasses[i]) + (ch.Epicclasses[i])
-			rankorder[i] = i
-		}
-		rankorder[0] = int(ch.Chclass)
-		rankorder[ch.Chclass] = 0
-		libc.Sort(unsafe.Pointer(&rankorder[0]), NUM_CLASSES, uint32(unsafe.Sizeof(int(0))), func(arg1 unsafe.Pointer, arg2 unsafe.Pointer) int32 {
-			return int32(comp_rank(arg1, arg2))
-		})
-		for i = 0; i < NUM_CLASSES; i++ {
-			rank = rankorder[i]
-			if cabbr_ranktable[rank] == 0 {
-				continue
-			}
-			ptr = (*byte)(unsafe.Add(unsafe.Pointer(ptr), stdio.Snprintf(ptr, int(64936-uintptr(uintptr(unsafe.Pointer(ptr-str)))), "%s%s%s%s%s%d", buf, buf2, buf, (func() [32]*byte {
-				if howlong == 2 {
-					return pc_class_types
-				}
-				return class_abbrevs
-			}())[rank], buf3, cabbr_ranktable[rank])))
-			buf2 = libc.CString("/")
-			if howlong == 2 {
-				buf = libc.CString(" ")
-			}
-		}
-		return &str[0]
-	} else {
-		rank = (ch.Chclasses[ch.Chclass]) + (ch.Epicclasses[ch.Chclass])
-		j = int(ch.Chclass)
-		for i = 0; i < NUM_CLASSES; i++ {
-			if ((ch.Chclasses[i]) + (ch.Epicclasses[i])) > rank {
-				j = i
-				rank = (ch.Chclasses[j]) + (ch.Epicclasses[j])
-			}
-		}
-		rank = (ch.Chclasses[ch.Chclass]) + (ch.Epicclasses[ch.Chclass])
-		stdio.Snprintf(ptr, int(64936-uintptr(uintptr(unsafe.Pointer(ptr-str)))), "%s%d%s", class_names[ch.Chclass], rank, func() string {
-			if GET_LEVEL(ch) == rank {
-				return ""
-			}
-			return "+"
-		}())
-		return &str[0]
-	}
-}
+
 func total_skill_levels(ch *char_data, skill int) int {
 	var (
 		i     int = 0

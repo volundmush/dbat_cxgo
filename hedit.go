@@ -29,7 +29,7 @@ func do_oasis_hedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	d = ch.Desc
 	if libc.StrCaseCmp(libc.CString("save"), &arg[0]) == 0 {
-		mudlog(CMP, MAX(ADMLVL_BUILDER, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("OLC: %s saves help files."), GET_NAME(ch))
+		mudlog(CMP, int(MAX(ADMLVL_BUILDER, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("OLC: %s saves help files."), GET_NAME(ch))
 		hedit_save_to_disk(d)
 		send_to_char(ch, libc.CString("Saving help files.\r\n"))
 		return
@@ -46,13 +46,13 @@ func do_oasis_hedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Do you wish to add the '%s' help file? "), d.Olc.Storage)
 		d.Olc.Mode = HEDIT_CONFIRM_ADD
 	} else {
-		send_to_char(ch, libc.CString("Do you wish to edit the '%s' help file? "), (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(d.Olc.Zone_num)))).Keywords)
+		send_to_char(ch, libc.CString("Do you wish to edit the '%s' help file? "), help_table[d.Olc.Zone_num].Keywords)
 		d.Olc.Mode = HEDIT_CONFIRM_EDIT
 	}
 	d.Connected = CON_HEDIT
 	act(libc.CString("$n starts using OLC."), TRUE, ch, nil, nil, TO_ROOM)
 	HEDITS = TRUE
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
+	SET_BIT_AR(ch.Act[:], PLR_WRITING)
 	mudlog(CMP, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing help files."), GET_NAME(ch))
 }
 func hedit_setup_new(d *descriptor_data) {
@@ -68,31 +68,22 @@ func hedit_setup_new(d *descriptor_data) {
 }
 func hedit_setup_existing(d *descriptor_data, rnum int) {
 	d.Olc.Help = new(help_index_element)
-	d.Olc.Help.Keywords = str_udup((*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(rnum)))).Keywords)
-	d.Olc.Help.Entry = str_udup((*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(rnum)))).Entry)
-	d.Olc.Help.Duplicate = (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(rnum)))).Duplicate
-	d.Olc.Help.Min_level = (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(rnum)))).Min_level
+	d.Olc.Help.Keywords = str_udup(help_table[rnum].Keywords)
+	d.Olc.Help.Entry = str_udup(help_table[rnum].Entry)
+	d.Olc.Help.Duplicate = help_table[rnum].Duplicate
+	d.Olc.Help.Min_level = help_table[rnum].Min_level
 	d.Olc.Value = 0
 	hedit_disp_menu(d)
 }
 func hedit_save_internally(d *descriptor_data) {
-	var new_help_table *help_index_element = nil
+	var new_help_table []help_index_element
 	if d.Olc.Zone_num == zone_rnum(-1) {
-		var i int
-		new_help_table = &make([]help_index_element, top_of_helpt+2)[0]
-		for i = 0; i < top_of_helpt; i++ {
-			*(*help_index_element)(unsafe.Add(unsafe.Pointer(new_help_table), unsafe.Sizeof(help_index_element{})*uintptr(i))) = *(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(i)))
+		new_help_table = make([]help_index_element, top_of_helpt+2)
+		for _, h := range help_table {
+			new_help_table = append(new_help_table, h)
 		}
-		*(*help_index_element)(unsafe.Add(unsafe.Pointer(new_help_table), unsafe.Sizeof(help_index_element{})*uintptr(func() int {
-			p := &top_of_helpt
-			x := *p
-			*p++
-			return x
-		}()))) = *d.Olc.Help
-		libc.Free(unsafe.Pointer(help_table))
-		help_table = new_help_table
 	} else {
-		*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(d.Olc.Zone_num))) = *d.Olc.Help
+		help_table[d.Olc.Zone_num] = *d.Olc.Help
 	}
 	add_to_save_list(HEDIT_PERMISSION, int(SL_GLD+2))
 	hedit_save_to_disk(d)
@@ -113,17 +104,17 @@ func hedit_save_to_disk(d *descriptor_data) {
 		return
 	}
 	for i = 0; i < top_of_helpt; i++ {
-		if (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(i)))).Duplicate != 0 {
+		if help_table[i].Duplicate != 0 {
 			continue
 		}
 		libc.StrNCpy(&buf1[0], func() *byte {
-			if (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(i)))).Entry != nil {
-				return (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(i)))).Entry
+			if help_table[i].Entry != nil {
+				return help_table[i].Entry
 			}
 			return libc.CString("Empty\r\n")
 		}(), int(64936-1))
 		strip_cr(&buf1[0])
-		stdio.Fprintf(fp, "%s#%d\n", &buf1[0], (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(i)))).Min_level)
+		stdio.Fprintf(fp, "%s#%d\n", &buf1[0], help_table[i].Min_level)
 	}
 	stdio.Fprintf(fp, "$~\n")
 	fp.Close()
@@ -190,7 +181,7 @@ func hedit_parse(d *descriptor_data, arg *byte) {
 		case 'N':
 			d.Olc.Zone_num++
 			for ; d.Olc.Zone_num < zone_rnum(top_of_helpt); d.Olc.Zone_num++ {
-				if is_abbrev(d.Olc.Storage, (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(d.Olc.Zone_num)))).Keywords) != 0 {
+				if is_abbrev(d.Olc.Storage, help_table[d.Olc.Zone_num].Keywords) != 0 {
 					break
 				} else {
 					d.Olc.Zone_num = zone_rnum(top_of_helpt + 1)
@@ -200,11 +191,11 @@ func hedit_parse(d *descriptor_data, arg *byte) {
 				write_to_output(d, libc.CString("Do you wish to add the '%s' help file? "), d.Olc.Storage)
 				d.Olc.Mode = HEDIT_CONFIRM_ADD
 			} else {
-				write_to_output(d, libc.CString("Do you wish to edit the '%s' help file? "), (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(d.Olc.Zone_num)))).Keywords)
+				write_to_output(d, libc.CString("Do you wish to edit the '%s' help file? "), help_table[d.Olc.Zone_num].Keywords)
 				d.Olc.Mode = HEDIT_CONFIRM_EDIT
 			}
 		default:
-			write_to_output(d, libc.CString("Invalid choice!\r\nDo you wish to edit the '%s' help file? "), (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(d.Olc.Zone_num)))).Keywords)
+			write_to_output(d, libc.CString("Invalid choice!\r\nDo you wish to edit the '%s' help file? "), help_table[d.Olc.Zone_num].Keywords)
 		}
 		return
 	case HEDIT_CONFIRM_ADD:
@@ -329,10 +320,10 @@ func do_helpcheck(ch *char_data, argument *byte, cmd int, subcmd int) {
 		nlen      uint64
 	)
 	send_to_char(ch, libc.CString("Commands without help entries:\r\n"))
-	for i = 1; *(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Command != '\n'; i++ {
-		if libc.FuncAddr((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Command_pointer) != libc.FuncAddr(do_action) && int((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Minimum_level) >= 0 {
-			if search_help((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Command, ADMLVL_IMPL) == int(-1) {
-				nlen = uint64(stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "%-20.20s%s", (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(i)))).Command, func() string {
+	for i = 1; *complete_cmd_info[i].Command != '\n'; i++ {
+		if libc.FuncAddr(complete_cmd_info[i].Command_pointer) != libc.FuncAddr(do_action) && int(complete_cmd_info[i].Minimum_level) >= 0 {
+			if search_help(complete_cmd_info[i].Command, ADMLVL_IMPL) == int(-1) {
+				nlen = uint64(stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "%-20.20s%s", complete_cmd_info[i].Command, func() string {
 					if func() int {
 						p := &count
 						*p++
@@ -379,8 +370,8 @@ func do_hindex(ch *char_data, argument *byte, cmd int, subcmd int) {
 	len_ = stdio.Sprintf(&buf[0], "Help index entries based on '%s':\r\n", argument)
 	for i = 0; i < top_of_helpt; i++ {
 		num++
-		if is_abbrev(argument, (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(i)))).Keywords) != 0 && ch.Admlevel >= (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(i)))).Min_level {
-			len_ += stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "%-20.20s%s", (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(i)))).Keywords, func() string {
+		if is_abbrev(argument, help_table[i].Keywords) != 0 && ch.Admlevel >= help_table[i].Min_level {
+			len_ += stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "%-20.20s%s", help_table[i].Keywords, func() string {
 				if func() int {
 					p := &count
 					*p++

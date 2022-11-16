@@ -17,7 +17,6 @@ const FIND_OBJ_INV = 4
 const FIND_OBJ_ROOM = 8
 const FIND_OBJ_WORLD = 16
 const FIND_OBJ_EQUIP = 32
-
 const WHITESPACE = " \t"
 
 var extractions_pending int = 0
@@ -126,6 +125,7 @@ func is_name(str *byte, namelist *byte) int {
 func isname(str *byte, namelist *byte) int {
 	basic_mud_log(libc.CString("PANIC! REIMPLEMENT THIS!"))
 	os.Exit(-1)
+	return 0
 }
 func aff_apply_modify(ch *char_data, loc int, mod int, spec int, msg *byte) {
 	switch loc {
@@ -246,23 +246,23 @@ func aff_apply_modify(ch *char_data, loc int, mod int, spec int, msg *byte) {
 		ch.Aff_abils.Cha += int8(mod)
 	case APPLY_RESISTANCE:
 	default:
-		basic_mud_log(libc.CString("SYSERR: Unknown apply adjust %d attempt (%s, affect_modify)."), loc, __FILE__)
+		basic_mud_log(libc.CString("SYSERR: Unknown apply adjust %d attempt (%s, affect_modify)."), loc, "__FILE__")
 	}
 }
-func affect_modify(ch *char_data, loc int, mod int, spec int, bitv int, add bool) {
+func affect_modify(ch *char_data, loc int, mod int, spec int, bitv bitvector_t, add bool) {
 	if add {
 		if bitv != AFF_INFRAVISION || int(ch.Race) != RACE_ANDROID {
-			ch.Affected_by[bitv/32] |= 1 << (bitv % 32)
+			SET_BIT_AR(ch.Affected_by[:], bitvector_t(int32(bitv)))
 		}
 	} else {
 		if bitv != AFF_INFRAVISION || int(ch.Race) != RACE_ANDROID {
-			ch.Affected_by[bitv/32] &= ^(1 << (bitv % 32))
+			REMOVE_BIT_AR(ch.Affected_by[:], bitvector_t(int32(bitv)))
 			mod = -mod
 		}
 	}
 	aff_apply_modify(ch, loc, mod, spec, libc.CString("affect_modify"))
 }
-func affect_modify_ar(ch *char_data, loc int, mod int, spec int, bitv [0]int, add bool) {
+func affect_modify_ar(ch *char_data, loc int, mod int, spec int, bitv []bitvector_t, add bool) {
 	var (
 		i int
 		j int
@@ -270,9 +270,9 @@ func affect_modify_ar(ch *char_data, loc int, mod int, spec int, bitv [0]int, ad
 	if add {
 		for i = 0; i < AF_ARRAY_MAX; i++ {
 			for j = 0; j < 32; j++ {
-				if IS_SET_AR([0]bitvector_t(bitv), bitvector_t(int32((i*32)+j))) {
+				if IS_SET_AR(bitv, bitvector_t(int32((i*32)+j))) {
 					if (i*32)+j != AFF_INFRAVISION || int(ch.Race) != RACE_ANDROID {
-						ch.Affected_by[((i*32)+j)/32] |= 1 << (((i * 32) + j) % 32)
+						SET_BIT_AR(ch.Affected_by[:], bitvector_t(int32((i*32)+j)))
 					}
 				}
 			}
@@ -280,9 +280,9 @@ func affect_modify_ar(ch *char_data, loc int, mod int, spec int, bitv [0]int, ad
 	} else {
 		for i = 0; i < AF_ARRAY_MAX; i++ {
 			for j = 0; j < 32; j++ {
-				if IS_SET_AR([0]bitvector_t(bitv), bitvector_t(int32((i*32)+j))) {
+				if IS_SET_AR(bitv, bitvector_t(int32((i*32)+j))) {
 					if (i*32)+j != AFF_INFRAVISION || int(ch.Race) != RACE_ANDROID {
-						ch.Affected_by[((i*32)+j)/32] &= ^(1 << (((i * 32) + j) % 32))
+						REMOVE_BIT_AR(ch.Affected_by[:], bitvector_t(int32((i*32)+j)))
 					}
 				}
 			}
@@ -309,12 +309,12 @@ func affect_total(ch *char_data) {
 	for i = 0; i < NUM_WEARS; i++ {
 		if (ch.Equipment[i]) != nil {
 			for j = 0; j < MAX_OBJ_AFFECT; j++ {
-				affect_modify_ar(ch, (ch.Equipment[i]).Affected[j].Location, (ch.Equipment[i]).Affected[j].Modifier, (ch.Equipment[i]).Affected[j].Specific, (ch.Equipment[i]).Bitvector[:], FALSE != 0)
+				affect_modify_ar(ch, (ch.Equipment[i]).Affected[j].Location, (ch.Equipment[i]).Affected[j].Modifier, (ch.Equipment[i]).Affected[j].Specific, ch.Equipment[i].Bitvector[:], false)
 			}
 		}
 	}
 	for af = ch.Affected; af != nil; af = af.Next {
-		affect_modify(ch, af.Location, af.Modifier, af.Specific, int(af.Bitvector), FALSE != 0)
+		affect_modify(ch, af.Location, af.Modifier, af.Specific, af.Bitvector, FALSE != 0)
 	}
 	ch.Aff_abils = ch.Real_abils
 	ch.Apply_saving_throw[SAVING_FORTITUDE] = int16(int(ch.Feats[FEAT_GREAT_FORTITUDE]) * 3)
@@ -330,42 +330,42 @@ func affect_total(ch *char_data) {
 				}
 			}
 			for j = 0; j < MAX_OBJ_AFFECT; j++ {
-				affect_modify_ar(ch, (ch.Equipment[i]).Affected[j].Location, (ch.Equipment[i]).Affected[j].Modifier, (ch.Equipment[i]).Affected[j].Specific, (ch.Equipment[i]).Bitvector[:], TRUE != 0)
+				affect_modify_ar(ch, (ch.Equipment[i]).Affected[j].Location, (ch.Equipment[i]).Affected[j].Modifier, ch.Equipment[i].Affected[j].Specific, ch.Equipment[i].Bitvector[:], TRUE != 0)
 			}
 		}
 	}
 	for af = ch.Affected; af != nil; af = af.Next {
-		affect_modify(ch, af.Location, af.Modifier, af.Specific, int(af.Bitvector), TRUE != 0)
+		affect_modify(ch, af.Location, af.Modifier, af.Specific, af.Bitvector, TRUE != 0)
 	}
 	if (ch.Bonuses[BONUS_WIMP]) > 0 {
-		ch.Aff_abils.Str = int8(MAX(0, MIN(int(ch.Aff_abils.Str), 45)))
+		ch.Aff_abils.Str = int8(MAX(0, MIN(int64(ch.Aff_abils.Str), 45)))
 	} else {
-		ch.Aff_abils.Str = int8(MAX(0, MIN(int(ch.Aff_abils.Str), 100)))
+		ch.Aff_abils.Str = int8(MAX(0, MIN(int64(ch.Aff_abils.Str), 100)))
 	}
 	if (ch.Bonuses[BONUS_DULL]) > 0 {
-		ch.Aff_abils.Intel = int8(MAX(0, MIN(int(ch.Aff_abils.Intel), 45)))
+		ch.Aff_abils.Intel = int8(MAX(0, MIN(int64(ch.Aff_abils.Intel), 45)))
 	} else {
-		ch.Aff_abils.Intel = int8(MAX(0, MIN(int(ch.Aff_abils.Intel), 100)))
+		ch.Aff_abils.Intel = int8(MAX(0, MIN(int64(ch.Aff_abils.Intel), 100)))
 	}
 	if (ch.Bonuses[BONUS_FOOLISH]) > 0 {
-		ch.Aff_abils.Wis = int8(MAX(0, MIN(int(ch.Aff_abils.Wis), 45)))
+		ch.Aff_abils.Wis = int8(MAX(0, MIN(int64(ch.Aff_abils.Wis), 45)))
 	} else {
-		ch.Aff_abils.Wis = int8(MAX(0, MIN(int(ch.Aff_abils.Wis), 100)))
+		ch.Aff_abils.Wis = int8(MAX(0, MIN(int64(ch.Aff_abils.Wis), 100)))
 	}
 	if (ch.Bonuses[BONUS_SLOW]) > 0 {
-		ch.Aff_abils.Cha = int8(MAX(0, MIN(int(ch.Aff_abils.Cha), 45)))
+		ch.Aff_abils.Cha = int8(MAX(0, MIN(int64(ch.Aff_abils.Cha), 45)))
 	} else {
-		ch.Aff_abils.Cha = int8(MAX(0, MIN(int(ch.Aff_abils.Cha), 100)))
+		ch.Aff_abils.Cha = int8(MAX(0, MIN(int64(ch.Aff_abils.Cha), 100)))
 	}
 	if (ch.Bonuses[BONUS_CLUMSY]) > 0 {
-		ch.Aff_abils.Dex = int8(MAX(0, MIN(int(ch.Aff_abils.Dex), 45)))
+		ch.Aff_abils.Dex = int8(MAX(0, MIN(int64(ch.Aff_abils.Dex), 45)))
 	} else {
-		ch.Aff_abils.Dex = int8(MAX(0, MIN(int(ch.Aff_abils.Dex), 100)))
+		ch.Aff_abils.Dex = int8(MAX(0, MIN(int64(ch.Aff_abils.Dex), 100)))
 	}
 	if (ch.Bonuses[BONUS_FRAIL]) > 0 {
-		ch.Aff_abils.Con = int8(MAX(0, MIN(int(ch.Aff_abils.Con), 45)))
+		ch.Aff_abils.Con = int8(MAX(0, MIN(int64(ch.Aff_abils.Con), 45)))
 	} else {
-		ch.Aff_abils.Con = int8(MAX(0, MIN(int(ch.Aff_abils.Con), 100)))
+		ch.Aff_abils.Con = int8(MAX(0, MIN(int64(ch.Aff_abils.Con), 100)))
 	}
 }
 func affect_to_char(ch *char_data, af *affected_type) {
@@ -378,16 +378,16 @@ func affect_to_char(ch *char_data, af *affected_type) {
 	*affected_alloc = *af
 	affected_alloc.Next = ch.Affected
 	ch.Affected = affected_alloc
-	affect_modify(ch, af.Location, af.Modifier, af.Specific, int(af.Bitvector), TRUE != 0)
+	affect_modify(ch, af.Location, af.Modifier, af.Specific, af.Bitvector, TRUE != 0)
 	affect_total(ch)
 }
 func affect_remove(ch *char_data, af *affected_type) {
 	var cmtemp *affected_type
 	if ch.Affected == nil {
-		core_dump_real(libc.CString(__FILE__), __LINE__)
+		core_dump_real(libc.CString("__FILE__"), 0)
 		return
 	}
-	affect_modify(ch, af.Location, af.Modifier, af.Specific, int(af.Bitvector), FALSE != 0)
+	affect_modify(ch, af.Location, af.Modifier, af.Specific, af.Bitvector, FALSE != 0)
 	if af == ch.Affected {
 		ch.Affected = af.Next
 	} else {
@@ -495,31 +495,31 @@ func char_from_room(ch *char_data) {
 		i    int
 	)
 	if ch == nil || ch.In_room == room_rnum(-1) {
-		basic_mud_log(libc.CString("SYSERR: NULL character or NOWHERE in %s, char_from_room"), __FILE__)
+		basic_mud_log(libc.CString("SYSERR: NULL character or NOWHERE in %s, char_from_room"), "__FILE__")
 		return
 	}
 	if ch.Fighting != nil && !AFF_FLAGGED(ch, AFF_PURSUIT) {
 		stop_fighting(ch)
 	}
 	if AFF_FLAGGED(ch, AFF_PURSUIT) && ch.Fighting == nil {
-		ch.Affected_by[int(AFF_PURSUIT/32)] &= ^(1 << (int(AFF_PURSUIT % 32)))
+		REMOVE_BIT_AR(ch.Affected_by[:], AFF_PURSUIT)
 	}
 	for i = 0; i < NUM_WEARS; i++ {
 		if (ch.Equipment[i]) != nil {
 			if int((ch.Equipment[i]).Type_flag) == ITEM_LIGHT {
 				if ((ch.Equipment[i]).Value[VAL_LIGHT_HOURS]) != 0 {
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Light--
+					world[ch.In_room].Light--
 				}
 			}
 		}
 	}
 	if PLR_FLAGGED(ch, PLR_AURALIGHT) {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Light--
+		world[ch.In_room].Light--
 	}
-	if ch == (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People = ch.Next_in_room
+	if ch == world[ch.In_room].People {
+		world[ch.In_room].People = ch.Next_in_room
 	} else {
-		temp = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People
+		temp = world[ch.In_room].People
 		for temp != nil && temp.Next_in_room != ch {
 			temp = temp.Next_in_room
 		}
@@ -535,20 +535,20 @@ func char_to_room(ch *char_data, room room_rnum) {
 	if ch == nil || room == room_rnum(-1) || room > top_of_world {
 		basic_mud_log(libc.CString("SYSERR: Illegal value(s) passed to char_to_room. (Room: %d/%d Ch: %p"), room, top_of_world, ch)
 	} else {
-		ch.Next_in_room = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).People
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).People = ch
+		ch.Next_in_room = world[room].People
+		world[room].People = ch
 		ch.In_room = room
 		for i = 0; i < NUM_WEARS; i++ {
 			if (ch.Equipment[i]) != nil {
 				if int((ch.Equipment[i]).Type_flag) == ITEM_LIGHT {
 					if ((ch.Equipment[i]).Value[VAL_LIGHT_HOURS]) != 0 {
-						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Light++
+						world[room].Light++
 					}
 				}
 			}
 		}
 		if PLR_FLAGGED(ch, PLR_AURALIGHT) {
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Light++
+			world[room].Light++
 		}
 		if ch.Fighting != nil && ch.In_room != ch.Fighting.In_room && !AFF_FLAGGED(ch, AFF_PURSUIT) {
 			stop_fighting(ch.Fighting)
@@ -556,7 +556,7 @@ func char_to_room(ch *char_data, room room_rnum) {
 		}
 		if !IS_NPC(ch) {
 			if PRF_FLAGGED(ch, PRF_ARENAWATCH) {
-				ch.Player_specials.Pref[int(PRF_ARENAWATCH/32)] &= bitvector_t(int32(^(1 << (int(PRF_ARENAWATCH % 32)))))
+				REMOVE_BIT_AR(ch.Player_specials.Pref[:], PRF_ARENAWATCH)
 				ch.Arenawatch = -1
 			}
 		}
@@ -604,7 +604,7 @@ func obj_to_char(object *obj_data, ch *char_data) {
 			}
 		}
 		if !IS_NPC(ch) {
-			ch.Act[int(PLR_CRASH/32)] |= bitvector_t(int32(1 << (int(PLR_CRASH % 32))))
+			SET_BIT_AR(ch.Act[:], PLR_CRASH)
 		}
 	} else {
 		basic_mud_log(libc.CString("SYSERR: NULL obj (%p) or char (%p) passed to obj_to_char."), object, ch)
@@ -628,7 +628,7 @@ func obj_from_char(object *obj_data) {
 		}
 	}
 	if !IS_NPC(object.Carried_by) {
-		object.Carried_by.Act[int(PLR_CRASH/32)] |= bitvector_t(int32(1 << (int(PLR_CRASH % 32))))
+		SET_BIT_AR(object.Carried_by.Act[:], PLR_CRASH)
 	}
 	var previous int64 = gear_pl(object.Carried_by)
 	object.Carried_by.Carry_weight -= int(object.Weight)
@@ -651,7 +651,7 @@ func obj_from_char(object *obj_data) {
 }
 func apply_ac(ch *char_data, eq_pos int) int {
 	if (ch.Equipment[eq_pos]) == nil {
-		core_dump_real(libc.CString(__FILE__), __LINE__)
+		core_dump_real(libc.CString("__FILE__"), 0)
 		return 0
 	}
 	if int((ch.Equipment[eq_pos]).Type_flag) != ITEM_ARMOR {
@@ -674,7 +674,7 @@ func invalid_align(ch *char_data, obj *obj_data) int {
 func equip_char(ch *char_data, obj *obj_data, pos int) {
 	var j int
 	if pos < 0 || pos >= NUM_WEARS {
-		core_dump_real(libc.CString(__FILE__), __LINE__)
+		core_dump_real(libc.CString("__FILE__"), 0)
 		return
 	}
 	if (ch.Equipment[pos]) != nil {
@@ -704,7 +704,7 @@ func equip_char(ch *char_data, obj *obj_data, pos int) {
 	if ch.In_room != room_rnum(-1) {
 		if int(obj.Type_flag) == ITEM_LIGHT {
 			if (obj.Value[VAL_LIGHT_HOURS]) != 0 {
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Light++
+				world[ch.In_room].Light++
 			}
 		}
 	} else {
@@ -721,7 +721,7 @@ func unequip_char(ch *char_data, pos int) *obj_data {
 		obj *obj_data
 	)
 	if pos < 0 || pos >= NUM_WEARS || (ch.Equipment[pos]) == nil {
-		core_dump_real(libc.CString(__FILE__), __LINE__)
+		core_dump_real(libc.CString("__FILE__"), 0)
 		return nil
 	}
 	obj = ch.Equipment[pos]
@@ -733,7 +733,7 @@ func unequip_char(ch *char_data, pos int) *obj_data {
 	if ch.In_room != room_rnum(-1) {
 		if int(obj.Type_flag) == ITEM_LIGHT {
 			if (obj.Value[VAL_LIGHT_HOURS]) != 0 {
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Light--
+				world[ch.In_room].Light--
 			}
 		}
 	} else {
@@ -804,7 +804,7 @@ func get_char_room(name *byte, number *int, room room_rnum) *char_data {
 	if *number == 0 {
 		return nil
 	}
-	for i = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).People; i != nil && *number != 0; i = i.Next_in_room {
+	for i = world[room].People; i != nil && *number != 0; i = i.Next_in_room {
 		if isname(name, i.Name) != 0 {
 			if func() int {
 				p := number
@@ -841,13 +841,13 @@ func obj_to_room(object *obj_data, room room_rnum) {
 		if room == real_room(80) {
 			auc_load(object)
 		}
-		object.Next_content = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Contents
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Contents = object
+		object.Next_content = world[room].Contents
+		world[room].Contents = object
 		object.In_room = room
 		object.Carried_by = nil
 		object.Lload = libc.GetTime(nil)
 		if int(object.Type_flag) == ITEM_VEHICLE && !OBJ_FLAGGED(object, ITEM_UNBREAKABLE) && GET_OBJ_VNUM(object) > 0x4AFF {
-			object.Extra_flags[int(ITEM_UNBREAKABLE/32)] |= bitvector_t(int32(1 << (int(ITEM_UNBREAKABLE % 32))))
+			SET_BIT_AR(object.Extra_flags[:], ITEM_UNBREAKABLE)
 		}
 		if int(object.Type_flag) == ITEM_HATCH && GET_OBJ_VNUM(object) <= 0x4AFF {
 			if GET_OBJ_VNUM(object) <= 0x4A37 && GET_OBJ_VNUM(object) >= 18800 || GET_OBJ_VNUM(object) <= 0x4AFF && GET_OBJ_VNUM(object) >= 19100 {
@@ -895,48 +895,18 @@ func obj_to_room(object *obj_data, room room_rnum) {
 				}
 			}
 		}
-		if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(object.In_room)))).Dir_option[5]) != nil && ((func() int {
-			if object.In_room != room_rnum(-1) && object.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(object.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_UNDERWATER || (func() int {
-			if object.In_room != room_rnum(-1) && object.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(object.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_WATER_NOSWIM) {
+		if (world[object.In_room].Dir_option[5]) != nil && (SECT(object.In_room) == SECT_UNDERWATER || SECT(object.In_room) == SECT_WATER_NOSWIM) {
 			act(libc.CString("$p @Bsinks to deeper waters.@n"), TRUE, nil, object, nil, TO_ROOM)
-			var numb int = int(func() room_vnum {
-				if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(object.In_room)))).Dir_option[5]).To_room != room_rnum(-1) && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(object.In_room)))).Dir_option[5]).To_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(object.In_room)))).Dir_option[5]).To_room)))).Number
-				}
-				return -1
-			}())
+			var numb int = int(libc.BoolToInt(GET_ROOM_VNUM((world[object.In_room].Dir_option[5]).To_room)))
 			obj_from_room(object)
 			obj_to_room(object, real_room(room_vnum(numb)))
 		}
-		if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(object.In_room)))).Dir_option[5]) != nil && (func() int {
-			if object.In_room != room_rnum(-1) && object.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(object.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_FLYING && (GET_OBJ_VNUM(object) < 80 || GET_OBJ_VNUM(object) > 83) {
+		if (world[object.In_room].Dir_option[5]) != nil && SECT(object.In_room) == SECT_FLYING && (GET_OBJ_VNUM(object) < 80 || GET_OBJ_VNUM(object) > 83) {
 			act(libc.CString("$p @Cfalls down.@n"), TRUE, nil, object, nil, TO_ROOM)
-			var numb int = int(func() room_vnum {
-				if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(object.In_room)))).Dir_option[5]).To_room != room_rnum(-1) && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(object.In_room)))).Dir_option[5]).To_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(object.In_room)))).Dir_option[5]).To_room)))).Number
-				}
-				return -1
-			}())
+			var numb int = int(libc.BoolToInt(GET_ROOM_VNUM((world[object.In_room].Dir_option[5]).To_room)))
 			obj_from_room(object)
 			obj_to_room(object, real_room(room_vnum(numb)))
-			if (func() int {
-				if object.In_room != room_rnum(-1) && object.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(object.In_room)))).Sector_type
-				}
-				return SECT_INSIDE
-			}()) != SECT_FLYING {
+			if SECT(object.In_room) != SECT_FLYING {
 				act(libc.CString("$p @Cfalls down and smacks the ground.@n"), TRUE, nil, object, nil, TO_ROOM)
 			}
 		}
@@ -946,7 +916,7 @@ func obj_to_room(object *obj_data, room room_rnum) {
 			}
 		}
 		if ROOM_FLAGGED(room, ROOM_HOUSE) {
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Room_flags[int(ROOM_HOUSE_CRASH/32)] |= bitvector_t(int32(1 << (int(ROOM_HOUSE_CRASH % 32))))
+			SET_BIT_AR(world[room].Room_flags[:], ROOM_HOUSE_CRASH)
 		}
 	}
 }
@@ -968,10 +938,10 @@ func obj_from_room(object *obj_data) {
 		object.Posted_to = nil
 		object.Posttype = 0
 	}
-	if object == (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(object.In_room)))).Contents {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(object.In_room)))).Contents = object.Next_content
+	if object == world[object.In_room].Contents {
+		world[object.In_room].Contents = object.Next_content
 	} else {
-		temp = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(object.In_room)))).Contents
+		temp = world[object.In_room].Contents
 		for temp != nil && temp.Next_content != object {
 			temp = temp.Next_content
 		}
@@ -980,7 +950,7 @@ func obj_from_room(object *obj_data) {
 		}
 	}
 	if ROOM_FLAGGED(object.In_room, ROOM_HOUSE) {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(object.In_room)))).Room_flags[int(ROOM_HOUSE_CRASH/32)] |= bitvector_t(int32(1 << (int(ROOM_HOUSE_CRASH % 32))))
+		SET_BIT_AR(world[object.In_room].Room_flags[:], ROOM_HOUSE_CRASH)
 	}
 	object.In_room = -1
 	object.Next_content = nil
@@ -1010,7 +980,7 @@ func obj_to_obj(obj *obj_data, obj_to *obj_data) {
 		}
 	}
 	if obj_to.In_room != room_rnum(-1) && ROOM_FLAGGED(obj_to.In_room, ROOM_HOUSE) {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj_to.In_room)))).Room_flags[int(ROOM_HOUSE_CRASH/32)] |= bitvector_t(int32(1 << (int(ROOM_HOUSE_CRASH % 32))))
+		SET_BIT_AR(world[obj_to.In_room].Room_flags[:], ROOM_HOUSE_CRASH)
 	}
 }
 func obj_from_obj(obj *obj_data) {
@@ -1019,7 +989,7 @@ func obj_from_obj(obj *obj_data) {
 		obj_from *obj_data
 	)
 	if obj.In_obj == nil {
-		basic_mud_log(libc.CString("SYSERR: (%s): trying to illegally extract obj from obj."), __FILE__)
+		basic_mud_log(libc.CString("SYSERR: (%s): trying to illegally extract obj from obj."), "__FILE__")
 		return
 	}
 	obj_from = obj.In_obj
@@ -1045,7 +1015,7 @@ func obj_from_obj(obj *obj_data) {
 		}
 	}
 	if obj_from.In_room != room_rnum(-1) && ROOM_FLAGGED(obj_from.In_room, ROOM_HOUSE) {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj_from.In_room)))).Room_flags[int(ROOM_HOUSE_CRASH/32)] |= bitvector_t(int32(1 << (int(ROOM_HOUSE_CRASH % 32))))
+		SET_BIT_AR(world[obj_from.In_room].Room_flags[:], ROOM_HOUSE_CRASH)
 	}
 	obj.In_obj = nil
 	obj.Next_content = nil
@@ -1113,13 +1083,13 @@ func extract_obj(obj *obj_data) {
 		}
 	}
 	if obj.Item_number != obj_vnum(-1) {
-		(*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(obj.Item_number)))).Number--
+		obj_index[obj.Item_number].Number--
 	}
 	if obj.Script != nil {
 		extract_script(unsafe.Pointer(obj), OBJ_TRIGGER)
 	}
 	if GET_OBJ_VNUM(obj) != 80 && GET_OBJ_VNUM(obj) != 81 {
-		if obj.Item_number == obj_vnum(-1) || obj.Proto_script != (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(obj.Item_number)))).Proto_script {
+		if obj.Item_number == obj_vnum(-1) || obj.Proto_script != obj_proto[obj.Item_number].Proto_script {
 			free_proto_script(unsafe.Pointer(obj), OBJ_TRIGGER)
 		}
 	}
@@ -1129,7 +1099,7 @@ func update_object(obj *obj_data, use int) {
 	if obj == nil {
 		return
 	}
-	if (obj.Script == nil || (obj.Script.Types&(1<<5)) == 0) && obj.Timer > 0 {
+	if (obj.Script == nil || !IS_SET(bitvector_t(int32(obj.Script.Types)), 1<<5)) && obj.Timer > 0 {
 		obj.Timer -= use
 	}
 	if obj.Contains != nil {
@@ -1159,7 +1129,7 @@ func update_char_objects(ch *char_data) {
 				} else if j == 0 {
 					send_to_char(ch, libc.CString("Your light sputters out and dies.\r\n"))
 					act(libc.CString("$n's light sputters out and dies."), FALSE, ch, nil, nil, TO_ROOM)
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Light--
+					world[ch.In_room].Light--
 				}
 			} else if int((ch.Equipment[i]).Type_flag) == ITEM_LIGHT && ((ch.Equipment[i]).Value[VAL_LIGHT_HOURS]) > 0 {
 				(ch.Equipment[i]).Value[VAL_LIGHT_TIME] -= 1
@@ -1181,7 +1151,7 @@ func extract_char_final(ch *char_data) {
 		i     int
 	)
 	if ch.In_room == room_rnum(-1) {
-		basic_mud_log(libc.CString("SYSERR: NOWHERE extracting char %s. (%s, extract_char_final)"), GET_NAME(ch), __FILE__)
+		basic_mud_log(libc.CString("SYSERR: NOWHERE extracting char %s. (%s, extract_char_final)"), GET_NAME(ch), "__FILE__")
 		os.Exit(1)
 	}
 	if !IS_NPC(ch) && ch.Desc == nil {
@@ -1321,7 +1291,7 @@ func extract_char_final(ch *char_data) {
 	char_from_room(ch)
 	if IS_NPC(ch) {
 		if ch.Nr != mob_rnum(-1) {
-			(*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(ch.Nr)))).Number--
+			mob_index[ch.Nr].Number--
 		}
 		clearMemory(ch)
 		if ch.Script != nil {
@@ -1346,13 +1316,13 @@ func extract_char(ch *char_data) {
 	)
 	if IS_NPC(ch) {
 		if !IS_SET_AR(ch.Act[:], MOB_NOTDEADYET) {
-			ch.Act[int(MOB_NOTDEADYET/32)] |= bitvector_t(int32(1 << (int(MOB_NOTDEADYET % 32))))
+			SET_BIT_AR(ch.Act[:], MOB_NOTDEADYET)
 		} else {
 			return
 		}
 	} else {
 		if !IS_SET_AR(ch.Act[:], PLR_NOTDEADYET) {
-			ch.Act[int(PLR_NOTDEADYET/32)] |= bitvector_t(int32(1 << (int(PLR_NOTDEADYET % 32))))
+			SET_BIT_AR(ch.Act[:], PLR_NOTDEADYET)
 		} else {
 			return
 		}
@@ -1394,9 +1364,9 @@ func extract_pending_chars() {
 	}(); vict != nil && extractions_pending != 0; vict = next_vict {
 		next_vict = vict.Next
 		if MOB_FLAGGED(vict, MOB_NOTDEADYET) {
-			vict.Act[int(MOB_NOTDEADYET/32)] &= bitvector_t(int32(^(1 << (int(MOB_NOTDEADYET % 32)))))
+			REMOVE_BIT_AR(vict.Act[:], MOB_NOTDEADYET)
 		} else if PLR_FLAGGED(vict, PLR_NOTDEADYET) {
-			vict.Act[int(PLR_NOTDEADYET/32)] &= bitvector_t(int32(^(1 << (int(PLR_NOTDEADYET % 32)))))
+			REMOVE_BIT_AR(vict.Act[:], PLR_NOTDEADYET)
 		} else {
 			prev_vict = vict
 			continue
@@ -1436,7 +1406,7 @@ func extract_pending_chars() {
 	}
 	extractions_pending = 0
 }
-func get_player_vis(ch *char_data, name *byte, number *int, inroom int) *char_data {
+func get_player_vis(ch *char_data, name *byte, number *int, inroom room_rnum) *char_data {
 	var (
 		i   *char_data
 		num int
@@ -1505,7 +1475,7 @@ func get_char_room_vis(ch *char_data, name *byte, number *int) *char_data {
 	if *number == 0 {
 		return get_player_vis(ch, name, nil, 1<<0)
 	}
-	for i = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; i != nil && *number != 0; i = i.Next_in_room {
+	for i = world[ch.In_room].People; i != nil && *number != 0; i = i.Next_in_room {
 		if libc.StrCaseCmp(name, libc.CString("last")) == 0 && i.Lasthit != 0 && i.Lasthit == int(ch.Idnum) {
 			if CAN_SEE(ch, i) {
 				if func() int {
@@ -1712,7 +1682,7 @@ func get_obj_vis(ch *char_data, name *byte, number *int) *obj_data {
 		return i
 	}
 	if (func() *obj_data {
-		i = get_obj_in_list_vis(ch, name, number, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents)
+		i = get_obj_in_list_vis(ch, name, number, world[ch.In_room].Contents)
 		return i
 	}()) != nil {
 		return i
@@ -1732,7 +1702,7 @@ func get_obj_vis(ch *char_data, name *byte, number *int) *obj_data {
 	}
 	return nil
 }
-func get_obj_in_equip_vis(ch *char_data, arg *byte, number *int, equipment [0]*obj_data) *obj_data {
+func get_obj_in_equip_vis(ch *char_data, arg *byte, number *int, equipment []*obj_data) *obj_data {
 	var (
 		j   int
 		num int
@@ -1757,7 +1727,7 @@ func get_obj_in_equip_vis(ch *char_data, arg *byte, number *int, equipment [0]*o
 	}
 	return nil
 }
-func get_obj_pos_in_equip_vis(ch *char_data, arg *byte, number *int, equipment [0]*obj_data) int {
+func get_obj_pos_in_equip_vis(ch *char_data, arg *byte, number *int, equipment []*obj_data) int {
 	var (
 		j   int
 		num int
@@ -1851,7 +1821,7 @@ func create_money(amount int) *obj_data {
 	for y = 0; y < TW_ARRAY_MAX; y++ {
 		obj.Wear_flags[y] = 0
 	}
-	obj.Wear_flags[int(ITEM_WEAR_TAKE/32)] |= 1 << (int(ITEM_WEAR_TAKE % 32))
+	SET_BIT_AR(obj.Wear_flags[:], ITEM_WEAR_TAKE)
 	obj.Value[VAL_MONEY_SIZE] = amount
 	obj.Cost = amount
 	obj.Item_number = -1
@@ -1877,7 +1847,7 @@ func generic_find(arg *byte, bitvector bitvector_t, ch *char_data, tar_ch **char
 	}()) == 0 {
 		return 0
 	}
-	if (bitvector & (1 << 0)) != 0 {
+	if IS_SET(bitvector, 1<<0) {
 		if (func() *char_data {
 			p := tar_ch
 			*tar_ch = get_char_room_vis(ch, name, &number)
@@ -1886,7 +1856,7 @@ func generic_find(arg *byte, bitvector bitvector_t, ch *char_data, tar_ch **char
 			return 1 << 0
 		}
 	}
-	if (bitvector & (1 << 1)) != 0 {
+	if IS_SET(bitvector, 1<<1) {
 		if (func() *char_data {
 			p := tar_ch
 			*tar_ch = get_char_world_vis(ch, name, &number)
@@ -1895,7 +1865,7 @@ func generic_find(arg *byte, bitvector bitvector_t, ch *char_data, tar_ch **char
 			return 1 << 1
 		}
 	}
-	if (bitvector & (1 << 5)) != 0 {
+	if IS_SET(bitvector, 1<<5) {
 		for func() int {
 			found = FALSE
 			return func() int {
@@ -1916,7 +1886,7 @@ func generic_find(arg *byte, bitvector bitvector_t, ch *char_data, tar_ch **char
 			return 1 << 5
 		}
 	}
-	if (bitvector & (1 << 2)) != 0 {
+	if IS_SET(bitvector, 1<<2) {
 		if (func() *obj_data {
 			p := tar_obj
 			*tar_obj = get_obj_in_list_vis(ch, name, &number, ch.Carrying)
@@ -1925,16 +1895,16 @@ func generic_find(arg *byte, bitvector bitvector_t, ch *char_data, tar_ch **char
 			return 1 << 2
 		}
 	}
-	if (bitvector & (1 << 3)) != 0 {
+	if IS_SET(bitvector, 1<<3) {
 		if (func() *obj_data {
 			p := tar_obj
-			*tar_obj = get_obj_in_list_vis(ch, name, &number, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents)
+			*tar_obj = get_obj_in_list_vis(ch, name, &number, world[ch.In_room].Contents)
 			return *p
 		}()) != nil {
 			return 1 << 3
 		}
 	}
-	if (bitvector & (1 << 4)) != 0 {
+	if IS_SET(bitvector, 1<<4) {
 		if (func() *obj_data {
 			p := tar_obj
 			*tar_obj = get_obj_vis(ch, name, &number)
@@ -1965,16 +1935,16 @@ func affectv_to_char(ch *char_data, af *affected_type) {
 	*affected_alloc = *af
 	affected_alloc.Next = ch.Affectedv
 	ch.Affectedv = affected_alloc
-	affect_modify(ch, af.Location, af.Modifier, af.Specific, int(af.Bitvector), TRUE != 0)
+	affect_modify(ch, af.Location, af.Modifier, af.Specific, af.Bitvector, TRUE != 0)
 	affect_total(ch)
 }
 func affectv_remove(ch *char_data, af *affected_type) {
 	var cmtemp *affected_type
 	if ch.Affectedv == nil {
-		core_dump_real(libc.CString(__FILE__), __LINE__)
+		core_dump_real(libc.CString("__FILE__"), 0)
 		return
 	}
-	affect_modify(ch, af.Location, af.Modifier, af.Specific, int(af.Bitvector), FALSE != 0)
+	affect_modify(ch, af.Location, af.Modifier, af.Specific, af.Bitvector, FALSE != 0)
 	if af == ch.Affectedv {
 		ch.Affectedv = af.Next
 	} else {
@@ -2056,7 +2026,7 @@ func is_better(object *obj_data, object2 *obj_data) int {
 }
 func item_check(object *obj_data, ch *char_data) {
 	var where int = 0
-	if IS_HUMANOID(ch) && libc.FuncAddr((*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(ch.Nr)))).Func) != libc.FuncAddr(shop_keeper) {
+	if IS_HUMANOID(ch) && libc.FuncAddr(mob_index[ch.Nr].Func) != libc.FuncAddr(shop_keeper) {
 		if invalid_align(ch, object) != 0 || invalid_class(ch, object) != 0 {
 			return
 		}

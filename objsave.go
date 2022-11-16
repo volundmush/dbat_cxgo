@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
 	"math"
@@ -39,7 +40,7 @@ func delete_inv_backup(ch *char_data) {
 		return
 	}
 	source.Close()
-	if stdio.Remove(libc.GoString(&source_file[0])) < 0 && libc.Errno != ENOENT {
+	if stdio.Remove(libc.GoString(&source_file[0])) < 0 && libc.Errno != 2 {
 		basic_mud_log(libc.CString("ERROR: Couldn't delete backup inv."))
 	}
 	return
@@ -306,13 +307,13 @@ func Crash_delete_file(name *byte) int {
 		fl = stdio.FOpen(libc.GoString(&filename[0]), "rb")
 		return fl
 	}()) == nil {
-		if libc.Errno != ENOENT {
+		if libc.Errno != 2 {
 			basic_mud_log(libc.CString("SYSERR: deleting crash file %s (1): %s"), &filename[0], libc.StrError(libc.Errno))
 		}
 		return 0
 	}
 	fl.Close()
-	if stdio.Remove(libc.GoString(&filename[0])) < 0 && libc.Errno != ENOENT {
+	if stdio.Remove(libc.GoString(&filename[0])) < 0 && libc.Errno != 2 {
 		basic_mud_log(libc.CString("SYSERR: deleting crash file %s (2): %s"), &filename[0], libc.StrError(libc.Errno))
 	}
 	return 1
@@ -336,7 +337,7 @@ func Crash_delete_crashfile(ch *char_data) int {
 		fl = stdio.FOpen(libc.GoString(&filename[0]), "rb")
 		return fl
 	}()) == nil {
-		if libc.Errno != ENOENT {
+		if libc.Errno != 2 {
 			basic_mud_log(libc.CString("SYSERR: checking for crash file %s (3): %s"), &filename[0], libc.StrError(libc.Errno))
 		}
 		return 0
@@ -370,7 +371,7 @@ func Crash_clean_file(name *byte) int {
 		fl = stdio.FOpen(libc.GoString(&filename[0]), "r+b")
 		return fl
 	}()) == nil {
-		if libc.Errno != ENOENT {
+		if libc.Errno != 2 {
 			basic_mud_log(libc.CString("SYSERR: OPENING OBJECT FILE %s (4): %s"), &filename[0], libc.StrError(libc.Errno))
 		}
 		return 0
@@ -409,8 +410,8 @@ func Crash_clean_file(name *byte) int {
 func update_obj_file() {
 	var i int
 	for i = 0; i <= top_of_p_table; i++ {
-		if *(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Name != 0 {
-			Crash_clean_file((*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Name)
+		if *player_table[i].Name != 0 {
+			Crash_clean_file(player_table[i].Name)
 		}
 	}
 }
@@ -510,7 +511,7 @@ func Crash_save(obj *obj_data, fp *stdio.File, location int) int {
 	)
 	if obj != nil {
 		Crash_save(obj.Next_content, fp, location)
-		Crash_save(obj.Contains, fp, MIN(0, location)-1)
+		Crash_save(obj.Contains, fp, int(MIN(0, int64(location))-1))
 		result = Obj_to_store(obj, fp, location)
 		for tmp = obj.In_obj; tmp != nil; tmp = tmp.In_obj {
 			tmp.Weight -= obj.Weight
@@ -583,7 +584,7 @@ func Crash_extract_expensive(obj *obj_data) {
 }
 func Crash_calculate_rent(obj *obj_data, cost *int) {
 	if obj != nil {
-		*cost += MAX(0, obj.Cost_per_day)
+		*cost += int(MAX(0, int64(obj.Cost_per_day)))
 		Crash_calculate_rent(obj.Contains, cost)
 		Crash_calculate_rent(obj.Next_content, cost)
 	}
@@ -622,7 +623,7 @@ func Crash_crashsave(ch *char_data) {
 	}
 	Crash_restore_weight(ch.Carrying)
 	fp.Close()
-	ch.Act[int(PLR_CRASH/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRASH % 32)))))
+	REMOVE_BIT_AR(ch.Act[:], PLR_CRASH)
 }
 func Crash_idlesave(ch *char_data) {
 	var (
@@ -752,7 +753,7 @@ func Crash_cryosave(ch *char_data, cost int) {
 	}
 	Crash_extract_norent_eq(ch)
 	Crash_extract_norents(ch.Carrying)
-	ch.Gold = MAX(0, ch.Gold-cost)
+	ch.Gold = int(MAX(0, int64(ch.Gold-cost)))
 	stdio.Fprintf(fp, "%d %d %d %d %d %d\r\n", RENT_CRYO, int(libc.GetTime(nil)), 0, ch.Gold, ch.Bank_gold, 0)
 	for j = 0; j < NUM_WEARS; j++ {
 		if (ch.Equipment[j]) != nil {
@@ -770,7 +771,7 @@ func Crash_cryosave(ch *char_data, cost int) {
 	}
 	fp.Close()
 	Crash_extract_objs(ch.Carrying)
-	ch.Act[int(PLR_CRYO/32)] |= bitvector_t(int32(1 << (int(PLR_CRYO % 32))))
+	SET_BIT_AR(ch.Act[:], PLR_CRYO)
 }
 func Crash_rent_deadline(ch *char_data, recep *char_data, cost int) {
 	var (
@@ -807,7 +808,7 @@ func Crash_report_rent(ch *char_data, recep *char_data, obj *obj_data, cost *int
 	if obj != nil {
 		if Crash_is_unrentable(obj) == 0 {
 			(*nitems)++
-			*cost += MAX(0, obj.Cost_per_day*factor)
+			*cost += int(MAX(0, int64(obj.Cost_per_day*factor)))
 			if display != 0 {
 				var buf [256]byte
 				stdio.Snprintf(&buf[0], int(256), "$n tells you, '%5d zenni for %s..'", obj.Cost_per_day*factor, OBJS(obj, ch))
@@ -874,7 +875,7 @@ func gen_receptionist(ch *char_data, recep *char_data, cmd int, arg *byte, mode 
 	if ch.Desc == nil || IS_NPC(ch) {
 		return FALSE
 	}
-	if libc.StrCmp(libc.CString("offer"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) != 0 && libc.StrCmp(libc.CString("rent"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) != 0 {
+	if libc.StrCmp(libc.CString("offer"), complete_cmd_info[cmd].Command) != 0 && libc.StrCmp(libc.CString("rent"), complete_cmd_info[cmd].Command) != 0 {
 		return FALSE
 	}
 	if !AWAKE(recep) {
@@ -889,7 +890,7 @@ func gen_receptionist(ch *char_data, recep *char_data, cmd int, arg *byte, mode 
 		act(libc.CString("$n tells you, 'Rent is free here.  Just quit, and your objects will be saved!'"), FALSE, recep, nil, unsafe.Pointer(ch), TO_VICT)
 		return 1
 	}
-	if libc.StrCmp(libc.CString("rent"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	if libc.StrCmp(libc.CString("rent"), complete_cmd_info[cmd].Command) == 0 {
 		var buf [128]byte
 		if (func() int {
 			cost = Crash_offer_rent(ch, recep, FALSE, mode)
@@ -913,12 +914,12 @@ func gen_receptionist(ch *char_data, recep *char_data, cmd int, arg *byte, mode 
 		if mode == RENT_FACTOR {
 			act(libc.CString("$n stores your belongings and helps you into your private chamber."), FALSE, recep, nil, unsafe.Pointer(ch), TO_VICT)
 			Crash_rentsave(ch, cost)
-			mudlog(NRM, MAX(ADMLVL_IMMORT, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("%s has rented (%d/day, %d tot.)"), GET_NAME(ch), cost, ch.Gold+ch.Bank_gold)
+			mudlog(NRM, int(MAX(ADMLVL_IMMORT, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("%s has rented (%d/day, %d tot.)"), GET_NAME(ch), cost, ch.Gold+ch.Bank_gold)
 		} else {
 			act(libc.CString("$n stores your belongings and helps you into your private chamber.\r\nA white mist appears in the room, chilling you to the bone...\r\nYou begin to lose consciousness..."), FALSE, recep, nil, unsafe.Pointer(ch), TO_VICT)
 			Crash_cryosave(ch, cost)
-			mudlog(NRM, MAX(ADMLVL_IMMORT, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("%s has cryo-rented."), GET_NAME(ch))
-			ch.Act[int(PLR_CRYO/32)] |= bitvector_t(int32(1 << (int(PLR_CRYO % 32))))
+			mudlog(NRM, int(MAX(ADMLVL_IMMORT, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("%s has cryo-rented."), GET_NAME(ch))
+			SET_BIT_AR(ch.Act[:], PLR_CRYO)
 		}
 		act(libc.CString("$n helps $N into $S private chamber."), FALSE, recep, nil, unsafe.Pointer(ch), TO_NOTVICT)
 		extract_char(ch)
@@ -941,7 +942,7 @@ func Crash_save_all() {
 			if PLR_FLAGGED(d.Character, PLR_CRASH) {
 				Crash_crashsave(d.Character)
 				save_char(d.Character)
-				d.Character.Act[int(PLR_CRASH/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRASH % 32)))))
+				REMOVE_BIT_AR(d.Character.Act[:], PLR_CRASH)
 			}
 		}
 	}
@@ -990,13 +991,13 @@ func Crash_load(ch *char_data) int {
 		fl = stdio.FOpen(libc.GoString(&cmfname[0]), "r+b")
 		return fl
 	}()) == nil {
-		if libc.Errno != ENOENT {
+		if libc.Errno != 2 {
 			stdio.Sprintf(&buf1[0], "SYSERR: READING OBJECT FILE %s (5)", &cmfname[0])
-			perror(&buf1[0])
+			fmt.Println(&buf1[0])
 			send_to_char(ch, libc.CString("\r\n********************* NOTICE *********************\r\nThere was a problem loading your objects from disk.\r\nContact a God for assistance.\r\n"))
 		}
 		if GET_LEVEL(ch) > 1 {
-			mudlog(NRM, MAX(ADMLVL_IMMORT, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("%s entering game with no equipment. Loading backup."), GET_NAME(ch))
+			mudlog(NRM, int(MAX(ADMLVL_IMMORT, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("%s entering game with no equipment. Loading backup."), GET_NAME(ch))
 		}
 		if inv_backup(ch) == 0 {
 			return -1
@@ -1007,9 +1008,9 @@ func Crash_load(ch *char_data) int {
 				fl = stdio.FOpen(libc.GoString(&cmfname[0]), "r+b")
 				return fl
 			}()) == nil {
-				if libc.Errno != ENOENT {
+				if libc.Errno != 2 {
 					stdio.Sprintf(&buf1[0], "SYSERR: READING OBJECT FILE %s (5)", &cmfname[0])
-					perror(&buf1[0])
+					fmt.Println(&buf1[0])
 					send_to_char(ch, libc.CString("\r\n********************* NOTICE *********************\r\nThere was a problem loading your objects from disk.\r\nContact a God for assistance.\r\n"))
 				}
 				return -1
@@ -1030,17 +1031,17 @@ func Crash_load(ch *char_data) int {
 		return orig_rent_code
 	}() {
 	case RENT_RENTED:
-		mudlog(NRM, MAX(ADMLVL_IMMORT, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("%s un-renting and entering game."), GET_NAME(ch))
+		mudlog(NRM, int(MAX(ADMLVL_IMMORT, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("%s un-renting and entering game."), GET_NAME(ch))
 	case RENT_CRASH:
-		mudlog(NRM, MAX(ADMLVL_IMMORT, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("%s retrieving crash-saved items and entering game."), GET_NAME(ch))
+		mudlog(NRM, int(MAX(ADMLVL_IMMORT, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("%s retrieving crash-saved items and entering game."), GET_NAME(ch))
 	case RENT_CRYO:
-		mudlog(NRM, MAX(ADMLVL_IMMORT, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("%s un-cryo'ing and entering game."), GET_NAME(ch))
+		mudlog(NRM, int(MAX(ADMLVL_IMMORT, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("%s un-cryo'ing and entering game."), GET_NAME(ch))
 	case RENT_FORCED:
 		fallthrough
 	case RENT_TIMEDOUT:
-		mudlog(NRM, MAX(ADMLVL_IMMORT, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("%s retrieving force-saved items and entering game."), GET_NAME(ch))
+		mudlog(NRM, int(MAX(ADMLVL_IMMORT, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("%s retrieving force-saved items and entering game."), GET_NAME(ch))
 	default:
-		mudlog(BRF, MAX(ADMLVL_IMMORT, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("WARNING: %s entering game with undefined rent code."), GET_NAME(ch))
+		mudlog(BRF, int(MAX(ADMLVL_IMMORT, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("WARNING: %s entering game with undefined rent code."), GET_NAME(ch))
 	}
 	for j = 0; j < MAX_BAG_ROWS; j++ {
 		cont_row[j] = nil
@@ -1128,10 +1129,10 @@ func Crash_load(ch *char_data) int {
 					return 0
 				}
 				temp.Type_flag = int8(t[0])
-				temp.Wear_flags[0] = t[1]
-				temp.Wear_flags[1] = t[2]
-				temp.Wear_flags[2] = t[3]
-				temp.Wear_flags[3] = t[4]
+				temp.Wear_flags[0] = bitvector_t(int32(t[1]))
+				temp.Wear_flags[1] = bitvector_t(int32(t[2]))
+				temp.Wear_flags[2] = bitvector_t(int32(t[3]))
+				temp.Wear_flags[3] = bitvector_t(int32(t[4]))
 				temp.Weight = int64(t[5])
 				temp.Cost = t[6]
 				temp.Cost_per_day = t[7]
@@ -1142,15 +1143,15 @@ func Crash_load(ch *char_data) int {
 				}
 				if int(temp.Type_flag) == ITEM_SPELLBOOK {
 					if temp.Sbinfo == nil {
-						temp.Sbinfo = &make([]obj_spellbook_spell, SPELLBOOK_SIZE)[0]
-						libc.MemSet(unsafe.Pointer((*byte)(unsafe.Pointer(temp.Sbinfo))), 0, int(SPELLBOOK_SIZE*unsafe.Sizeof(obj_spellbook_spell{})))
+						temp.Sbinfo = make([]obj_spellbook_spell, SPELLBOOK_SIZE)
+						libc.MemSet(unsafe.Pointer((*byte)(unsafe.Pointer(&temp.Sbinfo[0]))), 0, int(SPELLBOOK_SIZE*unsafe.Sizeof(obj_spellbook_spell{})))
 					}
 					for j = 0; j < SPELLBOOK_SIZE; j++ {
-						(*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(temp.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(j)))).Spellname = 0
-						(*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(temp.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(j)))).Pages = 0
+						temp.Sbinfo[j].Spellname = 0
+						temp.Sbinfo[j].Pages = 0
 					}
-					(*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(temp.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*0))).Spellname = SPELL_DETECT_MAGIC
-					(*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(temp.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*0))).Pages = 1
+					temp.Sbinfo[0].Spellname = SPELL_DETECT_MAGIC
+					temp.Sbinfo[0].Pages = 1
 				}
 				temp.Ex_description = nil
 				get_line(fl, &line[0])
@@ -1199,11 +1200,11 @@ func Crash_load(ch *char_data) int {
 						get_line(fl, &line[0])
 						stdio.Sscanf(&line[0], "%d %d", &t[0], &t[1])
 						if temp.Sbinfo == nil {
-							temp.Sbinfo = &make([]obj_spellbook_spell, SPELLBOOK_SIZE)[0]
-							libc.MemSet(unsafe.Pointer((*byte)(unsafe.Pointer(temp.Sbinfo))), 0, int(SPELLBOOK_SIZE*unsafe.Sizeof(obj_spellbook_spell{})))
+							temp.Sbinfo = make([]obj_spellbook_spell, SPELLBOOK_SIZE)
+							libc.MemSet(unsafe.Pointer((*byte)(unsafe.Pointer(&temp.Sbinfo[0]))), 0, int(SPELLBOOK_SIZE*unsafe.Sizeof(obj_spellbook_spell{})))
 						}
-						(*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(temp.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(j)))).Spellname = t[0]
-						(*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(temp.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(j)))).Pages = t[1]
+						temp.Sbinfo[j].Spellname = t[0]
+						temp.Sbinfo[j].Pages = t[1]
 						j++
 						get_line(fl, &line[0])
 					case 'Z':
@@ -1231,7 +1232,7 @@ func Crash_load(ch *char_data) int {
 				}
 				if GET_OBJ_VNUM(temp) == 0x4E83 || GET_OBJ_VNUM(temp) == 0x4E82 {
 					if OBJ_FLAGGED(temp, ITEM_UNBREAKABLE) {
-						temp.Extra_flags[int(ITEM_UNBREAKABLE/32)] &= bitvector_t(int32(^(1 << (int(ITEM_UNBREAKABLE % 32)))))
+						REMOVE_BIT_AR(temp.Extra_flags[:], ITEM_UNBREAKABLE)
 					}
 				}
 				auto_equip(ch, temp, locate)
@@ -1311,7 +1312,7 @@ func Crash_load(ch *char_data) int {
 			get_line(fl, &line[0])
 		}
 	}
-	mudlog(NRM, MAX(ADMLVL_IMMORT, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("%s (level %d) has %d objects (max %d)."), GET_NAME(ch), GET_LEVEL(ch), num_objs, config_info.Csd.Max_obj_save)
+	mudlog(NRM, int(MAX(ADMLVL_IMMORT, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("%s (level %d) has %d objects (max %d)."), GET_NAME(ch), GET_LEVEL(ch), num_objs, config_info.Csd.Max_obj_save)
 	fl.Close()
 	Crash_crashsave(ch)
 	if orig_rent_code == RENT_RENTED || orig_rent_code == RENT_CRYO {

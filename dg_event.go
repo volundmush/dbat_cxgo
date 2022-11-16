@@ -183,19 +183,19 @@ func queue_free(q *queue) {
 		i       int
 		qe      *q_element
 		next_qe *q_element
-		event   *event
+		e_event *event
 	)
 	for i = 0; i < NUM_EVENT_QUEUES; i++ {
 		for qe = q.Head[i]; qe != nil; qe = next_qe {
 			next_qe = qe.Next
 			if (func() *event {
-				event = (*event)(qe.Data)
-				return event
+				e_event = (*event)(qe.Data)
+				return e_event
 			}()) != nil {
-				if event.Event_obj != nil {
-					event.Event_obj = nil
+				if e_event.Event_obj != nil {
+					e_event.Event_obj = nil
 				}
-				libc.Free(unsafe.Pointer(event))
+				libc.Free(unsafe.Pointer(e_event))
 			}
 			libc.Free(unsafe.Pointer(qe))
 		}

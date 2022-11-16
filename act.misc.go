@@ -6,6 +6,9 @@ import (
 	"unsafe"
 )
 
+func is_instrument(obj *obj_data) bool {
+	return GET_OBJ_VNUM(obj) == 8802 || GET_OBJ_VNUM(obj) == 8807
+}
 func do_spiritcontrol(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if GET_SKILL(ch, SKILL_SPIRITCONTROL) == 0 {
 		send_to_char(ch, libc.CString("You do not know how to perform that technique.\r\n"))
@@ -37,10 +40,10 @@ func do_tailhide(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You have no need to hide your tail!\r\n"))
 	}
 	if (int(ch.Race) == RACE_SAIYAN || int(ch.Race) == RACE_HALFBREED) && !PLR_FLAGGED(ch, PLR_TAILHIDE) {
-		ch.Act[int(PLR_TAILHIDE/32)] |= bitvector_t(int32(1 << (int(PLR_TAILHIDE % 32))))
+		SET_BIT_AR(ch.Act[:], PLR_TAILHIDE)
 		send_to_char(ch, libc.CString("You have decided to hide your tail!\r\n"))
 	} else if (int(ch.Race) == RACE_SAIYAN || int(ch.Race) == RACE_HALFBREED) && PLR_FLAGGED(ch, PLR_TAILHIDE) {
-		ch.Act[int(PLR_TAILHIDE/32)] &= bitvector_t(int32(^(1 << (int(PLR_TAILHIDE % 32)))))
+		REMOVE_BIT_AR(ch.Act[:], PLR_TAILHIDE)
 		send_to_char(ch, libc.CString("You have decided to display your tail for all to see!\r\n"))
 	}
 }
@@ -52,10 +55,10 @@ func do_nogrow(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("What do you mean?\r\n"))
 	}
 	if (int(ch.Race) == RACE_SAIYAN || int(ch.Race) == RACE_HALFBREED) && !PLR_FLAGGED(ch, PLR_NOGROW) {
-		ch.Act[int(PLR_NOGROW/32)] |= bitvector_t(int32(1 << (int(PLR_NOGROW % 32))))
+		SET_BIT_AR(ch.Act[:], PLR_NOGROW)
 		send_to_char(ch, libc.CString("You have decided to halt your tail growth!\r\n"))
 	} else if (int(ch.Race) == RACE_SAIYAN || int(ch.Race) == RACE_HALFBREED) && PLR_FLAGGED(ch, PLR_NOGROW) {
-		ch.Act[int(PLR_NOGROW/32)] &= bitvector_t(int32(^(1 << (int(PLR_NOGROW % 32)))))
+		REMOVE_BIT_AR(ch.Act[:], PLR_NOGROW)
 		send_to_char(ch, libc.CString("You have decided to regrow your tail!\r\n"))
 	}
 }
@@ -66,17 +69,7 @@ func do_restring(ch *char_data, argument *byte, cmd int, subcmd int) {
 		pay int = 0
 	)
 	one_argument(argument, &arg[0])
-	if (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) >= 178 && (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) <= 184 {
+	if int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) >= 178 && int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) <= 184 {
 		pay = 5000
 		if ch.Gold < pay {
 			send_to_char(ch, libc.CString("You need at least 5,000 zenni to initiate an equipment restring.\r\n"))
@@ -127,7 +120,7 @@ func do_multiform(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var multi2 *char_data = nil
 	var multi3 *char_data = nil
 	var num int = 0
-	for tch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; tch != nil; tch = next_v {
+	for tch = world[ch.In_room].People; tch != nil; tch = next_v {
 		next_v = tch.Next_in_room
 		if tch == ch {
 			continue
@@ -263,14 +256,14 @@ func generate_multiform(ch *char_data, multi1 *char_data, multi2 *char_data, mul
 		multi_forms += 1
 	}
 	ch.Clones += 1
-	var mult int64 = 1
+	var mult float64 = 1
 	if int(ch.Race) == RACE_BIO {
 		if PLR_FLAGGED(ch, PLR_TRANS1) {
 			mult = 2
 		} else if PLR_FLAGGED(ch, PLR_TRANS2) {
 			mult = 3
 		} else if PLR_FLAGGED(ch, PLR_TRANS3) {
-			mult = int64(3.5)
+			mult = 3.5
 		} else if PLR_FLAGGED(ch, PLR_TRANS4) {
 			mult = 4
 		}
@@ -280,7 +273,7 @@ func generate_multiform(ch *char_data, multi1 *char_data, multi2 *char_data, mul
 		} else if PLR_FLAGGED(ch, PLR_TRANS2) {
 			mult = 3
 		} else if PLR_FLAGGED(ch, PLR_TRANS3) {
-			mult = int64(4.5)
+			mult = 4.5
 		}
 	} else if int(ch.Race) == RACE_TRUFFLE {
 		if PLR_FLAGGED(ch, PLR_TRANS1) {
@@ -293,9 +286,9 @@ func generate_multiform(ch *char_data, multi1 *char_data, multi2 *char_data, mul
 	} else if PLR_FLAGGED(ch, PLR_TRANS1) || PLR_FLAGGED(ch, PLR_TRANS2) || PLR_FLAGGED(ch, PLR_TRANS3) || PLR_FLAGGED(ch, PLR_TRANS4) || PLR_FLAGGED(ch, PLR_TRANS5) || PLR_FLAGGED(ch, PLR_TRANS6) {
 		do_transform(ch, libc.CString("revert"), 0, 0)
 	}
-	ch.Max_hit -= int64((float64(ch.Basepl) * 0.25) * float64(mult))
-	ch.Max_move -= int64((float64(ch.Basest) * 0.25) * float64(mult))
-	ch.Max_mana -= int64((float64(ch.Baseki) * 0.25) * float64(mult))
+	ch.Max_hit -= int64((float64(ch.Basepl) * 0.25) * mult)
+	ch.Max_move -= int64((float64(ch.Basest) * 0.25) * mult)
+	ch.Max_mana -= int64((float64(ch.Baseki) * 0.25) * mult)
 	var blamo [2048]byte
 	stdio.Sprintf(&blamo[0], "p.%s", GET_NAME(ch))
 	do_follow(clone, &blamo[0], 0, 0)
@@ -347,14 +340,14 @@ func handle_multi_merge(form *char_data) {
 	}
 	send_to_char(ch, libc.CString("@YYou merge with one of your forms!@n\r\n"))
 	act(libc.CString("@y$n@Y merges with one of his multiforms!@n\r\n"), TRUE, ch, nil, nil, TO_ROOM)
-	var mult int = 1
+	var mult float64 = 1
 	if int(ch.Race) == RACE_BIO {
 		if PLR_FLAGGED(ch, PLR_TRANS1) {
 			mult = 2
 		} else if PLR_FLAGGED(ch, PLR_TRANS2) {
 			mult = 3
 		} else if PLR_FLAGGED(ch, PLR_TRANS3) {
-			mult = int(3.5)
+			mult = 3.5
 		} else if PLR_FLAGGED(ch, PLR_TRANS4) {
 			mult = 4
 		}
@@ -364,7 +357,7 @@ func handle_multi_merge(form *char_data) {
 		} else if PLR_FLAGGED(ch, PLR_TRANS2) {
 			mult = 3
 		} else if PLR_FLAGGED(ch, PLR_TRANS3) {
-			mult = int(4.5)
+			mult = 4.5
 		}
 	} else if int(ch.Race) == RACE_TRUFFLE {
 		if PLR_FLAGGED(ch, PLR_TRANS1) {
@@ -376,12 +369,12 @@ func handle_multi_merge(form *char_data) {
 		}
 	}
 	ch.Clones -= 1
-	ch.Max_hit += int64((float64(ch.Basepl) * 0.25) * float64(mult))
-	ch.Max_mana += int64((float64(ch.Baseki) * 0.25) * float64(mult))
-	ch.Max_move += int64((float64(ch.Basest) * 0.25) * float64(mult))
-	ch.Hit += int64((float64(ch.Basepl) * 0.25) * float64(mult))
-	ch.Mana += int64((float64(ch.Baseki) * 0.25) * float64(mult))
-	ch.Move += int64((float64(ch.Basest) * 0.25) * float64(mult))
+	ch.Max_hit += int64((float64(ch.Basepl) * 0.25) * mult)
+	ch.Max_mana += int64((float64(ch.Baseki) * 0.25) * mult)
+	ch.Max_move += int64((float64(ch.Basest) * 0.25) * mult)
+	ch.Hit += int64((float64(ch.Basepl) * 0.25) * mult)
+	ch.Mana += int64((float64(ch.Baseki) * 0.25) * mult)
+	ch.Move += int64((float64(ch.Basest) * 0.25) * mult)
 	if ch.Hit > gear_pl(ch) {
 		ch.Hit = gear_pl(ch)
 	}
@@ -409,32 +402,30 @@ func handle_songs() {
 }
 func resolve_song(ch *char_data) {
 	var (
-		vict        *char_data = nil
-		next_v      *char_data = nil
-		obj2        *obj_data  = nil
-		next_obj    *obj_data
-		diceroll    int = axion_dice(0)
-		skill       int = GET_SKILL(ch, SKILL_MYSTICMUSIC)
-		instrument  int = 0
-		stopplaying int = FALSE
+		vict     *char_data = nil
+		next_v   *char_data = nil
+		obj2     *obj_data  = nil
+		next_obj *obj_data
 	)
+	_ = next_obj
+	var diceroll int = axion_dice(0)
+	var skill int = GET_SKILL(ch, SKILL_MYSTICMUSIC)
+	var stopplaying int = FALSE
 	_ = stopplaying
 	var buf [2048]byte
 	if ch.Powerattack <= 0 {
 		return
 	}
-	for obj2 = ch.Carrying; obj2 != nil; obj2 = next_obj {
-		next_obj = obj2.Next_content
-		if GET_OBJ_VNUM(obj2) == 8802 || GET_OBJ_VNUM(obj2) == 8807 {
-			instrument = int(GET_OBJ_VNUM(obj2))
-		}
-	}
-	if instrument == 0 {
+	var instrument vnum = 0
+	_ = instrument
+	obj2 = find_obj_in_list_lambda(ch.Carrying, is_instrument)
+	if obj2 == nil {
 		send_to_char(ch, libc.CString("You do not have an instrument.\r\n"))
 		act(libc.CString("@c$n@C stops playing $s song.@n"), TRUE, ch, nil, nil, TO_ROOM)
 		ch.Powerattack = 0
 		return
 	}
+	instrument = vnum(GET_OBJ_VNUM(obj2))
 	if skill > diceroll {
 		stdio.Sprintf(&buf[0], "@c$n@C continues playing @y'@Y%s@y'@C.@n", func() string {
 			if ch.Powerattack == SONG_SAFETY {
@@ -455,7 +446,7 @@ func resolve_song(ch *char_data) {
 		act(libc.CString("@c$n@C messes up a portion of $s song, but continues to play.@n"), TRUE, ch, nil, nil, TO_ROOM)
 		return
 	}
-	for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; vict != nil; vict = next_v {
+	for vict = world[ch.In_room].People; vict != nil; vict = next_v {
 		next_v = vict.Next_in_room
 		switch ch.Powerattack {
 		case SONG_SAFETY:
@@ -713,7 +704,7 @@ func resolve_song(ch *char_data) {
 							vict.Barrier = int64(float64(vict.Max_mana) * 0.75)
 						}
 						if !AFF_FLAGGED(vict, AFF_SANCTUARY) {
-							vict.Affected_by[int(AFF_SANCTUARY/32)] |= 1 << (int(AFF_SANCTUARY % 32))
+							SET_BIT_AR(vict.Affected_by[:], AFF_SANCTUARY)
 						}
 						ch.Mana -= int64((float64(ch.Max_mana) * 0.02) + float64(skill))
 					}
@@ -777,19 +768,12 @@ func do_song(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You do not know how to play mystical music.\r\n"))
 		return
 	}
-	var obj2 *obj_data = nil
-	var next_obj *obj_data
-	var instrument int = 0
-	for obj2 = ch.Carrying; obj2 != nil; obj2 = next_obj {
-		next_obj = obj2.Next_content
-		if GET_OBJ_VNUM(obj2) == 8802 || GET_OBJ_VNUM(obj2) == 8807 {
-			instrument = int(GET_OBJ_VNUM(obj2))
-		}
-	}
-	if instrument == 0 {
+	var obj2 *obj_data = find_obj_in_list_lambda(ch.Carrying, is_instrument)
+	if obj2 == nil {
 		send_to_char(ch, libc.CString("You do not have an instrument.\r\n"))
 		return
 	}
+	var instrument vnum = vnum(GET_OBJ_VNUM(obj2))
 	if ch.Powerattack != 0 {
 		act(libc.CString("@cYou stop playing your ocarina.@n"), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("@c$n stops playing their ocarina.@n"), TRUE, ch, nil, nil, TO_ROOM)
@@ -1001,7 +985,7 @@ func do_moondust(ch *char_data, argument *byte, cmd int, subcmd int) {
 	send_to_char(ch, libc.CString("@RHeal@Y: @C%s@n\r\n"), add_commas(heal))
 	var vict *char_data = nil
 	var next_v *char_data = nil
-	for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; vict != nil; vict = next_v {
+	for vict = world[ch.In_room].People; vict != nil; vict = next_v {
 		next_v = vict.Next_in_room
 		if vict == ch {
 			continue
@@ -1031,7 +1015,7 @@ func do_shell(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if AFF_FLAGGED(ch, AFF_SHELL) {
 		act(libc.CString("@mYou quickly absorb the armor carapace covering your body back inside.@n"), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("@M$n's@m armored carapce retreats back to its original size.@n"), TRUE, ch, nil, nil, TO_ROOM)
-		ch.Affected_by[int(AFF_SHELL/32)] &= ^(1 << (int(AFF_SHELL % 32)))
+		REMOVE_BIT_AR(ch.Affected_by[:], AFF_SHELL)
 		return
 	}
 	if float64(ch.Move) < float64(ch.Max_move)*0.2 {
@@ -1045,7 +1029,7 @@ func do_shell(ch *char_data, argument *byte, cmd int, subcmd int) {
 		act(libc.CString("@mYou crouch down and begin to focus on your body's carapace cells, encouraging them to multiply! Very quickly millions of new carapace cells have been born and your armored carapace extends over all parts of your body!@n"), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("@M$n@m crouches down and after a few moments of straining $s body's carapace armor starts to grow thicker and extends to cover all parts of $s body!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		ch.Move -= int64(float64(ch.Max_move) * 0.2)
-		ch.Affected_by[int(AFF_SHELL/32)] |= 1 << (int(AFF_SHELL % 32))
+		SET_BIT_AR(ch.Affected_by[:], AFF_SHELL)
 		return
 	}
 }
@@ -1057,7 +1041,7 @@ func do_liquefy(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if AFF_FLAGGED(ch, AFF_LIQUEFIED) {
 		act(libc.CString("@MSuddenly large chunks of goo start to hover up slowly. These very same chunks quickly begin to fly into each other, piling on as the ball of goo grows. Suddenly @m$n@M emerges as the ball of goo takes $s shape!@n"), TRUE, ch, nil, nil, TO_ROOM)
 		act(libc.CString("@MYou begin to pull the liquid chunks of your body together. Those chunks hover upward and merge into each other until a large ball of goo is formed. Slowly your body emerges as the pieces of your body take on their old form!@n"), TRUE, ch, nil, nil, TO_CHAR)
-		ch.Affected_by[int(AFF_LIQUEFIED/32)] &= ^(1 << (int(AFF_LIQUEFIED % 32)))
+		REMOVE_BIT_AR(ch.Affected_by[:], AFF_LIQUEFIED)
 		WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 		WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 		WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
@@ -1098,7 +1082,7 @@ func do_liquefy(ch *char_data, argument *byte, cmd int, subcmd int) {
 			act(libc.CString("@MYour body starts to become loose and sag. It continues to droop down until it begins to run down like a river of goo flowing from where your body was.@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@m$n@M's body starts to become loose and sag. Much of $s body begins to pour down and scatter around as pools of goo.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			ch.Mana -= int64((float64(ch.Max_mana) * 0.002) + 150)
-			ch.Affected_by[int(AFF_LIQUEFIED/32)] |= 1 << (int(AFF_LIQUEFIED % 32))
+			SET_BIT_AR(ch.Affected_by[:], AFF_LIQUEFIED)
 			return
 		}
 	} else if libc.StrCaseCmp(&arg[0], libc.CString("explode")) == 0 {
@@ -1170,7 +1154,7 @@ func do_liquefy(ch *char_data, argument *byte, cmd int, subcmd int) {
 				solo_gain(ch, vict)
 			}
 			die(vict, ch)
-			ch.Affected_by[int(AFF_LIQUEFIED/32)] |= 1 << (int(AFF_LIQUEFIED % 32))
+			SET_BIT_AR(ch.Affected_by[:], AFF_LIQUEFIED)
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
@@ -1281,7 +1265,7 @@ func do_fish(ch *char_data, argument *byte, cmd int, subcmd int) {
 			act(libc.CString("@CYou pull your arm back and then spring it forward, casting the baited line. A moment later there is a splash as the hook enters the water.@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@c$n@C pulls $s arm back and then springs it foward, casting the line of $s fishing pole into the water.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			ch.Accuracy_mod = rand_number(30, 80)
-			ch.Act[int(PLR_FISHING/32)] |= bitvector_t(int32(1 << (int(PLR_FISHING % 32))))
+			SET_BIT_AR(ch.Act[:], PLR_FISHING)
 			send_to_char(ch, libc.CString("@D[@wDistance@D: @Y%d@D]@n\r\n"), ch.Accuracy_mod)
 			return
 		}
@@ -1376,7 +1360,7 @@ func do_fish(ch *char_data, argument *byte, cmd int, subcmd int) {
 			reveal_hiding(ch, 0)
 			act(libc.CString("@CYou reel in your line and stop fishing.@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@c$n@C reels in $s fishing line and stops fishing.@n"), TRUE, ch, nil, nil, TO_ROOM)
-			ch.Act[int(PLR_FISHING/32)] &= bitvector_t(int32(^(1 << (int(PLR_FISHING % 32)))))
+			REMOVE_BIT_AR(ch.Act[:], PLR_FISHING)
 			ch.Fishstate = FISH_NOFISH
 			ch.Accuracy_mod = 0
 			return
@@ -1441,7 +1425,7 @@ func fish_update() {
 						act(libc.CString("@c$n@C frowns and then begins to reel in $s line.@n"), TRUE, ch, nil, nil, TO_ROOM)
 						ch.Accuracy_mod = 0
 						ch.Fishstate = FISH_NOFISH
-						ch.Act[int(PLR_FISHING/32)] &= bitvector_t(int32(^(1 << (int(PLR_FISHING % 32)))))
+						REMOVE_BIT_AR(ch.Act[:], PLR_FISHING)
 						if has_pole(ch) == TRUE {
 							var pole *obj_data = (ch.Equipment[WEAR_WIELD2])
 							pole.Value[0] = 0
@@ -1451,7 +1435,7 @@ func fish_update() {
 						act(libc.CString("@c$n@C frowns and then begins to reel in $s line.@n"), TRUE, ch, nil, nil, TO_ROOM)
 						ch.Accuracy_mod = 0
 						ch.Fishstate = FISH_NOFISH
-						ch.Act[int(PLR_FISHING/32)] &= bitvector_t(int32(^(1 << (int(PLR_FISHING % 32)))))
+						REMOVE_BIT_AR(ch.Act[:], PLR_FISHING)
 					} else if ch.Fishstate == FISH_BITE && rand_number(1, 20) >= 12 {
 						act(libc.CString("@CYou feel as if the fish has stopped biting...@n"), TRUE, ch, nil, nil, TO_CHAR)
 						ch.Fishstate = FISH_NOFISH
@@ -1461,13 +1445,13 @@ func fish_update() {
 					}
 				}
 			} else if PLR_FLAGGED(i, PLR_FISHING) && has_pole(i) == FALSE {
-				i.Act[int(PLR_FISHING/32)] &= bitvector_t(int32(^(1 << (int(PLR_FISHING % 32)))))
+				REMOVE_BIT_AR(i.Act[:], PLR_FISHING)
 				i.Accuracy_mod = 0
 				i.Fishstate = FISH_NOFISH
 			}
 		} else {
 			if PLR_FLAGGED(i, PLR_FISHING) {
-				i.Act[int(PLR_FISHING/32)] &= bitvector_t(int32(^(1 << (int(PLR_FISHING % 32)))))
+				REMOVE_BIT_AR(i.Act[:], PLR_FISHING)
 				i.Accuracy_mod = 0
 				i.Fishstate = FISH_NOFISH
 			}
@@ -1622,7 +1606,7 @@ func catch_fish(ch *char_data, quality int) {
 	obj_to_room(fish, ch.In_room)
 	do_get(ch, libc.CString("fish"), 0, 0)
 	send_to_char(ch, libc.CString("@D[@cFish Weight@D: @G%lld@D]@n\r\n"), fish.Weight)
-	ch.Act[int(PLR_FISHING/32)] &= bitvector_t(int32(^(1 << (int(PLR_FISHING % 32)))))
+	REMOVE_BIT_AR(ch.Act[:], PLR_FISHING)
 	ch.Accuracy_mod = 0
 	ch.Fishstate = FISH_NOFISH
 }
@@ -1706,19 +1690,9 @@ func do_extract(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_char(ch, libc.CString("It's not mature enough to extract from!\r\n"))
 				return
 			}
-			var bottle *obj_data = nil
-			var next_obj *obj_data
-			var obj2 *obj_data
-			var found int = FALSE
-			for obj2 = ch.Carrying; obj2 != nil; obj2 = next_obj {
-				next_obj = obj2.Next_content
-				if GET_OBJ_VNUM(obj2) == 3423 {
-					bottle = obj2
-					found = TRUE
-				}
-			}
+			var bottle *obj_data = find_obj_in_list_vnum_good(ch.Carrying, 3423)
 			var cost int64 = int64((float64(ch.Max_mana) * 0.35) + 500)
-			if found == FALSE {
+			if bottle == nil {
 				send_to_char(ch, libc.CString("You do not have an empty bottle to put the extracted ink in.\r\n"))
 				return
 			}
@@ -1814,32 +1788,13 @@ func do_runic(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}())
 		return
 	}
-	var obj *obj_data
-	var next_obj *obj_data
-	var bottle *obj_data = nil
-	var found int = FALSE
-	var amount int = 0
-	var brush int = FALSE
-	for obj = ch.Carrying; obj != nil; obj = next_obj {
-		next_obj = obj.Next_content
-		if GET_OBJ_VNUM(obj) == 3424 {
-			if (obj.Value[6]) > amount {
-				bottle = obj
-				found = TRUE
-				amount = bottle.Value[6]
-			}
-		}
-	}
-	for obj = ch.Carrying; obj != nil; obj = next_obj {
-		next_obj = obj.Next_content
-		if GET_OBJ_VNUM(obj) == 3427 {
-			brush = TRUE
-		}
-	}
-	if found == FALSE {
+	var bottle *obj_data = find_obj_in_list_vnum_good(ch.Carrying, 3424)
+	if bottle == nil {
 		send_to_char(ch, libc.CString("You do not have a bottle with enough ink in it.\r\n"))
 		return
-	} else if brush == FALSE {
+	}
+	var brush *obj_data = find_obj_in_list_vnum_good(ch.Carrying, 3427)
+	if brush == nil {
 		send_to_char(ch, libc.CString("You do not have a brush!\r\n"))
 		return
 	}
@@ -1922,7 +1877,7 @@ func do_runic(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	} else if libc.StrCaseCmp(&arg2[0], libc.CString("algiz")) == 0 || libc.StrCaseCmp(&arg2[0], libc.CString("Algiz")) == 0 {
 		inkcost += 2
-		if amount < inkcost {
+		if (bottle.Value[6]) < inkcost {
 			send_to_char(ch, libc.CString("You do not have a bottle with enough ink. @D[@bInkcost@D: @R%d@D]@n\r\n"), inkcost)
 			return
 		} else if vict == ch {
@@ -1966,7 +1921,7 @@ func do_runic(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	} else if libc.StrCaseCmp(&arg2[0], libc.CString("oagaz")) == 0 || libc.StrCaseCmp(&arg2[0], libc.CString("Oagaz")) == 0 {
 		inkcost += 3
-		if amount < inkcost {
+		if (bottle.Value[6]) < inkcost {
 			send_to_char(ch, libc.CString("You do not have a bottle with enough ink. @D[@bInkcost@D: @R%d@D]@n\r\n"), inkcost)
 			return
 		} else if vict == ch {
@@ -1989,7 +1944,7 @@ func do_runic(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 	} else if libc.StrCaseCmp(&arg2[0], libc.CString("laguz")) == 0 || libc.StrCaseCmp(&arg2[0], libc.CString("Laguz")) == 0 {
 		inkcost += 4
-		if amount < inkcost {
+		if (bottle.Value[6]) < inkcost {
 			send_to_char(ch, libc.CString("You do not have a bottle with enough ink. @D[@bInkcost@D: @R%d@D]@n\r\n"), inkcost)
 			return
 		} else if vict == ch {
@@ -2033,7 +1988,7 @@ func do_runic(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	} else if libc.StrCaseCmp(&arg2[0], libc.CString("wunjo")) == 0 || libc.StrCaseCmp(&arg2[0], libc.CString("Wunjo")) == 0 {
 		inkcost += 4
-		if amount < inkcost {
+		if (bottle.Value[6]) < inkcost {
 			send_to_char(ch, libc.CString("You do not have a bottle with enough ink. @D[@bInkcost@D: @R%d@D]@n\r\n"), inkcost)
 			return
 		} else if vict == ch {
@@ -2077,7 +2032,7 @@ func do_runic(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	} else if libc.StrCaseCmp(&arg2[0], libc.CString("purisaz")) == 0 || libc.StrCaseCmp(&arg2[0], libc.CString("Purisaz")) == 0 {
 		inkcost += 4
-		if amount < inkcost {
+		if (bottle.Value[6]) < inkcost {
 			send_to_char(ch, libc.CString("You do not have a bottle with enough ink. @D[@bInkcost@D: @R%d@D]@n\r\n"), inkcost)
 			return
 		} else if vict == ch {
@@ -2121,7 +2076,7 @@ func do_runic(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	} else if libc.StrCaseCmp(&arg2[0], libc.CString("gebo")) == 0 || libc.StrCaseCmp(&arg2[0], libc.CString("Gebo")) == 0 {
 		inkcost += 10
-		if amount < inkcost {
+		if (bottle.Value[6]) < inkcost {
 			send_to_char(ch, libc.CString("You do not have a bottle with enough ink. @D[@bInkcost@D: @R%d@D]@n\r\n"), inkcost)
 			return
 		} else if vict == ch {
@@ -2279,7 +2234,7 @@ func ash_burn(ch *char_data) {
 		next_obj *obj_data
 	)
 	if ch != nil && ch.In_room != room_rnum(-1) {
-		for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; obj != nil; obj = next_obj {
+		for obj = world[ch.In_room].Contents; obj != nil; obj = next_obj {
 			next_obj = obj.Next_content
 			if GET_OBJ_VNUM(obj) == 1306 {
 				if axion_dice(0) > int(ch.Aff_abils.Con) {
@@ -2318,23 +2273,9 @@ func do_ashcloud(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Syntax: ashcloud (1 | 2 | 3)\r\n"))
 		return
 	}
-	var ash *obj_data = nil
-	var obj *obj_data
-	var next_obj *obj_data
-	var there int = FALSE
-	for obj = ch.Carrying; obj != nil; obj = next_obj {
-		next_obj = obj.Next_content
-		if GET_OBJ_VNUM(obj) == 1305 {
-			ash = obj
-		}
-	}
-	for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; obj != nil; obj = next_obj {
-		next_obj = obj.Next_content
-		if GET_OBJ_VNUM(obj) == 1306 {
-			there = TRUE
-		}
-	}
-	if there == TRUE {
+	var ash *obj_data = find_obj_in_list_vnum(ch.Carrying, 1305)
+	var there *obj_data = find_obj_in_list_vnum(world[ch.In_room].Contents, 1306)
+	if there != nil {
 		send_to_char(ch, libc.CString("You can not pile more ash into the air without causing it to clump together and settle.\r\n"))
 		return
 	}
@@ -2363,20 +2304,10 @@ func do_ashcloud(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if ch.Mana < cost {
 		send_to_char(ch, libc.CString("You do not have enough ki!\r\n"))
 		return
-	} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Geffect < 0 || (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) == SECT_UNDERWATER {
+	} else if SUNKEN(ch.In_room) {
 		send_to_char(ch, libc.CString("You can not create an ashcloud here, because it is too wet.\r\n"))
 		return
-	} else if (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) == SECT_SPACE {
+	} else if SECT(ch.In_room) == SECT_SPACE {
 		send_to_char(ch, libc.CString("You can not create an ashcloud in space.\r\n"))
 		return
 	} else if int(ch.Aff_abils.Intel) < axion_dice(-10) {
@@ -2527,7 +2458,7 @@ func do_healglow(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if vict == ch {
 			act(libc.CString("@CPlacing your hands on your body you begin to focus your energies. Slowly a strong blue glow glistens and shines across your skin!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@c$n@C places $s hands on $s body. Slowly a strong blue glow glistens and shines across $s skin!@n"), TRUE, ch, nil, nil, TO_ROOM)
-			vict.Affected_by[int(AFF_HEALGLOW/32)] |= 1 << (int(AFF_HEALGLOW % 32))
+			SET_BIT_AR(vict.Affected_by[:], AFF_HEALGLOW)
 			var duration int = int(float64(GET_SKILL(ch, SKILL_HEALGLOW)) * 0.1)
 			if duration <= 0 {
 				duration = 1
@@ -2653,7 +2584,7 @@ func do_shimmer(ch *char_data, argument *byte, cmd int, subcmd int) {
 	one_argument(argument, &arg[0])
 	if !IS_NPC(ch) {
 		if PRF_FLAGGED(ch, PRF_ARENAWATCH) {
-			ch.Player_specials.Pref[int(PRF_ARENAWATCH/32)] &= bitvector_t(int32(^(1 << (int(PRF_ARENAWATCH % 32)))))
+			REMOVE_BIT_AR(ch.Player_specials.Pref[:], PRF_ARENAWATCH)
 			ch.Arenawatch = -1
 			send_to_char(ch, libc.CString("You stop watching the arena action.\r\n"))
 		}
@@ -2667,17 +2598,7 @@ func do_shimmer(ch *char_data, argument *byte, cmd int, subcmd int) {
 	} else if PLR_FLAGGED(ch, PLR_HEALT) {
 		send_to_char(ch, libc.CString("You are inside a healing tank!\r\n"))
 		return
-	} else if (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) >= 19800 && (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) <= 0x4DBB {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) >= 19800 && int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) <= 0x4DBB {
 		send_to_char(ch, libc.CString("@rYou are in a pocket dimension!@n\r\n"))
 		return
 	} else if arg[0] == 0 {
@@ -2762,7 +2683,7 @@ func do_shimmer(ch *char_data, argument *byte, cmd int, subcmd int) {
 		act(libc.CString("@wYour body begins to fade away almost appearing ghost like, before a ripple passes through your image and your are gone in an instant!@n"), TRUE, ch, nil, unsafe.Pointer(tar), TO_CHAR)
 		act(libc.CString("@w$n@w appears in an instant out of nowhere right next to you!@n"), TRUE, ch, nil, unsafe.Pointer(tar), TO_VICT)
 		act(libc.CString("@w$n@w body begins to fade away almost appearing ghost like, before a ripple passes through $s image and $e is gone in an instant!@n"), TRUE, ch, nil, unsafe.Pointer(tar), TO_NOTVICT)
-		ch.Act[int(PLR_TRANSMISSION/32)] |= bitvector_t(int32(1 << (int(PLR_TRANSMISSION % 32))))
+		SET_BIT_AR(ch.Act[:], PLR_TRANSMISSION)
 		handle_teleport(ch, tar, 0)
 	} else {
 		ch.Mana -= cost
@@ -2770,6 +2691,9 @@ func do_shimmer(ch *char_data, argument *byte, cmd int, subcmd int) {
 		act(libc.CString("@w$n@w body begins to fade away almost appearing ghost like, before a ripple passes through $s image and $e is gone in an instant!@n"), TRUE, ch, nil, unsafe.Pointer(tar), TO_NOTVICT)
 		handle_teleport(ch, nil, location)
 	}
+}
+func is_cold_ruby(obj *obj_data) bool {
+	return GET_OBJ_VNUM(obj) == 6600 && !OBJ_FLAGGED(obj, ITEM_HOT)
 }
 func do_channel(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if int(ch.Chclass) != CLASS_DABURA || int(ch.Skills[SKILL_STYLE]) <= 0 {
@@ -2783,24 +2707,12 @@ func do_channel(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You do not have enough ki to channel with!\r\n"))
 		return
 	}
-	var obj *obj_data
-	var next_obj *obj_data = nil
-	var ruby *obj_data = nil
-	var found int = FALSE
-	for obj = ch.Carrying; obj != nil; obj = next_obj {
-		next_obj = obj.Next_content
-		if found == FALSE && GET_OBJ_VNUM(obj) == 6600 {
-			if !OBJ_FLAGGED(obj, ITEM_HOT) {
-				found = TRUE
-				ruby = obj
-			}
-		}
-	}
-	if found == FALSE {
+	var ruby *obj_data = find_obj_in_list_lambda(ch.Carrying, is_cold_ruby)
+	if ruby == nil {
 		send_to_char(ch, libc.CString("You do not have any uncharged blood rubies.\r\n"))
 		return
 	}
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Geffect <= 0 {
+	if world[ch.In_room].Geffect <= 0 {
 		send_to_char(ch, libc.CString("There is no lava here!\r\n"))
 		return
 	}
@@ -2812,8 +2724,8 @@ func do_channel(ch *char_data, argument *byte, cmd int, subcmd int) {
 		} else {
 			act(libc.CString("@RAs you move your ki through the lava you begin to draw heat away from it into the ruby. You do so at an even rate and end up with a glowing red hot blood ruby!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@RAs $n@R moves $s ki through the lava $e begins to draw heat away from it into a blood ruby. The ruby glows red hot as $e finishes the process of channeling the heat!@n"), TRUE, ch, nil, nil, TO_ROOM)
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Geffect = 0
-			ruby.Extra_flags[int(ITEM_HOT/32)] |= bitvector_t(int32(1 << (int(ITEM_HOT % 32))))
+			world[ch.In_room].Geffect = 0
+			SET_BIT_AR(ruby.Extra_flags[:], ITEM_HOT)
 		}
 		ch.Mana -= cost
 		WAIT_STATE(ch, (int(1000000/OPT_USEC))*1)
@@ -2828,23 +2740,8 @@ func do_hydromancy(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var chance int = axion_dice(0)
 	var cost int64 = 0
 	cost = (ch.Max_mana / 12) - int64(int(ch.Aff_abils.Intel)*GET_LEVEL(ch))
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Geffect >= 0 && (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) != SECT_WATER_SWIM && (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) != SECT_WATER_NOSWIM {
-		if (func() int {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) != SECT_UNDERWATER {
+	if world[ch.In_room].Geffect >= 0 && SECT(ch.In_room) != SECT_WATER_SWIM && SECT(ch.In_room) != SECT_WATER_NOSWIM {
+		if SECT(ch.In_room) != SECT_UNDERWATER {
 			send_to_char(ch, libc.CString("There is not sufficient water here.\r\n"))
 			return
 		} else {
@@ -2934,7 +2831,7 @@ func do_hydromancy(ch *char_data, argument *byte, cmd int, subcmd int) {
 				stdio.Sprintf(&bunn[0], "@B$n@B uses $s ki to create a rush of water flooding away toward the @C%s@B!@n", dirs[attempt])
 				act(&bun[0], TRUE, ch, nil, nil, TO_CHAR)
 				act(&bunn[0], TRUE, ch, nil, nil, TO_ROOM)
-				for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; vict != nil; vict = next_v {
+				for vict = world[ch.In_room].People; vict != nil; vict = next_v {
 					next_v = vict.Next_in_room
 					if vict == ch {
 						continue
@@ -2958,7 +2855,7 @@ func do_hydromancy(ch *char_data, argument *byte, cmd int, subcmd int) {
 						hurt(0, 0, ch, vict, nil, cost*4, 1)
 					}
 				}
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[attempt]).To_room)))).Geffect = -3
+				world[(world[ch.In_room].Dir_option[attempt]).To_room].Geffect = -3
 				ch.Lastattack = last
 				WAIT_STATE(ch, (int(1000000/OPT_USEC))*2)
 				ch.Con_cooldown = 15
@@ -3042,7 +2939,7 @@ func do_kanso(ch *char_data, argument *byte, cmd int, subcmd int) {
 		WAIT_STATE(ch, (int(1000000/OPT_USEC))*2)
 		if !AFF_FLAGGED(vict, AFF_HYDROZAP) {
 			send_to_char(vict, libc.CString("@RYou feel less agile and your muscles ache!@n\r\n"))
-			vict.Affected_by[int(AFF_HYDROZAP/32)] |= 1 << (int(AFF_HYDROZAP % 32))
+			SET_BIT_AR(vict.Affected_by[:], AFF_HYDROZAP)
 			vict.Real_abils.Dex -= 4
 			vict.Real_abils.Con -= 4
 			save_char(vict)
@@ -3172,11 +3069,11 @@ func do_instill(ch *char_data, argument *byte, cmd int, subcmd int) {
 		raise = token.Affected[0].Modifier
 		extract_obj(token)
 		if OBJ_FLAGGED(obj, ITEM_SLOT1) {
-			obj.Extra_flags[int(ITEM_SLOTS_FILLED/32)] |= bitvector_t(int32(1 << (int(ITEM_SLOTS_FILLED % 32))))
+			SET_BIT_AR(obj.Extra_flags[:], ITEM_SLOTS_FILLED)
 		} else if OBJ_FLAGGED(obj, ITEM_SLOT2) && !OBJ_FLAGGED(obj, ITEM_SLOT_ONE) {
-			obj.Extra_flags[int(ITEM_SLOT_ONE/32)] |= bitvector_t(int32(1 << (int(ITEM_SLOT_ONE % 32))))
+			SET_BIT_AR(obj.Extra_flags[:], ITEM_SLOT_ONE)
 		} else if OBJ_FLAGGED(obj, ITEM_SLOT2) && OBJ_FLAGGED(obj, ITEM_SLOT_ONE) {
-			obj.Extra_flags[int(ITEM_SLOTS_FILLED/32)] |= bitvector_t(int32(1 << (int(ITEM_SLOTS_FILLED % 32))))
+			SET_BIT_AR(obj.Extra_flags[:], ITEM_SLOTS_FILLED)
 		}
 		if obj.Affected[0].Location == stat {
 			obj.Affected[0].Modifier += raise
@@ -3281,45 +3178,14 @@ func do_bury(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Syntax: dig [bury (item) | uncover]\r\n"))
 		return
 	}
-	if (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) != SECT_FIELD && (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) != SECT_HILLS && (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) != SECT_FOREST && (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) != SECT_DESERT && (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) != SECT_MOUNTAIN {
+	if SECT(ch.In_room) != SECT_FIELD && SECT(ch.In_room) != SECT_HILLS && SECT(ch.In_room) != SECT_FOREST && SECT(ch.In_room) != SECT_DESERT && SECT(ch.In_room) != SECT_MOUNTAIN {
 		send_to_char(ch, libc.CString("You are not in a room with enough available dirt or sand to dig.\r\n"))
 		return
 	}
 	var obj *obj_data = nil
 	var buried *obj_data = nil
-	var fobj *obj_data = nil
-	var next_obj *obj_data
-	for buried = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; buried != nil; buried = next_obj {
-		next_obj = buried.Next_content
-		if OBJ_FLAGGED(buried, ITEM_BURIED) {
-			fobj = buried
-		}
-	}
+	_ = buried
+	var fobj *obj_data = find_obj_in_list_flag(world[ch.In_room].Contents, ITEM_BURIED)
 	if libc.StrCaseCmp(&arg[0], libc.CString("bury")) == 0 {
 		if arg2[0] == 0 {
 			send_to_char(ch, libc.CString("Bury what?\r\n"))
@@ -3334,12 +3200,7 @@ func do_bury(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("There is already something buried near here.\r\n"))
 			return
 		} else {
-			if (func() int {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-				}
-				return SECT_INSIDE
-			}()) != SECT_DESERT {
+			if SECT(ch.In_room) != SECT_DESERT {
 				act(libc.CString("@yYou start digging in a spot of soft dirt. Once you have an appropriately sized hole you drop @G$p@y in and then cover it.@n"), TRUE, ch, obj, nil, TO_CHAR)
 				act(libc.CString("@C$n@y starts digging in a spot of soft dirt. Once $e has an appropriately sized hole $e drops @G$p@y in and then covers it.@n"), TRUE, ch, obj, nil, TO_ROOM)
 			} else {
@@ -3348,26 +3209,21 @@ func do_bury(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 			obj_from_char(obj)
 			obj_to_room(obj, ch.In_room)
-			obj.Extra_flags[int(ITEM_BURIED/32)] |= bitvector_t(int32(1 << (int(ITEM_BURIED % 32))))
+			SET_BIT_AR(obj.Extra_flags[:], ITEM_BURIED)
 		}
 	} else if libc.StrCaseCmp(&arg[0], libc.CString("uncover")) == 0 {
 		if fobj == nil {
 			send_to_char(ch, libc.CString("There is nothing buried here.\r\n"))
 			return
 		} else {
-			if (func() int {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-				}
-				return SECT_INSIDE
-			}()) != SECT_DESERT {
+			if SECT(ch.In_room) != SECT_DESERT {
 				act(libc.CString("@yYou slowly dig and reveal @G$p@y buried in the dirt! You pull it out and set it on the ground before covering the hole back up.@n"), TRUE, ch, fobj, nil, TO_CHAR)
 				act(libc.CString("@C$n@y starts digging and shortly reveals @G$p@y buried in the dirt! Quickly $e pulls it out and sets it on the ground before covering the hole back up.@n"), TRUE, ch, fobj, nil, TO_ROOM)
 			} else {
 				act(libc.CString("@YYou slowly dig and reveal @G$p@Y buried in the sand! You pull it out and set it on the ground before covering the hole back up.@n"), TRUE, ch, fobj, nil, TO_CHAR)
 				act(libc.CString("@C$n@Y starts digging and shortly reveals @G$p@Y buried in the sand! Quickly $e pulls it out and sets it on the ground before covering the hole back up.@n"), TRUE, ch, fobj, nil, TO_ROOM)
 			}
-			fobj.Extra_flags[int(ITEM_BURIED/32)] &= bitvector_t(int32(^(1 << (int(ITEM_BURIED % 32)))))
+			REMOVE_BIT_AR(fobj.Extra_flags[:], ITEM_BURIED)
 		}
 	} else {
 		send_to_char(ch, libc.CString("Syntax: dig [bury (item) | uncover]\r\n"))
@@ -3386,15 +3242,10 @@ func do_arena(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	} else if libc.StrCaseCmp(&arg[0], libc.CString("stop")) == 0 {
 		send_to_char(ch, libc.CString("You stop viewing what's going on in the arena.\r\n"))
-		ch.Player_specials.Pref[int(PRF_ARENAWATCH/32)] &= bitvector_t(int32(^(1 << (int(PRF_ARENAWATCH % 32)))))
+		REMOVE_BIT_AR(ch.Player_specials.Pref[:], PRF_ARENAWATCH)
 		ch.Arenawatch = -1
 		return
-	} else if (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) != 0x45D3 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) != 0x45D3 {
 		send_to_char(ch, libc.CString("You are not close enough to the arena floor to see it.\r\n"))
 		return
 	} else if libc.StrCaseCmp(&arg[0], libc.CString("look")) == 0 {
@@ -3405,12 +3256,7 @@ func do_arena(ch *char_data, argument *byte, cmd int, subcmd int) {
 			look_at_room(real_room(room_vnum(arena_watch(ch))), ch, 0)
 		}
 	} else if libc.StrCaseCmp(&arg[0], libc.CString("scan")) == 0 {
-		if (func() room_vnum {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-			}
-			return -1
-		}()) == 0x45D3 {
+		if int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) == 0x45D3 {
 			var (
 				found int = FALSE
 				d     *descriptor_data
@@ -3457,7 +3303,7 @@ func do_arena(ch *char_data, argument *byte, cmd int, subcmd int) {
 			if found == TRUE {
 				act(libc.CString("@wYou start watching the action surrounding that particular fighter in the arena.@n"), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("@C$n@w starts watching the action in the arena.@n"), TRUE, ch, nil, nil, TO_ROOM)
-				ch.Player_specials.Pref[int(PRF_ARENAWATCH/32)] |= bitvector_t(int32(1 << (int(PRF_ARENAWATCH % 32))))
+				SET_BIT_AR(ch.Player_specials.Pref[:], PRF_ARENAWATCH)
 				ch.Arenawatch = num
 			} else {
 				send_to_char(ch, libc.CString("A fighter with such a number was not found in the arena.\r\n"))
@@ -3466,22 +3312,15 @@ func do_arena(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 	}
 }
+func is_good_silk(obj *obj_data) bool {
+	return valid_silk(obj) != 0 && !OBJ_FLAGGED(obj, ITEM_FORGED)
+}
 func do_ensnare(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if know_skill(ch, SKILL_ENSNARE) == 0 {
 		return
 	}
-	var weave *obj_data
-	var obj *obj_data = nil
-	var next_obj *obj_data
-	var found int = FALSE
-	for weave = ch.Carrying; weave != nil; weave = next_obj {
-		next_obj = weave.Next_content
-		if found == FALSE && valid_silk(weave) != 0 && !OBJ_FLAGGED(weave, ITEM_FORGED) {
-			found = TRUE
-			obj = weave
-		}
-	}
-	if found == FALSE {
+	var weave *obj_data = find_obj_in_list_lambda(ch.Carrying, is_good_silk)
+	if weave == nil {
 		send_to_char(ch, libc.CString("You do not have a bundle of silk to ensnare an opponent with!\r\n"))
 		return
 	} else {
@@ -3512,63 +3351,45 @@ func do_ensnare(ch *char_data, argument *byte, cmd int, subcmd int) {
 			act(libc.CString("@WYou unwind your bundle of silk and grab a loose end of it. Splitting that end to reveal the sticky innards of the strand you swing the strand at @c$N@W! Unfortunately you miss and lose the bundle...@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 			act(libc.CString("@C$n@W unwinds a bundle of silk and grabs a loose end of it. Splitting that end to reveal the sticky innards of the strand $e swings the strand at YOU! Fortunately $e misses and loses the bundle...@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 			act(libc.CString("@C$n@W unwinds a bundle of silk and grabs a loose end of it. Splitting that end to reveal the sticky innards of the strand $e swings the strand at @c$N@W! Fortunately $e misses and loses the bundle...@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-			extract_obj(obj)
-			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
-			improve_skill(ch, SKILL_ENSNARE, 0)
 		} else if AFF_FLAGGED(vict, AFF_ZANZOKEN) && !AFF_FLAGGED(ch, AFF_ZANZOKEN) {
 			act(libc.CString("@WYou unwind your bundle of silk and grab a loose end of it. Splitting that end to reveal the sticky innards of the strand you swing the strand at @c$N@W! Unfortunately @c$N@W zanzokens away avoiding it and you lose the bundle...@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 			act(libc.CString("@C$n@W unwinds a bundle of silk and grabs a loose end of it. Splitting that end to reveal the sticky innards of the strand $e swings the strand at YOU! Fortunately you zanzoken away avoiding it and @C$n@W loses the bundle...@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 			act(libc.CString("@C$n@W unwinds a bundle of silk and grabs a loose end of it. Splitting that end to reveal the sticky innards of the strand $e swings the strand at @c$N@W! Fortunately @c$N@W zanzokens away avoiding it and @C$n@W loses the bundle...@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-			extract_obj(obj)
-			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
-			improve_skill(ch, SKILL_ENSNARE, 0)
-			vict.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
+			REMOVE_BIT_AR(vict.Affected_by[:], AFF_ZANZOKEN)
 		} else if AFF_FLAGGED(vict, AFF_ZANZOKEN) && AFF_FLAGGED(ch, AFF_ZANZOKEN) {
 			if GET_SPEEDI(ch)+rand_number(1, 100) < GET_SPEEDI(vict)+rand_number(1, 100) {
 				act(libc.CString("@WYou unwind your bundle of silk and grab a loose end of it. Splitting that end to reveal the sticky innards of the strand you swing the strand at @c$N@W! You both zanzoken! Unfortunately @c$N@W manages to avoid it and you lose the bundle...@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n@W unwinds a bundle of silk and grabs a loose end of it. Splitting that end to reveal the sticky innards of the strand $e swings the strand at YOU! You both zanzoken! Fortunately you manage to avoid it and @C$n@W loses the bundle...@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@C$n@W unwinds a bundle of silk and grabs a loose end of it. Splitting that end to reveal the sticky innards of the strand $e swings the strand at @c$N@W! They both zanzoken! Fortunately @c$N@W manages to avoid it and @C$n@W loses the bundle...@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				extract_obj(obj)
-				WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
-				improve_skill(ch, SKILL_ENSNARE, 0)
-				vict.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
-				ch.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
+				REMOVE_BIT_AR(vict.Affected_by[:], AFF_ZANZOKEN)
+				REMOVE_BIT_AR(ch.Affected_by[:], AFF_ZANZOKEN)
 			} else {
 				act(libc.CString("@WYou unwind your bundle of silk and grab a loose end of it. Splitting that end to reveal the sticky innards of the strand you swing the strand at @c$N@W! Fortunately you manage to hit $M! You both zanzoken! Quickly you spin around $M and ensnare $S arms with the silk!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@C$n@W unwinds a bundle of silk and grabs a loose end of it. Splitting that end to reveal the sticky innards of the strand $e swings the strand at YOU! Unfortunately $e manages to hit YOU! You both zanzoken! Quickly $e spins around you and ensnares your arms with the silk!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@C$n@W unwinds a bundle of silk and grabs a loose end of it. Splitting that end to reveal the sticky innards of the strand $e swings the strand at @c$N@W! Unfortunately $e manages to hit $M! They both zanzoken! Quickly $e spins around @c$N@W and ensnares $S arms with the silk!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				extract_obj(obj)
-				vict.Affected_by[int(AFF_ENSNARED/32)] |= 1 << (int(AFF_ENSNARED % 32))
-				WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
-				improve_skill(ch, SKILL_ENSNARE, 0)
-				vict.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
-				ch.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
+				SET_BIT_AR(vict.Affected_by[:], AFF_ENSNARED)
+				REMOVE_BIT_AR(vict.Affected_by[:], AFF_ZANZOKEN)
+				REMOVE_BIT_AR(ch.Affected_by[:], AFF_ZANZOKEN)
 			}
 		} else if AFF_FLAGGED(ch, AFF_ZANZOKEN) && !AFF_FLAGGED(vict, AFF_ZANZOKEN) {
 			act(libc.CString("@WYou unwind your bundle of silk and grab a loose end of it. Splitting that end to reveal the sticky innards of the strand you swing the strand at @c$N@W! Fortunately you manage to hit $M! Quickly you zanzoken and spin around $M and ensnare $S arms with the silk!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 			act(libc.CString("@C$n@W unwinds a bundle of silk and grabs a loose end of it. Splitting that end to reveal the sticky innards of the strand $e swings the strand at YOU! Unfortunately $e manages to hit YOU! Quickly $e zanzokens and spins around you and ensnares your arms with the silk!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 			act(libc.CString("@C$n@W unwinds a bundle of silk and grabs a loose end of it. Splitting that end to reveal the sticky innards of the strand $e swings the strand at @c$N@W! Unfortunately $e manages to hit $M! Quickly $e zanzokens and spins around @c$N@W and ensnares $S arms with the silk!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-			extract_obj(obj)
-			vict.Affected_by[int(AFF_ENSNARED/32)] |= 1 << (int(AFF_ENSNARED % 32))
-			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
 			improve_skill(ch, SKILL_ENSNARE, 0)
-			ch.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
+			REMOVE_BIT_AR(ch.Affected_by[:], AFF_ZANZOKEN)
 		} else if GET_SPEEDI(ch)+rand_number(1, 100) < GET_SPEEDI(vict)+rand_number(1, 100) {
 			act(libc.CString("@WYou unwind your bundle of silk and grab a loose end of it. Splitting that end to reveal the sticky innards of the strand you swing the strand at @c$N@W! Unfortunately @c$N@W manages to avoid it and you lose the bundle...@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 			act(libc.CString("@C$n@W unwinds a bundle of silk and grabs a loose end of it. Splitting that end to reveal the sticky innards of the strand $e swings the strand at YOU! Fortunately you manage to avoid it and @C$n@W loses the bundle...@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 			act(libc.CString("@C$n@W unwinds a bundle of silk and grabs a loose end of it. Splitting that end to reveal the sticky innards of the strand $e swings the strand at @c$N@W! Fortunately @c$N@W manages to avoid it and @C$n@W loses the bundle...@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-			extract_obj(obj)
-			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
-			improve_skill(ch, SKILL_ENSNARE, 0)
 		} else {
 			act(libc.CString("@WYou unwind your bundle of silk and grab a loose end of it. Splitting that end to reveal the sticky innards of the strand you swing the strand at @c$N@W! Fortunately you manage to hit $M! Quickly you spin around $M and ensnare $S arms with the silk!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 			act(libc.CString("@C$n@W unwinds a bundle of silk and grabs a loose end of it. Splitting that end to reveal the sticky innards of the strand $e swings the strand at YOU! Unfortunately $e manages to hit YOU! Quickly $e spins around you and ensnares your arms with the silk!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 			act(libc.CString("@C$n@W unwinds a bundle of silk and grabs a loose end of it. Splitting that end to reveal the sticky innards of the strand $e swings the strand at @c$N@W! Unfortunately $e manages to hit $M! Quickly $e spins around @c$N@W and ensnares $S arms with the silk!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-			extract_obj(obj)
-			vict.Affected_by[int(AFF_ENSNARED/32)] |= 1 << (int(AFF_ENSNARED % 32))
-			WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
-			improve_skill(ch, SKILL_ENSNARE, 0)
+			SET_BIT_AR(vict.Affected_by[:], AFF_ENSNARED)
 		}
+		extract_obj(weave)
+		WAIT_STATE(ch, (int(1000000/OPT_USEC))*3)
+		improve_skill(ch, SKILL_ENSNARE, 0)
 	}
 }
 func valid_silk(obj *obj_data) int {
@@ -3595,7 +3416,9 @@ func do_silk(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	var obj *obj_data = nil
 	var weave *obj_data = nil
+	_ = weave
 	var next_obj *obj_data = nil
+	_ = next_obj
 	var weaved *obj_data = nil
 	var arg [2048]byte
 	var arg2 [2048]byte
@@ -3611,20 +3434,15 @@ func do_silk(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("Syntax: silk weave (head | wrist | belt)\r\n"))
 			return
 		}
+		obj = find_obj_in_list_lambda(ch.Carrying, is_good_silk)
 		var found int = FALSE
+		_ = found
 		var armor int = 500
 		var str int = 0
 		var intel int = 0
 		var olevel int = 0
 		var price float64 = 1
-		for weave = ch.Carrying; weave != nil; weave = next_obj {
-			next_obj = weave.Next_content
-			if found == FALSE && valid_silk(weave) != 0 && !OBJ_FLAGGED(weave, ITEM_FORGED) {
-				found = TRUE
-				obj = weave
-			}
-		}
-		if found == FALSE {
+		if obj == nil {
 			send_to_char(ch, libc.CString("You do not have an acceptable bundle of silk in your inventory!\r\n"))
 			return
 		} else {
@@ -4187,8 +4005,9 @@ func valid_recipe(ch *char_data, recipe int, type_ int) int {
 		carambola int = -1
 		obj2      *obj_data
 		next_obj  *obj_data
-		pass      int = FALSE
 	)
+	_ = next_obj
+	var pass int = FALSE
 	switch recipe {
 	case RECIPE_TOMATO_SOUP:
 		tomato = 2
@@ -4248,8 +4067,7 @@ func valid_recipe(ch *char_data, recipe int, type_ int) int {
 		carambola = 1
 	}
 	if type_ == 0 {
-		for obj2 = ch.Carrying; obj2 != nil; obj2 = next_obj {
-			next_obj = obj2.Next_content
+		for obj2 = ch.Carrying; obj2 != nil; obj2 = obj2.Next_content {
 			switch GET_OBJ_VNUM(obj2) {
 			case RCP_TOMATO:
 				if tomato > 0 {
@@ -4358,8 +4176,7 @@ func valid_recipe(ch *char_data, recipe int, type_ int) int {
 			}
 		}
 	} else {
-		for obj2 = ch.Carrying; obj2 != nil; obj2 = next_obj {
-			next_obj = obj2.Next_content
+		for obj2 = ch.Carrying; obj2 != nil; obj2 = obj2.Next_content {
 			switch GET_OBJ_VNUM(obj2) {
 			case RCP_TOMATO:
 				if tomato > 0 {
@@ -4964,12 +4781,7 @@ func do_fireshield(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You are covered in a barrier!\r\n"))
 		return
 	}
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Geffect < 0 || (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) == SECT_UNDERWATER {
+	if SUNKEN(ch.In_room) {
 		send_to_char(ch, libc.CString("There is way too much water here!\r\n"))
 		return
 	}
@@ -4991,7 +4803,7 @@ func do_fireshield(ch *char_data, argument *byte, cmd int, subcmd int) {
 		act(libc.CString("@c$n@W holds $s hands up in front of $m on either side and tries to summon defensive @rf@Rl@Ya@rm@Re@ys@W to cover $s body. The ki $e has gathered pours out of $s body and creates intense black @rf@Rl@Ya@rm@Re@Ys@W that cover $s entire body in a protective layer!"), TRUE, ch, nil, nil, TO_ROOM)
 		improve_skill(ch, SKILL_FIRESHIELD, 0)
 		ch.Mana -= cost
-		ch.Affected_by[int(AFF_FIRESHIELD/32)] |= 1 << (int(AFF_FIRESHIELD % 32))
+		SET_BIT_AR(ch.Affected_by[:], AFF_FIRESHIELD)
 		return
 	}
 }
@@ -5028,72 +4840,17 @@ func do_warppool(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You do not have enough ki to perform the technique.\r\n"))
 		return
 	}
-	if (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) >= 4600 && (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) < 4700 {
+	if int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) >= 4600 && int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) < 4700 {
 		pass = TRUE
-	} else if (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) >= 795 && (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) < 1099 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) >= 795 && int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) < 1099 {
 		pass = TRUE
-	} else if (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) >= 15100 && (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) < 0x3BC3 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) >= 15100 && int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) < 0x3BC3 {
 		pass = TRUE
-	} else if (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) >= 0x3363 && (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) < 0x338F {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) >= 0x3363 && int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) < 0x338F {
 		pass = TRUE
-	} else if ROOM_FLAGGED(ch.In_room, ROOM_NAMEK) && (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) == SECT_WATER_NOSWIM {
+	} else if ROOM_FLAGGED(ch.In_room, ROOM_NAMEK) && SECT(ch.In_room) == SECT_WATER_NOSWIM {
 		pass = TRUE
-	} else if (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) >= 0x2F47 && (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) < 0x3001 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) >= 0x2F47 && int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) < 0x3001 {
 		pass = TRUE
 	}
 	if pass == FALSE {
@@ -5206,21 +4963,11 @@ func do_obstruct(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You can not use this in such a peaceful area.\r\n"))
 		return
 	}
-	if (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) == SECT_SPACE || ROOM_FLAGGED(ch.In_room, ROOM_SPACE) {
+	if SECT(ch.In_room) == SECT_SPACE || ROOM_FLAGGED(ch.In_room, ROOM_SPACE) {
 		send_to_char(ch, libc.CString("You can not wall off the vastness of space.\r\n"))
 		return
 	}
-	if (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) == SECT_FLYING {
+	if SECT(ch.In_room) == SECT_FLYING {
 		send_to_char(ch, libc.CString("You can not create gravity defying glacial walls.\r\n"))
 		return
 	}
@@ -5279,7 +5026,7 @@ func do_obstruct(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("That is not an acceptable direction.\n[ N | E | S | W | NE | NW | SE | SW | U | D | I | O ]\r\n"))
 		return
 	}
-	if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]) == nil {
+	if (world[ch.In_room].Dir_option[dir]) == nil {
 		send_to_char(ch, libc.CString("That direction does not exist here.\r\n"))
 		return
 	} else if skill < prob {
@@ -5291,13 +5038,13 @@ func do_obstruct(ch *char_data, argument *byte, cmd int, subcmd int) {
 	} else {
 		var (
 			obj     *obj_data
-			newroom int = int((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir].To_room)
+			newroom int = int(world[ch.In_room].Dir_option[dir].To_room)
 		)
 		if ROOM_FLAGGED(room_rnum(newroom), ROOM_PEACEFUL) {
 			send_to_char(ch, libc.CString("You can not block off a peaceful area.\r\n"))
 			return
 		}
-		for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(newroom)))).Contents; obj != nil; obj = obj.Next_content {
+		for obj = world[newroom].Contents; obj != nil; obj = obj.Next_content {
 			if GET_OBJ_VNUM(obj) == 79 {
 				if obj.Cost == dir2 {
 					if skill < prob {
@@ -5355,26 +5102,16 @@ func do_dimizu(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	var skill int = GET_SKILL(ch, SKILL_DIMIZU)
 	var prob int = axion_dice(0)
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Geffect < 0 {
+	if world[ch.In_room].Geffect < 0 {
 		act(libc.CString("@CYou concentrate and distabilie the water, separating the hydrogen and oxygen. The gases dissipate quickly."), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("@c$n@C concentrates and the water filling the area seems to shudder. Suddenly the water begins to evaporate as the hydrogen and oxygen are separated."), TRUE, ch, nil, nil, TO_ROOM)
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Geffect = 0
+		world[ch.In_room].Geffect = 0
 		WAIT_STATE(ch, (int(1000000/OPT_USEC))*1)
 		return
-	} else if (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) == SECT_UNDERWATER {
+	} else if SECT(ch.In_room) == SECT_UNDERWATER {
 		send_to_char(ch, libc.CString("The area is already underwater!\r\n"))
 		return
-	} else if (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) == SECT_SPACE || ROOM_FLAGGED(ch.In_room, ROOM_SPACE) {
+	} else if SECT(ch.In_room) == SECT_SPACE || ROOM_FLAGGED(ch.In_room, ROOM_SPACE) {
 		send_to_char(ch, libc.CString("You can't flood space!\r\n"))
 		return
 	} else if ch.Mana < ch.Max_mana/12 {
@@ -5390,7 +5127,7 @@ func do_dimizu(ch *char_data, argument *byte, cmd int, subcmd int) {
 		act(libc.CString("@CYou gather your ki and concentrate on creating water from it. Water begins to flow upward around the entire area. You form the water into a perfect cube with barely any ripples in its walls. It will maintain this form for a while.@n"), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("@c$n@C gathers $s ki and concentrates on creating water from it. Water begins to flow upward around the entire area. @c$n@C forms the water into a perfect cube with barely any ripples in its walls. It appears the water will maintain this form for a while.@n"), TRUE, ch, nil, nil, TO_ROOM)
 		ch.Mana -= ch.Max_mana / 12
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Geffect = -3
+		world[ch.In_room].Geffect = -3
 		improve_skill(ch, SKILL_DIMIZU, 0)
 		return
 	}
@@ -5402,26 +5139,12 @@ func do_beacon(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if AFF_FLAGGED(ch, AFF_SPIRIT) {
 		send_to_char(ch, libc.CString("You are dead. You can not stake out a room to return to upon revival.\r\n"))
 		return
-	} else if (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) >= 0 && (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) <= 14 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) >= 0 && int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) <= 14 {
 		send_to_char(ch, libc.CString("You can not stake out an immortal room to be revived in.\r\n"))
 		return
 	} else {
 		send_to_char(ch, libc.CString("You stake out the room you are in and will return to it if you die and are revived.\r\n"))
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			ch.Droom = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		} else {
-			ch.Droom = -1
-		}
+		ch.Droom = room_vnum(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room)))
 		return
 	}
 }
@@ -5498,7 +5221,7 @@ func do_spoil(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if (func() *obj_data {
-		obj = get_obj_in_list_vis(ch, &arg[0], nil, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents)
+		obj = get_obj_in_list_vis(ch, &arg[0], nil, world[ch.In_room].Contents)
 		return obj
 	}()) == nil {
 		send_to_char(ch, libc.CString("No corpse around here by that name.\r\n"))
@@ -5564,8 +5287,8 @@ func do_spoil(ch *char_data, argument *byte, cmd int, subcmd int) {
 	body_part.Description = libc.StrDup(&buf2[0])
 	body_part.Short_description = libc.StrDup(&buf3[0])
 	body_part.Type_flag = ITEM_OTHER
-	body_part.Wear_flags[int(ITEM_WEAR_TAKE/32)] |= 1 << (int(ITEM_WEAR_TAKE % 32))
-	body_part.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(int32(1 << (int(ITEM_UNIQUE_SAVE % 32))))
+	SET_BIT_AR(body_part.Wear_flags[:], ITEM_WEAR_TAKE)
+	SET_BIT_AR(body_part.Extra_flags[:], ITEM_UNIQUE_SAVE)
 	body_part.Value[0] = 0
 	body_part.Value[1] = 0
 	body_part.Value[2] = 0

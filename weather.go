@@ -45,7 +45,7 @@ func another_hour(mode int) {
 	if mode != 0 {
 		switch time_info.Hours {
 		case 4:
-			if MOON_DATE != nil {
+			if MOON_DATE() {
 				send_to_moon(libc.CString("The full moon disappears.\r\n"))
 				MOON_UP = FALSE
 				oozaru_drop(nil)
@@ -74,7 +74,7 @@ func another_hour(mode int) {
 			weather_info.Sunlight = SUN_DARK
 			send_to_outdoor(libc.CString("The night has begun.\r\n"))
 		case 21:
-			if MOON_DATE != nil {
+			if MOON_DATE() {
 				send_to_moon(libc.CString("The full moon has risen.\r\n"))
 				MOON_UP = TRUE
 				oozaru_add(nil)
@@ -112,11 +112,11 @@ func weather_change() {
 		diff = 2
 	}
 	weather_info.Change += dice(1, 4)*diff + dice(2, 6) - dice(2, 6)
-	weather_info.Change = MIN(weather_info.Change, 12)
-	weather_info.Change = MAX(weather_info.Change, -12)
+	weather_info.Change = int(MIN(int64(weather_info.Change), 12))
+	weather_info.Change = int(MAX(int64(weather_info.Change), -12))
 	weather_info.Pressure += weather_info.Change
-	weather_info.Pressure = MIN(weather_info.Pressure, 1040)
-	weather_info.Pressure = MAX(weather_info.Pressure, 960)
+	weather_info.Pressure = int(MIN(int64(weather_info.Pressure), 1040))
+	weather_info.Pressure = int(MAX(int64(weather_info.Pressure), 960))
 	change = 0
 	switch weather_info.Sky {
 	case SKY_CLOUDLESS:
@@ -203,7 +203,7 @@ func oozaru_add(tch *char_data) {
 				if d.Character.Kaioken > 0 {
 					do_kaioken(d.Character, libc.CString("0"), 0, 0)
 				}
-				d.Character.Act[int(PLR_OOZARU/32)] |= bitvector_t(int32(1 << (int(PLR_OOZARU % 32))))
+				SET_BIT_AR(d.Character.Act[:], PLR_OOZARU)
 				var add int = 10000
 				var mult int = 2
 				d.Character.Max_hit = (d.Character.Basepl + int64(add)) * int64(mult)
@@ -231,7 +231,7 @@ func oozaru_add(tch *char_data) {
 		if MOON_OK(tch) && !PLR_FLAGGED(tch, PLR_OOZARU) {
 			act(libc.CString("@rLooking up at the moon your heart begins to beat loudly. Sudden rage begins to fill your mind while your body begins to grow. Hair sprouts  all over your body and your teeth become sharp as your body takes on the Oozaru form!@n"), TRUE, tch, nil, nil, TO_CHAR)
 			act(libc.CString("@R$n@r looks up at the moon as $s eyes turn red and $s heart starts to beat loudly. Hair starts to grow all over $s body as $e starts screaming. The scream turns into a roar as $s body begins to grow into a giant ape!@n"), TRUE, tch, nil, nil, TO_ROOM)
-			tch.Act[int(PLR_OOZARU/32)] |= bitvector_t(int32(1 << (int(PLR_OOZARU % 32))))
+			SET_BIT_AR(tch.Act[:], PLR_OOZARU)
 			var add int = 10000
 			var mult int = 2
 			tch.Max_hit = (tch.Basepl + int64(add)) * int64(mult)
@@ -265,7 +265,7 @@ func oozaru_drop(tch *char_data) {
 			if PLR_FLAGGED(d.Character, PLR_OOZARU) {
 				act(libc.CString("@CYour body begins to shrink back to its normal form as the power of the Oozaru leaves you. You fall asleep shortly after returning to normal!@n"), TRUE, d.Character, nil, nil, TO_CHAR)
 				act(libc.CString("@c$n@C's body begins to shrink and return to normal. Their giant ape features fading back into humanoid features until $e is left normal and asleep.@n"), TRUE, d.Character, nil, nil, TO_ROOM)
-				d.Character.Act[int(PLR_OOZARU/32)] &= bitvector_t(int32(^(1 << (int(PLR_OOZARU % 32)))))
+				REMOVE_BIT_AR(d.Character.Act[:], PLR_OOZARU)
 				d.Character.Position = POS_SLEEPING
 				d.Character.Hit = (d.Character.Hit / 2) - 10000
 				d.Character.Mana = (d.Character.Mana / 2) - 10000
@@ -288,7 +288,7 @@ func oozaru_drop(tch *char_data) {
 		if PLR_FLAGGED(tch, PLR_OOZARU) {
 			act(libc.CString("@CYour body begins to shrink back to its normal form as the power of the Oozaru leaves you. You fall asleep shortly after returning to normal!@n"), TRUE, tch, nil, nil, TO_CHAR)
 			act(libc.CString("@c$n@C's body begins to shrink and return to normal. Their giant ape features fading back into humanoid features until $e is left normal and asleep.@n"), TRUE, tch, nil, nil, TO_ROOM)
-			tch.Act[int(PLR_OOZARU/32)] &= bitvector_t(int32(^(1 << (int(PLR_OOZARU % 32)))))
+			REMOVE_BIT_AR(tch.Act[:], PLR_OOZARU)
 			tch.Position = POS_SLEEPING
 			tch.Hit = (tch.Hit / 2) - 10000
 			tch.Mana = (tch.Mana / 2) - 10000

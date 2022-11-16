@@ -1,10 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gotranspile/cxgo/runtime/cnet"
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
-	"math"
 	"os"
 	"unicode"
 	"unsafe"
@@ -65,7 +65,7 @@ func copyover_recover() {
 	PCOUNTDAY = libc.GetTime(nil) + 60
 	fp = stdio.FOpen(COPYOVER_FILE, "r")
 	if fp == nil {
-		perror(libc.CString("copyover_recover:fopen"))
+		fmt.Println(libc.CString("copyover_recover:fopen"))
 		basic_mud_log(libc.CString("Copyover file not found. Exitting.\n\r"))
 		os.Exit(1)
 	}
@@ -97,9 +97,9 @@ func copyover_recover() {
 		}()) >= 0 {
 			d.Character.Pfilepos = player_i
 			if !PLR_FLAGGED(d.Character, PLR_DELETED) {
-				d.Character.Act[int(PLR_WRITING/32)] &= bitvector_t(int32(^(1 << (int(PLR_WRITING % 32)))))
-				d.Character.Act[int(PLR_MAILING/32)] &= bitvector_t(int32(^(1 << (int(PLR_MAILING % 32)))))
-				d.Character.Act[int(PLR_CRYO/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRYO % 32)))))
+				REMOVE_BIT_AR(d.Character.Act[:], PLR_WRITING)
+				REMOVE_BIT_AR(d.Character.Act[:], PLR_MAILING)
+				REMOVE_BIT_AR(d.Character.Act[:], PLR_CRYO)
 				userLoad(d, &username[0])
 			}
 		} else {
@@ -172,6 +172,7 @@ func init_game(cmport uint16) {
 	basic_mud_log(libc.CString("Normal termination of game."))
 }
 func init_socket(cmport uint16) int {
+	return 0
 }
 func get_max_players() int {
 	return 1000
@@ -1363,71 +1364,7 @@ func proc_colors(txt *byte, maxlen uint64, parse int, choices **byte) uint64 {
 	return uint64(int64(uintptr(unsafe.Pointer(dest_char))-uintptr(unsafe.Pointer(save_pos)))) + wanted
 }
 func vwrite_to_output(t *descriptor_data, format *byte, args libc.ArgList) uint64 {
-	var (
-		txt      [64936]byte
-		wantsize uint64
-		size     int
-	)
-	if t.Bufspace == 0 {
-		return 0
-	}
-	wantsize = uint64(func() int {
-		size = stdio.Vsnprintf(&txt[0], int(64936), libc.GoString(format), args)
-		return size
-	}())
-	if t.Character != nil {
-		wantsize = uint64(func() int {
-			size = int(proc_colors(&txt[0], uint64(64936), int(libc.BoolToInt((func() int {
-				if !IS_NPC(t.Character) {
-					if PRF_FLAGGED(t.Character, PRF_COLOR) {
-						return 1
-					}
-					return 0
-				}
-				return 0
-			}()) > 0)), &(func() [16]*byte {
-				if IS_NPC(t.Character) {
-					return ([16]*byte)(0)
-				}
-				if t.Character.Player_specials != nil {
-					return t.Character.Player_specials.Color_choices
-				}
-				return ([16]*byte)(0)
-			}())[0]))
-			return size
-		}())
-	}
-	if size < 0 || wantsize >= uint64(64936) {
-		size = int(64936 - 1)
-		libc.StrCpy((*byte)(unsafe.Add(unsafe.Pointer(&txt[size]), -libc.StrLen(text_overflow))), text_overflow)
-	}
-	if size+t.Bufptr+1 > (int((96*1024)-GARBAGE_SPACE) - MAX_PROMPT_LENGTH) {
-		size = (int((96*1024)-GARBAGE_SPACE) - MAX_PROMPT_LENGTH) - t.Bufptr - 1
-		txt[size] = '\x00'
-		t.Character.Overf = TRUE
-		buf_overflows++
-	}
-	if t.Bufspace > size {
-		libc.StrCpy((*byte)(unsafe.Add(unsafe.Pointer(t.Output), t.Bufptr)), &txt[0])
-		t.Bufspace -= size
-		t.Bufptr += size
-		return uint64(t.Bufspace)
-	}
-	buf_switches++
-	if bufpool != nil {
-		t.Large_outbuf = bufpool
-		bufpool = bufpool.Next
-	} else {
-		t.Large_outbuf = new(txt_block)
-		t.Large_outbuf.Text = (*byte)(unsafe.Pointer(&make([]int8, int((96*1024)-GARBAGE_SPACE)-MAX_PROMPT_LENGTH)[0]))
-		buf_largecount++
-	}
-	libc.StrCpy(t.Large_outbuf.Text, t.Output)
-	t.Output = t.Large_outbuf.Text
-	libc.StrCat(t.Output, &txt[0])
-	t.Bufptr = libc.StrLen(t.Output)
-	t.Bufspace = (int((96*1024)-GARBAGE_SPACE) - MAX_PROMPT_LENGTH) - 1 - t.Bufptr
-	return uint64(t.Bufspace)
+	return 0
 }
 func free_bufpool() {
 	var tmp *txt_block
@@ -1441,8 +1378,10 @@ func free_bufpool() {
 	}
 }
 func get_bind_addr() *cnet.Address {
+	return nil
 }
 func set_sendbuf(s int) int {
+	return 0
 }
 func init_descriptor(newd *descriptor_data, desc int) {
 	var last_desc int = 0
@@ -1472,7 +1411,7 @@ func set_color(d *descriptor_data) {
 		d.Character.Player_specials = new(player_special_data)
 		d.Character.Desc = d
 	}
-	d.Character.Player_specials.Pref[int(PRF_COLOR/32)] |= bitvector_t(int32(1 << (int(PRF_COLOR % 32))))
+	SET_BIT_AR(d.Character.Player_specials.Pref[:], PRF_COLOR)
 	write_to_output(d, GREETANSI)
 	write_to_output(d, libc.CString("\r\n@w                  Welcome to Dragonball Advent Truth\r\n"))
 	write_to_output(d, libc.CString("@D                 ---(@CPeak Logon Count Today@W: @w%4d@D)---@n\r\n"), PCOUNT)
@@ -1490,106 +1429,14 @@ func set_color(d *descriptor_data) {
 	return
 }
 func new_descriptor(s int) int {
+	return 0
 }
+
 func process_output(t *descriptor_data) int {
-	var (
-		i      [98304]byte
-		osb    *byte = &i[2]
-		result int
-	)
-	libc.StrCpy(&i[0], libc.CString("\r\n"))
-	libc.StrCpy(osb, t.Output)
-	if t.Bufspace == 0 {
-		libc.StrCat(osb, libc.CString("**OVERFLOW**\r\n"))
-	}
-	if t.Connected == CON_PLAYING && t.Character != nil && !IS_NPC(t.Character) && !PRF_FLAGGED(t.Character, PRF_COMPACT) {
-		libc.StrCat(osb, libc.CString("\r\n"))
-	}
-	libc.StrCat(&i[0], make_prompt(t))
-	if t.Connected == CON_PLAYING {
-		proc_colors(&i[0], uint64(98304), int(libc.BoolToInt((func() int {
-			if !IS_NPC(t.Character) {
-				if PRF_FLAGGED(t.Character, PRF_COLOR) {
-					return 1
-				}
-				return 0
-			}
-			return 0
-		}()) > 0)), &(func() [16]*byte {
-			if IS_NPC(t.Character) {
-				return ([16]*byte)(0)
-			}
-			if t.Character.Player_specials != nil {
-				return t.Character.Player_specials.Color_choices
-			}
-			return ([16]*byte)(0)
-		}())[0])
-	}
-	if t.Has_prompt != 0 {
-		t.Has_prompt = FALSE
-		result = write_to_descriptor(t.Descriptor, &i[0])
-		if result >= 2 {
-			result -= 2
-		}
-	} else {
-		result = write_to_descriptor(t.Descriptor, osb)
-	}
-	if result < 0 {
-		close_socket(t)
-		return -1
-	} else if result == 0 {
-		return 0
-	}
-	if t.Snoop_by != nil {
-		write_to_output(t.Snoop_by, libc.CString("\nvvvvvvvvvvvvv[Snoop]vvvvvvvvvvvvv\n%s\n^^^^^^^^^^^^^[Snoop]^^^^^^^^^^^^^\n"), t.Output)
-	}
-	if result >= t.Bufptr {
-		if t.Large_outbuf != nil {
-			t.Large_outbuf.Next = bufpool
-			bufpool = t.Large_outbuf
-			t.Large_outbuf = nil
-			t.Output = &t.Small_outbuf[0]
-		}
-		t.Bufspace = int(SMALL_BUFSIZE - 1)
-		t.Bufptr = 0
-		*t.Output = '\x00'
-		if uint(result) < uint(libc.StrLen(osb)) {
-			var savetextlen uint64 = uint64(libc.StrLen((*byte)(unsafe.Add(unsafe.Pointer(osb), result))))
-			libc.StrCat(t.Output, (*byte)(unsafe.Add(unsafe.Pointer(osb), result)))
-			t.Bufptr -= int(savetextlen)
-			t.Bufspace += int(savetextlen)
-		}
-	} else {
-		libc.StrCpy(t.Output, (*byte)(unsafe.Add(unsafe.Pointer(t.Output), result)))
-		t.Bufptr -= result
-		t.Bufspace += result
-	}
-	return result
+	return 0
 }
 func perform_socket_write(desc int, txt *byte, length uint64) int64 {
-	var (
-		result       int64 = 0
-		compr_result int
-	)
-	_ = compr_result
-	var tmp int
-	_ = tmp
-	var cnt int
-	_ = cnt
-	var bytes_copied int
-	_ = bytes_copied
-	result = int64(stdio.ByFD(uintptr(desc)).Write(txt, int(length)))
-	if result > 0 {
-		return result
-	}
-	if result == 0 {
-		basic_mud_log(libc.CString("SYSERR: Huh??  write() returned 0???  Please report this!"))
-		return -1
-	}
-	if libc.Errno == EAGAIN {
-		return 0
-	}
-	return -1
+	return 10
 }
 func write_to_descriptor(desc int, txt *byte) int {
 	var (
@@ -1600,7 +1447,7 @@ func write_to_descriptor(desc int, txt *byte) int {
 	for total > 0 {
 		bytes_written = perform_socket_write(desc, txt, total)
 		if bytes_written < 0 {
-			perror(libc.CString("SYSERR: Write to socket"))
+			fmt.Println(libc.CString("SYSERR: Write to socket"))
 			return -1
 		} else if bytes_written == 0 {
 			return int(write_total)
@@ -1613,206 +1460,10 @@ func write_to_descriptor(desc int, txt *byte) int {
 	return int(write_total)
 }
 func perform_socket_read(desc int, read_point *byte, space_left uint64) int64 {
-	var ret int64
-	ret = int64(stdio.ByFD(uintptr(desc)).Read(read_point, int(space_left)))
-	if ret > 0 {
-		return ret
-	}
-	if ret == 0 {
-		basic_mud_log(libc.CString("WARNING: EOF on socket read (connection broken by peer)"))
-		return -1
-	}
-	if libc.Errno == EINTR {
-		return 0
-	}
-	if libc.Errno == EAGAIN {
-		return 0
-	}
-	if libc.Errno == ECONNRESET {
-		return -1
-	}
-	perror(libc.CString("SYSERR: perform_socket_read: about to lose connection"))
-	return -1
+	return 1
 }
 func process_input(t *descriptor_data) int {
-	var (
-		buf_length   int
-		failed_subst int
-		bytes_read   int64
-		space_left   uint64
-		ptr          *byte
-		read_point   *byte
-		write_point  *byte
-		nl_pos       *byte = nil
-		tmp          [2048]byte
-	)
-	buf_length = libc.StrLen(&t.Inbuf[0])
-	read_point = &t.Inbuf[buf_length]
-	space_left = uint64(MAX_RAW_INPUT_LENGTH - buf_length - 1)
-	for {
-		if space_left <= 0 {
-			basic_mud_log(libc.CString("WARNING: process_input: about to close connection: input overflow"))
-			return -1
-		}
-		bytes_read = perform_socket_read(t.Descriptor, read_point, space_left)
-		if bytes_read < 0 {
-			return -1
-		} else if bytes_read == 0 {
-			return 0
-		}
-		*((*byte)(unsafe.Add(unsafe.Pointer(read_point), bytes_read))) = '\x00'
-		for ptr = read_point; *ptr != 0 && nl_pos == nil; ptr = (*byte)(unsafe.Add(unsafe.Pointer(ptr), 1)) {
-			if ISNEWL(int8(*ptr)) {
-				nl_pos = ptr
-			}
-		}
-		read_point = (*byte)(unsafe.Add(unsafe.Pointer(read_point), bytes_read))
-		space_left -= uint64(bytes_read)
-		if nl_pos != nil {
-			break
-		}
-	}
-	read_point = &t.Inbuf[0]
-	for nl_pos != nil {
-		write_point = &tmp[0]
-		space_left = uint64(int(MAX_INPUT_LENGTH - 1))
-		for ptr = read_point; space_left > 1 && uintptr(unsafe.Pointer(ptr)) < uintptr(unsafe.Pointer(nl_pos)); ptr = (*byte)(unsafe.Add(unsafe.Pointer(ptr), 1)) {
-			if *ptr == '\b' || *ptr == math.MaxInt8 {
-				if uintptr(unsafe.Pointer(write_point)) > uintptr(unsafe.Pointer(&tmp[0])) {
-					if *(func() *byte {
-						p := &write_point
-						*p = (*byte)(unsafe.Add(unsafe.Pointer(*p), -1))
-						return *p
-					}()) == '$' {
-						write_point = (*byte)(unsafe.Add(unsafe.Pointer(write_point), -1))
-						space_left += 2
-					} else {
-						space_left++
-					}
-				}
-			} else if isascii(rune(*ptr)) && unicode.IsPrint(rune(*ptr)) {
-				if (func() byte {
-					p := (func() *byte {
-						p := &write_point
-						x := *p
-						*p = (*byte)(unsafe.Add(unsafe.Pointer(*p), 1))
-						return x
-					}())
-					*(func() *byte {
-						p := &write_point
-						x := *p
-						*p = (*byte)(unsafe.Add(unsafe.Pointer(*p), 1))
-						return x
-					}()) = *ptr
-					return *p
-				}()) == '$' {
-					*(func() *byte {
-						p := &write_point
-						x := *p
-						*p = (*byte)(unsafe.Add(unsafe.Pointer(*p), 1))
-						return x
-					}()) = '$'
-					space_left -= 2
-				} else {
-					space_left--
-				}
-			}
-		}
-		*write_point = '\x00'
-		if space_left <= 0 && uintptr(unsafe.Pointer(ptr)) < uintptr(unsafe.Pointer(nl_pos)) {
-			var buffer [2112]byte
-			stdio.Snprintf(&buffer[0], int(2112), "Line too long.  Truncated to:\r\n%s\r\n", &tmp[0])
-			if write_to_descriptor(t.Descriptor, &buffer[0]) < 0 {
-				return -1
-			}
-		}
-		if t.Snoop_by != nil {
-			write_to_output(t.Snoop_by, libc.CString("%% %s\r\n"), &tmp[0])
-		}
-		failed_subst = 0
-		if tmp[0] == '!' && (tmp[1]) == 0 {
-			libc.StrCpy(&tmp[0], &t.Last_input[0])
-		} else if tmp[0] == '!' && tmp[1] != 0 {
-			var (
-				commandln    *byte = (&tmp[1])
-				starting_pos int   = t.History_pos
-				cnt          int   = (func() int {
-					if t.History_pos == 0 {
-						return int(HISTORY_SIZE - 1)
-					}
-					return t.History_pos - 1
-				}())
-			)
-			skip_spaces(&commandln)
-			for ; cnt != starting_pos; cnt-- {
-				if *(**byte)(unsafe.Add(unsafe.Pointer(t.History), unsafe.Sizeof((*byte)(nil))*uintptr(cnt))) != nil && is_abbrev(commandln, *(**byte)(unsafe.Add(unsafe.Pointer(t.History), unsafe.Sizeof((*byte)(nil))*uintptr(cnt)))) != 0 {
-					libc.StrCpy(&tmp[0], *(**byte)(unsafe.Add(unsafe.Pointer(t.History), unsafe.Sizeof((*byte)(nil))*uintptr(cnt))))
-					libc.StrCpy(&t.Last_input[0], &tmp[0])
-					write_to_output(t, libc.CString("%s\r\n"), &tmp[0])
-					break
-				}
-				if cnt == 0 {
-					cnt = HISTORY_SIZE
-				}
-			}
-		} else if tmp[0] == '^' {
-			if (func() int {
-				failed_subst = perform_subst(t, &t.Last_input[0], &tmp[0])
-				return failed_subst
-			}()) == 0 {
-				libc.StrCpy(&t.Last_input[0], &tmp[0])
-			}
-		} else {
-			libc.StrCpy(&t.Last_input[0], &tmp[0])
-			if *(**byte)(unsafe.Add(unsafe.Pointer(t.History), unsafe.Sizeof((*byte)(nil))*uintptr(t.History_pos))) != nil {
-				libc.Free(unsafe.Pointer(*(**byte)(unsafe.Add(unsafe.Pointer(t.History), unsafe.Sizeof((*byte)(nil))*uintptr(t.History_pos)))))
-			}
-			*(**byte)(unsafe.Add(unsafe.Pointer(t.History), unsafe.Sizeof((*byte)(nil))*uintptr(t.History_pos))) = libc.StrDup(&tmp[0])
-			if func() int {
-				p := &t.History_pos
-				*p++
-				return *p
-			}() >= HISTORY_SIZE {
-				t.History_pos = 0
-			}
-		}
-		if masadv(&tmp[0], t.Character) != 0 {
-		}
-		if tmp[0] == '-' && tmp[1] == '-' && (tmp[2]) == 0 {
-			write_to_output(t, libc.CString("All queued commands cancelled.\r\n"))
-			flush_queues(t)
-		}
-		if failed_subst == 0 {
-			write_to_q(&tmp[0], &t.Input, 0)
-		}
-		for ISNEWL(int8(*nl_pos)) {
-			nl_pos = (*byte)(unsafe.Add(unsafe.Pointer(nl_pos), 1))
-		}
-		read_point = func() *byte {
-			ptr = nl_pos
-			return ptr
-		}()
-		for nl_pos = nil; *ptr != 0 && nl_pos == nil; ptr = (*byte)(unsafe.Add(unsafe.Pointer(ptr), 1)) {
-			if ISNEWL(int8(*ptr)) {
-				nl_pos = ptr
-			}
-		}
-	}
-	write_point = &t.Inbuf[0]
-	for *read_point != 0 {
-		*(func() *byte {
-			p := &write_point
-			x := *p
-			*p = (*byte)(unsafe.Add(unsafe.Pointer(*p), 1))
-			return x
-		}()) = *(func() *byte {
-			p := &read_point
-			x := *p
-			*p = (*byte)(unsafe.Add(unsafe.Pointer(*p), 1))
-			return x
-		}())
-	}
-	*write_point = '\x00'
+
 	return 1
 }
 func perform_subst(t *descriptor_data, orig *byte, subst *byte) int {
@@ -1934,7 +1585,7 @@ func close_socket(d *descriptor_data) {
 			}
 			act(libc.CString("$n has lost $s link."), TRUE, link_challenged, nil, nil, TO_ROOM)
 			save_char(link_challenged)
-			mudlog(NRM, MAX(ADMLVL_IMMORT, int(link_challenged.Player_specials.Invis_level)), TRUE, libc.CString("Closing link to: %s."), GET_NAME(link_challenged))
+			mudlog(NRM, int(MAX(ADMLVL_IMMORT, int64(link_challenged.Player_specials.Invis_level))), TRUE, libc.CString("Closing link to: %s."), GET_NAME(link_challenged))
 		} else {
 			free_char(d.Character)
 		}
@@ -2081,16 +1732,12 @@ func arena_watch(ch *char_data) int {
 		if IN_ARENA(d.Character) {
 			if ch.Arenawatch == int(d.Character.Idnum) {
 				found = TRUE
-				if d.Character.In_room != room_rnum(-1) && d.Character.In_room <= top_of_world {
-					room = int((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(d.Character.In_room)))).Number)
-				} else {
-					room = -1
-				}
+				room = int(libc.BoolToInt(GET_ROOM_VNUM(d.Character.In_room)))
 			}
 		}
 	}
 	if found == FALSE {
-		ch.Player_specials.Pref[int(PRF_ARENAWATCH/32)] &= bitvector_t(int32(^(1 << (int(PRF_ARENAWATCH % 32)))))
+		REMOVE_BIT_AR(ch.Player_specials.Pref[:], PRF_ARENAWATCH)
 		ch.Arenawatch = -1
 		return -1
 	} else {
@@ -2104,12 +1751,7 @@ func send_to_eaves(messg *byte, tch *char_data, _rest ...interface{}) {
 			continue
 		}
 		var roll int = rand_number(1, 101)
-		if d.Character.Listenroom == (func() room_vnum {
-			if tch.In_room != room_rnum(-1) && tch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(tch.In_room)))).Number
-			}
-			return -1
-		}()) && GET_SKILL(d.Character, SKILL_EAVESDROP) > roll {
+		if d.Character.Listenroom == room_vnum(libc.BoolToInt(GET_ROOM_VNUM(tch.In_room))) && GET_SKILL(d.Character, SKILL_EAVESDROP) > roll {
 			var (
 				buf  [1000]byte
 				buf2 [1000]byte
@@ -2207,7 +1849,7 @@ func send_to_room(room room_rnum, messg *byte, _rest ...interface{}) {
 	if messg == nil {
 		return
 	}
-	for i = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).People; i != nil; i = i.Next_in_room {
+	for i = world[room].People; i != nil; i = i.Next_in_room {
 		if i.Desc == nil {
 			continue
 		}
@@ -2493,7 +2135,7 @@ func act(str *byte, hide_invisible int, ch *char_data, obj *obj_data, vict_obj u
 		resskill = SKILL_SPOT
 	}
 	if (func() int {
-		dg_act_check = int(libc.BoolToInt((type_ & (2 << 8)) == 0))
+		dg_act_check = int(libc.BoolToInt(!IS_SET(bitvector_t(int32(type_)), 2<<8)))
 		return dg_act_check
 	}()) == 0 {
 		type_ &= ^(2 << 8)
@@ -2532,9 +2174,9 @@ func act(str *byte, hide_invisible int, ch *char_data, obj *obj_data, vict_obj u
 		return last_act_message
 	}
 	if ch != nil && ch.In_room != room_rnum(-1) {
-		to = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People
+		to = world[ch.In_room].People
 	} else if obj != nil && obj.In_room != room_rnum(-1) {
-		to = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj.In_room)))).People
+		to = world[obj.In_room].People
 	} else {
 		return nil
 	}
@@ -2547,12 +2189,7 @@ func act(str *byte, hide_invisible int, ch *char_data, obj *obj_data, vict_obj u
 			if ch != nil {
 				if IN_ARENA(ch) {
 					if PRF_FLAGGED(d.Character, PRF_ARENAWATCH) {
-						if arena_watch(d.Character) == int(func() room_vnum {
-							if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-								return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-							}
-							return -1
-						}()) {
+						if arena_watch(d.Character) == int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) {
 							var buf3 [2000]byte
 							buf3[0] = '\x00'
 							stdio.Sprintf(&buf3[0], "@c-----@CArena@c-----@n\r\n%s\r\n@c-----@CArena@c-----@n\r\n", str)
@@ -2564,22 +2201,12 @@ func act(str *byte, hide_invisible int, ch *char_data, obj *obj_data, vict_obj u
 			if d.Character.Listenroom > 0 {
 				var roll int = rand_number(1, 101)
 				if resskill == 0 || roll_skill(d.Character, resskill) >= dcval {
-					if ch != nil && d.Character.Listenroom == (func() room_vnum {
-						if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-							return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-						}
-						return -1
-					}()) && GET_SKILL(d.Character, SKILL_EAVESDROP) > roll {
+					if ch != nil && d.Character.Listenroom == room_vnum(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) && GET_SKILL(d.Character, SKILL_EAVESDROP) > roll {
 						var buf3 [1000]byte
 						buf3[0] = '\x00'
 						stdio.Sprintf(&buf3[0], "-----Eavesdrop-----\r\n%s\r\n-----Eavesdrop-----\r\n", str)
 						perform_act(&buf3[0], ch, obj, vict_obj, d.Character)
-					} else if obj != nil && d.Character.Listenroom == (func() room_vnum {
-						if obj.In_room != room_rnum(-1) && obj.In_room <= top_of_world {
-							return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj.In_room)))).Number
-						}
-						return -1
-					}()) && GET_SKILL(d.Character, SKILL_EAVESDROP) > roll {
+					} else if obj != nil && d.Character.Listenroom == room_vnum(libc.BoolToInt(GET_ROOM_VNUM(obj.In_room))) && GET_SKILL(d.Character, SKILL_EAVESDROP) > roll {
 						var buf3 [1000]byte
 						buf3[0] = '\x00'
 						stdio.Sprintf(&buf3[0], "-----Eavesdrop-----\r\n%s\r\n-----Eavesdrop-----\r\n", str)
@@ -2606,12 +2233,13 @@ func act(str *byte, hide_invisible int, ch *char_data, obj *obj_data, vict_obj u
 	}
 	return last_act_message
 }
+
 func setup_log(filename *byte, fd int) {
 	var s_fp *stdio.File
 	s_fp = stdio.Stderr()
 	if filename == nil || *filename == '\x00' {
 		logfile = s_fp
-		puts(libc.CString("Using file descriptor for logging."))
+		fmt.Println(libc.CString("Using file descriptor for logging."))
 		return
 	}
 	if open_logfile(filename, s_fp) != 0 {
@@ -2623,15 +2251,12 @@ func setup_log(filename *byte, fd int) {
 	if open_logfile(libc.CString("syslog"), s_fp) != 0 {
 		return
 	}
-	puts(libc.CString("SYSERR: Couldn't open anything to log to, giving up."))
+	fmt.Println(libc.CString("SYSERR: Couldn't open anything to log to, giving up."))
 	os.Exit(1)
 }
+
 func open_logfile(filename *byte, stderr_fp *stdio.File) int {
-	if stderr_fp != nil {
-		logfile = freopen(filename, libc.CString("w"), stderr_fp)
-	} else {
-		logfile = stdio.FOpen(libc.GoString(filename), "w")
-	}
+	logfile = stdio.FOpen(libc.GoString(filename), "w")
 	if logfile != nil {
 		stdio.Printf("Using log file '%s'%s.\n", filename, func() string {
 			if stderr_fp != nil {
@@ -2666,17 +2291,17 @@ func show_help(t *descriptor_data, entry *byte) {
 		if bot > top {
 			return
 		} else if (func() int {
-			chk = libc.StrNCaseCmp(entry, (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid)))).Keywords, minlen)
+			chk = libc.StrNCaseCmp(entry, help_table[mid].Keywords, minlen)
 			return chk
 		}()) == 0 {
 			for mid > 0 && (func() int {
-				chk = libc.StrNCaseCmp(entry, (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid-1)))).Keywords, minlen)
+				chk = libc.StrNCaseCmp(entry, help_table[mid-1].Keywords, minlen)
 				return chk
 			}()) == 0 {
 				mid--
 			}
 			write_to_output(t, libc.CString("\r\n"))
-			stdio.Snprintf(&buf[0], int(64936), "%s\r\n[ PRESS RETURN TO CONTINUE ]", (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(mid)))).Entry)
+			stdio.Snprintf(&buf[0], int(64936), "%s\r\n[ PRESS RETURN TO CONTINUE ]", help_table[mid].Entry)
 			page_string(t, &buf[0], 0)
 			return
 		} else {
@@ -2702,18 +2327,8 @@ func send_to_range(start room_vnum, finish room_vnum, messg *byte, _rest ...inte
 		return
 	}
 	for j = 0; j < int(top_of_world); j++ {
-		if (func() room_vnum {
-			if j != int(-1) && j <= int(top_of_world) {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(j)))).Number
-			}
-			return -1
-		}()) >= start && (func() room_vnum {
-			if j != int(-1) && j <= int(top_of_world) {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(j)))).Number
-			}
-			return -1
-		}()) <= finish {
-			for i = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(j)))).People; i != nil; i = i.Next_in_room {
+		if room_vnum(libc.BoolToInt(GET_ROOM_VNUM(room_rnum(j)))) >= start && room_vnum(libc.BoolToInt(GET_ROOM_VNUM(room_rnum(j)))) <= finish {
+			for i = world[j].People; i != nil; i = i.Next_in_room {
 				if i.Desc == nil {
 					continue
 				}

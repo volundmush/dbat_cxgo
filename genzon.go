@@ -18,14 +18,14 @@ func real_zone_by_thing(vznum room_vnum) zone_rnum {
 	var high int
 	bot = 0
 	top = top_of_zone_table
-	if genolc_zone_bottom(bot) > vznum || (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(top)))).Top < vznum {
+	if genolc_zone_bottom(bot) > vznum || zone_table[top].Top < vznum {
 		return -1
 	}
 	for bot <= top {
 		last_top = top
 		mid = (bot + top) / 2
 		low = int(genolc_zone_bottom(mid))
-		high = int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(mid)))).Top)
+		high = int(zone_table[mid].Top)
 		if low <= int(vznum) && vznum <= room_vnum(high) {
 			return mid
 		}
@@ -53,7 +53,7 @@ func create_new_zone(vzone_num zone_vnum, bottom room_vnum, top room_vnum, error
 		return -1
 	}
 	for i = 0; i < int(top_of_zone_table); i++ {
-		if (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Number == vzone_num {
+		if zone_table[i].Number == vzone_num {
 			*error = libc.CString("That virtual zone already exists.\r\n")
 			return -1
 		}
@@ -142,56 +142,45 @@ func create_new_zone(vzone_num zone_vnum, bottom room_vnum, top room_vnum, error
 	create_world_index(int(vzone_num), libc.CString("shp"))
 	create_world_index(int(vzone_num), libc.CString("trg"))
 	create_world_index(int(vzone_num), libc.CString("gld"))
-	zone_table = (*zone_data)(libc.Realloc(unsafe.Pointer(zone_table), int(top_of_zone_table*zone_rnum(unsafe.Sizeof(zone_data{}))+2)))
-	(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(top_of_zone_table+1)))).Number = 32000
-	if vzone_num > (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(top_of_zone_table)))).Number {
+	// todo : figure this out
+	//zone_table = []zone_data((*zone_data)(libc.Realloc(unsafe.Pointer(&zone_table[0]), int(top_of_zone_table*zone_rnum(unsafe.Sizeof(zone_data{}))+2))))
+	zone_table[top_of_zone_table+1].Number = 32000
+	if vzone_num > zone_table[top_of_zone_table].Number {
 		rznum = top_of_zone_table + 1
 	} else {
 		var (
 			j    int
 			room int
 		)
-		for i = int(top_of_zone_table + 1); i > 0 && vzone_num < (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i-1)))).Number; i-- {
-			*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i))) = *(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i-1)))
-			for j = int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Bot); j <= int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Top); j++ {
+		for i = int(top_of_zone_table + 1); i > 0 && vzone_num < zone_table[i-1].Number; i-- {
+			zone_table[i] = zone_table[i-1]
+			for j = int(zone_table[i].Bot); j <= int(zone_table[i].Top); j++ {
 				if (func() int {
 					room = int(real_room(room_vnum(j)))
 					return room
 				}()) != int(-1) {
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Zone++
+					world[room].Zone++
 				}
 			}
 		}
 		rznum = zone_rnum(i)
 	}
-	zone = (*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(rznum)))
+	zone = &zone_table[rznum]
 	zone.Name = libc.CString("New Zone")
 	zone.Number = vzone_num
 	zone.Builders = libc.CString("None")
 	zone.Bot = bottom
 	zone.Top = top
 	zone.Lifespan = 30
-	zone.Age = 0
-	zone.Reset_mode = 2
-	zone.Zone_flags[0] = 0
-	zone.Zone_flags[1] = 0
-	zone.Zone_flags[2] = 0
-	zone.Zone_flags[3] = 0
-	zone.Min_level = 0
 	zone.Max_level = ADMLVL_IMPL
-	zone.Cmd = new(reset_com)
-	(*(*reset_com)(unsafe.Add(unsafe.Pointer(zone.Cmd), unsafe.Sizeof(reset_com{})*0))).Command = 'S'
+	zone.Cmd = make([]reset_com, 1)
+	zone.Cmd[0].Command = 'S'
 	top_of_zone_table++
 	for i = int(top_of_world); i > 0; i-- {
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Zone < real_zone(zone_vnum(rznum)) {
+		if world[i].Zone < real_zone(zone_vnum(rznum)) {
 			break
 		} else {
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Zone = real_zone_by_thing(func() room_vnum {
-				if i != int(-1) && i <= int(top_of_world) {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Number
-				}
-				return -1
-			}())
+			world[i].Zone = real_zone_by_thing(room_vnum(libc.BoolToInt(GET_ROOM_VNUM(room_rnum(i)))))
 		}
 	}
 	add_to_save_list(zone.Number, SL_ZON)
@@ -274,8 +263,8 @@ func remove_room_zone_commands(zone zone_rnum, room_num room_rnum) {
 		subcmd   int = 0
 		cmd_room int = -2
 	)
-	for int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command) != 'S' {
-		switch (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command {
+	for int(zone_table[zone].Cmd[subcmd].Command) != 'S' {
+		switch zone_table[zone].Cmd[subcmd].Command {
 		case 'M':
 			fallthrough
 		case 'O':
@@ -283,15 +272,15 @@ func remove_room_zone_commands(zone zone_rnum, room_num room_rnum) {
 		case 'T':
 			fallthrough
 		case 'V':
-			cmd_room = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg3)
+			cmd_room = int(zone_table[zone].Cmd[subcmd].Arg3)
 		case 'D':
 			fallthrough
 		case 'R':
-			cmd_room = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)
+			cmd_room = int(zone_table[zone].Cmd[subcmd].Arg1)
 		default:
 		}
 		if cmd_room == int(room_num) {
-			remove_cmd_from_list(&(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd, subcmd)
+			remove_cmd_from_list((**reset_com)(unsafe.Pointer(&zone_table[zone].Cmd[0])), subcmd)
 		} else {
 			subcmd++
 		}
@@ -318,117 +307,117 @@ func save_zone(zone_num zone_rnum) int {
 		basic_mud_log(libc.CString("SYSERR: GenOLC: save_zone: Invalid real zone number %d. (0-%d)"), zone_num, top_of_zone_table)
 		return FALSE
 	}
-	stdio.Snprintf(&fname[0], int(128), "%s%d.new", LIB_WORLD, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number)
+	stdio.Snprintf(&fname[0], int(128), "%s%d.new", LIB_WORLD, zone_table[zone_num].Number)
 	if (func() *stdio.File {
 		zfile = stdio.FOpen(libc.GoString(&fname[0]), "w")
 		return zfile
 	}()) == nil {
-		mudlog(BRF, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: OLC: save_zones:  Can't write zone %d."), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number)
+		mudlog(BRF, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: OLC: save_zones:  Can't write zone %d."), zone_table[zone_num].Number)
 		return FALSE
 	}
-	sprintascii(&zbuf1[0], bitvector_t(int32((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Zone_flags[0])))
-	sprintascii(&zbuf2[0], bitvector_t(int32((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Zone_flags[1])))
-	sprintascii(&zbuf3[0], bitvector_t(int32((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Zone_flags[2])))
-	sprintascii(&zbuf4[0], bitvector_t(int32((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Zone_flags[3])))
+	sprintascii(&zbuf1[0], zone_table[zone_num].Zone_flags[0])
+	sprintascii(&zbuf2[0], zone_table[zone_num].Zone_flags[1])
+	sprintascii(&zbuf3[0], zone_table[zone_num].Zone_flags[2])
+	sprintascii(&zbuf4[0], zone_table[zone_num].Zone_flags[3])
 	stdio.Fprintf(zfile, "@Version: %d\n", CUR_ZONE_VERSION)
-	stdio.Fprintf(zfile, "#%d\n%s~\n%s~\n%d %d %d %d %s %s %s %s %d %d\n", (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number, func() *byte {
-		if (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Builders != nil && *(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Builders != 0 {
-			return (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Builders
+	stdio.Fprintf(zfile, "#%d\n%s~\n%s~\n%d %d %d %d %s %s %s %s %d %d\n", zone_table[zone_num].Number, func() *byte {
+		if zone_table[zone_num].Builders != nil && *zone_table[zone_num].Builders != 0 {
+			return zone_table[zone_num].Builders
 		}
 		return libc.CString("None.")
 	}(), func() *byte {
-		if (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Name != nil && *(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Name != 0 {
-			return (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Name
+		if zone_table[zone_num].Name != nil && *zone_table[zone_num].Name != 0 {
+			return zone_table[zone_num].Name
 		}
 		return libc.CString("undefined")
-	}(), genolc_zone_bottom(zone_num), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Top, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Lifespan, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Reset_mode, &zbuf1[0], &zbuf2[0], &zbuf3[0], &zbuf4[0], (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Min_level, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Max_level)
-	for subcmd = 0; int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command) != 'S'; subcmd++ {
-		switch (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command {
+	}(), genolc_zone_bottom(zone_num), zone_table[zone_num].Top, zone_table[zone_num].Lifespan, zone_table[zone_num].Reset_mode, &zbuf1[0], &zbuf2[0], &zbuf3[0], &zbuf4[0], zone_table[zone_num].Min_level, zone_table[zone_num].Max_level)
+	for subcmd = 0; int(zone_table[zone_num].Cmd[subcmd].Command) != 'S'; subcmd++ {
+		switch zone_table[zone_num].Cmd[subcmd].Command {
 		case 'M':
-			arg1 = int((*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Vnum)
-			arg2 = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2)
-			arg3 = int((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg3)))).Number)
-			arg4 = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg4)
-			arg5 = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg5)
-			comment = (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Short_descr
+			arg1 = int(mob_index[zone_table[zone_num].Cmd[subcmd].Arg1].Vnum)
+			arg2 = int(zone_table[zone_num].Cmd[subcmd].Arg2)
+			arg3 = int(world[zone_table[zone_num].Cmd[subcmd].Arg3].Number)
+			arg4 = int(zone_table[zone_num].Cmd[subcmd].Arg4)
+			arg5 = int(zone_table[zone_num].Cmd[subcmd].Arg5)
+			comment = mob_proto[zone_table[zone_num].Cmd[subcmd].Arg1].Short_descr
 		case 'O':
-			arg1 = int((*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Vnum)
-			arg2 = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2)
-			arg3 = int((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg3)))).Number)
-			arg4 = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg4)
-			arg5 = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg5)
-			comment = (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Short_description
+			arg1 = int(obj_index[zone_table[zone_num].Cmd[subcmd].Arg1].Vnum)
+			arg2 = int(zone_table[zone_num].Cmd[subcmd].Arg2)
+			arg3 = int(world[zone_table[zone_num].Cmd[subcmd].Arg3].Number)
+			arg4 = int(zone_table[zone_num].Cmd[subcmd].Arg4)
+			arg5 = int(zone_table[zone_num].Cmd[subcmd].Arg5)
+			comment = obj_proto[zone_table[zone_num].Cmd[subcmd].Arg1].Short_description
 		case 'G':
-			arg1 = int((*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Vnum)
-			arg2 = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2)
+			arg1 = int(obj_index[zone_table[zone_num].Cmd[subcmd].Arg1].Vnum)
+			arg2 = int(zone_table[zone_num].Cmd[subcmd].Arg2)
 			arg3 = -1
 			arg4 = -1
-			arg5 = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg5)
-			comment = (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Short_description
+			arg5 = int(zone_table[zone_num].Cmd[subcmd].Arg5)
+			comment = obj_proto[zone_table[zone_num].Cmd[subcmd].Arg1].Short_description
 		case 'E':
-			arg1 = int((*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Vnum)
-			arg2 = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2)
-			arg3 = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg3)
+			arg1 = int(obj_index[zone_table[zone_num].Cmd[subcmd].Arg1].Vnum)
+			arg2 = int(zone_table[zone_num].Cmd[subcmd].Arg2)
+			arg3 = int(zone_table[zone_num].Cmd[subcmd].Arg3)
 			arg4 = -1
-			arg5 = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg5)
-			comment = (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Short_description
+			arg5 = int(zone_table[zone_num].Cmd[subcmd].Arg5)
+			comment = obj_proto[zone_table[zone_num].Cmd[subcmd].Arg1].Short_description
 		case 'P':
-			arg1 = int((*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Vnum)
-			arg2 = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2)
-			arg3 = int((*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg3)))).Vnum)
+			arg1 = int(obj_index[zone_table[zone_num].Cmd[subcmd].Arg1].Vnum)
+			arg2 = int(zone_table[zone_num].Cmd[subcmd].Arg2)
+			arg3 = int(obj_index[zone_table[zone_num].Cmd[subcmd].Arg3].Vnum)
 			arg4 = -1
-			arg5 = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg5)
-			comment = (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Short_description
+			arg5 = int(zone_table[zone_num].Cmd[subcmd].Arg5)
+			comment = obj_proto[zone_table[zone_num].Cmd[subcmd].Arg1].Short_description
 		case 'D':
-			arg1 = int((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Number)
-			arg2 = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2)
-			arg3 = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg3)
-			comment = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Name
+			arg1 = int(world[zone_table[zone_num].Cmd[subcmd].Arg1].Number)
+			arg2 = int(zone_table[zone_num].Cmd[subcmd].Arg2)
+			arg3 = int(zone_table[zone_num].Cmd[subcmd].Arg3)
+			comment = world[zone_table[zone_num].Cmd[subcmd].Arg1].Name
 		case 'R':
-			arg1 = int((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Number)
-			arg2 = int((*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2)))).Vnum)
-			comment = (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2)))).Short_description
+			arg1 = int(world[zone_table[zone_num].Cmd[subcmd].Arg1].Number)
+			arg2 = int(obj_index[zone_table[zone_num].Cmd[subcmd].Arg2].Vnum)
+			comment = obj_proto[zone_table[zone_num].Cmd[subcmd].Arg2].Short_description
 			arg3 = -1
 		case 'T':
-			arg1 = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)
-			arg2 = int((*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2)))).Vnum)
-			arg3 = int((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg3)))).Number)
+			arg1 = int(zone_table[zone_num].Cmd[subcmd].Arg1)
+			arg2 = int(trig_index[zone_table[zone_num].Cmd[subcmd].Arg2].Vnum)
+			arg3 = int(world[zone_table[zone_num].Cmd[subcmd].Arg3].Number)
 			arg4 = -1
-			arg5 = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg5)
-			comment = (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(real_trigger(trig_vnum(arg2)))))).Proto.Name
+			arg5 = int(zone_table[zone_num].Cmd[subcmd].Arg5)
+			comment = trig_index[real_trigger(trig_vnum(arg2))].Proto.Name
 		case 'V':
-			arg1 = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)
-			arg2 = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2)
-			arg3 = int((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg3)))).Number)
+			arg1 = int(zone_table[zone_num].Cmd[subcmd].Arg1)
+			arg2 = int(zone_table[zone_num].Cmd[subcmd].Arg2)
+			arg3 = int(world[zone_table[zone_num].Cmd[subcmd].Arg3].Number)
 			arg4 = -1
-			arg5 = int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg5)
+			arg5 = int(zone_table[zone_num].Cmd[subcmd].Arg5)
 		case '*':
 			continue
 		default:
-			mudlog(BRF, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: OLC: z_save_to_disk(): Unknown cmd '%c' - NOT saving"), (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command)
+			mudlog(BRF, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: OLC: z_save_to_disk(): Unknown cmd '%c' - NOT saving"), zone_table[zone_num].Cmd[subcmd].Command)
 			continue
 		}
-		if int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command) != 'V' {
-			stdio.Fprintf(zfile, "%c %d %d %d %d %d %d \t(%s)\n", (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag, arg1, arg2, arg3, arg4, arg5, comment)
+		if int(zone_table[zone_num].Cmd[subcmd].Command) != 'V' {
+			stdio.Fprintf(zfile, "%c %d %d %d %d %d %d \t(%s)\n", zone_table[zone_num].Cmd[subcmd].Command, zone_table[zone_num].Cmd[subcmd].If_flag, arg1, arg2, arg3, arg4, arg5, comment)
 		} else {
-			stdio.Fprintf(zfile, "%c %d %d %d %d %d %d %s %s\n", (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag, arg1, arg2, arg3, arg4, arg5, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Sarg1, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Sarg2)
+			stdio.Fprintf(zfile, "%c %d %d %d %d %d %d %s %s\n", zone_table[zone_num].Cmd[subcmd].Command, zone_table[zone_num].Cmd[subcmd].If_flag, arg1, arg2, arg3, arg4, arg5, zone_table[zone_num].Cmd[subcmd].Sarg1, zone_table[zone_num].Cmd[subcmd].Sarg2)
 		}
 	}
 	zfile.PutS(libc.CString("S\n$\n"))
 	zfile.Close()
-	stdio.Snprintf(&oldname[0], int(128), "%s%d.zon", LIB_WORLD, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number)
+	stdio.Snprintf(&oldname[0], int(128), "%s%d.zon", LIB_WORLD, zone_table[zone_num].Number)
 	stdio.Remove(libc.GoString(&oldname[0]))
 	stdio.Rename(libc.GoString(&fname[0]), libc.GoString(&oldname[0]))
-	if in_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number, SL_ZON) != 0 {
-		remove_from_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number, SL_ZON)
-		create_world_index(int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number), libc.CString("zon"))
+	if in_save_list(zone_table[zone_num].Number, SL_ZON) != 0 {
+		remove_from_save_list(zone_table[zone_num].Number, SL_ZON)
+		create_world_index(int(zone_table[zone_num].Number), libc.CString("zon"))
 		basic_mud_log(libc.CString("GenOLC: save_zone: Saving zone '%s'"), &oldname[0])
 	}
 	return TRUE
 }
-func count_commands(list *reset_com) int {
+func count_commands(list []reset_com) int {
 	var count int = 0
-	for int((*(*reset_com)(unsafe.Add(unsafe.Pointer(list), unsafe.Sizeof(reset_com{})*uintptr(count)))).Command) != 'S' {
+	for int(list[count].Command) != 'S' {
 		count++
 	}
 	return count
@@ -440,7 +429,8 @@ func add_cmd_to_list(list **reset_com, newcmd *reset_com, pos int) {
 		l       int
 		newlist *reset_com
 	)
-	count = count_commands(*list)
+	// todo: figure thi sout
+	//count = count_commands([]reset_com(*list))
 	newlist = &make([]reset_com, count+2)[0]
 	for func() int {
 		i = 0
@@ -471,7 +461,8 @@ func remove_cmd_from_list(list **reset_com, pos int) {
 		l       int
 		newlist *reset_com
 	)
-	count = count_commands(*list)
+	// todo : figure this out
+	//count = count_commands([]reset_com(*list))
 	newlist = &make([]reset_com, count)[0]
 	for func() int {
 		i = 0
@@ -498,23 +489,23 @@ func new_command(zone *zone_data, pos int) int {
 		subcmd  int = 0
 		new_com reset_com
 	)
-	for int((*(*reset_com)(unsafe.Add(unsafe.Pointer(zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command) != 'S' {
+	for int(zone.Cmd[subcmd].Command) != 'S' {
 		subcmd++
 	}
 	if pos < 0 || pos > subcmd {
 		return 0
 	}
 	new_com.Command = 'N'
-	add_cmd_to_list(&zone.Cmd, &new_com, pos)
+	add_cmd_to_list((**reset_com)(unsafe.Pointer(&zone.Cmd[0])), &new_com, pos)
 	return 1
 }
 func delete_zone_command(zone *zone_data, pos int) {
 	var subcmd int = 0
-	for int((*(*reset_com)(unsafe.Add(unsafe.Pointer(zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command) != 'S' {
+	for int(zone.Cmd[subcmd].Command) != 'S' {
 		subcmd++
 	}
 	if pos < 0 || pos >= subcmd {
 		return
 	}
-	remove_cmd_from_list(&zone.Cmd, pos)
+	remove_cmd_from_list((**reset_com)(unsafe.Pointer(&zone.Cmd[0])), pos)
 }

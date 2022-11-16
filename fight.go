@@ -156,7 +156,7 @@ func pick_n_throw(ch *char_data, buf *byte) int {
 	if rand_number(1, 20) < 18 {
 		return FALSE
 	}
-	for cont = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; cont != nil; cont = cont.Next_content {
+	for cont = world[ch.In_room].Contents; cont != nil; cont = cont.Next_content {
 		if cont.Weight <= max_carry_weight(ch)+int64(ch.Carry_weight) {
 			stdio.Sprintf(&buf2[0], "%s", cont.Name)
 			do_get(ch, &buf2[0], 0, 0)
@@ -609,7 +609,7 @@ func cleanup_arena_watch(ch *char_data) {
 		}
 		if PRF_FLAGGED(d.Character, PRF_ARENAWATCH) {
 			if d.Character.Arenawatch == int(ch.Idnum) {
-				d.Character.Player_specials.Pref[int(PRF_ARENAWATCH/32)] &= bitvector_t(int32(^(1 << (int(PRF_ARENAWATCH % 32)))))
+				REMOVE_BIT_AR(d.Character.Player_specials.Pref[:], PRF_ARENAWATCH)
 				d.Character.Arenawatch = -1
 			}
 		}
@@ -629,7 +629,7 @@ func impact_sound(ch *char_data, mssg *byte) {
 	var door int
 	for door = 0; door < NUM_OF_DIRS; door++ {
 		if CAN_GO(ch, door) {
-			send_to_room((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door].To_room, libc.CString("%s"), mssg)
+			send_to_room(world[ch.In_room].Dir_option[door].To_room, libc.CString("%s"), mssg)
 		}
 	}
 }
@@ -651,25 +651,25 @@ func remove_limb(vict *char_data, num int) {
 		stdio.Snprintf(&part[0], int(1000), "@w%s right arm@n", pc_race_types[int(vict.Race)])
 		stdio.Snprintf(&buf[0], int(1000), "right arm")
 		if PLR_FLAGGED(vict, PLR_CRARM) {
-			vict.Act[int(PLR_CRARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRARM % 32)))))
+			REMOVE_BIT_AR(vict.Act[:], PLR_CRARM)
 		}
 	case 2:
 		stdio.Snprintf(&part[0], int(1000), "@w%s left arm@n", pc_race_types[int(vict.Race)])
 		stdio.Snprintf(&buf[0], int(1000), "left arm")
 		if PLR_FLAGGED(vict, PLR_CLARM) {
-			vict.Act[int(PLR_CLARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLARM % 32)))))
+			REMOVE_BIT_AR(vict.Act[:], PLR_CLARM)
 		}
 	case 3:
 		stdio.Snprintf(&part[0], int(1000), "@w%s right leg@n", pc_race_types[int(vict.Race)])
 		stdio.Snprintf(&buf[0], int(1000), "right leg")
 		if PLR_FLAGGED(vict, PLR_CRLEG) {
-			vict.Act[int(PLR_CRLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRLEG % 32)))))
+			REMOVE_BIT_AR(vict.Act[:], PLR_CRLEG)
 		}
 	case 4:
 		stdio.Snprintf(&part[0], int(1000), "@w%s left leg@n", pc_race_types[int(vict.Race)])
 		stdio.Snprintf(&buf[0], int(1000), "left leg")
 		if PLR_FLAGGED(vict, PLR_CLLEG) {
-			vict.Act[int(PLR_CLLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLLEG % 32)))))
+			REMOVE_BIT_AR(vict.Act[:], PLR_CLLEG)
 		}
 	case 5:
 		stdio.Snprintf(&part[0], int(1000), "@wA %s tail@n", pc_race_types[int(vict.Race)])
@@ -689,8 +689,8 @@ func remove_limb(vict *char_data, num int) {
 	body_part.Description = libc.StrDup(&buf2[0])
 	body_part.Short_description = libc.StrDup(&part[0])
 	body_part.Type_flag = ITEM_OTHER
-	body_part.Wear_flags[int(ITEM_WEAR_TAKE/32)] |= 1 << (int(ITEM_WEAR_TAKE % 32))
-	body_part.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(int32(1 << (int(ITEM_UNIQUE_SAVE % 32))))
+	SET_BIT_AR(body_part.Wear_flags[:], ITEM_WEAR_TAKE)
+	SET_BIT_AR(body_part.Extra_flags[:], ITEM_UNIQUE_SAVE)
 	body_part.Value[0] = 0
 	body_part.Value[1] = 0
 	body_part.Value[2] = 0
@@ -733,7 +733,7 @@ func fight_stack() {
 			if ch.Hit >= ch.Max_hit {
 				act(libc.CString("@g$n@ finishes powering up as $s aura flashes brightly filling the entire area briefly with its light!@n"), TRUE, ch, nil, nil, TO_ROOM)
 				ch.Hit = ch.Max_hit
-				ch.Act[int(MOB_POWERUP/32)] &= bitvector_t(int32(^(1 << (int(MOB_POWERUP % 32)))))
+				REMOVE_BIT_AR(ch.Act[:], MOB_POWERUP)
 			} else if ch.Hit >= ch.Max_hit/2 {
 				act(libc.CString("@g$n@G continues powering up as torrents of energy crackle within $s aura.@n"), TRUE, ch, nil, nil, TO_ROOM)
 				ch.Hit += ch.Max_hit / 10
@@ -803,15 +803,15 @@ func fight_stack() {
 					if !AFF_FLAGGED(ch.Fighting, AFF_POSITION) {
 						act(libc.CString("@YYou manage to move into an advantageous position!@n"), TRUE, ch, nil, nil, TO_CHAR)
 						act(libc.CString("@y$n@Y manages to move into an advantageous position!@n"), TRUE, ch, nil, nil, TO_ROOM)
-						ch.Affected_by[int(AFF_POSITION/32)] |= 1 << (int(AFF_POSITION % 32))
+						SET_BIT_AR(ch.Affected_by[:], AFF_POSITION)
 					} else {
 						var vict *char_data = ch.Fighting
 						if roll_balance(ch) > roll_balance(vict) {
 							act(libc.CString("@YYou struggle to gain a better position than @y$N@Y and succeed!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 							act(libc.CString("@y$n@Y struggles to gain a better position than you and succeeds!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 							act(libc.CString("@y$n@Y struggles to gain a better position than @y$N@Y and succeeds!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-							vict.Affected_by[int(AFF_POSITION/32)] &= ^(1 << (int(AFF_POSITION % 32)))
-							ch.Affected_by[int(AFF_POSITION/32)] |= 1 << (int(AFF_POSITION % 32))
+							REMOVE_BIT_AR(vict.Affected_by[:], AFF_POSITION)
+							SET_BIT_AR(ch.Affected_by[:], AFF_POSITION)
 						}
 					}
 				}
@@ -820,7 +820,7 @@ func fight_stack() {
 			if roll_balance(ch) < axion_dice(-30) || int(ch.Position) < POS_STANDING {
 				act(libc.CString("@YYou are moved out of your position!@n"), TRUE, ch, nil, nil, TO_CHAR)
 				act(libc.CString("@y$n@Y is moved out of $s position!@n"), TRUE, ch, nil, nil, TO_ROOM)
-				ch.Affected_by[int(AFF_POSITION/32)] &= ^(1 << (int(AFF_POSITION % 32)))
+				REMOVE_BIT_AR(ch.Affected_by[:], AFF_POSITION)
 			}
 		}
 		if ch.Grappling != nil && ch.Grap == 2 && rand_number(1, 11) >= 8 {
@@ -833,7 +833,7 @@ func fight_stack() {
 				act(libc.CString("@WYou choke @C$N@W, and $E passes out!@n"), TRUE, ch, nil, unsafe.Pointer(ch.Grappling), TO_CHAR)
 				act(libc.CString("@C$n@W chokes YOU@W, and you pass out!@n"), TRUE, ch, nil, unsafe.Pointer(ch.Grappling), TO_VICT)
 				act(libc.CString("@C$n@W chokes @c$N@W, and $E passes out!@n"), TRUE, ch, nil, unsafe.Pointer(ch.Grappling), TO_NOTVICT)
-				ch.Grappling.Affected_by[int(AFF_KNOCKED/32)] |= 1 << (int(AFF_KNOCKED % 32))
+				SET_BIT_AR(ch.Grappling.Affected_by[:], AFF_KNOCKED)
 				ch.Grappling.Position = POS_SLEEPING
 				ch.Grappling.Grap = -1
 				ch.Grappling.Grappled = nil
@@ -930,17 +930,17 @@ func fight_stack() {
 		}
 		if !IS_NPC(ch) && PLR_FLAGGED(ch, PLR_DISGUISED) && GET_SKILL(ch, SKILL_DISGUISE) < rand_number(1, 125) {
 			send_to_char(ch, libc.CString("Your disguise comes off because of your swift movements!\r\n"))
-			ch.Act[int(PLR_DISGUISED/32)] &= bitvector_t(int32(^(1 << (int(PLR_DISGUISED % 32)))))
+			REMOVE_BIT_AR(ch.Act[:], PLR_DISGUISED)
 			act(libc.CString("@W$n's@W disguise comes off because of $s swift movements!@n"), FALSE, ch, nil, nil, TO_ROOM)
 		}
 		if IS_NPC(ch) && AFF_FLAGGED(ch, AFF_BLIND) && rand_number(1, 200) >= 190 {
 			act(libc.CString("@W$n@W is no longer blind.@n"), FALSE, ch, nil, nil, TO_ROOM)
-			ch.Affected_by[int(AFF_BLIND/32)] &= ^(1 << (int(AFF_BLIND % 32)))
+			REMOVE_BIT_AR(ch.Affected_by[:], AFF_BLIND)
 		}
 		if AFF_FLAGGED(ch, AFF_KNOCKED) && rand_number(1, 200) >= 195 {
 			act(libc.CString("@W$n@W is no longer senseless, and wakes up.@n"), FALSE, ch, nil, nil, TO_ROOM)
 			send_to_char(ch, libc.CString("You are no longer knocked out, and wake up!@n\r\n"))
-			ch.Affected_by[int(AFF_KNOCKED/32)] &= ^(1 << (int(AFF_KNOCKED % 32)))
+			REMOVE_BIT_AR(ch.Affected_by[:], AFF_KNOCKED)
 			ch.Position = POS_SITTING
 			if IS_NPC(ch) && rand_number(1, 20) >= 12 {
 				act(libc.CString("@W$n@W stands up.@n"), FALSE, ch, nil, nil, TO_ROOM)
@@ -1021,7 +1021,7 @@ func fight_stack() {
 			}
 		}
 		if int(ch.Position) <= POS_RESTING && PLR_FLAGGED(ch, PLR_POWERUP) {
-			ch.Act[int(PLR_POWERUP/32)] &= bitvector_t(int32(^(1 << (int(PLR_POWERUP % 32)))))
+			REMOVE_BIT_AR(ch.Act[:], PLR_POWERUP)
 		}
 		if PLR_FLAGGED(ch, PLR_POWERUP) && rand_number(1, 3) == 3 {
 			var buf3 [64936]byte
@@ -1042,7 +1042,7 @@ func fight_stack() {
 				send_to_sense(0, libc.CString("You sense someone stop powering up"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Rising Powerlevel Final@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
-				ch.Act[int(PLR_POWERUP/32)] &= bitvector_t(int32(^(1 << (int(PLR_POWERUP % 32)))))
+				REMOVE_BIT_AR(ch.Act[:], PLR_POWERUP)
 			} else if ch.Hit >= gear_pl(ch) && float64(ch.Mana) >= (float64(ch.Max_mana)*0.0375)+1 && ch.Preference == PREFERENCE_KI {
 				if float64(ch.Mana) >= (float64(ch.Max_mana)*0.0375)+1 {
 					var raise int64 = int64(float64(ch.Max_move) * 0.02)
@@ -1060,7 +1060,7 @@ func fight_stack() {
 				send_to_sense(0, libc.CString("You sense someone stop powering up"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Rising Powerlevel Final@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
-				ch.Act[int(PLR_POWERUP/32)] &= bitvector_t(int32(^(1 << (int(PLR_POWERUP % 32)))))
+				REMOVE_BIT_AR(ch.Act[:], PLR_POWERUP)
 			}
 			if ch.Mana < ch.Max_mana/20 && ch.Preference != PREFERENCE_KI {
 				ch.Mana = 0
@@ -1069,7 +1069,7 @@ func fight_stack() {
 				send_to_sense(0, libc.CString("You sense someone stop powering up"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Rising Powerlevel Final@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
-				ch.Act[int(PLR_POWERUP/32)] &= bitvector_t(int32(^(1 << (int(PLR_POWERUP % 32)))))
+				REMOVE_BIT_AR(ch.Act[:], PLR_POWERUP)
 			} else if float64(ch.Mana) < (float64(ch.Max_mana)*0.0375)+1 && ch.Preference == PREFERENCE_KI {
 				ch.Mana = 0
 				act(libc.CString("@RYou have run out of ki.@n"), TRUE, ch, nil, nil, TO_CHAR)
@@ -1077,7 +1077,7 @@ func fight_stack() {
 				send_to_sense(0, libc.CString("You sense someone stop powering up"), ch)
 				stdio.Sprintf(&buf3[0], "@D[@GBlip@D]@r Rising Powerlevel Final@D: [@Y%s@D]", add_commas(ch.Hit))
 				send_to_scouter(&buf3[0], ch, 1, 0)
-				ch.Act[int(PLR_POWERUP/32)] &= bitvector_t(int32(^(1 << (int(PLR_POWERUP % 32)))))
+				REMOVE_BIT_AR(ch.Act[:], PLR_POWERUP)
 			}
 			if ch.Hit < gear_pl(ch) && (ch.Preference != PREFERENCE_KI && ch.Mana >= ch.Max_mana/20 || ch.Preference == PREFERENCE_KI && float64(ch.Mana) >= (float64(ch.Max_mana)*0.0375)+1) {
 				ch.Hit += gear_pl(ch) / 10
@@ -1135,7 +1135,7 @@ func fight_stack() {
 			default:
 				act(libc.CString("$n@w's aura disappears.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			}
-			ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(int32(^(1 << (int(PLR_CHARGE % 32)))))
+			REMOVE_BIT_AR(ch.Act[:], PLR_CHARGE)
 			ch.Mana += ch.Charge
 			if ch.Mana > ch.Max_mana {
 				ch.Mana = ch.Max_mana
@@ -1155,7 +1155,7 @@ func fight_stack() {
 			default:
 				act(libc.CString("$n@w's aura disappears.@n"), TRUE, ch, nil, nil, TO_ROOM)
 			}
-			ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(int32(^(1 << (int(PLR_CHARGE % 32)))))
+			REMOVE_BIT_AR(ch.Act[:], PLR_CHARGE)
 			ch.Mana += ch.Charge
 			if ch.Mana > ch.Max_mana {
 				ch.Mana = ch.Max_mana
@@ -1236,27 +1236,27 @@ func fight_stack() {
 			if ch.Mana <= 0 {
 				send_to_char(ch, libc.CString("You can not charge anymore, you have charged all your energy!\r\n"))
 				act(libc.CString("$n@w's aura grows calm.@n"), TRUE, ch, nil, nil, TO_ROOM)
-				ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(int32(^(1 << (int(PLR_CHARGE % 32)))))
+				REMOVE_BIT_AR(ch.Act[:], PLR_CHARGE)
 			} else if ((float64(ch.Max_mana) * 0.01) * float64(perc)) >= float64(ch.Mana) {
 				send_to_char(ch, libc.CString("You have charged the last that you can.\r\n"))
 				act(libc.CString("$n@w's aura @Yflashes@w spectacularly, rushing upwards in torrents!@n"), TRUE, ch, nil, nil, TO_ROOM)
 				ch.Charge += ch.Mana
 				ch.Mana = 0
 				ch.Chargeto = 0
-				ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(int32(^(1 << (int(PLR_CHARGE % 32)))))
+				REMOVE_BIT_AR(ch.Act[:], PLR_CHARGE)
 			} else {
 				if ch.Charge >= ch.Chargeto {
 					send_to_char(ch, libc.CString("You have already reached the maximum that you wished to charge.\r\n"))
 					act(libc.CString("$n@w's aura burns steadily.@n"), TRUE, ch, nil, nil, TO_ROOM)
 					ch.Chargeto = 0
-					ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(int32(^(1 << (int(PLR_CHARGE % 32)))))
+					REMOVE_BIT_AR(ch.Act[:], PLR_CHARGE)
 				} else if float64(ch.Charge)+(((float64(ch.Max_mana)*0.01)*float64(perc))+1) >= float64(ch.Chargeto) {
 					ch.Mana -= ch.Chargeto - ch.Charge
 					ch.Charge = ch.Chargeto
 					send_to_char(ch, libc.CString("You stop charging as you reach the maximum that you wished to charge.\r\n"))
 					act(libc.CString("$n@w's aura flares up brightly and then burns steadily.@n"), TRUE, ch, nil, nil, TO_ROOM)
 					ch.Chargeto = 0
-					ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(int32(^(1 << (int(PLR_CHARGE % 32)))))
+					REMOVE_BIT_AR(ch.Act[:], PLR_CHARGE)
 				} else {
 					ch.Mana -= int64(((float64(ch.Max_mana) * 0.01) * float64(perc)) + 1)
 					ch.Charge += int64(((float64(ch.Max_mana) * 0.01) * float64(perc)) + 1)
@@ -1277,7 +1277,7 @@ func fight_stack() {
 						ch.Charge += int64(GET_LEVEL(ch))
 						send_to_char(ch, libc.CString("You have finished charging!\r\n"))
 						act(libc.CString("$n@w's aura burns brightly and then evens out.@n"), TRUE, ch, nil, nil, TO_ROOM)
-						ch.Act[int(PLR_CHARGE/32)] &= bitvector_t(int32(^(1 << (int(PLR_CHARGE % 32)))))
+						REMOVE_BIT_AR(ch.Act[:], PLR_CHARGE)
 						ch.Chargeto = 0
 					}
 				}
@@ -1293,10 +1293,10 @@ func appear(ch *char_data) {
 		affect_from_char(ch, SPELL_INVISIBLE)
 	}
 	if AFF_FLAGGED(ch, AFF_INVISIBLE) {
-		ch.Affected_by[int(AFF_INVISIBLE/32)] &= ^(1 << (int(AFF_INVISIBLE % 32)))
+		REMOVE_BIT_AR(ch.Affected_by[:], AFF_INVISIBLE)
 	}
 	if AFF_FLAGGED(ch, AFF_HIDE) {
-		ch.Affected_by[int(AFF_HIDE/32)] &= ^(1 << (int(AFF_HIDE % 32)))
+		REMOVE_BIT_AR(ch.Affected_by[:], AFF_HIDE)
 	}
 	act(libc.CString("$n slowly fades into existence."), FALSE, ch, nil, nil, TO_ROOM)
 }
@@ -1335,7 +1335,7 @@ func set_fighting(ch *char_data, vict *char_data) {
 		return
 	}
 	if ch.Fighting != nil {
-		core_dump_real(libc.CString(__FILE__), __LINE__)
+		core_dump_real(libc.CString("__FILE__"), 0)
 		return
 	}
 	ch.Next_fighting = combat_list
@@ -1373,7 +1373,7 @@ func stop_fighting(ch *char_data) {
 	ch.Next_fighting = nil
 	ch.Fighting = nil
 	if AFF_FLAGGED(ch, AFF_POSITION) {
-		ch.Affected_by[int(AFF_POSITION/32)] &= ^(1 << (int(AFF_POSITION % 32)))
+		REMOVE_BIT_AR(ch.Affected_by[:], AFF_POSITION)
 	}
 	update_pos(ch)
 }
@@ -1429,19 +1429,19 @@ func make_pcorpse(ch *char_data) {
 			corpse.Wear_flags[y] = 0
 		}
 	}
-	corpse.Wear_flags[int(ITEM_WEAR_TAKE/32)] |= 1 << (int(ITEM_WEAR_TAKE % 32))
-	corpse.Extra_flags[int(ITEM_NODONATE/32)] |= bitvector_t(int32(1 << (int(ITEM_NODONATE % 32))))
+	SET_BIT_AR(corpse.Wear_flags[:], ITEM_WEAR_TAKE)
+	SET_BIT_AR(corpse.Extra_flags[:], ITEM_NODONATE)
 	corpse.Value[VAL_CONTAINER_CAPACITY] = 0
 	corpse.Value[VAL_CONTAINER_CORPSE] = 1
 	corpse.Value[VAL_CONTAINER_OWNER] = ch.Pfilepos
 	corpse.Weight = int64(GET_PC_WEIGHT(ch) + ch.Carry_weight)
 	corpse.Cost_per_day = 100000
 	corpse.Timer = config_info.Play.Max_pc_corpse_time
-	corpse.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(int32(1 << (int(ITEM_UNIQUE_SAVE % 32))))
+	SET_BIT_AR(corpse.Extra_flags[:], ITEM_UNIQUE_SAVE)
 	var obj *obj_data
 	var next_obj *obj_data
-	for obj = ch.Carrying; obj != nil; obj = next_obj {
-		next_obj = obj.Next_content
+	_ = next_obj
+	for obj = ch.Carrying; obj != nil; obj = obj.Next_content {
 		if obj != nil && GET_OBJ_VNUM(obj) < 19900 && GET_OBJ_VNUM(obj) != 0x464E {
 			if GET_OBJ_VNUM(obj) >= 18800 && GET_OBJ_VNUM(obj) <= 0x4A37 || GET_OBJ_VNUM(obj) >= 19100 && GET_OBJ_VNUM(obj) <= 0x4AFF {
 				continue
@@ -1558,11 +1558,12 @@ func make_corpse(ch *char_data, tch *char_data) {
 		money    *obj_data
 		obj      *obj_data
 		next_obj *obj_data
-		meat     *obj_data
-		i        int
-		x        int
-		y        int
 	)
+	_ = next_obj
+	var meat *obj_data
+	var i int
+	var x int
+	var y int
 	corpse = create_obj()
 	corpse.Item_number = -1
 	corpse.In_room = -1
@@ -1628,8 +1629,8 @@ func make_corpse(ch *char_data, tch *char_data) {
 			corpse.Wear_flags[y] = 0
 		}
 	}
-	corpse.Wear_flags[int(ITEM_WEAR_TAKE/32)] |= 1 << (int(ITEM_WEAR_TAKE % 32))
-	corpse.Extra_flags[int(ITEM_NODONATE/32)] |= bitvector_t(int32(1 << (int(ITEM_NODONATE % 32))))
+	SET_BIT_AR(corpse.Wear_flags[:], ITEM_WEAR_TAKE)
+	SET_BIT_AR(corpse.Extra_flags[:], ITEM_NODONATE)
 	corpse.Value[VAL_CONTAINER_CAPACITY] = 0
 	corpse.Value[VAL_CONTAINER_CORPSE] = 1
 	corpse.Value[VAL_CONTAINER_OWNER] = ch.Pfilepos
@@ -1640,10 +1641,9 @@ func make_corpse(ch *char_data, tch *char_data) {
 	} else {
 		corpse.Timer = rand_number(config_info.Play.Max_pc_corpse_time/2, config_info.Play.Max_pc_corpse_time)
 	}
-	corpse.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(int32(1 << (int(ITEM_UNIQUE_SAVE % 32))))
+	SET_BIT_AR(corpse.Extra_flags[:], ITEM_UNIQUE_SAVE)
 	if MOB_FLAGGED(ch, MOB_HUSK) {
-		for obj = ch.Carrying; obj != nil; obj = next_obj {
-			next_obj = obj.Next_content
+		for obj = ch.Carrying; obj != nil; obj = obj.Next_content {
 			obj_from_char(obj)
 			extract_obj(obj)
 		}
@@ -1694,7 +1694,7 @@ func death_cry(ch *char_data) {
 	var door int
 	for door = 0; door < NUM_OF_DIRS; door++ {
 		if CAN_GO(ch, door) {
-			send_to_room((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[door].To_room, libc.CString("Your blood freezes as you hear someone's death cry.\r\n"))
+			send_to_room(world[ch.In_room].Dir_option[door].To_room, libc.CString("Your blood freezes as you hear someone's death cry.\r\n"))
 		}
 	}
 }
@@ -1779,23 +1779,18 @@ func raw_kill(ch *char_data, killer *char_data) {
 	}
 	if killer != nil && !IS_NPC(killer) {
 		if !IS_NPC(killer) && !IS_NPC(ch) {
-			send_to_imm(libc.CString("[PK] %s killed %s at room [%d]\r\n"), GET_NAME(killer), GET_NAME(ch), func() room_vnum {
-				if killer.In_room != room_rnum(-1) && killer.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(killer.In_room)))).Number
-				}
-				return -1
-			}())
+			send_to_imm(libc.CString("[PK] %s killed %s at room [%d]\r\n"), GET_NAME(killer), GET_NAME(ch), GET_ROOM_VNUM(killer.In_room))
 		}
 		if int(killer.Race) == RACE_SAIYAN && rand_number(1, 2) == 2 || int(killer.Race) != RACE_SAIYAN {
 			if rand_number(1, 6) >= 5 && (level_exp(killer, GET_LEVEL(killer)+1)-int(killer.Exp) > 0 || GET_LEVEL(killer) == 100) {
 				var psreward int = int(float64(killer.Aff_abils.Wis) * 0.35)
 				if GET_LEVEL(killer) > GET_LEVEL(ch)+5 {
-					psreward *= int(0.2)
+					psreward = int(float64(psreward) * .2)
 				} else if GET_LEVEL(killer) > GET_LEVEL(ch)+2 {
-					psreward *= int(0.5)
+					psreward = int(float64(psreward) * .5)
 				}
 				if int(killer.Race) == RACE_HUMAN || int(killer.Race) == RACE_BIO && ((killer.Genome[0]) == 1 || (killer.Genome[1]) == 1) {
-					psreward *= int(1.25)
+					psreward *= int(float64(psreward) * .25)
 				}
 				if int(ch.Race) == RACE_HALFBREED {
 					psreward -= int(float64(psreward) * 0.4)
@@ -1920,22 +1915,12 @@ func raw_kill(ch *char_data, killer *char_data) {
 		ch.Hit = 0
 		extract_char(ch)
 	} else {
-		if !AFF_FLAGGED(ch, AFF_SPIRIT) && !ROOM_FLAGGED(ch.In_room, ROOM_PAST) && ((func() room_vnum {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-			}
-			return -1
-		}()) < 17900 || (func() room_vnum {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-			}
-			return -1
-		}()) > 0x464F) {
+		if !AFF_FLAGGED(ch, AFF_SPIRIT) && !ROOM_FLAGGED(ch.In_room, ROOM_PAST) && (int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) < 17900 || int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) > 0x464F) {
 			if !PLR_FLAGGED(ch, PLR_ABSORBED) {
 				make_pcorpse(ch)
 				loadmap(ch)
 			} else {
-				ch.Act[int(PLR_ABSORBED/32)] &= bitvector_t(int32(^(1 << (int(PLR_ABSORBED % 32)))))
+				REMOVE_BIT_AR(ch.Act[:], PLR_ABSORBED)
 			}
 		}
 		final_combat_resolve(ch)
@@ -1948,40 +1933,30 @@ func raw_kill(ch *char_data, killer *char_data) {
 				stop_fighting(k)
 			}
 		}
-		if GET_LEVEL(ch) >= 9 && !IS_NPC(ch) && !ROOM_FLAGGED(ch.In_room, ROOM_PAST) && ((func() room_vnum {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-			}
-			return -1
-		}()) < 17900 || (func() room_vnum {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-			}
-			return -1
-		}()) > 0x464F) {
-			ch.Affected_by[int(AFF_SPIRIT/32)] |= 1 << (int(AFF_SPIRIT % 32))
-			ch.Affected_by[int(AFF_ETHEREAL/32)] |= 1 << (int(AFF_ETHEREAL % 32))
+		if GET_LEVEL(ch) >= 9 && !IS_NPC(ch) && !ROOM_FLAGGED(ch.In_room, ROOM_PAST) && (int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) < 17900 || int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) > 0x464F) {
+			SET_BIT_AR(ch.Affected_by[:], AFF_SPIRIT)
+			SET_BIT_AR(ch.Affected_by[:], AFF_ETHEREAL)
 			ch.Limb_condition[0] = 100
 			ch.Limb_condition[1] = 100
 			ch.Limb_condition[2] = 100
 			ch.Limb_condition[3] = 100
-			ch.Act[int(PLR_HEAD/32)] |= bitvector_t(int32(1 << (int(PLR_HEAD % 32))))
+			SET_BIT_AR(ch.Act[:], PLR_HEAD)
 			if !PRF_FLAGGED(ch, PRF_LKEEP) {
 				if PLR_FLAGGED(ch, PLR_CLLEG) {
-					ch.Act[int(PLR_CLLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLLEG % 32)))))
+					REMOVE_BIT_AR(ch.Act[:], PLR_CLLEG)
 				}
 				if PLR_FLAGGED(ch, PLR_CRLEG) {
-					ch.Act[int(PLR_CRLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRLEG % 32)))))
+					REMOVE_BIT_AR(ch.Act[:], PLR_CRLEG)
 				}
 				if PLR_FLAGGED(ch, PLR_CRARM) {
-					ch.Act[int(PLR_CRARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRARM % 32)))))
+					REMOVE_BIT_AR(ch.Act[:], PLR_CRARM)
 				}
 				if PLR_FLAGGED(ch, PLR_CLARM) {
-					ch.Act[int(PLR_CLARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLARM % 32)))))
+					REMOVE_BIT_AR(ch.Act[:], PLR_CLARM)
 				}
 			}
 			if AFF_FLAGGED(ch, AFF_FROZEN) {
-				ch.Affected_by[int(AFF_FROZEN/32)] &= ^(1 << (int(AFF_FROZEN % 32)))
+				REMOVE_BIT_AR(ch.Affected_by[:], AFF_FROZEN)
 			}
 			ch.Hit = 1
 			purge_homing(ch)
@@ -1997,23 +1972,13 @@ func raw_kill(ch *char_data, killer *char_data) {
 				}
 			}
 			if AFF_FLAGGED(ch, AFF_BLIND) {
-				ch.Affected_by[int(AFF_BLIND/32)] &= ^(1 << (int(AFF_BLIND % 32)))
+				REMOVE_BIT_AR(ch.Affected_by[:], AFF_BLIND)
 			}
 			look_at_room(ch.In_room, ch, 0)
 			Crash_delete_crashfile(ch)
 			update_pos(ch)
 			save_char(ch)
-		} else if (func() room_vnum {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-			}
-			return -1
-		}()) >= 17900 && (func() room_vnum {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-			}
-			return -1
-		}()) <= 0x464F {
+		} else if int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) >= 17900 && int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) <= 0x464F {
 			ch.Hit = ch.Max_hit - int64(gear_weight(ch))
 			char_from_room(ch)
 			char_to_room(ch, real_room(17900))
@@ -2084,23 +2049,13 @@ func raw_kill(ch *char_data, killer *char_data) {
 			ch.Limb_condition[1] = 100
 			ch.Limb_condition[2] = 100
 			ch.Limb_condition[3] = 100
-			ch.Act[int(PLR_HEAD/32)] |= bitvector_t(int32(1 << (int(PLR_HEAD % 32))))
+			SET_BIT_AR(ch.Act[:], PLR_HEAD)
 			Crash_delete_crashfile(ch)
 			update_pos(ch)
 			save_char(ch)
 			send_to_char(ch, libc.CString("\r\n@RYou should beware, when you reach level 9, you will actually die. So you\r\nshould learn to be more careful. Since when you die past that point and\r\nactually reach the afterlife you need to realise that being revived will\r\nnot be very easy. So treat your character's dying with as much care as\r\npossible.@n\r\n"))
 		}
-		if int(ch.Race) == RACE_ANDROID && !PLR_FLAGGED(ch, PLR_ABSORB) && !AFF_FLAGGED(ch, AFF_SPIRIT) && !ROOM_FLAGGED(ch.In_room, ROOM_PAST) && ((func() room_vnum {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-			}
-			return -1
-		}()) < 17900 || (func() room_vnum {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-			}
-			return -1
-		}()) > 0x464F) && ch.Upgrade > 5 {
+		if int(ch.Race) == RACE_ANDROID && !PLR_FLAGGED(ch, PLR_ABSORB) && !AFF_FLAGGED(ch, AFF_SPIRIT) && !ROOM_FLAGGED(ch.In_room, ROOM_PAST) && (int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) < 17900 || int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) > 0x464F) && ch.Upgrade > 5 {
 			var loss int = ch.Upgrade / 5
 			ch.Upgrade -= loss
 			send_to_char(ch, libc.CString("@rYou lose @R%s@r upgrade points!@n\r\n"), add_commas(int64(loss)))
@@ -2111,12 +2066,12 @@ func raw_kill(ch *char_data, killer *char_data) {
 func die(ch *char_data, killer *char_data) {
 	if !IS_NPC(ch) {
 		if PLR_FLAGGED(ch, PLR_HEALT) {
-			ch.Act[int(PLR_HEALT/32)] &= bitvector_t(int32(^(1 << (int(PLR_HEALT % 32)))))
+			REMOVE_BIT_AR(ch.Act[:], PLR_HEALT)
 		}
 		if (int(ch.Race) == RACE_MAJIN || int(ch.Race) == RACE_BIO) && (float64(ch.Lifeforce) >= float64(GET_LIFEMAX(ch))*0.75 || PLR_FLAGGED(ch, PLR_SELFD2) && float64(ch.Lifeforce) >= float64(GET_LIFEMAX(ch))*0.5) {
 			ch.Lifeforce = -1
 			ch.Hit = 1
-			ch.Act[int(PLR_GOOP/32)] |= bitvector_t(int32(1 << (int(PLR_GOOP % 32))))
+			SET_BIT_AR(ch.Act[:], PLR_GOOP)
 			ch.Gooptime = 32
 			return
 		}
@@ -2179,23 +2134,13 @@ func die(ch *char_data, killer *char_data) {
 			}
 			return
 		}
-		ch.Act[int(PLR_KILLER/32)] &= bitvector_t(int32(^(1 << (int(PLR_KILLER % 32)))))
-		ch.Act[int(PLR_THIEF/32)] &= bitvector_t(int32(^(1 << (int(PLR_THIEF % 32)))))
-		ch.Affected_by[int(AFF_KNOCKED/32)] &= ^(1 << (int(AFF_KNOCKED % 32)))
-		ch.Affected_by[int(AFF_SLEEP/32)] &= ^(1 << (int(AFF_SLEEP % 32)))
-		ch.Affected_by[int(AFF_PARALYZE/32)] &= ^(1 << (int(AFF_PARALYZE % 32)))
+		REMOVE_BIT_AR(ch.Act[:], PLR_KILLER)
+		REMOVE_BIT_AR(ch.Act[:], PLR_THIEF)
+		REMOVE_BIT_AR(ch.Affected_by[:], AFF_KNOCKED)
+		REMOVE_BIT_AR(ch.Affected_by[:], AFF_SLEEP)
+		REMOVE_BIT_AR(ch.Affected_by[:], AFF_PARALYZE)
 		if !AFF_FLAGGED(ch, AFF_SPIRIT) && !ROOM_FLAGGED(ch.In_room, ROOM_PAST) && GET_LEVEL(ch) > 8 {
-			if (func() room_vnum {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-				}
-				return -1
-			}()) >= 2002 && (func() room_vnum {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-				}
-				return -1
-			}()) <= 2011 {
+			if int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) >= 2002 && int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) <= 2011 {
 				ch.Deathtime = libc.GetTime(nil)
 			} else if ROOM_FLAGGED(ch.In_room, ROOM_AL) || ROOM_FLAGGED(ch.In_room, ROOM_HELL) {
 				send_to_char(ch, libc.CString("Your soul is saved from destruction by King Yemma. Why? Who knows.\r\n"))
@@ -2224,7 +2169,7 @@ func die(ch *char_data, killer *char_data) {
 					ch.Dcount += 1
 				} else if killer != nil && !IS_NPC(killer) {
 					ch.Deathtime = libc.GetTime(nil) + 1123200
-					ch.Act[int(PLR_PDEATH/32)] |= bitvector_t(int32(1 << (int(PLR_PDEATH % 32))))
+					SET_BIT_AR(ch.Act[:], PLR_PDEATH)
 					ch.Dcount += 1
 				} else {
 					if ch.Dcount <= 0 {
@@ -2256,26 +2201,26 @@ func perform_group_gain(ch *char_data, base int, victim *char_data) {
 	if IN_ARENA(ch) {
 		return
 	}
-	share = int64(MIN(2000000, base*GET_LEVEL(ch)))
+	share = MIN(2000000, int64(base*GET_LEVEL(ch)))
 	if !IS_NPC(ch) {
 		if GET_LEVEL(ch) >= 100 && float64(ch.Max_hit)*0.025 >= float64(victim.Max_hit) {
-			share *= int64(0.05)
+			share = int64(float64(share) * .05)
 		} else if float64(ch.Max_hit)*0.025 >= float64(victim.Max_hit) {
 			share = 1
 		} else if float64(ch.Max_hit)*0.05 >= float64(victim.Max_hit) {
-			share *= int64(0.05)
+			share = int64(float64(share) * .05)
 		} else if float64(ch.Max_hit)*0.1 >= float64(victim.Max_hit) {
-			share *= int64(0.1)
+			share = int64(float64(share) * .1)
 		} else if float64(ch.Max_hit)*0.15 >= float64(victim.Max_hit) {
-			share *= int64(0.15)
+			share = int64(float64(share) * .15)
 		} else if float64(ch.Max_hit)*0.25 >= float64(victim.Max_hit) {
-			share *= int64(0.25)
+			share = int64(float64(share) * .25)
 		} else if float64(ch.Max_hit)*0.5 >= float64(victim.Max_hit) {
-			share *= int64(0.5)
+			share = int64(float64(share) * .5)
 		} else if float64(ch.Max_hit)*0.9 >= float64(victim.Max_hit) {
-			share *= int64(0.65)
+			share = int64(float64(share) * .65)
 		} else if ch.Max_hit >= victim.Max_hit {
-			share *= int64(0.7)
+			share = int64(float64(share) * .7)
 		}
 	}
 	if victim.Lasthit != 0 && victim.Lasthit != int(ch.Idnum) {
@@ -2444,10 +2389,10 @@ func group_gain(ch *char_data, victim *char_data) {
 	}
 	tot_gain = victim.Exp + int64(tot_members) - 1
 	if !IS_NPC(victim) {
-		tot_gain = int64(MIN(config_info.Play.Max_exp_loss*2, int(tot_gain)))
+		tot_gain = MIN(int64(config_info.Play.Max_exp_loss*2), tot_gain)
 	}
 	if tot_levels >= 1 {
-		base = int64(MAX(1, int(tot_gain/int64(tot_levels))))
+		base = MAX(1, tot_gain/int64(tot_levels))
 		var perc int = tot_members * 20
 		if perc >= 80 {
 			perc = 60
@@ -2486,22 +2431,22 @@ func solo_gain(ch *char_data, victim *char_data) {
 		}
 	}
 	var exp int64
-	exp = int64(MIN(2000000, int(victim.Exp)))
+	exp = MIN(2000000, victim.Exp)
 	if !IS_NPC(ch) {
 		if GET_LEVEL(ch) >= 100 && float64(ch.Max_hit)*0.025 >= float64(victim.Max_hit) {
-			exp *= int64(0.04)
+			exp = int64(float64(exp) * .04)
 		} else if float64(ch.Max_hit)*0.025 >= float64(victim.Max_hit) {
 			exp = 1
 		} else if float64(ch.Max_hit)*0.05 >= float64(victim.Max_hit) {
-			exp *= int64(0.05)
+			exp = int64(float64(exp) * .05)
 		} else if float64(ch.Max_hit)*0.1 >= float64(victim.Max_hit) {
-			exp *= int64(0.1)
+			exp = int64(float64(exp) * .1)
 		} else if float64(ch.Max_hit)*0.15 >= float64(victim.Max_hit) {
-			exp *= int64(0.15)
+			exp = int64(float64(exp) * .15)
 		} else if float64(ch.Max_hit)*0.25 >= float64(victim.Max_hit) {
-			exp *= int64(0.25)
+			exp = int64(float64(exp) * .25)
 		} else if float64(ch.Max_hit)*0.5 >= float64(victim.Max_hit) {
-			exp *= int64(0.5)
+			exp = int64(float64(exp) * .5)
 		}
 	}
 	if victim.Lasthit != 0 && victim.Lasthit != int(ch.Idnum) {
@@ -2527,7 +2472,7 @@ func solo_gain(ch *char_data, victim *char_data) {
 		exp += int64(float64(exp) * 0.25)
 	}
 	exp = gear_exp(ch, exp)
-	exp = int64(MAX(int(exp), 1))
+	exp = MAX(exp, 1)
 	if exp > 1 {
 		send_to_char(ch, libc.CString("You receive %s experience points.\r\n"), add_commas(exp))
 	} else {

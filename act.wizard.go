@@ -1,10 +1,13 @@
 package main
 
+import "C"
 import (
+	"fmt"
 	"github.com/gotranspile/cxgo/runtime/cmath"
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
 	"os"
+	"strconv"
 	"unicode"
 	"unsafe"
 )
@@ -360,7 +363,7 @@ func do_approve(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("They have already been approved. If this was made in error inform Iovan.\r\n"))
 		return
 	} else {
-		vict.Act[int(PLR_BIOGR/32)] |= bitvector_t(int32(1 << (int(PLR_BIOGR % 32))))
+		SET_BIT_AR(vict.Act[:], PLR_BIOGR)
 		send_to_char(ch, libc.CString("They have now been approved.\r\n"))
 		return
 	}
@@ -719,7 +722,7 @@ func do_finddoor(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Format: finddoor <obj/vnum>\r\n"))
 	} else if is_number(&arg[0]) != 0 {
 		vnum = libc.Atoi(libc.GoString(&arg[0]))
-		obj = (*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(real_object(obj_vnum(vnum)))))
+		obj = &obj_proto[real_object(obj_vnum(vnum))]
 	} else {
 		generic_find(&arg[0], (1<<2)|1<<3|1<<4|1<<5, ch, &tmp_char, &obj)
 		if obj == nil {
@@ -732,12 +735,12 @@ func do_finddoor(ch *char_data, argument *byte, cmd int, subcmd int) {
 		len_ = uint64(stdio.Snprintf(&buf[0], int(64936), "Doors unlocked by key [%d] %s are:\r\n", vnum, obj.Short_description))
 		for i = 0; i <= top_of_world; i++ {
 			for d = 0; d < NUM_OF_DIRS; d++ {
-				if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Dir_option[d] != nil && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Dir_option[d].Key != 0 && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Dir_option[d].Key == obj_vnum(vnum) {
+				if world[i].Dir_option[d] != nil && world[i].Dir_option[d].Key != 0 && world[i].Dir_option[d].Key == obj_vnum(vnum) {
 					nlen = uint64(stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "[%3d] Room %d, %s (%s)\r\n", func() int {
 						p := &num
 						*p++
 						return *p
-					}(), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Number, dirs[d], (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Dir_option[d].Keyword))
+					}(), world[i].Number, dirs[d], world[i].Dir_option[d].Keyword))
 					if len_+nlen >= uint64(64936) || nlen < 0 {
 						break
 					}
@@ -762,11 +765,7 @@ func do_recall(ch *char_data, argument *byte, cmd int, subcmd int) {
 			char_from_room(ch)
 			char_to_room(ch, real_room(2))
 			look_at_room(ch.In_room, ch, 0)
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				ch.Player_specials.Load_room = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-			} else {
-				ch.Player_specials.Load_room = -1
-			}
+			ch.Player_specials.Load_room = room_vnum(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room)))
 		}
 	}
 }
@@ -828,7 +827,7 @@ func do_echo(ch *char_data, argument *byte, cmd int, subcmd int) {
 			*(*byte)(unsafe.Add(unsafe.Pointer(argument), libc.StrLen(argument)-trunc)) = '\x00'
 			stdio.Sprintf(argument, "%s\n@D(@gMessage truncated to 1000 characters@D)@n\n", argument)
 		}
-		for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; vict != nil; vict = next_v {
+		for vict = world[ch.In_room].People; vict != nil; vict = next_v {
 			next_v = vict.Next_in_room
 			if vict == ch {
 				continue
@@ -988,7 +987,7 @@ func find_target_room(ch *char_data, rawroomstr *byte) room_rnum {
 	if ch.Admlevel >= ADMLVL_VICE {
 		return location
 	}
-	rm = (*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(location)))
+	rm = &world[location]
 	if can_edit_zone(ch, rm.Zone) == 0 && ch.Admlevel < ADMLVL_GOD && ZONE_FLAGGED(rm.Zone, ZONE_QUEST) {
 		send_to_char(ch, libc.CString("This target is in a quest zone.\r\n"))
 		return -1
@@ -1067,7 +1066,7 @@ func do_goto(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}())
 	act(&buf[0], TRUE, ch, nil, nil, TO_ROOM)
 	look_at_room(ch.In_room, ch, 0)
-	enter_wtrigger((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room))), ch, -1)
+	enter_wtrigger(&world[ch.In_room], ch, -1)
 }
 func do_trans(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var (
@@ -1101,7 +1100,7 @@ func do_trans(ch *char_data, argument *byte, cmd int, subcmd int) {
 			act(libc.CString("$n arrives from a puff of smoke."), FALSE, victim, nil, nil, TO_ROOM)
 			act(libc.CString("$n has transferred you!"), FALSE, ch, nil, unsafe.Pointer(victim), TO_VICT)
 			look_at_room(victim.In_room, victim, 0)
-			enter_wtrigger((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(victim.In_room))), victim, -1)
+			enter_wtrigger(&world[victim.In_room], victim, -1)
 		}
 	} else {
 		if !ADM_FLAGGED(ch, ADM_TRANSALL) {
@@ -1120,7 +1119,7 @@ func do_trans(ch *char_data, argument *byte, cmd int, subcmd int) {
 				act(libc.CString("$n arrives from a puff of smoke."), FALSE, victim, nil, nil, TO_ROOM)
 				act(libc.CString("$n has transferred you!"), FALSE, ch, nil, unsafe.Pointer(victim), TO_VICT)
 				look_at_room(victim.In_room, victim, 0)
-				enter_wtrigger((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(victim.In_room))), victim, -1)
+				enter_wtrigger(&world[victim.In_room], victim, -1)
 			}
 		}
 		send_to_char(ch, libc.CString("%s"), config_info.Play.OK)
@@ -1162,7 +1161,7 @@ func do_teleport(ch *char_data, argument *byte, cmd int, subcmd int) {
 		act(libc.CString("$n arrives from a puff of smoke."), FALSE, victim, nil, nil, TO_ROOM)
 		act(libc.CString("$n has teleported you!"), FALSE, ch, nil, unsafe.Pointer((*byte)(unsafe.Pointer(victim))), TO_VICT)
 		look_at_room(victim.In_room, victim, 0)
-		enter_wtrigger((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(victim.In_room))), victim, -1)
+		enter_wtrigger(&world[victim.In_room], victim, -1)
 	}
 }
 func do_vnum(ch *char_data, argument *byte, cmd int, subcmd int) {
@@ -1214,8 +1213,8 @@ func list_zone_commands_room(ch *char_data, rvnum room_vnum) {
 		return
 	}
 	send_to_char(ch, libc.CString("Zone commands in this room:@y\r\n"))
-	for int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command) != 'S' {
-		switch (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command {
+	for int(zone_table[zrnum].Cmd[subcmd].Command) != 'S' {
+		switch zone_table[zrnum].Cmd[subcmd].Command {
 		case 'M':
 			fallthrough
 		case 'O':
@@ -1223,67 +1222,67 @@ func list_zone_commands_room(ch *char_data, rvnum room_vnum) {
 		case 'T':
 			fallthrough
 		case 'V':
-			cmd_room = room_rnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg3)
+			cmd_room = room_rnum(zone_table[zrnum].Cmd[subcmd].Arg3)
 		case 'D':
 			fallthrough
 		case 'R':
-			cmd_room = room_rnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)
+			cmd_room = room_rnum(zone_table[zrnum].Cmd[subcmd].Arg1)
 		default:
 		}
 		if cmd_room == rrnum {
 			count++
-			switch (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Command {
+			switch zone_table[zrnum].Cmd[subcmd].Command {
 			case 'M':
 				send_to_char(ch, libc.CString("%sLoad %s@y [@c%d@y], MaxMud : %d, MaxR : %d, Chance : %d\r\n"), func() string {
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag {
+					if zone_table[zrnum].Cmd[subcmd].If_flag {
 						return " then "
 					}
 					return ""
-				}(), (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Short_descr, (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Vnum, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg4, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg5)
+				}(), mob_proto[zone_table[zrnum].Cmd[subcmd].Arg1].Short_descr, mob_index[zone_table[zrnum].Cmd[subcmd].Arg1].Vnum, zone_table[zrnum].Cmd[subcmd].Arg2, zone_table[zrnum].Cmd[subcmd].Arg4, zone_table[zrnum].Cmd[subcmd].Arg5)
 			case 'G':
 				send_to_char(ch, libc.CString("%sGive it %s@y [@c%d@y], Max : %d, Chance : %d\r\n"), func() string {
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag {
+					if zone_table[zrnum].Cmd[subcmd].If_flag {
 						return " then "
 					}
 					return ""
-				}(), (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Short_description, (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Vnum, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg5)
+				}(), obj_proto[zone_table[zrnum].Cmd[subcmd].Arg1].Short_description, obj_index[zone_table[zrnum].Cmd[subcmd].Arg1].Vnum, zone_table[zrnum].Cmd[subcmd].Arg2, zone_table[zrnum].Cmd[subcmd].Arg5)
 			case 'O':
 				send_to_char(ch, libc.CString("%sLoad %s@y [@c%d@y], Max : %d, MaxR : %d, Chance : %d\r\n"), func() string {
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag {
+					if zone_table[zrnum].Cmd[subcmd].If_flag {
 						return " then "
 					}
 					return ""
-				}(), (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Short_description, (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Vnum, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg4, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg5)
+				}(), obj_proto[zone_table[zrnum].Cmd[subcmd].Arg1].Short_description, obj_index[zone_table[zrnum].Cmd[subcmd].Arg1].Vnum, zone_table[zrnum].Cmd[subcmd].Arg2, zone_table[zrnum].Cmd[subcmd].Arg4, zone_table[zrnum].Cmd[subcmd].Arg5)
 			case 'E':
 				send_to_char(ch, libc.CString("%sEquip with %s@y [@c%d@y], %s, Max : %d, Chance : %d\r\n"), func() string {
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag {
+					if zone_table[zrnum].Cmd[subcmd].If_flag {
 						return " then "
 					}
 					return ""
-				}(), (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Short_description, (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Vnum, equipment_types[(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg3], (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg5)
+				}(), obj_proto[zone_table[zrnum].Cmd[subcmd].Arg1].Short_description, obj_index[zone_table[zrnum].Cmd[subcmd].Arg1].Vnum, equipment_types[zone_table[zrnum].Cmd[subcmd].Arg3], zone_table[zrnum].Cmd[subcmd].Arg2, zone_table[zrnum].Cmd[subcmd].Arg5)
 			case 'P':
 				send_to_char(ch, libc.CString("%sPut %s@y [@c%d@y] in %s@y [@c%d@y], Max : %d, Chance : %d\r\n"), func() string {
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag {
+					if zone_table[zrnum].Cmd[subcmd].If_flag {
 						return " then "
 					}
 					return ""
-				}(), (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Short_description, (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1)))).Vnum, (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg3)))).Short_description, (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg3)))).Vnum, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg5)
+				}(), obj_proto[zone_table[zrnum].Cmd[subcmd].Arg1].Short_description, obj_index[zone_table[zrnum].Cmd[subcmd].Arg1].Vnum, obj_proto[zone_table[zrnum].Cmd[subcmd].Arg3].Short_description, obj_index[zone_table[zrnum].Cmd[subcmd].Arg3].Vnum, zone_table[zrnum].Cmd[subcmd].Arg2, zone_table[zrnum].Cmd[subcmd].Arg5)
 			case 'R':
 				send_to_char(ch, libc.CString("%sRemove %s@y [@c%d@y] from room.\r\n"), func() string {
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag {
+					if zone_table[zrnum].Cmd[subcmd].If_flag {
 						return " then "
 					}
 					return ""
-				}(), (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2)))).Short_description, (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2)))).Vnum)
+				}(), obj_proto[zone_table[zrnum].Cmd[subcmd].Arg2].Short_description, obj_index[zone_table[zrnum].Cmd[subcmd].Arg2].Vnum)
 			case 'D':
 				send_to_char(ch, libc.CString("%sSet door %s as %s.\r\n"), func() string {
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag {
+					if zone_table[zrnum].Cmd[subcmd].If_flag {
 						return " then "
 					}
 					return ""
-				}(), dirs[(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2], func() string {
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg3 != 0 {
-						if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg3 == 1 {
+				}(), dirs[zone_table[zrnum].Cmd[subcmd].Arg2], func() string {
+					if zone_table[zrnum].Cmd[subcmd].Arg3 != 0 {
+						if zone_table[zrnum].Cmd[subcmd].Arg3 == 1 {
 							return "closed"
 						}
 						return "locked"
@@ -1292,40 +1291,40 @@ func list_zone_commands_room(ch *char_data, rvnum room_vnum) {
 				}())
 			case 'T':
 				send_to_char(ch, libc.CString("%sAttach trigger @c%s@y [@c%d@y] to %s\r\n"), func() string {
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag {
+					if zone_table[zrnum].Cmd[subcmd].If_flag {
 						return " then "
 					}
 					return ""
-				}(), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2)))).Proto.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2)))).Vnum, func() string {
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1 == MOB_TRIGGER {
+				}(), trig_index[zone_table[zrnum].Cmd[subcmd].Arg2].Proto.Name, trig_index[zone_table[zrnum].Cmd[subcmd].Arg2].Vnum, func() string {
+					if zone_table[zrnum].Cmd[subcmd].Arg1 == MOB_TRIGGER {
 						return "mobile"
 					}
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1 == OBJ_TRIGGER {
+					if zone_table[zrnum].Cmd[subcmd].Arg1 == OBJ_TRIGGER {
 						return "object"
 					}
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1 == WLD_TRIGGER {
+					if zone_table[zrnum].Cmd[subcmd].Arg1 == WLD_TRIGGER {
 						return "room"
 					}
 					return "????"
 				}())
 			case 'V':
 				send_to_char(ch, libc.CString("%sAssign global %s:%d to %s = %s\r\n"), func() string {
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).If_flag {
+					if zone_table[zrnum].Cmd[subcmd].If_flag {
 						return " then "
 					}
 					return ""
-				}(), (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Sarg1, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg2, func() string {
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1 == MOB_TRIGGER {
+				}(), zone_table[zrnum].Cmd[subcmd].Sarg1, zone_table[zrnum].Cmd[subcmd].Arg2, func() string {
+					if zone_table[zrnum].Cmd[subcmd].Arg1 == MOB_TRIGGER {
 						return "mobile"
 					}
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1 == OBJ_TRIGGER {
+					if zone_table[zrnum].Cmd[subcmd].Arg1 == OBJ_TRIGGER {
 						return "object"
 					}
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Arg1 == WLD_TRIGGER {
+					if zone_table[zrnum].Cmd[subcmd].Arg1 == WLD_TRIGGER {
 						return "room"
 					}
 					return "????"
-				}(), (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(subcmd)))).Sarg2)
+				}(), zone_table[zrnum].Cmd[subcmd].Sarg2)
 			default:
 				send_to_char(ch, libc.CString("<Unknown Command>\r\n"))
 			}
@@ -1341,7 +1340,7 @@ func do_stat_room(ch *char_data) {
 	var (
 		buf2   [64936]byte
 		desc   *extra_descr_data
-		rm     *room_data = (*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))
+		rm     *room_data = &world[ch.In_room]
 		i      int
 		found  int
 		column int
@@ -1350,7 +1349,7 @@ func do_stat_room(ch *char_data) {
 	)
 	send_to_char(ch, libc.CString("Room name: @c%s@n\r\n"), rm.Name)
 	sprinttype(rm.Sector_type, sector_types[:], &buf2[0], uint64(64936))
-	send_to_char(ch, libc.CString("Zone: [%3d], VNum: [@g%5d@n], RNum: [%5d], IDNum: [%5ld], Type: %s\r\n"), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(rm.Zone)))).Number, rm.Number, ch.In_room, int(rm.Number)+ROOM_ID_BASE, &buf2[0])
+	send_to_char(ch, libc.CString("Zone: [%3d], VNum: [@g%5d@n], RNum: [%5d], IDNum: [%5ld], Type: %s\r\n"), zone_table[rm.Zone].Number, rm.Number, ch.In_room, int(rm.Number)+ROOM_ID_BASE, &buf2[0])
 	sprintbitarray(rm.Room_flags[:], room_bits[:], RF_ARRAY_MAX, &buf2[0])
 	send_to_char(ch, libc.CString("Room Damage: %d, Room Effect: %d\r\n"), rm.Dmg, rm.Geffect)
 	send_to_char(ch, libc.CString("SpecProc: %s, Flags: %s\r\n"), func() string {
@@ -1459,12 +1458,7 @@ func do_stat_room(ch *char_data) {
 		if rm.Dir_option[i].To_room == room_rnum(-1) {
 			stdio.Snprintf(&buf1[0], int(128), " @cNONE@n")
 		} else {
-			stdio.Snprintf(&buf1[0], int(128), "@c%5d@n", func() room_vnum {
-				if rm.Dir_option[i].To_room != room_rnum(-1) && rm.Dir_option[i].To_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rm.Dir_option[i].To_room)))).Number
-				}
-				return -1
-			}())
+			stdio.Snprintf(&buf1[0], int(128), "@c%5d@n", GET_ROOM_VNUM(rm.Dir_option[i].To_room))
 		}
 		sprintbit(rm.Dir_option[i].Exit_info, exit_bits[:], &buf2[0], uint64(64936))
 		send_to_char(ch, libc.CString("Exit @c%-5s@n:  To: [%s], Key: [%5d], Keywrd: %s, Type: %s\r\n  DC Lock: [%2d], DC Hide: [%2d], DC Skill: [%4s], DC Move: [%2d]\r\n%s"), dirs[i], &buf1[0], func() obj_vnum {
@@ -1525,7 +1519,7 @@ func do_stat_object(ch *char_data, j *obj_data) {
 		}
 		return "None"
 	}())
-	send_to_char(ch, libc.CString("Generation time: @g%s@nUnique ID: @g%lld@n\r\n"), ctime(&j.Generation), j.Unique_id)
+	send_to_char(ch, libc.CString("Generation time: @g%s@nUnique ID: @g%lld@n\r\n"), j.Generation, j.Unique_id)
 	send_to_char(ch, libc.CString("Object Hit Points: [ @g%3d@n/@g%3d@n]\r\n"), j.Value[VAL_ALL_HEALTH], j.Value[VAL_ALL_MAXHEALTH])
 	send_to_char(ch, libc.CString("Object loaded in room: @y%d@n\r\n"), j.Room_loaded)
 	send_to_char(ch, libc.CString("Object Material: @y%s@n\r\n"), material_names[j.Value[VAL_ALL_MATERIAL]])
@@ -1547,16 +1541,11 @@ func do_stat_object(ch *char_data, j *obj_data) {
 	sprintbitarray(j.Extra_flags[:], extra_bits[:], EF_ARRAY_MAX, &buf[0])
 	send_to_char(ch, libc.CString("Extra flags   : %s\r\n"), &buf[0])
 	send_to_char(ch, libc.CString("Weight: %lld, Value: %d, Cost/day: %d, Timer: %d, Min Level: %d\r\n"), j.Weight, j.Cost, j.Cost_per_day, j.Timer, j.Level)
-	send_to_char(ch, libc.CString("In room: %d (%s), "), func() room_vnum {
-		if j.In_room != room_rnum(-1) && j.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(j.In_room)))).Number
-		}
-		return -1
-	}(), func() string {
+	send_to_char(ch, libc.CString("In room: %d (%s), "), GET_ROOM_VNUM(j.In_room), func() string {
 		if j.In_room == room_rnum(-1) {
 			return "Nowhere"
 		}
-		return libc.GoString((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(j.In_room)))).Name)
+		return libc.GoString(world[j.In_room].Name)
 	}())
 	send_to_char(ch, libc.CString("In object: %s, "), func() *byte {
 		if j.In_obj != nil {
@@ -1731,12 +1720,7 @@ func do_stat_character(ch *char_data, k *char_data) {
 			return int(k.Id)
 		}
 		return int(k.Idnum)
-	}(), func() room_vnum {
-		if k.In_room != room_rnum(-1) && k.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k.In_room)))).Number
-		}
-		return -1
-	}(), func() room_vnum {
+	}(), GET_ROOM_VNUM(k.In_room), func() room_vnum {
 		if IS_NPC(k) {
 			return k.Hometown
 		}
@@ -1764,11 +1748,7 @@ func do_stat_character(ch *char_data, k *char_data) {
 		}
 		return libc.CString("<None>\r\n")
 	}())
-	if config_info.Advance.Allow_multiclass != 0 {
-		libc.StrNCpy(&buf[0], class_desc_str(k, 1, 0), int(64936))
-	} else {
-		sprinttype(int(k.Chclass), pc_class_types[:], &buf[0], uint64(64936))
-	}
+	sprinttype(int(k.Chclass), pc_class_types[:], &buf[0], uint64(64936))
 	sprinttype(int(k.Race), pc_race_types[:], &buf2[0], uint64(64936))
 	send_to_char(ch, libc.CString("Class: %s, Race: %s, Lev: [@y%2d(%dHD+%dcl+%d)@n], XP: [@y%lld@n]\r\n"), &buf[0], &buf2[0], GET_LEVEL(k), k.Race_level, k.Level, k.Level_adj, k.Exp)
 	if !IS_NPC(k) {
@@ -1841,7 +1821,7 @@ func do_stat_character(ch *char_data, k *char_data) {
 	}
 	if IS_MOB(k) {
 		send_to_char(ch, libc.CString("Mob Spec-Proc: %s, NPC Bare Hand Dam: %dd%d\r\n"), func() string {
-			if (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(k.Nr)))).Func != nil {
+			if mob_index[k.Nr].Func != nil {
 				return "Exists"
 			}
 			return "None"
@@ -2143,7 +2123,7 @@ func do_stat(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}()) != nil {
 			do_stat_character(ch, victim)
 		} else if (func() *obj_data {
-			object = get_obj_in_list_vis(ch, name, &number, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents)
+			object = get_obj_in_list_vis(ch, name, &number, world[ch.In_room].Contents)
 			return object
 		}()) != nil {
 			do_stat_object(ch, object)
@@ -2458,7 +2438,7 @@ func do_purge(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_all(libc.CString("@R%s@r purges @R%s's@r sorry ass right off the MUD!@n\r\n"), GET_NAME(ch), GET_NAME(vict))
 			}
 			if !IS_NPC(vict) {
-				mudlog(BRF, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("(GC) %s has purged %s."), GET_NAME(ch), GET_NAME(vict))
+				mudlog(BRF, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("(GC) %s has purged %s."), GET_NAME(ch), GET_NAME(vict))
 				log_imm_action(libc.CString("PURGED: %s burned %s's sorry ass off the MUD!"), GET_NAME(ch), GET_NAME(vict))
 				if vict.Desc != nil {
 					vict.Desc.Connected = CON_CLOSE
@@ -2468,7 +2448,7 @@ func do_purge(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 			extract_char(vict)
 		} else if (func() *obj_data {
-			obj = get_obj_in_list_vis(ch, &buf[0], nil, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents)
+			obj = get_obj_in_list_vis(ch, &buf[0], nil, world[ch.In_room].Contents)
 			return obj
 		}()) != nil {
 			act(libc.CString("$n destroys $p."), FALSE, ch, obj, nil, TO_ROOM)
@@ -2482,7 +2462,7 @@ func do_purge(ch *char_data, argument *byte, cmd int, subcmd int) {
 		var i int
 		act(libc.CString("$n gestures... You are surrounded by scorching flames!"), FALSE, ch, nil, nil, TO_ROOM)
 		send_to_room(ch.In_room, libc.CString("The world seems a little cleaner.\r\n"))
-		for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; vict != nil; vict = vict.Next_in_room {
+		for vict = world[ch.In_room].People; vict != nil; vict = vict.Next_in_room {
 			if !IS_NPC(vict) {
 				continue
 			}
@@ -2497,8 +2477,8 @@ func do_purge(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 			extract_char(vict)
 		}
-		for (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents != nil {
-			extract_obj((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents)
+		for world[ch.In_room].Contents != nil {
+			extract_obj(world[ch.In_room].Contents)
 		}
 	}
 }
@@ -2532,13 +2512,13 @@ func do_syslog(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Usage: syslog { Off | Brief | Normal | Complete }\r\n"))
 		return
 	}
-	ch.Player_specials.Pref[int(PRF_LOG1/32)] &= bitvector_t(int32(^(1 << (int(PRF_LOG1 % 32)))))
-	ch.Player_specials.Pref[int(PRF_LOG2/32)] &= bitvector_t(int32(^(1 << (int(PRF_LOG2 % 32)))))
+	REMOVE_BIT_AR(ch.Player_specials.Pref[:], PRF_LOG1)
+	REMOVE_BIT_AR(ch.Player_specials.Pref[:], PRF_LOG2)
 	if tp&1 != 0 {
-		ch.Player_specials.Pref[int(PRF_LOG1/32)] |= bitvector_t(int32(1 << (int(PRF_LOG1 % 32))))
+		SET_BIT_AR(ch.Player_specials.Pref[:], PRF_LOG1)
 	}
 	if tp&2 != 0 {
-		ch.Player_specials.Pref[int(PRF_LOG2/32)] |= bitvector_t(int32(1 << (int(PRF_LOG2 % 32))))
+		SET_BIT_AR(ch.Player_specials.Pref[:], PRF_LOG2)
 	}
 	send_to_char(ch, libc.CString("Your syslog is now %s.\r\n"), logtypes[tp])
 }
@@ -2592,7 +2572,7 @@ func execute_copyover() {
 		d      *descriptor_data
 		d_next *descriptor_data
 		buf    [100]byte
-		buf2   [100]byte
+		//buf2   [100]byte
 	)
 	fp = stdio.FOpen(COPYOVER_FILE, "w")
 	if fp == nil {
@@ -2609,35 +2589,10 @@ func execute_copyover() {
 			write_to_descriptor(d.Descriptor, libc.CString("\n\rSorry, we are rebooting. Come back in a few seconds.\n\r"))
 			stdio.ByFD(uintptr(uintptr(unsafe.Pointer(d)))).Close()
 		} else {
-			if (func() room_vnum {
-				if och.In_room != room_rnum(-1) && och.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(och.In_room)))).Number
-				}
-				return -1
-			}()) > 1 {
-				stdio.Fprintf(fp, "%d %s %s %d %s\n", d.Descriptor, GET_NAME(och), &d.Host[0], func() room_vnum {
-					if och.In_room != room_rnum(-1) && och.In_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(och.In_room)))).Number
-					}
-					return -1
-				}(), d.User)
-			} else if (func() room_vnum {
-				if och.In_room != room_rnum(-1) && och.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(och.In_room)))).Number
-				}
-				return -1
-			}()) <= 1 && (func() room_vnum {
-				if och.Was_in_room != room_rnum(-1) && och.Was_in_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(och.Was_in_room)))).Number
-				}
-				return -1
-			}()) > 1 {
-				stdio.Fprintf(fp, "%d %s %s %d %s\n", d.Descriptor, GET_NAME(och), &d.Host[0], func() room_vnum {
-					if och.Was_in_room != room_rnum(-1) && och.Was_in_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(och.Was_in_room)))).Number
-					}
-					return -1
-				}(), d.User)
+			if int(libc.BoolToInt(GET_ROOM_VNUM(och.In_room))) > 1 {
+				stdio.Fprintf(fp, "%d %s %s %d %s\n", d.Descriptor, GET_NAME(och), &d.Host[0], GET_ROOM_VNUM(och.In_room), d.User)
+			} else if int(libc.BoolToInt(GET_ROOM_VNUM(och.In_room))) <= 1 && int(libc.BoolToInt(GET_ROOM_VNUM(och.Was_in_room))) > 1 {
+				stdio.Fprintf(fp, "%d %s %s %d %s\n", d.Descriptor, GET_NAME(och), &d.Host[0], GET_ROOM_VNUM(och.Was_in_room), d.User)
 			} else {
 				stdio.Fprintf(fp, "%d %s %s 300 %s\n", d.Descriptor, GET_NAME(och), &d.Host[0], d.User)
 			}
@@ -2651,8 +2606,8 @@ func execute_copyover() {
 	fp.Close()
 	stdio.Sprintf(&buf[0], "%d", port)
 	stdio.Chdir(libc.CString(".."))
-	execl(libc.CString(EXE_FILE), libc.CString("circle"), &buf2[0], &buf[0], nil)
-	perror(libc.CString("do_copyover: execl"))
+	//C.execl(libc.CString(EXE_FILE), libc.CString("circle"), &buf2[0], &buf[0], nil)
+	fmt.Println(libc.CString("do_copyover: execl"))
 	send_to_imm(libc.CString("Copyover FAILED!\n\r"))
 	os.Exit(1)
 }
@@ -2818,12 +2773,12 @@ func do_restore(ch *char_data, argument *byte, cmd int, subcmd int) {
 		vict.Mana = vict.Max_mana
 		vict.Move = vict.Max_move
 		vict.Ki = vict.Max_ki
-		vict.Affected_by[int(AFF_BLIND/32)] &= ^(1 << (int(AFF_BLIND % 32)))
+		REMOVE_BIT_AR(vict.Affected_by[:], AFF_BLIND)
 		vict.Limb_condition[0] = 100
 		vict.Limb_condition[1] = 100
 		vict.Limb_condition[2] = 100
 		vict.Limb_condition[3] = 100
-		vict.Act[int(PLR_HEAD/32)] |= bitvector_t(int32(1 << (int(PLR_HEAD % 32))))
+		SET_BIT_AR(vict.Act[:], PLR_HEAD)
 		if !IS_NPC(vict) && ch.Admlevel >= ADMLVL_VICE {
 			if vict.Admlevel >= ADMLVL_IMMORT {
 				for i = 1; i <= MAX_SKILLS; i++ {
@@ -2861,7 +2816,7 @@ func perform_immort_vis(ch *char_data) {
 }
 func perform_immort_invis(ch *char_data, level int) {
 	var tch *char_data
-	for tch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; tch != nil; tch = tch.Next_in_room {
+	for tch = world[ch.In_room].People; tch != nil; tch = tch.Next_in_room {
 		if tch == ch {
 			continue
 		}
@@ -3107,7 +3062,7 @@ func do_last(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return vict.Player_specials.Host
 		}
 		return libc.CString("(NOHOST)")
-	}(), ctime(&vict.Time.Logon))
+	}(), vict.Time.Logon)
 	free_char(vict)
 }
 func do_force(ch *char_data, argument *byte, cmd int, subcmd int) {
@@ -3135,18 +3090,13 @@ func do_force(ch *char_data, argument *byte, cmd int, subcmd int) {
 		} else {
 			send_to_char(ch, libc.CString("%s"), config_info.Play.OK)
 			act(&buf1[0], TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
-			mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("(GC) %s forced %s to %s"), GET_NAME(ch), GET_NAME(vict), &to_force[0])
+			mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("(GC) %s forced %s to %s"), GET_NAME(ch), GET_NAME(vict), &to_force[0])
 			command_interpreter(vict, &to_force[0])
 		}
 	} else if libc.StrCaseCmp(libc.CString("room"), &arg[0]) == 0 {
 		send_to_char(ch, libc.CString("%s"), config_info.Play.OK)
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("(GC) %s forced room %d to %s"), GET_NAME(ch), func() room_vnum {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-			}
-			return -1
-		}(), &to_force[0])
-		for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; vict != nil; vict = next_force {
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("(GC) %s forced room %d to %s"), GET_NAME(ch), GET_ROOM_VNUM(ch.In_room), &to_force[0])
+		for vict = world[ch.In_room].People; vict != nil; vict = next_force {
 			next_force = vict.Next_in_room
 			if !IS_NPC(vict) && vict.Admlevel >= ch.Admlevel {
 				continue
@@ -3156,7 +3106,7 @@ func do_force(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 	} else {
 		send_to_char(ch, libc.CString("%s"), config_info.Play.OK)
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("(GC) %s forced all to %s"), GET_NAME(ch), &to_force[0])
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("(GC) %s forced all to %s"), GET_NAME(ch), &to_force[0])
 		for i = descriptor_list; i != nil; i = next_desc {
 			next_desc = i.Next
 			if i.Connected != CON_PLAYING || (func() *char_data {
@@ -3177,7 +3127,6 @@ func do_wiznet(ch *char_data, argument *byte, cmd int, subcmd int) {
 		msg   *byte
 		d     *descriptor_data
 		emote int8 = FALSE
-		any   int8 = FALSE
 		level int  = ADMLVL_IMMORT
 	)
 	skip_spaces(&argument)
@@ -3194,7 +3143,7 @@ func do_wiznet(ch *char_data, argument *byte, cmd int, subcmd int) {
 		one_argument((*byte)(unsafe.Add(unsafe.Pointer(argument), 1)), &buf1[0])
 		if is_number(&buf1[0]) != 0 {
 			half_chop((*byte)(unsafe.Add(unsafe.Pointer(argument), 1)), &buf1[0], argument)
-			level = MAX(libc.Atoi(libc.GoString(&buf1[0])), ADMLVL_IMMORT)
+			level = int(MAX(int64(libc.Atoi(libc.GoString(&buf1[0]))), ADMLVL_IMMORT))
 			if level > ch.Admlevel {
 				send_to_char(ch, libc.CString("You can't wizline above your own level.\r\n"))
 				return
@@ -3205,7 +3154,6 @@ func do_wiznet(ch *char_data, argument *byte, cmd int, subcmd int) {
 	case '@':
 		send_to_char(ch, libc.CString("God channel status:\r\n"))
 		for func() *descriptor_data {
-			any = 0
 			return func() *descriptor_data {
 				d = descriptor_list
 				return d
@@ -3309,25 +3257,25 @@ func do_zreset(ch *char_data, argument *byte, cmd int, subcmd int) {
 				}
 			}
 			send_to_char(ch, libc.CString("Reset world.\r\n"))
-			mudlog(NRM, MAX(ADMLVL_GRGOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("(GC) %s reset all MUD zones."), GET_NAME(ch))
+			mudlog(NRM, int(MAX(ADMLVL_GRGOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("(GC) %s reset all MUD zones."), GET_NAME(ch))
 			log_imm_action(libc.CString("RESET: %s has reset all MUD zones."), GET_NAME(ch))
 			return
 		}
 	} else if arg[0] == '.' || arg[0] == 0 {
-		i = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone
+		i = world[ch.In_room].Zone
 	} else {
 		j = zone_vnum(libc.Atoi(libc.GoString(&arg[0])))
 		for i = 0; i <= top_of_zone_table; i++ {
-			if (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Number == j {
+			if zone_table[i].Number == j {
 				break
 			}
 		}
 	}
 	if i <= top_of_zone_table && (can_edit_zone(ch, i) != 0 || ch.Admlevel > ADMLVL_IMMORT) {
 		reset_zone(i)
-		send_to_char(ch, libc.CString("Reset zone #%d: %s.\r\n"), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Number, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Name)
-		mudlog(NRM, MAX(ADMLVL_GRGOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("(GC) %s reset zone %d (%s)"), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Number, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Name)
-		log_imm_action(libc.CString("RESET: %s has reset zone #%d: %s."), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Number, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Name)
+		send_to_char(ch, libc.CString("Reset zone #%d: %s.\r\n"), zone_table[i].Number, zone_table[i].Name)
+		mudlog(NRM, int(MAX(ADMLVL_GRGOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("(GC) %s reset zone %d (%s)"), GET_NAME(ch), zone_table[i].Number, zone_table[i].Name)
+		log_imm_action(libc.CString("RESET: %s has reset zone #%d: %s."), GET_NAME(ch), zone_table[i].Number, zone_table[i].Name)
 	} else {
 		send_to_char(ch, libc.CString("You do not have permission to reset this zone. Try %d.\r\n"), ch.Player_specials.Olc_zone)
 	}
@@ -3362,18 +3310,14 @@ func do_wizutil(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_char(ch, libc.CString("Your victim is not flagged.\r\n"))
 				return
 			}
-			vict.Act[int(PLR_THIEF/32)] &= bitvector_t(int32(^(1 << (int(PLR_THIEF % 32)))))
-			vict.Act[int(PLR_KILLER/32)] &= bitvector_t(int32(^(1 << (int(PLR_KILLER % 32)))))
+			REMOVE_BIT_AR(vict.Act[:], PLR_THIEF)
+			REMOVE_BIT_AR(vict.Act[:], PLR_KILLER)
 			send_to_char(ch, libc.CString("Pardoned.\r\n"))
 			send_to_char(vict, libc.CString("You have been pardoned by the Gods!\r\n"))
-			mudlog(BRF, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("(GC) %s pardoned by %s"), GET_NAME(vict), GET_NAME(ch))
+			mudlog(BRF, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("(GC) %s pardoned by %s"), GET_NAME(vict), GET_NAME(ch))
 		case SCMD_NOTITLE:
-			result = int(func() bitvector_t {
-				p := &vict.Act[int(PLR_NOTITLE/32)]
-				vict.Act[int(PLR_NOTITLE/32)] = bitvector_t(int32(int(vict.Act[int(PLR_NOTITLE/32)]) ^ 1<<(int(PLR_NOTITLE%32))))
-				return *p
-			}()) & (1 << (int(PLR_NOTITLE % 32)))
-			mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("(GC) Notitle %s for %s by %s."), func() string {
+			result = int(PLR_TOG_CHK(vict, PLR_NOTITLE))
+			mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("(GC) Notitle %s for %s by %s."), func() string {
 				if result != 0 {
 					return "ON"
 				}
@@ -3386,12 +3330,8 @@ func do_wizutil(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return "OFF"
 			}(), GET_NAME(vict), GET_NAME(ch))
 		case SCMD_SQUELCH:
-			result = int(func() bitvector_t {
-				p := &vict.Act[int(PLR_NOSHOUT/32)]
-				vict.Act[int(PLR_NOSHOUT/32)] = bitvector_t(int32(int(vict.Act[int(PLR_NOSHOUT/32)]) ^ 1<<(int(PLR_NOSHOUT%32))))
-				return *p
-			}()) & (1 << (int(PLR_NOSHOUT % 32)))
-			mudlog(BRF, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("(GC) Squelch %s for %s by %s."), func() string {
+			result = int(PLR_TOG_CHK(vict, PLR_NOSHOUT))
+			mudlog(BRF, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("(GC) Squelch %s for %s by %s."), func() string {
 				if result != 0 {
 					return "ON"
 				}
@@ -3422,12 +3362,12 @@ func do_wizutil(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_char(ch, libc.CString("Your victim is already pretty cold.\r\n"))
 				return
 			}
-			vict.Act[int(PLR_FROZEN/32)] |= bitvector_t(int32(1 << (int(PLR_FROZEN % 32))))
+			SET_BIT_AR(vict.Act[:], PLR_FROZEN)
 			vict.Player_specials.Freeze_level = int8(ch.Admlevel)
 			send_to_char(vict, libc.CString("A bitter wind suddenly rises and drains every erg of heat from your body!\r\nYou feel frozen!\r\n"))
 			send_to_char(ch, libc.CString("Frozen.\r\n"))
 			act(libc.CString("A sudden cold wind conjured from nowhere freezes $n!"), FALSE, vict, nil, nil, TO_ROOM)
-			mudlog(BRF, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("(GC) %s frozen by %s."), GET_NAME(vict), GET_NAME(ch))
+			mudlog(BRF, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("(GC) %s frozen by %s."), GET_NAME(vict), GET_NAME(ch))
 		case SCMD_THAW:
 			if !PLR_FLAGGED(vict, PLR_FROZEN) {
 				send_to_char(ch, libc.CString("Sorry, your victim is not morbidly encased in ice at the moment.\r\n"))
@@ -3437,13 +3377,13 @@ func do_wizutil(ch *char_data, argument *byte, cmd int, subcmd int) {
 				send_to_char(ch, libc.CString("Sorry, a level %d God froze %s... you can't unfreeze %s.\r\n"), vict.Player_specials.Freeze_level, GET_NAME(vict), HMHR(vict))
 				return
 			}
-			mudlog(BRF, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("(GC) %s un-frozen by %s."), GET_NAME(vict), GET_NAME(ch))
-			vict.Act[int(PLR_FROZEN/32)] &= bitvector_t(int32(^(1 << (int(PLR_FROZEN % 32)))))
+			mudlog(BRF, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("(GC) %s un-frozen by %s."), GET_NAME(vict), GET_NAME(ch))
+			REMOVE_BIT_AR(vict.Act[:], PLR_FROZEN)
 			send_to_char(vict, libc.CString("A fireball suddenly explodes in front of you, melting the ice!\r\nYou feel thawed.\r\n"))
 			send_to_char(ch, libc.CString("Thawed.\r\n"))
 			act(libc.CString("A sudden fireball conjured from nowhere thaws $n!"), FALSE, vict, nil, nil, TO_ROOM)
 		case SCMD_UNAFFECT:
-			if vict.Affected != nil || vict.Affected_by != nil || vict.Affectedv != nil {
+			if vict.Affected != nil || vict.Affectedv != nil {
 				for vict.Affected != nil {
 					affect_remove(vict, vict.Affected)
 				}
@@ -3463,7 +3403,7 @@ func do_wizutil(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return
 			}
 		default:
-			basic_mud_log(libc.CString("SYSERR: Unknown subcmd %d passed to do_wizutil (%s)"), subcmd, __FILE__)
+			basic_mud_log(libc.CString("SYSERR: Unknown subcmd %d passed to do_wizutil (%s)"), subcmd, "THISFILE")
 		}
 		save_char(vict)
 	}
@@ -3480,7 +3420,7 @@ func print_zone_to_buf(bufptr *byte, left uint64, zone zone_rnum, listall int) u
 			n int
 			o int
 		)
-		tmp = uint64(stdio.Snprintf(bufptr, int(left), "%3d %-30.30s By: %-10.10s Age: %3d; Reset: %3d (%1d); Range: %5d-%5d\r\n", (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Number, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Name, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Builders, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Age, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Lifespan, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Reset_mode, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top))
+		tmp = uint64(stdio.Snprintf(bufptr, int(left), "%3d %-30.30s By: %-10.10s Age: %3d; Reset: %3d (%1d); Range: %5d-%5d\r\n", zone_table[zone].Number, zone_table[zone].Name, zone_table[zone].Builders, zone_table[zone].Age, zone_table[zone].Lifespan, zone_table[zone].Reset_mode, zone_table[zone].Bot, zone_table[zone].Top))
 		i = func() int {
 			j = func() int {
 				k = func() int {
@@ -3501,31 +3441,31 @@ func print_zone_to_buf(bufptr *byte, left uint64, zone zone_rnum, listall int) u
 			return j
 		}()
 		for i = 0; i < int(top_of_world); i++ {
-			if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Number >= (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Number <= (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top {
+			if world[i].Number >= zone_table[zone].Bot && world[i].Number <= zone_table[zone].Top {
 				j++
 			}
 		}
 		for i = 0; i < int(top_of_objt); i++ {
-			if (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Vnum >= mob_vnum((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot) && (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Vnum <= mob_vnum((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top) {
+			if obj_index[i].Vnum >= mob_vnum(zone_table[zone].Bot) && obj_index[i].Vnum <= mob_vnum(zone_table[zone].Top) {
 				k++
 			}
 		}
 		for i = 0; i < int(top_of_mobt); i++ {
-			if (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Vnum >= mob_vnum((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot) && (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Vnum <= mob_vnum((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top) {
+			if mob_index[i].Vnum >= mob_vnum(zone_table[zone].Bot) && mob_index[i].Vnum <= mob_vnum(zone_table[zone].Top) {
 				l++
 			}
 		}
-		m = count_shops(shop_vnum((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot), shop_vnum((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top))
+		m = count_shops(shop_vnum(zone_table[zone].Bot), shop_vnum(zone_table[zone].Top))
 		for i = 0; i < top_of_trigt; i++ {
-			if (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i)))).Vnum >= mob_vnum((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot) && (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i)))).Vnum <= mob_vnum((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top) {
+			if trig_index[i].Vnum >= mob_vnum(zone_table[zone].Bot) && trig_index[i].Vnum <= mob_vnum(zone_table[zone].Top) {
 				n++
 			}
 		}
-		o = count_guilds(guild_vnum((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot), guild_vnum((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top))
+		o = count_guilds(guild_vnum(zone_table[zone].Bot), guild_vnum(zone_table[zone].Top))
 		tmp += uint64(stdio.Snprintf((*byte)(unsafe.Add(unsafe.Pointer(bufptr), tmp)), int(left-tmp), "       Zone stats:\r\n       ---------------\r\n         Rooms:    %2d\r\n         Objects:  %2d\r\n         Mobiles:  %2d\r\n         Shops:    %2d\r\n         Triggers: %2d\r\n         Guilds:   %2d\r\n", j, k, l, m, n, o))
 		return tmp
 	}
-	return uint64(stdio.Snprintf(bufptr, int(left), "%3d %-*s By: %-10.10s Range: %5d-%5d\r\n", (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Number, count_color_chars((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Name)+30, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Name, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Builders, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top))
+	return uint64(stdio.Snprintf(bufptr, int(left), "%3d %-*s By: %-10.10s Range: %5d-%5d\r\n", zone_table[zone].Number, count_color_chars(zone_table[zone].Name)+30, zone_table[zone].Name, zone_table[zone].Builders, zone_table[zone].Bot, zone_table[zone].Top))
 }
 func do_show(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var (
@@ -3599,7 +3539,7 @@ func do_show(ch *char_data, argument *byte, cmd int, subcmd int) {
 	switch l {
 	case 1:
 		if int(self) != 0 {
-			print_zone_to_buf(&buf[0], uint64(64936), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone, 1)
+			print_zone_to_buf(&buf[0], uint64(64936), world[ch.In_room].Zone, 1)
 		} else if value[0] != 0 && is_number(&value[0]) != 0 {
 			for func() zone_rnum {
 				zvn = zone_vnum(libc.Atoi(libc.GoString(&value[0])))
@@ -3607,7 +3547,7 @@ func do_show(ch *char_data, argument *byte, cmd int, subcmd int) {
 					zrn = 0
 					return zrn
 				}()
-			}(); (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrn)))).Number != zvn && zrn <= top_of_zone_table; zrn++ {
+			}(); zone_table[zrn].Number != zvn && zrn <= top_of_zone_table; zrn++ {
 			}
 			if zrn <= top_of_zone_table {
 				print_zone_to_buf(&buf[0], uint64(64936), zrn, 1)
@@ -3643,11 +3583,8 @@ func do_show(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		send_to_char(ch, libc.CString("Player: %-12s (%s) [%2d %s %s]\r\n"), GET_NAME(vict), genders[int(vict.Sex)], GET_LEVEL(vict), class_abbrevs[int(vict.Chclass)], race_abbrevs[int(vict.Race)])
 		send_to_char(ch, libc.CString("Au: %-8d  Bal: %-8d  Exp: %lld  Align: %-5d  Ethic: %-5d\r\n"), vict.Gold, vict.Bank_gold, vict.Exp, vict.Alignment, vict.Alignment_ethic)
-		if config_info.Advance.Allow_multiclass != 0 {
-			send_to_char(ch, libc.CString("Class ranks: %s\r\n"), class_desc_str(vict, 1, 0))
-		}
-		send_to_char(ch, libc.CString("Started: %-20.16s  "), ctime(&vict.Time.Created))
-		send_to_char(ch, libc.CString("Last: %-20.16s  Played: %3dh %2dm\r\n"), ctime(&vict.Time.Logon), int(vict.Time.Played/3600), int(vict.Time.Played/60%60))
+		send_to_char(ch, libc.CString("Started: %-20.16s  "), vict.Time.Created)
+		send_to_char(ch, libc.CString("Last: %-20.16s  Played: %3dh %2dm\r\n"), vict.Time.Logon, int(vict.Time.Played/3600), int(vict.Time.Played/60%60))
 		free_char(vict)
 	case 3:
 		if value[0] == 0 {
@@ -3684,20 +3621,15 @@ func do_show(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}()
 		}(); i <= int(top_of_world); i++ {
 			for j = 0; j < NUM_OF_DIRS; j++ {
-				if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Dir_option[j]) == nil {
+				if (world[i].Dir_option[j]) == nil {
 					continue
 				}
-				if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Dir_option[j]).To_room == 0 {
+				if (world[i].Dir_option[j]).To_room == 0 {
 					nlen = uint64(stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "%2d: (void   ) [%5d] %-*s%s (%s)\r\n", func() int {
 						p := &k
 						*p++
 						return *p
-					}(), func() room_vnum {
-						if i != int(-1) && i <= int(top_of_world) {
-							return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Number
-						}
-						return -1
-					}(), count_color_chars((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Name)+40, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Name, func() string {
+					}(), GET_ROOM_VNUM(room_rnum(i)), count_color_chars(world[i].Name)+40, world[i].Name, func() string {
 						if (func() int {
 							if !IS_NPC(ch) {
 								if PRF_FLAGGED(ch, PRF_COLOR) {
@@ -3716,17 +3648,12 @@ func do_show(ch *char_data, argument *byte, cmd int, subcmd int) {
 					}
 					len_ += nlen
 				}
-				if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Dir_option[j]).To_room == room_rnum(-1) && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Dir_option[j]).General_description == nil {
+				if (world[i].Dir_option[j]).To_room == room_rnum(-1) && (world[i].Dir_option[j]).General_description == nil {
 					nlen = uint64(stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "%2d: (Nowhere) [%5d] %-*s%s (%s)\r\n", func() int {
 						p := &k
 						*p++
 						return *p
-					}(), func() room_vnum {
-						if i != int(-1) && i <= int(top_of_world) {
-							return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Number
-						}
-						return -1
-					}(), count_color_chars((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Name)+40, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Name, func() string {
+					}(), GET_ROOM_VNUM(room_rnum(i)), count_color_chars(world[i].Name)+40, world[i].Name, func() string {
 						if (func() int {
 							if !IS_NPC(ch) {
 								if PRF_FLAGGED(ch, PRF_COLOR) {
@@ -3762,12 +3689,7 @@ func do_show(ch *char_data, argument *byte, cmd int, subcmd int) {
 					p := &j
 					*p++
 					return *p
-				}(), func() room_vnum {
-					if i != int(-1) && i <= int(top_of_world) {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Number
-					}
-					return -1
-				}(), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Name))
+				}(), GET_ROOM_VNUM(room_rnum(i)), world[i].Name))
 				if len_+nlen >= uint64(64936) || nlen < 0 {
 					break
 				}
@@ -3789,12 +3711,7 @@ func do_show(ch *char_data, argument *byte, cmd int, subcmd int) {
 					p := &j
 					*p++
 					return *p
-				}(), func() room_vnum {
-					if i != int(-1) && i <= int(top_of_world) {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Number
-					}
-					return -1
-				}(), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Name))
+				}(), GET_ROOM_VNUM(room_rnum(i)), world[i].Name))
 				if len_+nlen >= uint64(64936) || nlen < 0 {
 					break
 				}
@@ -3832,7 +3749,7 @@ func do_show(ch *char_data, argument *byte, cmd int, subcmd int) {
 	case 13:
 		send_to_char(ch, libc.CString("This is not used currently.\r\n"))
 	case 14:
-		if value != nil && value[0] != 0 {
+		if value[0] != 0 {
 			if stdio.Sscanf(&value[0], "%d-%d", &low, &high) != 2 {
 				if stdio.Sscanf(&value[0], "%d", &low) != 1 {
 					send_to_char(ch, libc.CString("Usage: show uniques, show uniques [vnum], or show uniques [low-high]\r\n"))
@@ -3976,8 +3893,7 @@ func perform_set(ch *char_data, vict *char_data, mode int, val_arg *byte) int {
 			return "OFF"
 		}(), GET_NAME(vict))
 	} else if int(set_fields[mode].Type) == NUMBER {
-		var ptr *byte
-		value = strtoll(val_arg, &ptr, 10)
+		value, _ = strconv.ParseInt(libc.GoString(val_arg), 10, libc.StrLen(val_arg))
 		send_to_char(ch, libc.CString("%s's %s set to %lld.\r\n"), GET_NAME(vict), set_fields[mode].Cmd, value)
 	} else {
 		send_to_char(ch, libc.CString("%s"), config_info.Play.OK)
@@ -3985,24 +3901,24 @@ func perform_set(ch *char_data, vict *char_data, mode int, val_arg *byte) int {
 	switch mode {
 	case 0:
 		if on != 0 {
-			vict.Player_specials.Pref[int(PRF_BRIEF/32)] |= bitvector_t(int32(1 << (int(PRF_BRIEF % 32))))
+			SET_BIT_AR(vict.Player_specials.Pref[:], PRF_BRIEF)
 		} else if off != 0 {
-			vict.Player_specials.Pref[int(PRF_BRIEF/32)] &= bitvector_t(int32(^(1 << (int(PRF_BRIEF % 32)))))
+			REMOVE_BIT_AR(vict.Player_specials.Pref[:], PRF_BRIEF)
 		}
 	case 1:
 		if on != 0 {
-			vict.Act[int(PLR_INVSTART/32)] |= bitvector_t(int32(1 << (int(PLR_INVSTART % 32))))
+			SET_BIT_AR(vict.Act[:], PLR_INVSTART)
 		} else if off != 0 {
-			vict.Act[int(PLR_INVSTART/32)] &= bitvector_t(int32(^(1 << (int(PLR_INVSTART % 32)))))
+			REMOVE_BIT_AR(vict.Act[:], PLR_INVSTART)
 		}
 	case 2:
 		set_title(vict, val_arg)
 		send_to_char(ch, libc.CString("%s's title is now: %s\r\n"), GET_NAME(vict), GET_TITLE(vict))
 	case 3:
 		if on != 0 {
-			vict.Player_specials.Pref[int(PRF_SUMMONABLE/32)] |= bitvector_t(int32(1 << (int(PRF_SUMMONABLE % 32))))
+			SET_BIT_AR(vict.Player_specials.Pref[:], PRF_SUMMONABLE)
 		} else if off != 0 {
-			vict.Player_specials.Pref[int(PRF_SUMMONABLE/32)] &= bitvector_t(int32(^(1 << (int(PRF_SUMMONABLE % 32)))))
+			REMOVE_BIT_AR(vict.Player_specials.Pref[:], PRF_SUMMONABLE)
 		}
 		send_to_char(ch, libc.CString("Nosummon %s for %s.\r\n"), func() string {
 			if on == 0 {
@@ -4012,110 +3928,110 @@ func perform_set(ch *char_data, vict *char_data, mode int, val_arg *byte) int {
 		}(), GET_NAME(vict))
 	case 4:
 		vict.Max_hit = value
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set maxpl for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set maxpl for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set maxpl for %s."), GET_NAME(ch), GET_NAME(vict))
 	case 5:
 		vict.Max_mana = value
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set maxki for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set maxki for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set maxki for %s."), GET_NAME(ch), GET_NAME(vict))
 	case 6:
 		vict.Max_move = value
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set maxsta for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set maxsta for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set maxsta for %s."), GET_NAME(ch), GET_NAME(vict))
 	case 7:
 		vict.Hit = value
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set pl for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set pl for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set pl for %s."), GET_NAME(ch), GET_NAME(vict))
 	case 8:
 		vict.Mana = value
 		affect_total(vict)
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set ki for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set ki for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set ki for %s."), GET_NAME(ch), GET_NAME(vict))
 	case 9:
 		vict.Move = value
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set st for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set st for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set st for %s."), GET_NAME(ch), GET_NAME(vict))
 	case 10:
 		vict.Alignment = int(func() int64 {
-			value = int64(MAX(int(-1000), MIN(1000, int(value))))
+			value = MAX(int64(-1000), MIN(1000, value))
 			return value
 		}())
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set align for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set align for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set align for %s."), GET_NAME(ch), GET_NAME(vict))
 		affect_total(vict)
 	case 11:
-		value = int64(MAX(0, MIN(100, int(value))))
+		value = MAX(0, MIN(100, value))
 		vict.Real_abils.Str = int8(value)
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set str for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set str for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set str for %s."), GET_NAME(ch), GET_NAME(vict))
 		affect_total(vict)
 	case 12:
 		send_to_char(ch, libc.CString("Setting str_add does nothing now.\r\n"))
 		fallthrough
 	case 13:
-		value = int64(MAX(0, MIN(100, int(value))))
+		value = MAX(0, MIN(100, value))
 		vict.Real_abils.Intel = int8(value)
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set intel for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set intel for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set intel for %s."), GET_NAME(ch), GET_NAME(vict))
 		affect_total(vict)
 	case 14:
-		value = int64(MAX(0, MIN(100, int(value))))
+		value = MAX(0, MIN(100, value))
 		vict.Real_abils.Wis = int8(value)
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set wis for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set wis for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set wis for %s."), GET_NAME(ch), GET_NAME(vict))
 		affect_total(vict)
 	case 15:
-		value = int64(MAX(0, MIN(100, int(value))))
+		value = MAX(0, MIN(100, value))
 		vict.Real_abils.Dex = int8(value)
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set dex for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set dex for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set dex for %s."), GET_NAME(ch), GET_NAME(vict))
 		affect_total(vict)
 	case 16:
-		value = int64(MAX(0, MIN(100, int(value))))
+		value = MAX(0, MIN(100, value))
 		vict.Real_abils.Con = int8(value)
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set con for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set con for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set con for %s."), GET_NAME(ch), GET_NAME(vict))
 		affect_total(vict)
 	case 17:
-		value = int64(MAX(0, MIN(100, int(value))))
+		value = MAX(0, MIN(100, value))
 		vict.Real_abils.Cha = int8(value)
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set speed for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set speed for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set speed for %s."), GET_NAME(ch), GET_NAME(vict))
 		affect_total(vict)
 	case 18:
 		vict.Armor = int(func() int64 {
-			value = int64(MAX(int(-100), MIN(500, int(value))))
+			value = MAX(int64(-100), MIN(500, value))
 			return value
 		}())
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set armor index for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set armor index for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set armor index for %s."), GET_NAME(ch), GET_NAME(vict))
 		affect_total(vict)
 	case 19:
 		vict.Gold = int(func() int64 {
-			value = int64(MAX(0, MIN(100000000, int(value))))
+			value = MAX(0, MIN(100000000, value))
 			return value
 		}())
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set zenni for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set zenni for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set zenni for %s."), GET_NAME(ch), GET_NAME(vict))
 	case 20:
 		vict.Bank_gold = int(func() int64 {
-			value = int64(MAX(0, MIN(100000000, int(value))))
+			value = MAX(0, MIN(100000000, value))
 			return value
 		}())
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set bank for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set bank for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set bank for %s."), GET_NAME(ch), GET_NAME(vict))
 	case 21:
 		vict.Exp = func() int64 {
-			value = int64(MAX(0, MIN(50000000, int(value))))
+			value = MAX(0, MIN(50000000, value))
 			return value
 		}()
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set exp for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set exp for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set exp for %s."), GET_NAME(ch), GET_NAME(vict))
 	case 22:
 		send_to_char(ch, libc.CString("This does nothing at the moment.\r\n"))
 	case 23:
 		vict.Damage_mod = int(func() int64 {
-			value = int64(MAX(int(-20), MIN(20, int(value))))
+			value = MAX(int64(-20), MIN(20, value))
 			return value
 		}())
 		affect_total(vict)
@@ -4125,7 +4041,7 @@ func perform_set(ch *char_data, vict *char_data, mode int, val_arg *byte) int {
 			return 0
 		}
 		vict.Player_specials.Invis_level = int16(func() int64 {
-			value = int64(MAX(0, MIN(vict.Admlevel, int(value))))
+			value = MAX(0, MIN(int64(vict.Admlevel), value))
 			return value
 		}())
 	case 25:
@@ -4134,9 +4050,9 @@ func perform_set(ch *char_data, vict *char_data, mode int, val_arg *byte) int {
 			return 0
 		}
 		if on != 0 {
-			vict.Player_specials.Pref[int(PRF_NOHASSLE/32)] |= bitvector_t(int32(1 << (int(PRF_NOHASSLE % 32))))
+			SET_BIT_AR(vict.Player_specials.Pref[:], PRF_NOHASSLE)
 		} else if off != 0 {
-			vict.Player_specials.Pref[int(PRF_NOHASSLE/32)] &= bitvector_t(int32(^(1 << (int(PRF_NOHASSLE % 32)))))
+			REMOVE_BIT_AR(vict.Player_specials.Pref[:], PRF_NOHASSLE)
 		}
 	case 26:
 		if ch == vict && on != 0 {
@@ -4144,26 +4060,26 @@ func perform_set(ch *char_data, vict *char_data, mode int, val_arg *byte) int {
 			return 0
 		}
 		if on != 0 {
-			vict.Act[int(PLR_FROZEN/32)] |= bitvector_t(int32(1 << (int(PLR_FROZEN % 32))))
+			SET_BIT_AR(vict.Act[:], PLR_FROZEN)
 		} else if off != 0 {
-			vict.Act[int(PLR_FROZEN/32)] &= bitvector_t(int32(^(1 << (int(PLR_FROZEN % 32)))))
+			REMOVE_BIT_AR(vict.Act[:], PLR_FROZEN)
 		}
 	case 27:
 		fallthrough
 	case 28:
 		if vict.Level != 0 {
 			vict.Player_specials.Class_skill_points[vict.Chclass] = int(func() int64 {
-				value = int64(MAX(0, MIN(10000, int(value))))
+				value = MAX(0, MIN(10000, value))
 				return value
 			}())
-			mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set PS for %s."), GET_NAME(ch), GET_NAME(vict))
+			mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set PS for %s."), GET_NAME(ch), GET_NAME(vict))
 			log_imm_action(libc.CString("SET: %s has set PS for %s."), GET_NAME(ch), GET_NAME(vict))
 		} else {
 			vict.Player_specials.Skill_points = int(func() int64 {
-				value = int64(MAX(0, MIN(10000, int(value))))
+				value = MAX(0, MIN(10000, value))
 				return value
 			}())
-			mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set PS for %s."), GET_NAME(ch), GET_NAME(vict))
+			mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set PS for %s."), GET_NAME(ch), GET_NAME(vict))
 			log_imm_action(libc.CString("SET: %s has set PS for %s."), GET_NAME(ch), GET_NAME(vict))
 		}
 	case 29:
@@ -4176,7 +4092,7 @@ func perform_set(ch *char_data, vict *char_data, mode int, val_arg *byte) int {
 			send_to_char(ch, libc.CString("%s's %s now off.\r\n"), GET_NAME(vict), set_fields[mode].Cmd)
 		} else if is_number(val_arg) != 0 {
 			value = int64(libc.Atoi(libc.GoString(val_arg)))
-			value = int64(MAX(0, MIN(24, int(value))))
+			value = MAX(0, MIN(24, value))
 			vict.Player_specials.Conditions[mode-29] = int8(value)
 			send_to_char(ch, libc.CString("%s's %s set to %lld.\r\n"), GET_NAME(vict), set_fields[mode].Cmd, value)
 		} else {
@@ -4185,22 +4101,22 @@ func perform_set(ch *char_data, vict *char_data, mode int, val_arg *byte) int {
 		}
 	case 32:
 		if on != 0 {
-			vict.Act[int(PLR_KILLER/32)] |= bitvector_t(int32(1 << (int(PLR_KILLER % 32))))
+			SET_BIT_AR(vict.Act[:], PLR_KILLER)
 		} else if off != 0 {
-			vict.Act[int(PLR_KILLER/32)] &= bitvector_t(int32(^(1 << (int(PLR_KILLER % 32)))))
+			REMOVE_BIT_AR(vict.Act[:], PLR_KILLER)
 		}
 	case 33:
 		if on != 0 {
-			vict.Act[int(PLR_THIEF/32)] |= bitvector_t(int32(1 << (int(PLR_THIEF % 32))))
+			SET_BIT_AR(vict.Act[:], PLR_THIEF)
 		} else if off != 0 {
-			vict.Act[int(PLR_THIEF/32)] &= bitvector_t(int32(^(1 << (int(PLR_THIEF % 32)))))
+			REMOVE_BIT_AR(vict.Act[:], PLR_THIEF)
 		}
 	case 34:
 		if !IS_NPC(vict) && value > 100 {
 			send_to_char(ch, libc.CString("You can't do that.\r\n"))
 			return 0
 		}
-		value = int64(MAX(0, int(value)))
+		value = MAX(0, value)
 		vict.Level = int(value)
 	case 35:
 		if (func() room_rnum {
@@ -4216,21 +4132,21 @@ func perform_set(ch *char_data, vict *char_data, mode int, val_arg *byte) int {
 		char_to_room(vict, rnum)
 	case 36:
 		if on != 0 {
-			vict.Player_specials.Pref[int(PRF_ROOMFLAGS/32)] |= bitvector_t(int32(1 << (int(PRF_ROOMFLAGS % 32))))
+			SET_BIT_AR(vict.Player_specials.Pref[:], PRF_ROOMFLAGS)
 		} else if off != 0 {
-			vict.Player_specials.Pref[int(PRF_ROOMFLAGS/32)] &= bitvector_t(int32(^(1 << (int(PRF_ROOMFLAGS % 32)))))
+			REMOVE_BIT_AR(vict.Player_specials.Pref[:], PRF_ROOMFLAGS)
 		}
 	case 37:
 		if on != 0 {
-			vict.Act[int(PLR_SITEOK/32)] |= bitvector_t(int32(1 << (int(PLR_SITEOK % 32))))
+			SET_BIT_AR(vict.Act[:], PLR_SITEOK)
 		} else if off != 0 {
-			vict.Act[int(PLR_SITEOK/32)] &= bitvector_t(int32(^(1 << (int(PLR_SITEOK % 32)))))
+			REMOVE_BIT_AR(vict.Act[:], PLR_SITEOK)
 		}
 	case 38:
 		if on != 0 {
-			vict.Act[int(PLR_DELETED/32)] |= bitvector_t(int32(1 << (int(PLR_DELETED % 32))))
+			SET_BIT_AR(vict.Act[:], PLR_DELETED)
 		} else if off != 0 {
-			vict.Act[int(PLR_DELETED/32)] &= bitvector_t(int32(^(1 << (int(PLR_DELETED % 32)))))
+			REMOVE_BIT_AR(vict.Act[:], PLR_DELETED)
 		}
 	case 39:
 		if (func() int {
@@ -4244,24 +4160,24 @@ func perform_set(ch *char_data, vict *char_data, mode int, val_arg *byte) int {
 		vict.Chclass = int8(i)
 	case 40:
 		if on != 0 {
-			vict.Act[int(PLR_NOWIZLIST/32)] |= bitvector_t(int32(1 << (int(PLR_NOWIZLIST % 32))))
+			SET_BIT_AR(vict.Act[:], PLR_NOWIZLIST)
 		} else if off != 0 {
-			vict.Act[int(PLR_NOWIZLIST/32)] &= bitvector_t(int32(^(1 << (int(PLR_NOWIZLIST % 32)))))
+			REMOVE_BIT_AR(vict.Act[:], PLR_NOWIZLIST)
 		}
 	case 41:
 		if on != 0 {
-			vict.Player_specials.Pref[int(PRF_QUEST/32)] |= bitvector_t(int32(1 << (int(PRF_QUEST % 32))))
+			SET_BIT_AR(vict.Player_specials.Pref[:], PRF_QUEST)
 		} else if off != 0 {
-			vict.Player_specials.Pref[int(PRF_QUEST/32)] &= bitvector_t(int32(^(1 << (int(PRF_QUEST % 32)))))
+			REMOVE_BIT_AR(vict.Player_specials.Pref[:], PRF_QUEST)
 		}
 	case 42:
 		if libc.StrCaseCmp(val_arg, libc.CString("off")) == 0 {
-			vict.Act[int(PLR_LOADROOM/32)] &= bitvector_t(int32(^(1 << (int(PLR_LOADROOM % 32)))))
+			REMOVE_BIT_AR(vict.Act[:], PLR_LOADROOM)
 			vict.Player_specials.Load_room = -1
 		} else if is_number(val_arg) != 0 {
 			rvnum = room_vnum(libc.Atoi(libc.GoString(val_arg)))
 			if real_room(rvnum) != room_rnum(-1) {
-				vict.Act[int(PLR_LOADROOM/32)] |= bitvector_t(int32(1 << (int(PLR_LOADROOM % 32))))
+				SET_BIT_AR(vict.Act[:], PLR_LOADROOM)
 				vict.Player_specials.Load_room = rvnum
 				send_to_char(ch, libc.CString("%s will enter at room #%d.\r\n"), GET_NAME(vict), vict.Player_specials.Load_room)
 			} else {
@@ -4274,9 +4190,9 @@ func perform_set(ch *char_data, vict *char_data, mode int, val_arg *byte) int {
 		}
 	case 43:
 		if on != 0 {
-			vict.Player_specials.Pref[int(PRF_COLOR/32)] |= bitvector_t(int32(1 << (int(PRF_COLOR % 32))))
+			SET_BIT_AR(vict.Player_specials.Pref[:], PRF_COLOR)
 		} else if off != 0 {
-			vict.Player_specials.Pref[int(PRF_COLOR/32)] &= bitvector_t(int32(^(1 << (int(PRF_COLOR % 32)))))
+			REMOVE_BIT_AR(vict.Player_specials.Pref[:], PRF_COLOR)
 		}
 	case 44:
 		if int(ch.Idnum) == 0 || IS_NPC(vict) {
@@ -4294,9 +4210,9 @@ func perform_set(ch *char_data, vict *char_data, mode int, val_arg *byte) int {
 		}
 	case 46:
 		if on != 0 {
-			vict.Act[int(PLR_NODELETE/32)] |= bitvector_t(int32(1 << (int(PLR_NODELETE % 32))))
+			SET_BIT_AR(vict.Act[:], PLR_NODELETE)
 		} else if off != 0 {
-			vict.Act[int(PLR_NODELETE/32)] &= bitvector_t(int32(^(1 << (int(PLR_NODELETE % 32)))))
+			REMOVE_BIT_AR(vict.Act[:], PLR_NODELETE)
 		}
 	case 47:
 		if (func() int {
@@ -4344,29 +4260,29 @@ func perform_set(ch *char_data, vict *char_data, mode int, val_arg *byte) int {
 		racial_body_parts(vict)
 	case 53:
 		vict.Player_specials.Ability_trains = int(func() int64 {
-			value = int64(MAX(0, MIN(500, int(value))))
+			value = MAX(0, MIN(500, value))
 			return value
 		}())
 	case 54:
 		vict.Player_specials.Feat_points = int(func() int64 {
-			value = int64(MAX(0, MIN(500, int(value))))
+			value = MAX(0, MIN(500, value))
 			return value
 		}())
 	case 55:
 		vict.Alignment_ethic = int(func() int64 {
-			value = int64(MAX(int(-1000), MIN(1000, int(value))))
+			value = MAX(int64(-1000), MIN(1000, value))
 			return value
 		}())
 		affect_total(vict)
 	case 56:
 		vict.Max_ki = func() int64 {
-			value = int64(MAX(1, MIN(5000, int(value))))
+			value = MAX(1, MIN(5000, value))
 			return value
 		}()
 		affect_total(vict)
 	case 57:
 		vict.Ki = func() int64 {
-			value = int64(MAX(0, MIN(int(vict.Max_ki), int(value))))
+			value = MAX(0, MIN(vict.Max_ki, value))
 			return value
 		}()
 		affect_total(vict)
@@ -4420,68 +4336,68 @@ func perform_set(ch *char_data, vict *char_data, mode int, val_arg *byte) int {
 		return 1
 	case 64:
 		vict.Basepl = value
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set basepl for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set basepl for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set basepl for %s."), GET_NAME(ch), GET_NAME(vict))
 	case 65:
 		vict.Baseki = value
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set baseki for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set baseki for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set baseki for %s."), GET_NAME(ch), GET_NAME(vict))
 	case 66:
 		vict.Basest = value
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set basest for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set basest for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set basest for %s."), GET_NAME(ch), GET_NAME(vict))
 	case 67:
 		vict.Droom = room_vnum(func() int64 {
-			value = int64(MAX(0, MIN(20000, int(value))))
+			value = MAX(0, MIN(20000, value))
 			return value
 		}())
 	case 68:
 		vict.Absorbs = int(func() int64 {
-			value = int64(MAX(0, MIN(3, int(value))))
+			value = MAX(0, MIN(3, value))
 			return value
 		}())
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set absorbs for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set absorbs for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set absorbs for %s."), GET_NAME(ch), GET_NAME(vict))
 	case 69:
 		vict.Upgrade += int(func() int64 {
-			value = int64(MAX(1, MIN(1000, int(value))))
+			value = MAX(1, MIN(1000, value))
 			return value
 		}())
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set upgrade points for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set upgrade points for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set upgrade points for %s."), GET_NAME(ch), GET_NAME(vict))
 	case 70:
 		vict.Aura = int(func() int64 {
-			value = int64(MAX(0, MIN(8, int(value))))
+			value = MAX(0, MIN(8, value))
 			return value
 		}())
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set aura for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set aura for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set aura for %s."), GET_NAME(ch), GET_NAME(vict))
 	case 71:
 		send_to_char(ch, libc.CString("Use the reward command.\r\n"))
 	case 72:
 		vict.Boosts = int(func() int64 {
-			value = int64(MAX(int(-1000), MIN(1000, int(value))))
+			value = MAX(int64(-1000), MIN(1000, value))
 			return value
 		}())
 	case 73:
 		if on != 0 {
-			vict.Act[int(PLR_MULTP/32)] |= bitvector_t(int32(1 << (int(PLR_MULTP % 32))))
+			SET_BIT_AR(vict.Act[:], PLR_MULTP)
 		} else if off != 0 {
-			vict.Act[int(PLR_MULTP/32)] &= bitvector_t(int32(^(1 << (int(PLR_MULTP % 32)))))
+			REMOVE_BIT_AR(vict.Act[:], PLR_MULTP)
 		}
 	case 74:
 		vict.Dcount = int(func() int64 {
-			value = int64(MAX(int(-1000), MIN(1000, int(value))))
+			value = MAX(int64(-1000), MIN(1000, value))
 			return value
 		}())
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set death count for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set death count for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set death count for %s."), GET_NAME(ch), GET_NAME(vict))
 	case 75:
 		send_to_char(ch, libc.CString("No."))
 	case 76:
 		if vict.Desc != nil {
 			star_phase(vict, int(func() int64 {
-				value = int64(MAX(0, MIN(2, int(value))))
+				value = MAX(0, MIN(2, value))
 				return value
 			}()))
 		} else {
@@ -4489,28 +4405,28 @@ func perform_set(ch *char_data, vict *char_data, mode int, val_arg *byte) int {
 		}
 	case 77:
 		vict.Player_specials.Racial_pref = int(func() int64 {
-			value = int64(MAX(1, MIN(3, int(value))))
+			value = MAX(1, MIN(3, value))
 			return value
 		}())
 	case 78:
 		vict.Skill_slots = int(func() int64 {
-			value = int64(MAX(1, MIN(1000, int(value))))
+			value = MAX(1, MIN(1000, value))
 			return value
 		}())
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set skill slots for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set skill slots for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set skill slots for %s."), GET_NAME(ch), GET_NAME(vict))
 	case 79:
 		vict.Feature = (*byte)(unsafe.Pointer(uintptr('\x00')))
 	case 80:
 		vict.Transclass = int(func() int64 {
-			value = int64(MAX(1, MIN(3, int(value))))
+			value = MAX(1, MIN(3, value))
 			return value
 		}())
-		mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("SET: %s has set transformation class for %s."), GET_NAME(ch), GET_NAME(vict))
+		mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("SET: %s has set transformation class for %s."), GET_NAME(ch), GET_NAME(vict))
 		log_imm_action(libc.CString("SET: %s has set transformation class for %s."), GET_NAME(ch), GET_NAME(vict))
 	case 81:
 		vict.Clones = int16(func() int64 {
-			value = int64(MAX(1, MIN(3, int(value))))
+			value = MAX(1, MIN(3, value))
 			return value
 		}())
 		send_to_char(ch, libc.CString("Done.\r\n"))
@@ -4717,15 +4633,15 @@ func do_plist(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return KNUL
 	}())
 	for i = 0; i <= top_of_p_table; i++ {
-		if ((*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Flags & (1 << 0)) != 0 {
-			len_ += stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "[%3ld] <DELETED> --Will be removed next boot.\r\n", (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Id)
+		if IS_SET(bitvector_t(int32(player_table[i].Flags)), 1<<0) {
+			len_ += stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "[%3ld] <DELETED> --Will be removed next boot.\r\n", player_table[i].Id)
 			continue
 		}
-		if (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Level < low || (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Level > high {
+		if player_table[i].Level < low || player_table[i].Level > high {
 			continue
 		}
-		time_away = *real_time_passed(libc.GetTime(nil), (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Last)
-		if name_search[0] != 0 && libc.StrCaseCmp(&name_search[0], (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Name) != 0 {
+		time_away = *real_time_passed(libc.GetTime(nil), player_table[i].Last)
+		if name_search[0] != 0 && libc.StrCaseCmp(&name_search[0], player_table[i].Name) != 0 {
 			continue
 		}
 		if time_away.Day > high_day || time_away.Day < low_day {
@@ -4734,9 +4650,9 @@ func do_plist(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if time_away.Hours > high_hr || time_away.Hours < low_hr {
 			continue
 		}
-		libc.StrCpy(&time_str[0], libc.AscTime(libc.LocalTime(&(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Last)))
+		libc.StrCpy(&time_str[0], libc.AscTime(libc.LocalTime(&player_table[i].Last)))
 		time_str[libc.StrLen(&time_str[0])-1] = '\x00'
-		len_ += stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "[%3ld] (%2d) %-12s %s\r\n", (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Id, (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Level, CAP(libc.StrDup((*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Name)), &time_str[0])
+		len_ += stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "[%3ld] (%2d) %-12s %s\r\n", player_table[i].Id, player_table[i].Level, CAP(libc.StrDup(player_table[i].Name)), &time_str[0])
 		count++
 	}
 	stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "%s-----------------------------------------------%s\r\n%d players listed.\r\n", func() string {
@@ -4774,7 +4690,7 @@ func do_peace(ch *char_data, argument *byte, cmd int, subcmd int) {
 		next_v *char_data
 	)
 	send_to_room(ch.In_room, libc.CString("Everything is quite peaceful now.\r\n"))
-	for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; vict != nil; vict = next_v {
+	for vict = world[ch.In_room].People; vict != nil; vict = next_v {
 		next_v = vict.Next_in_room
 		if vict.Admlevel > ch.Admlevel {
 			continue
@@ -4815,8 +4731,8 @@ func do_raise(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	send_to_char(ch, libc.CString("@wYou return %s from the @Bspirit@w world, to the world of the living!@n\r\n"), GET_NAME(vict))
 	send_to_char(vict, libc.CString("@wYour @Bspirit@w has been returned to the world of the living by %s!@n\r\n"), GET_NAME(ch))
-	vict.Affected_by[int(AFF_ETHEREAL/32)] &= ^(1 << (int(AFF_ETHEREAL % 32)))
-	vict.Affected_by[int(AFF_SPIRIT/32)] &= ^(1 << (int(AFF_SPIRIT % 32)))
+	REMOVE_BIT_AR(vict.Affected_by[:], AFF_ETHEREAL)
+	REMOVE_BIT_AR(vict.Affected_by[:], AFF_SPIRIT)
 	send_to_imm(libc.CString("Log: %s has raised %s from the dead."), GET_NAME(ch), GET_NAME(vict))
 	log_imm_action(libc.CString("RAISE: %s has raised %s from the dead."), GET_NAME(ch), GET_NAME(vict))
 	var statpunish int = FALSE
@@ -4832,8 +4748,8 @@ func do_raise(ch *char_data, argument *byte, cmd int, subcmd int) {
 	vict.Limb_condition[1] = 100
 	vict.Limb_condition[2] = 100
 	vict.Limb_condition[3] = 100
-	vict.Act[int(PLR_HEAD/32)] |= bitvector_t(int32(1 << (int(PLR_HEAD % 32))))
-	vict.Act[int(PLR_PDEATH/32)] &= bitvector_t(int32(^(1 << (int(PLR_PDEATH % 32)))))
+	SET_BIT_AR(vict.Act[:], PLR_HEAD)
+	REMOVE_BIT_AR(vict.Act[:], PLR_PDEATH)
 	char_from_room(vict)
 	if vict.Droom != room_vnum(-1) && vict.Droom != 0 && vict.Droom != 1 {
 		char_to_room(vict, real_room(vict.Droom))
@@ -4983,12 +4899,12 @@ func do_zpurge(ch *char_data, argument *byte, cmd int, subcmd int) {
 	)
 	one_argument(argument, &arg[0])
 	if arg[0] == 0 {
-		zone = int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone)))).Number)
+		zone = int(zone_table[world[ch.In_room].Zone].Number)
 	} else {
 		zone = libc.Atoi(libc.GoString(&arg[0]))
 	}
 	for i = 0; i <= int(top_of_zone_table) && found == 0; i++ {
-		if (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Number == zone_vnum(zone) {
+		if zone_table[i].Number == zone_vnum(zone) {
 			stored = i
 			found = TRUE
 		}
@@ -4997,25 +4913,25 @@ func do_zpurge(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You cannot purge that zone. Try %d.\r\n"), ch.Player_specials.Olc_zone)
 		return
 	}
-	for room = int(genolc_zone_bottom(zone_rnum(stored))); room <= int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(stored)))).Top); room++ {
+	for room = int(genolc_zone_bottom(zone_rnum(stored))); room <= int(zone_table[stored].Top); room++ {
 		if (func() int {
 			i = int(real_room(room_vnum(room)))
 			return i
 		}()) != int(-1) {
-			for mob = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).People; mob != nil; mob = next_mob {
+			for mob = world[i].People; mob != nil; mob = next_mob {
 				next_mob = mob.Next_in_room
 				if IS_NPC(mob) {
 					extract_char(mob)
 				}
 			}
-			for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Contents; obj != nil; obj = next_obj {
+			for obj = world[i].Contents; obj != nil; obj = next_obj {
 				next_obj = obj.Next_content
 				extract_obj(obj)
 			}
 		}
 	}
 	send_to_char(ch, libc.CString("All mobiles and objects in zone %d purged.\r\n"), zone)
-	mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("(GC) %s has purged zone %d."), GET_NAME(ch), zone)
+	mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("(GC) %s has purged zone %d."), GET_NAME(ch), zone)
 }
 
 type zcheck_armor struct {
@@ -5060,8 +4976,8 @@ func do_zcheck(ch *char_data, argument *byte, cmd int, subcmd int) {
 		ext2    *extra_descr_data
 	)
 	one_argument(argument, &buf[0])
-	if buf == nil || buf[0] == 0 || libc.StrCmp(&buf[0], libc.CString(".")) == 0 {
-		zrnum = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone
+	if buf[0] == 0 || libc.StrCmp(&buf[0], libc.CString(".")) == 0 {
+		zrnum = world[ch.In_room].Zone
 	} else {
 		zrnum = real_zone(zone_vnum(libc.Atoi(libc.GoString(&buf[0]))))
 	}
@@ -5069,12 +4985,12 @@ func do_zcheck(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("Check what zone ?\r\n"))
 		return
 	} else {
-		send_to_char(ch, libc.CString("Checking zone %d!\r\n"), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zrnum)))).Number)
+		send_to_char(ch, libc.CString("Checking zone %d!\r\n"), zone_table[zrnum].Number)
 	}
 	send_to_char(ch, libc.CString("Checking Mobs for limits...\r\n"))
 	for i = 0; i < int(top_of_mobt); i++ {
-		if real_zone_by_thing(room_vnum((*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Vnum)) == zrnum {
-			mob = (*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))
+		if real_zone_by_thing(room_vnum(mob_index[i].Vnum)) == zrnum {
+			mob = &mob_proto[i]
 			if libc.StrCmp(mob.Name, libc.CString("mob unfinished")) == 0 && (func() int {
 				found = 1
 				return found
@@ -5112,11 +5028,11 @@ func do_zcheck(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}()) != 0 {
 				len_ += uint64(stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "- Is level %d (limit: 1-%d)\r\n", GET_LEVEL(mob), 100))
 			}
-			if mob.Damage_mod > MAX(GET_LEVEL(mob)/5, 2) && (func() int {
+			if mob.Damage_mod > int(MAX(int64(GET_LEVEL(mob)/5), 2)) && (func() int {
 				found = 1
 				return found
 			}()) != 0 {
-				len_ += uint64(stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "- Damage mod of %d is too high (limit: %d)\r\n", mob.Damage_mod, MAX(GET_LEVEL(mob)/5, 2)))
+				len_ += uint64(stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "- Damage mod of %d is too high (limit: %d)\r\n", mob.Damage_mod, MAX(int64(GET_LEVEL(mob)/5), 2)))
 			}
 			avg_dam = float32(((float64(mob.Mob_specials.Damsizedice) / 2.0) * float64(mob.Mob_specials.Damnodice)) + float64(mob.Damage_mod))
 			if avg_dam > MAX_MOB_DAM_ALLOWED && (func() int {
@@ -5251,8 +5167,8 @@ func do_zcheck(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	send_to_char(ch, libc.CString("\r\nChecking Objects for limits...\r\n"))
 	for i = 0; i < int(top_of_objt); i++ {
-		if real_zone_by_thing(room_vnum((*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Vnum)) == zrnum {
-			obj = (*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))
+		if real_zone_by_thing(room_vnum(obj_index[i].Vnum)) == zrnum {
+			obj = &obj_proto[i]
 			switch obj.Type_flag {
 			case ITEM_MONEY:
 				if (func() int {
@@ -5409,27 +5325,27 @@ func do_zcheck(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	send_to_char(ch, libc.CString("\r\nChecking Rooms for limits...\r\n"))
 	for i = 0; i < int(top_of_world); i++ {
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Zone == zrnum {
+		if world[i].Zone == zrnum {
 			for j = 0; j < NUM_OF_DIRS; j++ {
-				if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Dir_option[j] == nil {
+				if world[i].Dir_option[j] == nil {
 					continue
 				}
-				exroom = room_vnum((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Dir_option[j].To_room)
+				exroom = room_vnum(world[i].Dir_option[j].To_room)
 				if exroom == room_vnum(-1) {
 					continue
 				}
-				if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(exroom)))).Zone == zrnum {
+				if world[exroom].Zone == zrnum {
 					continue
 				}
-				if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(exroom)))).Zone == (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Zone {
+				if world[exroom].Zone == world[i].Zone {
 					continue
 				}
 				for k = 0; offlimit_zones[k] != -1; k++ {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(exroom)))).Zone == real_zone(zone_vnum(offlimit_zones[k])) && (func() int {
+					if world[exroom].Zone == real_zone(zone_vnum(offlimit_zones[k])) && (func() int {
 						found = 1
 						return found
 					}()) != 0 {
-						len_ += uint64(stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "- Exit %s cannot connect to %d (zone off limits).\r\n", dirs[j], (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(exroom)))).Number))
+						len_ += uint64(stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "- Exit %s cannot connect to %d (zone off limits).\r\n", dirs[j], world[exroom].Number))
 					}
 				}
 			}
@@ -5461,19 +5377,19 @@ func do_zcheck(ch *char_data, argument *byte, cmd int, subcmd int) {
 					return ""
 				}()))
 			}
-			if MIN_ROOM_DESC_LENGTH != 0 && libc.StrLen((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Description) < MIN_ROOM_DESC_LENGTH && (func() int {
+			if MIN_ROOM_DESC_LENGTH != 0 && libc.StrLen(world[i].Description) < MIN_ROOM_DESC_LENGTH && (func() int {
 				found = 1
 				return found
 			}()) != 0 {
-				len_ += uint64(stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "- Room description is too short. (%4.4lld of min. %d characters).\r\n", libc.StrLen((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Description), MIN_ROOM_DESC_LENGTH))
+				len_ += uint64(stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "- Room description is too short. (%4.4lld of min. %d characters).\r\n", libc.StrLen(world[i].Description), MIN_ROOM_DESC_LENGTH))
 			}
-			if libc.StrNCmp((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Description, libc.CString("   "), 3) != 0 && (func() int {
+			if libc.StrNCmp(world[i].Description, libc.CString("   "), 3) != 0 && (func() int {
 				found = 1
 				return found
 			}()) != 0 {
 				len_ += uint64(stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "- Room description not formatted with indent (/fi in the editor).\r\n"))
 			}
-			if libc.StrCSpn((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Description, libc.CString("\r\n")) > MAX_COLOUMN_WIDTH && (func() int {
+			if libc.StrCSpn(world[i].Description, libc.CString("\r\n")) > MAX_COLOUMN_WIDTH && (func() int {
 				found = 1
 				return found
 			}()) != 0 {
@@ -5482,7 +5398,7 @@ func do_zcheck(ch *char_data, argument *byte, cmd int, subcmd int) {
 			for func() *extra_descr_data {
 				ext2 = nil
 				return func() *extra_descr_data {
-					ext = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Ex_description
+					ext = world[i].Ex_description
 					return ext
 				}()
 			}(); ext != nil; ext = ext.Next {
@@ -5497,9 +5413,9 @@ func do_zcheck(ch *char_data, argument *byte, cmd int, subcmd int) {
 				len_ += uint64(stdio.Snprintf(&buf[len_], int(64936-uintptr(len_)), "- has unformatted extra description\r\n"))
 			}
 			if found != 0 {
-				send_to_char(ch, libc.CString("[%5d] %-30s: \r\n%s"), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Number, func() *byte {
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Name != nil {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Name
+				send_to_char(ch, libc.CString("[%5d] %-30s: \r\n%s"), world[i].Number, func() *byte {
+					if world[i].Name != nil {
+						return world[i].Name
 					}
 					return libc.CString("An unnamed room")
 				}(), &buf[0])
@@ -5510,7 +5426,7 @@ func do_zcheck(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 	}
 	for i = 0; i < int(top_of_world); i++ {
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Zone == zrnum {
+		if world[i].Zone == zrnum {
 			m++
 			for func() int {
 				j = 0
@@ -5519,7 +5435,7 @@ func do_zcheck(ch *char_data, argument *byte, cmd int, subcmd int) {
 					return k
 				}()
 			}(); j < NUM_OF_DIRS; j++ {
-				if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Dir_option[j] == nil {
+				if world[i].Dir_option[j] == nil {
 					k++
 				}
 			}
@@ -5543,14 +5459,14 @@ func mob_checkload(ch *char_data, mvnum mob_vnum) {
 		send_to_char(ch, libc.CString("That mob does not exist.\r\n"))
 		return
 	}
-	send_to_char(ch, libc.CString("Checking load info for the mob [%d] %s...\r\n"), mvnum, (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(mrnum)))).Short_descr)
+	send_to_char(ch, libc.CString("Checking load info for the mob [%d] %s...\r\n"), mvnum, mob_proto[mrnum].Short_descr)
 	for zone = 0; zone <= top_of_zone_table; zone++ {
-		for cmd_no = 0; int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command) != 'S'; cmd_no++ {
-			if int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command) != 'M' {
+		for cmd_no = 0; int(zone_table[zone].Cmd[cmd_no].Command) != 'S'; cmd_no++ {
+			if int(zone_table[zone].Cmd[cmd_no].Command) != 'M' {
 				continue
 			}
-			if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 == vnum(mrnum) {
-				send_to_char(ch, libc.CString("  [%5d] %s (%d MAX)\r\n"), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)))).Number, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)))).Name, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2)
+			if zone_table[zone].Cmd[cmd_no].Arg1 == vnum(mrnum) {
+				send_to_char(ch, libc.CString("  [%5d] %s (%d MAX)\r\n"), world[zone_table[zone].Cmd[cmd_no].Arg3].Number, world[zone_table[zone].Cmd[cmd_no].Arg3].Name, zone_table[zone].Cmd[cmd_no].Arg2)
 				count += 1
 			}
 		}
@@ -5573,41 +5489,41 @@ func obj_checkload(ch *char_data, ovnum obj_vnum) {
 		send_to_char(ch, libc.CString("That object does not exist.\r\n"))
 		return
 	}
-	send_to_char(ch, libc.CString("Checking load info for the obj [%d] %s...\r\n"), ovnum, (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(ornum)))).Short_description)
+	send_to_char(ch, libc.CString("Checking load info for the obj [%d] %s...\r\n"), ovnum, obj_proto[ornum].Short_description)
 	for zone = 0; zone <= top_of_zone_table; zone++ {
-		for cmd_no = 0; int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command) != 'S'; cmd_no++ {
-			switch (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command {
+		for cmd_no = 0; int(zone_table[zone].Cmd[cmd_no].Command) != 'S'; cmd_no++ {
+			switch zone_table[zone].Cmd[cmd_no].Command {
 			case 'M':
-				lastroom_v = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)))).Number
-				lastroom_r = room_rnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)
-				lastmob_r = mob_rnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)
+				lastroom_v = world[zone_table[zone].Cmd[cmd_no].Arg3].Number
+				lastroom_r = room_rnum(zone_table[zone].Cmd[cmd_no].Arg3)
+				lastmob_r = mob_rnum(zone_table[zone].Cmd[cmd_no].Arg1)
 			case 'O':
-				lastroom_v = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)))).Number
-				lastroom_r = room_rnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 == vnum(ornum) {
-					send_to_char(ch, libc.CString("  [%5d] %s (%d Max)\r\n"), lastroom_v, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(lastroom_r)))).Name, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2)
+				lastroom_v = world[zone_table[zone].Cmd[cmd_no].Arg3].Number
+				lastroom_r = room_rnum(zone_table[zone].Cmd[cmd_no].Arg3)
+				if zone_table[zone].Cmd[cmd_no].Arg1 == vnum(ornum) {
+					send_to_char(ch, libc.CString("  [%5d] %s (%d Max)\r\n"), lastroom_v, world[lastroom_r].Name, zone_table[zone].Cmd[cmd_no].Arg2)
 					count += 1
 				}
 			case 'P':
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 == vnum(ornum) {
-					send_to_char(ch, libc.CString("  [%5d] %s (Put in another object [%d Max])\r\n"), lastroom_v, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(lastroom_r)))).Name, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2)
+				if zone_table[zone].Cmd[cmd_no].Arg1 == vnum(ornum) {
+					send_to_char(ch, libc.CString("  [%5d] %s (Put in another object [%d Max])\r\n"), lastroom_v, world[lastroom_r].Name, zone_table[zone].Cmd[cmd_no].Arg2)
 					count += 1
 				}
 			case 'G':
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 == vnum(ornum) {
-					send_to_char(ch, libc.CString("  [%5d] %s (Given to %s [%d][%d Max])\r\n"), lastroom_v, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(lastroom_r)))).Name, (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(lastmob_r)))).Short_descr, (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(lastmob_r)))).Vnum, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2)
+				if zone_table[zone].Cmd[cmd_no].Arg1 == vnum(ornum) {
+					send_to_char(ch, libc.CString("  [%5d] %s (Given to %s [%d][%d Max])\r\n"), lastroom_v, world[lastroom_r].Name, mob_proto[lastmob_r].Short_descr, mob_index[lastmob_r].Vnum, zone_table[zone].Cmd[cmd_no].Arg2)
 					count += 1
 				}
 			case 'E':
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 == vnum(ornum) {
-					send_to_char(ch, libc.CString("  [%5d] %s (Equipped to %s [%d][%d Max])\r\n"), lastroom_v, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(lastroom_r)))).Name, (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(lastmob_r)))).Short_descr, (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(lastmob_r)))).Vnum, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2)
+				if zone_table[zone].Cmd[cmd_no].Arg1 == vnum(ornum) {
+					send_to_char(ch, libc.CString("  [%5d] %s (Equipped to %s [%d][%d Max])\r\n"), lastroom_v, world[lastroom_r].Name, mob_proto[lastmob_r].Short_descr, mob_index[lastmob_r].Vnum, zone_table[zone].Cmd[cmd_no].Arg2)
 					count += 1
 				}
 			case 'R':
-				lastroom_v = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)))).Number
-				lastroom_r = room_rnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2 == vnum(ornum) {
-					send_to_char(ch, libc.CString("  [%5d] %s (Removed from room)\r\n"), lastroom_v, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(lastroom_r)))).Name)
+				lastroom_v = world[zone_table[zone].Cmd[cmd_no].Arg1].Number
+				lastroom_r = room_rnum(zone_table[zone].Cmd[cmd_no].Arg1)
+				if zone_table[zone].Cmd[cmd_no].Arg2 == vnum(ornum) {
+					send_to_char(ch, libc.CString("  [%5d] %s (Removed from room)\r\n"), lastroom_v, world[lastroom_r].Name)
 					count += 1
 				}
 			}
@@ -5637,31 +5553,31 @@ func trg_checkload(ch *char_data, tvnum trig_vnum) {
 		return
 	}
 	send_to_char(ch, libc.CString("Checking load info for the %s trigger [%d] '%s':\r\n"), func() string {
-		if int((*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trnum)))).Proto.Attach_type) == MOB_TRIGGER {
+		if int(trig_index[trnum].Proto.Attach_type) == MOB_TRIGGER {
 			return "mobile"
 		}
-		if int((*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trnum)))).Proto.Attach_type) == OBJ_TRIGGER {
+		if int(trig_index[trnum].Proto.Attach_type) == OBJ_TRIGGER {
 			return "object"
 		}
 		return "room"
-	}(), tvnum, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trnum)))).Proto.Name)
+	}(), tvnum, trig_index[trnum].Proto.Name)
 	for zone = 0; zone <= top_of_zone_table; zone++ {
-		for cmd_no = 0; int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command) != 'S'; cmd_no++ {
-			switch (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command {
+		for cmd_no = 0; int(zone_table[zone].Cmd[cmd_no].Command) != 'S'; cmd_no++ {
+			switch zone_table[zone].Cmd[cmd_no].Command {
 			case 'M':
-				lastroom_v = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)))).Number
-				lastroom_r = room_rnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)
-				lastmob_r = mob_rnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)
+				lastroom_v = world[zone_table[zone].Cmd[cmd_no].Arg3].Number
+				lastroom_r = room_rnum(zone_table[zone].Cmd[cmd_no].Arg3)
+				lastmob_r = mob_rnum(zone_table[zone].Cmd[cmd_no].Arg1)
 			case 'O':
-				lastroom_v = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)))).Number
-				lastroom_r = room_rnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)
-				lastobj_r = obj_rnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)
+				lastroom_v = world[zone_table[zone].Cmd[cmd_no].Arg3].Number
+				lastroom_r = room_rnum(zone_table[zone].Cmd[cmd_no].Arg3)
+				lastobj_r = obj_rnum(zone_table[zone].Cmd[cmd_no].Arg1)
 			case 'P':
-				lastobj_r = obj_rnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)
+				lastobj_r = obj_rnum(zone_table[zone].Cmd[cmd_no].Arg1)
 			case 'G':
-				lastobj_r = obj_rnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)
+				lastobj_r = obj_rnum(zone_table[zone].Cmd[cmd_no].Arg1)
 			case 'E':
-				lastobj_r = obj_rnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)
+				lastobj_r = obj_rnum(zone_table[zone].Cmd[cmd_no].Arg1)
 			case 'R':
 				lastroom_v = 0
 				lastroom_r = 0
@@ -5669,51 +5585,51 @@ func trg_checkload(ch *char_data, tvnum trig_vnum) {
 				lastmob_r = 0
 				fallthrough
 			case 'T':
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2 != vnum(trnum) {
+				if zone_table[zone].Cmd[cmd_no].Arg2 != vnum(trnum) {
 					break
 				}
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 == MOB_TRIGGER {
-					send_to_char(ch, libc.CString("mob [%5d] %-60s (zedit room %5d)\r\n"), (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(lastmob_r)))).Vnum, (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(lastmob_r)))).Short_descr, lastroom_v)
+				if zone_table[zone].Cmd[cmd_no].Arg1 == MOB_TRIGGER {
+					send_to_char(ch, libc.CString("mob [%5d] %-60s (zedit room %5d)\r\n"), mob_index[lastmob_r].Vnum, mob_proto[lastmob_r].Short_descr, lastroom_v)
 					found = 1
-				} else if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 == OBJ_TRIGGER {
-					send_to_char(ch, libc.CString("obj [%5d] %-60s  (zedit room %d)\r\n"), (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(lastobj_r)))).Vnum, (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(lastobj_r)))).Short_description, lastroom_v)
+				} else if zone_table[zone].Cmd[cmd_no].Arg1 == OBJ_TRIGGER {
+					send_to_char(ch, libc.CString("obj [%5d] %-60s  (zedit room %d)\r\n"), obj_index[lastobj_r].Vnum, obj_proto[lastobj_r].Short_description, lastroom_v)
 					found = 1
-				} else if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 == WLD_TRIGGER {
-					send_to_char(ch, libc.CString("room [%5d] %-60s (zedit)\r\n"), lastroom_v, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(lastroom_r)))).Name)
+				} else if zone_table[zone].Cmd[cmd_no].Arg1 == WLD_TRIGGER {
+					send_to_char(ch, libc.CString("room [%5d] %-60s (zedit)\r\n"), lastroom_v, world[lastroom_r].Name)
 					found = 1
 				}
 			}
 		}
 	}
 	for i = 0; i < top_of_mobt; i++ {
-		if (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Proto_script == nil {
+		if mob_proto[i].Proto_script == nil {
 			continue
 		}
-		for tpl = (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Proto_script; tpl != nil; tpl = tpl.Next {
+		for tpl = mob_proto[i].Proto_script; tpl != nil; tpl = tpl.Next {
 			if tpl.Vnum == int(tvnum) {
-				send_to_char(ch, libc.CString("mob [%5d] %s\r\n"), (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Vnum, (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Short_descr)
+				send_to_char(ch, libc.CString("mob [%5d] %s\r\n"), mob_index[i].Vnum, mob_proto[i].Short_descr)
 				found = 1
 			}
 		}
 	}
 	for j = 0; j < top_of_objt; j++ {
-		if (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(j)))).Proto_script == nil {
+		if obj_proto[j].Proto_script == nil {
 			continue
 		}
-		for tpl = (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(j)))).Proto_script; tpl != nil; tpl = tpl.Next {
+		for tpl = obj_proto[j].Proto_script; tpl != nil; tpl = tpl.Next {
 			if tpl.Vnum == int(tvnum) {
-				send_to_char(ch, libc.CString("obj [%5d] %s\r\n"), (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(j)))).Vnum, (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(j)))).Short_description)
+				send_to_char(ch, libc.CString("obj [%5d] %s\r\n"), obj_index[j].Vnum, obj_proto[j].Short_description)
 				found = 1
 			}
 		}
 	}
 	for k = 0; k < top_of_world; k++ {
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k)))).Proto_script == nil {
+		if world[k].Proto_script == nil {
 			continue
 		}
-		for tpl = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k)))).Proto_script; tpl != nil; tpl = tpl.Next {
+		for tpl = world[k].Proto_script; tpl != nil; tpl = tpl.Next {
 			if tpl.Vnum == int(tvnum) {
-				send_to_char(ch, libc.CString("room[%5d] %s\r\n"), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k)))).Number, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k)))).Name)
+				send_to_char(ch, libc.CString("room[%5d] %s\r\n"), world[k].Number, world[k].Name)
 				found = 1
 			}
 		}
@@ -5762,10 +5678,10 @@ func do_findkey(ch *char_data, argument *byte, cmd int, subcmd int) {
 		dir = search_block(&arg[0], &abbr_dirs[0], FALSE)
 		return dir
 	}()) >= 0 {
-		if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]) == nil {
+		if (world[ch.In_room].Dir_option[dir]) == nil {
 			send_to_char(ch, libc.CString("There's no exit in that direction!\r\n"))
 		} else if (func() int {
-			key = int(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[dir]).Key)
+			key = int((world[ch.In_room].Dir_option[dir]).Key)
 			return key
 		}()) == int(-1) || key == 0 {
 			send_to_char(ch, libc.CString("There's no key for that exit.\r\n"))

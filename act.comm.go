@@ -180,12 +180,7 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var buf2 [2048]byte
 	buf2[0] = '\x00'
 	skip_spaces(&argument)
-	if (ch.Bonuses[BONUS_MUTE]) > 0 && (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) > 160 {
+	if (ch.Bonuses[BONUS_MUTE]) > 0 && int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) > 160 {
 		send_to_char(ch, libc.CString("You are mute and unable to talk though.\r\n"))
 		return
 	} else if (ch.Bonuses[BONUS_MUTE]) > 0 {
@@ -206,7 +201,7 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 		} else {
 			libc.StrCpy(&verb[0], libc.CString("say"))
 		}
-		for tch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; tch != nil; tch = tch.Next_in_room {
+		for tch = world[ch.In_room].People; tch != nil; tch = tch.Next_in_room {
 			if tch != ch && tch.Desc != nil {
 				var sayto [100]byte
 				stdio.Sprintf(&sayto[0], "to %s ", GET_NAME(tch))
@@ -254,17 +249,7 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("%s"), &buf[0])
 			add_history(ch, &buf[0], HIST_SAY)
 			if SHENRON == TRUE {
-				if (func() room_vnum {
-					if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-					}
-					return -1
-				}()) == room_vnum(DRAGONR) && (func() room_vnum {
-					if EDRAGON.In_room != room_rnum(-1) && EDRAGON.In_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(EDRAGON.In_room)))).Number
-					}
-					return -1
-				}()) == room_vnum(DRAGONR) {
+				if int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) == DRAGONR && int(libc.BoolToInt(GET_ROOM_VNUM(EDRAGON.In_room))) == DRAGONR {
 					if libc.StrStr(argument, libc.CString("wish")) != nil {
 						for d = descriptor_list; d != nil; d = d.Next {
 							if d.Connected != CON_PLAYING {
@@ -475,7 +460,7 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 									}
 									return " Now make your second wish."
 								}())
-								wch.Affected_by[int(AFF_IMMUNITY/32)] |= 1 << (int(AFF_IMMUNITY % 32))
+								SET_BIT_AR(wch.Affected_by[:], AFF_IMMUNITY)
 								granted = TRUE
 								SELFISHMETER += 1
 								mudlog(NRM, ADMLVL_GOD, TRUE, libc.CString("Shenron: %s has made a immunity wish on %s."), GET_NAME(ch), GET_NAME(wch))
@@ -521,8 +506,8 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 										}
 										look_at_room(wch.In_room, wch, 0)
 										send_to_char(wch, libc.CString("@wYou smile as the golden halo above your head disappears! You have returned to life where you had last died!@n\r\n"))
-										wch.Affected_by[int(AFF_SPIRIT/32)] &= ^(1 << (int(AFF_SPIRIT % 32)))
-										wch.Affected_by[int(AFF_ETHEREAL/32)] &= ^(1 << (int(AFF_ETHEREAL % 32)))
+										REMOVE_BIT_AR(wch.Affected_by[:], AFF_SPIRIT)
+										REMOVE_BIT_AR(wch.Affected_by[:], AFF_ETHEREAL)
 									}
 									granted = TRUE
 									SELFISHMETER -= 2
@@ -550,8 +535,8 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 										char_to_room(wch, real_room(wch.Droom))
 										look_at_room(wch.In_room, wch, 0)
 										send_to_char(wch, libc.CString("@wYou smile as the golden halo above your head disappears! You have returned to life where you had last died!@n\r\n"))
-										wch.Affected_by[int(AFF_SPIRIT/32)] &= ^(1 << (int(AFF_SPIRIT % 32)))
-										wch.Affected_by[int(AFF_ETHEREAL/32)] &= ^(1 << (int(AFF_ETHEREAL % 32)))
+										REMOVE_BIT_AR(wch.Affected_by[:], AFF_SPIRIT)
+										REMOVE_BIT_AR(wch.Affected_by[:], AFF_ETHEREAL)
 									}
 									if real_room(wch2.Droom) == room_rnum(-1) {
 										wch2.Droom = 300
@@ -561,8 +546,8 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 										char_to_room(wch2, real_room(wch2.Droom))
 										look_at_room(wch2.In_room, wch2, 0)
 										send_to_char(wch2, libc.CString("@wYou smile as the golden halo above your head disappears! You have returned to life where you had last died!@n\r\n"))
-										wch2.Affected_by[int(AFF_SPIRIT/32)] &= ^(1 << (int(AFF_SPIRIT % 32)))
-										wch2.Affected_by[int(AFF_ETHEREAL/32)] &= ^(1 << (int(AFF_ETHEREAL % 32)))
+										REMOVE_BIT_AR(wch2.Affected_by[:], AFF_SPIRIT)
+										REMOVE_BIT_AR(wch2.Affected_by[:], AFF_ETHEREAL)
 									}
 									granted = TRUE
 									SELFISHMETER -= 3
@@ -594,8 +579,8 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 										char_to_room(wch, real_room(wch.Droom))
 										look_at_room(wch.In_room, wch, 0)
 										send_to_char(wch, libc.CString("@wYou smile as the golden halo above your head disappears! You have returned to life where you had last died!@n\r\n"))
-										wch.Affected_by[int(AFF_SPIRIT/32)] &= ^(1 << (int(AFF_SPIRIT % 32)))
-										wch.Affected_by[int(AFF_ETHEREAL/32)] &= ^(1 << (int(AFF_ETHEREAL % 32)))
+										REMOVE_BIT_AR(wch.Affected_by[:], AFF_SPIRIT)
+										REMOVE_BIT_AR(wch.Affected_by[:], AFF_ETHEREAL)
 									}
 									if real_room(wch2.Droom) == room_rnum(-1) {
 										wch2.Droom = 300
@@ -605,8 +590,8 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 										char_to_room(wch2, real_room(wch2.Droom))
 										look_at_room(wch2.In_room, wch2, 0)
 										send_to_char(wch2, libc.CString("@wYou smile as the golden halo above your head disappears! You have returned to life where you had last died!@n\r\n"))
-										wch2.Affected_by[int(AFF_SPIRIT/32)] &= ^(1 << (int(AFF_SPIRIT % 32)))
-										wch2.Affected_by[int(AFF_ETHEREAL/32)] &= ^(1 << (int(AFF_ETHEREAL % 32)))
+										REMOVE_BIT_AR(wch2.Affected_by[:], AFF_SPIRIT)
+										REMOVE_BIT_AR(wch2.Affected_by[:], AFF_ETHEREAL)
 									}
 									if real_room(wch3.Droom) == room_rnum(-1) {
 										wch3.Droom = 300
@@ -616,8 +601,8 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 										char_to_room(wch3, real_room(wch3.Droom))
 										look_at_room(wch3.In_room, wch3, 0)
 										send_to_char(wch3, libc.CString("@wYou smile as the golden halo above your head disappears! You have returned to life where you had last died!@n\r\n"))
-										wch3.Affected_by[int(AFF_SPIRIT/32)] &= ^(1 << (int(AFF_SPIRIT % 32)))
-										wch3.Affected_by[int(AFF_ETHEREAL/32)] &= ^(1 << (int(AFF_ETHEREAL % 32)))
+										REMOVE_BIT_AR(wch3.Affected_by[:], AFF_SPIRIT)
+										REMOVE_BIT_AR(wch3.Affected_by[:], AFF_ETHEREAL)
 									}
 									granted = TRUE
 									SELFISHMETER -= 3
@@ -629,7 +614,7 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 						if granted == FALSE && libc.StrStr(argument, libc.CString("immortal")) != nil && WISH[0] == 0 {
 							if wch != nil {
 								send_to_room(real_room(room_vnum(DRAGONR)), libc.CString("@wShenron says, '@CYour wish has been granted, %s is now immortal!@w'@n\r\n"), GET_NAME(wch))
-								wch.Act[int(PLR_IMMORTAL/32)] |= bitvector_t(int32(1 << (int(PLR_IMMORTAL % 32))))
+								SET_BIT_AR(wch.Act[:], PLR_IMMORTAL)
 								WISH[0] = 1
 								WISH[1] = 1
 								granted = TRUE
@@ -651,7 +636,7 @@ func do_say(ch *char_data, argument *byte, cmd int, subcmd int) {
 									}
 									return " Now make your second wish."
 								}())
-								wch.Act[int(PLR_IMMORTAL/32)] &= bitvector_t(int32(^(1 << (int(PLR_IMMORTAL % 32)))))
+								REMOVE_BIT_AR(wch.Act[:], PLR_IMMORTAL)
 								granted = TRUE
 								SELFISHMETER += 4
 								mudlog(NRM, ADMLVL_GOD, TRUE, libc.CString("Shenron: %s has made a mortal wish on %s."), GET_NAME(ch), GET_NAME(wch))
@@ -1059,7 +1044,7 @@ func do_spec_comm(ch *char_data, argument *byte, cmd int, subcmd int) {
 }
 func handle_whisper(buf *byte, ch *char_data, vict *char_data) {
 	var tch *char_data
-	for tch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; tch != nil; tch = tch.Next_in_room {
+	for tch = world[ch.In_room].People; tch != nil; tch = tch.Next_in_room {
 		if IS_NPC(tch) {
 			continue
 		}
@@ -1243,17 +1228,9 @@ func do_write(ch *char_data, argument *byte, cmd int, subcmd int) {
 		buf1      [64936]byte
 		buf2      [64936]byte
 	)
-	for obj = ch.Carrying; obj != nil; obj = obj.Next_content {
-		if int(obj.Type_flag) == ITEM_BOARD {
-			break
-		}
-	}
+	obj = find_obj_in_list_type(ch.Carrying, ITEM_BOARD)
 	if obj == nil {
-		for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; obj != nil; obj = obj.Next_content {
-			if int(obj.Type_flag) == ITEM_BOARD {
-				break
-			}
-		}
+		obj = find_obj_in_list_type(world[ch.In_room].Contents, ITEM_BOARD)
 	}
 	if obj != nil {
 		write_board_message(GET_OBJ_VNUM(obj), ch, argument)
@@ -1326,7 +1303,7 @@ func do_write(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("%s"), paper.Action_description)
 		}
 		act(libc.CString("$n begins to jot down a note."), TRUE, ch, nil, nil, TO_ROOM)
-		paper.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(int32(1 << (int(ITEM_UNIQUE_SAVE % 32))))
+		SET_BIT_AR(paper.Extra_flags[:], ITEM_UNIQUE_SAVE)
 		send_editor_help(ch.Desc)
 		string_write(ch.Desc, &paper.Action_description, MAX_NOTE_LENGTH, 0, unsafe.Pointer(backstr))
 	}
@@ -1437,7 +1414,7 @@ func do_gen_comm(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	for i = descriptor_list; i != nil; i = i.Next {
 		if i.Connected == CON_PLAYING && i != ch.Desc && i.Character != nil && (IS_NPC(i.Character) || !PRF_FLAGGED(i.Character, bitvector_t(int32(channels[subcmd])))) && (IS_NPC(i.Character) || !PLR_FLAGGED(i.Character, PLR_WRITING)) && !ROOM_FLAGGED(i.Character.In_room, ROOM_SOUNDPROOF) {
-			if subcmd == SCMD_SHOUT && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone != (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i.Character.In_room)))).Zone || !AWAKE(i.Character)) {
+			if subcmd == SCMD_SHOUT && (world[ch.In_room].Zone != world[i.Character.In_room].Zone || !AWAKE(i.Character)) {
 				continue
 			}
 			if config_info.Play.Enable_languages != 0 {
@@ -1487,7 +1464,7 @@ func do_gen_comm(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if ch.Spam >= 3 && ch.Admlevel < 1 {
 		send_to_imm(libc.CString("SPAMMING: %s has been frozen for spamming!\r\n"), GET_NAME(ch))
 		send_to_all(libc.CString("@rSPAMMING@D: @C%s@w has been frozen for spamming, let that be a lesson to 'em.@n\r\n"), GET_NAME(ch))
-		ch.Act[int(PLR_FROZEN/32)] |= bitvector_t(int32(1 << (int(PLR_FROZEN % 32))))
+		SET_BIT_AR(ch.Act[:], PLR_FROZEN)
 		ch.Player_specials.Freeze_level = 1
 	} else if ch.Spam < 3 {
 		ch.Spam += 1
@@ -1500,7 +1477,7 @@ func do_qcomm(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	skip_spaces(&argument)
 	if *argument == 0 {
-		send_to_char(ch, libc.CString("%c%s?  Yes, fine, %s we must, but WHAT??\r\n"), unicode.ToUpper(rune(*(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command)), (*byte)(unsafe.Add(unsafe.Pointer((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command), 1)), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command)
+		send_to_char(ch, libc.CString("%c%s?  Yes, fine, %s we must, but WHAT??\r\n"), unicode.ToUpper(rune(*complete_cmd_info[cmd].Command)), (*byte)(unsafe.Add(unsafe.Pointer(complete_cmd_info[cmd].Command), 1)), complete_cmd_info[cmd].Command)
 	} else {
 		var (
 			buf [64936]byte
@@ -1537,19 +1514,9 @@ func do_respond(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("As a mob, you never bothered to learn to read or write.\r\n"))
 		return
 	}
-	for obj = ch.Carrying; obj != nil; obj = obj.Next_content {
-		if int(obj.Type_flag) == ITEM_BOARD {
-			found = 1
-			break
-		}
-	}
+	obj = find_obj_in_list_type(ch.Carrying, ITEM_BOARD)
 	if obj == nil {
-		for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; obj != nil; obj = obj.Next_content {
-			if int(obj.Type_flag) == ITEM_BOARD {
-				found = 1
-				break
-			}
-		}
+		obj = find_obj_in_list_type(world[ch.In_room].Contents, ITEM_BOARD)
 	}
 	if obj != nil {
 		argument = one_argument(argument, &number[0])

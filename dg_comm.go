@@ -26,7 +26,7 @@ func any_one_name(argument *byte, first_arg *byte) *byte {
 	*arg = '\x00'
 	return argument
 }
-func sub_write_to_char(ch *char_data, tokens [0]*byte, otokens [0]unsafe.Pointer, type_ [0]byte) {
+func sub_write_to_char(ch *char_data, tokens []*byte, otokens []unsafe.Pointer, type_ []byte) {
 	var (
 		sb [64936]byte
 		i  int
@@ -135,7 +135,7 @@ func sub_write(arg *byte, ch *char_data, find_invis int8, targets int) {
 				return *p
 			}(), &name[0])
 			if int(find_invis) != 0 {
-				otokens[i] = unsafe.Pointer(get_char_in_room((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room))), &name[0]))
+				otokens[i] = unsafe.Pointer(get_char_in_room(&world[ch.In_room], &name[0]))
 			} else {
 				otokens[i] = unsafe.Pointer(get_char_room_vis(ch, &name[0], nil))
 			}
@@ -157,9 +157,9 @@ func sub_write(arg *byte, ch *char_data, find_invis int8, targets int) {
 				return *p
 			}(), &name[0])
 			if int(find_invis) != 0 {
-				obj = get_obj_in_room((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room))), &name[0])
+				obj = get_obj_in_room(&world[ch.In_room], &name[0])
 			} else if (func() *obj_data {
-				obj = get_obj_in_list_vis(ch, &name[0], nil, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents)
+				obj = get_obj_in_list_vis(ch, &name[0], nil, world[ch.In_room].Contents)
 				return obj
 			}()) == nil {
 			} else if (func() *obj_data {
@@ -212,11 +212,11 @@ func sub_write(arg *byte, ch *char_data, find_invis int8, targets int) {
 		*p++
 		return *p
 	}()] = nil
-	if (targets&TO_CHAR) != 0 && SENDOK(ch) {
+	if IS_SET(bitvector_t(int32(targets)), TO_CHAR) && SENDOK(ch) {
 		sub_write_to_char(ch, tokens[:], otokens[:], type_[:])
 	}
-	if (targets & TO_ROOM) != 0 {
-		for to = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; to != nil; to = to.Next_in_room {
+	if IS_SET(bitvector_t(int32(targets)), TO_ROOM) {
+		for to = world[ch.In_room].People; to != nil; to = to.Next_in_room {
 			if to != ch && SENDOK(to) {
 				sub_write_to_char(to, tokens[:], otokens[:], type_[:])
 			}
@@ -229,7 +229,7 @@ func send_to_zone(messg *byte, zone zone_rnum) {
 		return
 	}
 	for i = descriptor_list; i != nil; i = i.Next {
-		if i.Connected == 0 && i.Character != nil && AWAKE(i.Character) && i.Character.In_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i.Character.In_room)))).Zone == zone {
+		if i.Connected == 0 && i.Character != nil && AWAKE(i.Character) && i.Character.In_room != room_rnum(-1) && world[i.Character.In_room].Zone == zone {
 			write_to_output(i, libc.CString("%s"), messg)
 		}
 	}
@@ -240,7 +240,7 @@ func fly_zone(zone zone_rnum, messg *byte, ch *char_data) {
 		return
 	}
 	for i = descriptor_list; i != nil; i = i.Next {
-		if i.Connected == 0 && i.Character != nil && AWAKE(i.Character) && OUTSIDE(i.Character) && i.Character.In_room != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i.Character.In_room)))).Zone == zone && i.Character != ch {
+		if i.Connected == 0 && i.Character != nil && AWAKE(i.Character) && OUTSIDE(i.Character) && i.Character.In_room != room_rnum(-1) && world[i.Character.In_room].Zone == zone && i.Character != ch {
 			if PLR_FLAGGED(i.Character, PLR_DISGUISED) {
 				write_to_output(i, libc.CString("A disguised figure %s"), messg)
 			} else {
@@ -275,7 +275,7 @@ func send_to_sense(type_ int, messg *byte, ch *char_data) {
 		if GET_SKILL(tch, SKILL_SENSE) == 0 {
 			continue
 		}
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone != (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(tch.In_room)))).Zone && type_ == 0 || !AWAKE(tch) {
+		if world[ch.In_room].Zone != world[tch.In_room].Zone && type_ == 0 || !AWAKE(tch) {
 			continue
 		}
 		if ROOM_FLAGGED(ch.In_room, ROOM_SHIP) {
@@ -386,7 +386,7 @@ func send_to_scouter(messg *byte, ch *char_data, num int, type_ int) {
 		if tch == ch {
 			continue
 		} else {
-			if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone != (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(tch.In_room)))).Zone && type_ == 0 || !AWAKE(tch) {
+			if world[ch.In_room].Zone != world[tch.In_room].Zone && type_ == 0 || !AWAKE(tch) {
 				continue
 			}
 			if ROOM_FLAGGED(ch.In_room, ROOM_SHIP) {
@@ -399,57 +399,7 @@ func send_to_scouter(messg *byte, ch *char_data, num int, type_ int) {
 				continue
 			} else if ROOM_FLAGGED(ch.In_room, ROOM_EARTH) && !ROOM_FLAGGED(tch.In_room, ROOM_EARTH) {
 				continue
-			} else if ((func() room_vnum {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-				}
-				return -1
-			}()) >= 3400 && (func() room_vnum {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-				}
-				return -1
-			}()) <= 3599 || (func() room_vnum {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-				}
-				return -1
-			}()) >= 62900 && (func() room_vnum {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-				}
-				return -1
-			}()) <= 0xF617 || (func() room_vnum {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-				}
-				return -1
-			}()) == 19600) && (((func() room_vnum {
-				if tch.In_room != room_rnum(-1) && tch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(tch.In_room)))).Number
-				}
-				return -1
-			}()) < 3400 || (func() room_vnum {
-				if tch.In_room != room_rnum(-1) && tch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(tch.In_room)))).Number
-				}
-				return -1
-			}()) > 3599) && ((func() room_vnum {
-				if tch.In_room != room_rnum(-1) && tch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(tch.In_room)))).Number
-				}
-				return -1
-			}()) < 62900 || (func() room_vnum {
-				if tch.In_room != room_rnum(-1) && tch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(tch.In_room)))).Number
-				}
-				return -1
-			}()) > 0xF617) && (func() room_vnum {
-				if tch.In_room != room_rnum(-1) && tch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(tch.In_room)))).Number
-				}
-				return -1
-			}()) != 19600) {
+			} else if PLANET_ZENITH(ch.In_room) && !PLANET_ZENITH(tch.In_room) {
 				continue
 			} else if ROOM_FLAGGED(ch.In_room, ROOM_FRIGID) && !ROOM_FLAGGED(tch.In_room, ROOM_FRIGID) {
 				continue
@@ -550,57 +500,7 @@ func send_to_worlds(ch *char_data) {
 			send_to_char(i.Character, libc.CString("%s"), &message[0])
 		} else if ROOM_FLAGGED(i.Character.In_room, ROOM_VEGETA) && ROOM_FLAGGED(ch.In_room, ROOM_VEGETA) {
 			send_to_char(i.Character, libc.CString("%s"), &message[0])
-		} else if ((func() room_vnum {
-			if i.Character.In_room != room_rnum(-1) && i.Character.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i.Character.In_room)))).Number
-			}
-			return -1
-		}()) >= 3400 && (func() room_vnum {
-			if i.Character.In_room != room_rnum(-1) && i.Character.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i.Character.In_room)))).Number
-			}
-			return -1
-		}()) <= 3599 || (func() room_vnum {
-			if i.Character.In_room != room_rnum(-1) && i.Character.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i.Character.In_room)))).Number
-			}
-			return -1
-		}()) >= 62900 && (func() room_vnum {
-			if i.Character.In_room != room_rnum(-1) && i.Character.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i.Character.In_room)))).Number
-			}
-			return -1
-		}()) <= 0xF617 || (func() room_vnum {
-			if i.Character.In_room != room_rnum(-1) && i.Character.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i.Character.In_room)))).Number
-			}
-			return -1
-		}()) == 19600) && ((func() room_vnum {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-			}
-			return -1
-		}()) >= 3400 && (func() room_vnum {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-			}
-			return -1
-		}()) <= 3599 || (func() room_vnum {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-			}
-			return -1
-		}()) >= 62900 && (func() room_vnum {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-			}
-			return -1
-		}()) <= 0xF617 || (func() room_vnum {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-			}
-			return -1
-		}()) == 19600) {
+		} else if PLANET_ZENITH(i.Character.In_room) && PLANET_ZENITH(ch.In_room) {
 			send_to_char(i.Character, libc.CString("%s"), &message[0])
 		} else if ROOM_FLAGGED(i.Character.In_room, ROOM_NAMEK) && ROOM_FLAGGED(ch.In_room, ROOM_NAMEK) {
 			send_to_char(i.Character, libc.CString("%s"), &message[0])

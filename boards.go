@@ -124,7 +124,7 @@ func create_new_board(board_vnum obj_vnum) *board_info {
 		temp.Write_lvl = config_info.Play.Level_cap
 		temp.Remove_lvl = config_info.Play.Level_cap
 	} else {
-		obj = (*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(real_object(board_vnum))))
+		obj = &(obj_proto[real_object(board_vnum)])
 		temp.Read_lvl = obj.Value[VAL_BOARD_READ]
 		temp.Write_lvl = obj.Value[VAL_BOARD_WRITE]
 		temp.Remove_lvl = obj.Value[VAL_BOARD_ERASE]
@@ -242,7 +242,7 @@ func load_board(board_vnum obj_vnum) *board_info {
 	if real_object(board_vnum) == obj_rnum(-1) {
 		basic_mud_log(libc.CString("No associated object exists when attempting to create a board [vnum %d]."), board_vnum)
 		csys.Stat(&filebuf[0], &st)
-		if libc.TimeVal(libc.GetTime(nil))-st.MTime > libc.TimeVal(60*60*24*7) {
+		if false {
 			basic_mud_log(libc.CString("Deleting old board file '%s' [vnum %d].  7 days without modification & no associated object."), &filebuf[0], board_vnum)
 			stdio.Unlink(&filebuf[0])
 			libc.Free(unsafe.Pointer(temp_board))
@@ -255,7 +255,7 @@ func load_board(board_vnum obj_vnum) *board_info {
 		temp_board.Version = t[4]
 		basic_mud_log(libc.CString("Board vnum %d, Version %d"), temp_board.Vnum, temp_board.Version)
 	} else {
-		obj = (*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(real_object(board_vnum))))
+		obj = &(obj_proto[real_object(board_vnum)])
 		if t[0] != (obj.Value[VAL_BOARD_READ]) || t[1] != (obj.Value[VAL_BOARD_WRITE]) || t[2] != (obj.Value[VAL_BOARD_ERASE]) {
 			basic_mud_log(libc.CString("Mismatch in board <-> object read/write/remove settings for board [vnum: %d]. Correcting."), board_vnum)
 		}
@@ -282,7 +282,7 @@ func load_board(board_vnum obj_vnum) *board_info {
 				memboard.Timestamp = timestamp
 				if get_name_by_id(poster) == nil && temp_board.Version != CURRENT_BOARD_VER {
 					libc.Free(unsafe.Pointer(memboard))
-				} else if poster_name == nil && temp_board.Version == CURRENT_BOARD_VER {
+				} else if poster_name[0] == 0 && temp_board.Version == CURRENT_BOARD_VER {
 					libc.Free(unsafe.Pointer(memboard))
 				} else {
 					if temp_board.Version == CURRENT_BOARD_VER {
@@ -791,14 +791,14 @@ func write_board_message(board_vnum obj_vnum, ch *char_data, arg *byte) {
 	message.Next = nil
 	message.Prev = nil
 	message.Data = nil
-	thisboard.Num_messages = MAX(thisboard.Num_messages+1, 1)
+	thisboard.Num_messages = int(MAX(int64(thisboard.Num_messages+1), 1))
 	message.Next = thisboard.Messages
 	if thisboard.Messages != nil {
 		thisboard.Messages.Prev = message
 	}
 	thisboard.Messages = message
 	send_to_char(ch, libc.CString("Write your message.  (/s saves /h for help)\r\n"))
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
+	SET_BIT_AR(ch.Act[:], PLR_WRITING)
 	string_write(ch.Desc, &message.Data, MAX_MESSAGE_LENGTH, int(board_vnum+BOARD_MAGIC), nil)
 	if board_vnum == 3092 {
 		BOARDNEWMORT = libc.GetTime(nil)
@@ -890,7 +890,7 @@ func board_respond(board_vnum int, ch *char_data, mnum int) {
 	send_to_char(ch, libc.CString("Write your message.  (/s saves /h for help)\r\n\r\n"))
 	act(libc.CString("@C$n@w starts writing on the board.@n"), TRUE, ch, nil, nil, TO_ROOM)
 	if !IS_NPC(ch) {
-		ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
+		SET_BIT_AR(ch.Act[:], PLR_WRITING)
 	}
 	stdio.Sprintf(&number[0], "\t@D------- @cQuoted message @D-------@w\r\n%s\t@D   ------- @cEnd Quote @D-------@w\r\n", other.Data)
 	message.Data = libc.StrDup(&number[0])

@@ -195,6 +195,6 @@ func do_tedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	ch.Desc.Olc.Storage = libc.StrDup(fields[l].Filename)
 	string_write(ch.Desc, fields[l].Buffer, uint64(fields[l].Size), 0, unsafe.Pointer(backstr))
 	act(libc.CString("$n begins editing a text file."), TRUE, ch, nil, nil, TO_ROOM)
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
+	SET_BIT_AR(ch.Act[:], PLR_WRITING)
 	ch.Desc.Connected = CON_TEDIT
 }

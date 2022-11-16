@@ -15,7 +15,7 @@ const LOAD_LIFE = 4
 const ASCII_SAVE_POOFS = 0
 const NUM_OF_SAVE_THROWS = 3
 
-var player_table *player_index_element = nil
+var player_table []player_index_element = nil
 var top_of_p_table int = 0
 var top_of_p_file int = 0
 var top_idnum int = 0
@@ -44,21 +44,21 @@ func build_player_index() {
 			rec_count++
 		}
 	}
-	rewind(plr_index)
+	plr_index.Seek(0, 0)
 	if rec_count == 0 {
 		player_table = nil
 		top_of_p_table = -1
 		return
 	}
-	player_table = &make([]player_index_element, rec_count)[0]
+	player_table = make([]player_index_element, rec_count)
 	for i = 0; i < rec_count; i++ {
 		get_line(plr_index, &line[0])
-		(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Admlevel = ADMLVL_NONE
-		stdio.Sscanf(&line[0], "%ld %s %d %s %ld %d %d %d %ld", &(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Id, &arg2[0], &(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Level, &bits[0], &(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Last, &(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Admlevel, &(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Ship, &(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Shiproom, &(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Played)
-		(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Name = (*byte)(unsafe.Pointer(&make([]int8, libc.StrLen(&arg2[0])+1)[0]))
-		libc.StrCpy((*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Name, &arg2[0])
-		(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Flags = int(asciiflag_conv(&bits[0]))
-		top_idnum = MAX(top_idnum, (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Id)
+		player_table[i].Admlevel = ADMLVL_NONE
+		stdio.Sscanf(&line[0], "%ld %s %d %s %ld %d %d %d %ld", &player_table[i].Id, &arg2[0], &player_table[i].Level, &bits[0], &player_table[i].Last, &player_table[i].Admlevel, &player_table[i].Ship, &player_table[i].Shiproom, &player_table[i].Played)
+		player_table[i].Name = (*byte)(unsafe.Pointer(&make([]int8, libc.StrLen(&arg2[0])+1)[0]))
+		libc.StrCpy(player_table[i].Name, &arg2[0])
+		player_table[i].Flags = int(asciiflag_conv(&bits[0]))
+		top_idnum = int(MAX(int64(top_idnum), int64(player_table[i].Id)))
 	}
 	plr_index.Close()
 	top_of_p_file = func() int {
@@ -72,7 +72,7 @@ func create_entry(name *byte) int {
 		pos int
 	)
 	if top_of_p_table == -1 {
-		player_table = new(player_index_element)
+		//player_table = []player_index_element(new(player_index_element))
 		pos = func() int {
 			top_of_p_table = 0
 			return top_of_p_table
@@ -86,17 +86,17 @@ func create_entry(name *byte) int {
 			*p++
 			return *p
 		}() + 1
-		player_table = (*player_index_element)(libc.Realloc(unsafe.Pointer(player_table), i*int(unsafe.Sizeof(player_index_element{}))))
+		//player_table = []player_index_element((*player_index_element)(libc.Realloc(unsafe.Pointer(&player_table[0]), i*int(unsafe.Sizeof(player_index_element{})))))
 		pos = top_of_p_table
 	}
-	(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(pos)))).Name = (*byte)(unsafe.Pointer(&make([]int8, libc.StrLen(name)+1)[0]))
+	player_table[pos].Name = (*byte)(unsafe.Pointer(&make([]int8, libc.StrLen(name)+1)[0]))
 	for i = 0; (func() byte {
-		p := (*byte)(unsafe.Add(unsafe.Pointer((*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(pos)))).Name), i))
-		*(*byte)(unsafe.Add(unsafe.Pointer((*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(pos)))).Name), i)) = byte(int8(unicode.ToLower(rune(*(*byte)(unsafe.Add(unsafe.Pointer(name), i))))))
+		p := (*byte)(unsafe.Add(unsafe.Pointer(player_table[pos].Name), i))
+		*(*byte)(unsafe.Add(unsafe.Pointer(player_table[pos].Name), i)) = byte(int8(unicode.ToLower(rune(*(*byte)(unsafe.Add(unsafe.Pointer(name), i))))))
 		return *p
 	}()) != 0; i++ {
 	}
-	(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(pos)))).Flags = 0
+	player_table[pos].Flags = 0
 	return pos
 }
 func save_player_index() {
@@ -115,9 +115,9 @@ func save_player_index() {
 		return
 	}
 	for i = 0; i <= top_of_p_table; i++ {
-		if *(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Name != 0 {
-			sprintascii(&bits[0], bitvector_t(int32((*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Flags)))
-			stdio.Fprintf(index_file, "%ld %s %d %s %ld %d %d %d %ld\n", (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Id, (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Name, (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Level, &func() [64]byte {
+		if *player_table[i].Name != 0 {
+			sprintascii(&bits[0], bitvector_t(int32(player_table[i].Flags)))
+			stdio.Fprintf(index_file, "%ld %s %d %s %ld %d %d %d %ld\n", player_table[i].Id, player_table[i].Name, player_table[i].Level, func() [64]byte {
 				if bits[0] != 0 {
 					return bits
 				}
@@ -126,7 +126,7 @@ func save_player_index() {
 					copy(t[:], []byte("0"))
 					return t
 				}()
-			}()[0], (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Last, (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Admlevel, (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Ship, (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Shiproom, (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Played)
+			}()[0], player_table[i].Last, player_table[i].Admlevel, player_table[i].Ship, player_table[i].Shiproom, player_table[i].Played)
 		}
 	}
 	stdio.Fprintf(index_file, "~\n")
@@ -138,18 +138,18 @@ func free_player_index() {
 		return
 	}
 	for tp = 0; tp <= top_of_p_table; tp++ {
-		if (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(tp)))).Name != nil {
-			libc.Free(unsafe.Pointer((*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(tp)))).Name))
+		if player_table[tp].Name != nil {
+			libc.Free(unsafe.Pointer(player_table[tp].Name))
 		}
 	}
-	libc.Free(unsafe.Pointer(player_table))
+	libc.Free(unsafe.Pointer(&player_table[0]))
 	player_table = nil
 	top_of_p_table = 0
 }
 func get_ptable_by_name(name *byte) int {
 	var i int
 	for i = 0; i <= top_of_p_table; i++ {
-		if libc.StrCaseCmp((*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Name, name) == 0 {
+		if libc.StrCaseCmp(player_table[i].Name, name) == 0 {
 			return i
 		}
 	}
@@ -158,8 +158,8 @@ func get_ptable_by_name(name *byte) int {
 func get_id_by_name(name *byte) int {
 	var i int
 	for i = 0; i <= top_of_p_table; i++ {
-		if libc.StrCaseCmp((*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Name, name) == 0 {
-			return (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Id
+		if libc.StrCaseCmp(player_table[i].Name, name) == 0 {
+			return player_table[i].Id
 		}
 	}
 	return -1
@@ -167,8 +167,8 @@ func get_id_by_name(name *byte) int {
 func get_name_by_id(id int) *byte {
 	var i int
 	for i = 0; i <= top_of_p_table; i++ {
-		if (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Id == id {
-			return (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Name
+		if player_table[i].Id == id {
+			return player_table[i].Name
 		}
 	}
 	return nil
@@ -220,7 +220,7 @@ func load_char(name *byte, ch *char_data) int {
 	}()) < 0 {
 		return -1
 	} else {
-		if get_filename(&fname[0], uint64(256), PLR_FILE, (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Name) == 0 {
+		if get_filename(&fname[0], uint64(256), PLR_FILE, player_table[id].Name) == 0 {
 			return -1
 		}
 		if (func() *stdio.File {
@@ -439,10 +439,10 @@ func load_char(name *byte, ch *char_data) int {
 					ch.Act[3] = asciiflag_conv(&f4[0])
 				} else if libc.StrCmp(&tag[0], libc.CString("Aff ")) == 0 {
 					stdio.Sscanf(&line[0], "%s %s %s %s", &f1[0], &f2[0], &f3[0], &f4[0])
-					ch.Affected_by[0] = int(asciiflag_conv(&f1[0]))
-					ch.Affected_by[1] = int(asciiflag_conv(&f2[0]))
-					ch.Affected_by[2] = int(asciiflag_conv(&f3[0]))
-					ch.Affected_by[3] = int(asciiflag_conv(&f4[0]))
+					ch.Affected_by[0] = asciiflag_conv(&f1[0])
+					ch.Affected_by[1] = asciiflag_conv(&f2[0])
+					ch.Affected_by[2] = asciiflag_conv(&f3[0])
+					ch.Affected_by[3] = asciiflag_conv(&f4[0])
 				} else if libc.StrCmp(&tag[0], libc.CString("Affs")) == 0 {
 					load_affects(fl, ch, 0)
 				} else if libc.StrCmp(&tag[0], libc.CString("Affv")) == 0 {
@@ -957,7 +957,7 @@ func save_char(ch *char_data) {
 		return
 	}
 	if ch.Desc != nil {
-		if ch.Desc.Host != nil && ch.Desc.Host[0] != 0 {
+		if ch.Desc.Host[0] != 0 {
 			if ch.Player_specials.Host == nil {
 				ch.Player_specials.Host = libc.StrDup(&ch.Desc.Host[0])
 			} else if ch.Player_specials.Host != nil && libc.StrCmp(ch.Player_specials.Host, &ch.Desc.Host[0]) == 0 {
@@ -1142,10 +1142,10 @@ func save_char(ch *char_data) {
 	sprintascii(&fbuf3[0], ch.Act[2])
 	sprintascii(&fbuf4[0], ch.Act[3])
 	stdio.Fprintf(fl, "Act : %s %s %s %s\n", &fbuf1[0], &fbuf2[0], &fbuf3[0], &fbuf4[0])
-	sprintascii(&fbuf1[0], bitvector_t(int32(ch.Affected_by[0])))
-	sprintascii(&fbuf2[0], bitvector_t(int32(ch.Affected_by[1])))
-	sprintascii(&fbuf3[0], bitvector_t(int32(ch.Affected_by[2])))
-	sprintascii(&fbuf4[0], bitvector_t(int32(ch.Affected_by[3])))
+	sprintascii(&fbuf1[0], ch.Affected_by[0])
+	sprintascii(&fbuf2[0], ch.Affected_by[1])
+	sprintascii(&fbuf3[0], ch.Affected_by[2])
+	sprintascii(&fbuf4[0], ch.Affected_by[3])
 	stdio.Fprintf(fl, "Aff : %s %s %s %s\n", &fbuf1[0], &fbuf2[0], &fbuf3[0], &fbuf4[0])
 	sprintascii(&fbuf1[0], ch.Player_specials.Pref[0])
 	sprintascii(&fbuf2[0], ch.Player_specials.Pref[1])
@@ -1564,55 +1564,55 @@ func save_char(ch *char_data) {
 	}()) < 0 {
 		return
 	}
-	if (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Level != GET_LEVEL(ch) {
+	if player_table[id].Level != GET_LEVEL(ch) {
 		save_index = TRUE
-		(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Level = GET_LEVEL(ch)
+		player_table[id].Level = GET_LEVEL(ch)
 	}
-	if (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Admlevel != ch.Admlevel {
+	if player_table[id].Admlevel != ch.Admlevel {
 		save_index = TRUE
-		(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Admlevel = ch.Admlevel
+		player_table[id].Admlevel = ch.Admlevel
 	}
-	if (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Last != ch.Time.Logon {
+	if player_table[id].Last != ch.Time.Logon {
 		save_index = TRUE
-		(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Last = ch.Time.Logon
+		player_table[id].Last = ch.Time.Logon
 	}
-	if (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Played != ch.Lastpl {
+	if player_table[id].Played != ch.Lastpl {
 		save_index = TRUE
-		(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Played = ch.Lastpl
+		player_table[id].Played = ch.Lastpl
 	}
-	if ch.Clan != nil && (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Clan != ch.Clan {
+	if ch.Clan != nil && player_table[id].Clan != ch.Clan {
 		save_index = TRUE
-		(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Clan = libc.StrDup(ch.Clan)
+		player_table[id].Clan = libc.StrDup(ch.Clan)
 	}
 	if ch.Clan == nil {
 		save_index = TRUE
-		(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Clan = libc.CString("None.")
+		player_table[id].Clan = libc.CString("None.")
 	}
-	if (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Ship != ch.Ship {
+	if player_table[id].Ship != ch.Ship {
 		save_index = TRUE
-		(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Ship = ch.Ship
+		player_table[id].Ship = ch.Ship
 	}
-	if (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Shiproom != int(ch.Shipr) {
+	if player_table[id].Shiproom != int(ch.Shipr) {
 		save_index = TRUE
-		(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Shiproom = int(ch.Shipr)
+		player_table[id].Shiproom = int(ch.Shipr)
 	}
-	i = (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Flags
+	i = player_table[id].Flags
 	if PLR_FLAGGED(ch, PLR_DELETED) {
-		(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Flags |= 1 << 0
+		player_table[id].Flags |= 1 << 0
 	} else {
-		(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Flags &= ^(1 << 0)
+		player_table[id].Flags &= ^(1 << 0)
 	}
 	if PLR_FLAGGED(ch, PLR_NODELETE) || PLR_FLAGGED(ch, PLR_CRYO) {
-		(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Flags |= 1 << 1
+		player_table[id].Flags |= 1 << 1
 	} else {
-		(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Flags &= ^(1 << 1)
+		player_table[id].Flags &= ^(1 << 1)
 	}
 	if PLR_FLAGGED(ch, PLR_FROZEN) || PLR_FLAGGED(ch, PLR_NOWIZLIST) {
-		(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Flags |= 1 << 3
+		player_table[id].Flags |= 1 << 3
 	} else {
-		(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Flags &= ^(1 << 3)
+		player_table[id].Flags &= ^(1 << 3)
 	}
-	if (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(id)))).Flags != i || save_index != 0 {
+	if player_table[id].Flags != i || save_index != 0 {
 		save_player_index()
 	}
 }
@@ -1827,19 +1827,19 @@ func remove_player(pfilepos int) {
 		fname [40]byte
 		i     int
 	)
-	if *(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(pfilepos)))).Name == 0 {
+	if *player_table[pfilepos].Name == 0 {
 		return
 	}
 	for i = 0; i < MAX_FILES; i++ {
-		if get_filename(&fname[0], uint64(40), i, (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(pfilepos)))).Name) != 0 {
+		if get_filename(&fname[0], uint64(40), i, player_table[pfilepos].Name) != 0 {
 			stdio.Unlink(&fname[0])
 		}
-		if get_filename(&fname[0], uint64(40), i, CAP((*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(pfilepos)))).Name)) != 0 {
+		if get_filename(&fname[0], uint64(40), i, CAP(player_table[pfilepos].Name)) != 0 {
 			stdio.Unlink(&fname[0])
 		}
 	}
-	basic_mud_log(libc.CString("PCLEAN: %s Lev: %d Last: %s"), (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(pfilepos)))).Name, (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(pfilepos)))).Level, libc.AscTime(libc.LocalTime(&(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(pfilepos)))).Last)))
-	*(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(pfilepos)))).Name = '\x00'
+	basic_mud_log(libc.CString("PCLEAN: %s Lev: %d Last: %s"), player_table[pfilepos].Name, player_table[pfilepos].Level, libc.AscTime(libc.LocalTime(&player_table[pfilepos].Last)))
+	*player_table[pfilepos].Name = '\x00'
 	save_player_index()
 }
 func clean_pfiles() {
@@ -1848,14 +1848,14 @@ func clean_pfiles() {
 		ci int
 	)
 	for i = 0; i <= top_of_p_table; i++ {
-		if ((*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Flags&(1<<1)) == 0 && *(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Name != 0 {
-			if ((*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Flags & (1 << 0)) != 0 {
+		if !IS_SET(bitvector_t(int32(player_table[i].Flags)), 1<<1) && *player_table[i].Name != 0 {
+			if IS_SET(bitvector_t(int32(player_table[i].Flags)), 1<<0) {
 				remove_player(i)
 			} else {
 				for ci = 0; pclean_criteria[ci].Level > -1; ci++ {
-					if (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Admlevel > 1 {
+					if player_table[i].Admlevel > 1 {
 						continue
-					} else if (*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Level <= pclean_criteria[ci].Level && int(libc.GetTime(nil)-(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Last) >= (pclean_criteria[ci].Days*((int(SECS_PER_REAL_MIN*60))*24)) {
+					} else if player_table[i].Level <= pclean_criteria[ci].Level && int(libc.GetTime(nil)-player_table[i].Last) >= (pclean_criteria[ci].Days*((int(SECS_PER_REAL_MIN*60))*24)) {
 						remove_player(i)
 						break
 					}

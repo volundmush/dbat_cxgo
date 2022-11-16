@@ -7,11 +7,125 @@ import (
 	"unsafe"
 )
 
+const DG_SCRIPT_VERSION = "DG Scripts 1.0.14"
+const MOB_TRIGGER = 0
+const OBJ_TRIGGER = 1
+const WLD_TRIGGER = 2
+const DG_CASTER_PROXY = 1
+const DG_SPELL_LEVEL = 25
+const ACTOR_ROOM_IS_UID = 1
+const MTRIG_GLOBAL = 1
+const MTRIG_RANDOM = 2
+const MTRIG_COMMAND = 4
+const MTRIG_SPEECH = 8
+const MTRIG_ACT = 16
+const MTRIG_DEATH = 32
+const MTRIG_GREET = 64
+const MTRIG_GREET_ALL = 128
+const MTRIG_ENTRY = 256
+const MTRIG_RECEIVE = 512
+const MTRIG_FIGHT = 1024
+const MTRIG_HITPRCNT = 2048
+const MTRIG_BRIBE = 4096
+const MTRIG_LOAD = 8192
+const MTRIG_MEMORY = 0x4000
+const MTRIG_CAST = 0x8000
+const MTRIG_LEAVE = 0x10000
+const MTRIG_DOOR = 0x20000
+const MTRIG_TIME = 0x80000
+const OTRIG_GLOBAL = 1
+const OTRIG_RANDOM = 2
+const OTRIG_COMMAND = 4
+const OTRIG_TIMER = 32
+const OTRIG_GET = 64
+const OTRIG_DROP = 128
+const OTRIG_GIVE = 256
+const OTRIG_WEAR = 512
+const OTRIG_REMOVE = 2048
+const OTRIG_LOAD = 8192
+const OTRIG_CAST = 0x8000
+const OTRIG_LEAVE = 0x10000
+const OTRIG_CONSUME = 0x40000
+const OTRIG_TIME = 0x80000
+const WTRIG_GLOBAL = 1
+const WTRIG_RANDOM = 2
+const WTRIG_COMMAND = 4
+const WTRIG_SPEECH = 8
+const WTRIG_RESET = 32
+const WTRIG_ENTER = 64
+const WTRIG_DROP = 128
+const WTRIG_CAST = 0x8000
+const WTRIG_LEAVE = 0x10000
+const WTRIG_DOOR = 0x20000
+const WTRIG_TIME = 0x80000
+const OCMD_EQUIP = 1
+const OCMD_INVEN = 2
+const OCMD_ROOM = 4
+const OCMD_EAT = 1
+const OCMD_DRINK = 2
+const OCMD_QUAFF = 3
+const TRIG_NEW = 0
+const TRIG_RESTART = 1
+const PULSE_DG_SCRIPT = 130
+const MAX_SCRIPT_DEPTH = 10
+const SCRIPT_ERROR_CODE = -9999999
+const DG_ALLOW_GODS = 1
+const UID_CHAR = 125
+const MOB_ID_BASE = 50000
+const ROOM_ID_BASE = 1050000
+const OBJ_ID_BASE = 1300000
+
+type cmdlist_element struct {
+	Cmd      *byte
+	Original *cmdlist_element
+	Next     *cmdlist_element
+}
+type trig_var_data struct {
+	Name    *byte
+	Value   *byte
+	Context int
+	Next    *trig_var_data
+}
+type trig_data struct {
+	Nr            int64
+	Attach_type   int8
+	Data_type     int8
+	Name          *byte
+	Trigger_type  int
+	Cmdlist       *cmdlist_element
+	Curr_state    *cmdlist_element
+	Narg          int
+	Arglist       *byte
+	Depth         int
+	Loops         int
+	Wait_event    *event
+	Purged        bool
+	Var_list      *trig_var_data
+	Next          *trig_data
+	Next_in_world *trig_data
+}
+type script_data struct {
+	Types       int
+	Trig_list   *trig_data
+	Global_vars *trig_var_data
+	Purged      bool
+	Context     int
+	Next        *script_data
+}
+type wait_event_data struct {
+	Trigger *trig_data
+	Gohere  unsafe.Pointer
+	Type    int
+}
+type script_memory struct {
+	Id   int
+	Cmd  *byte
+	Next *script_memory
+}
+
 const PULSES_PER_MUD_HOUR = 9000
 const BUCKET_COUNT = 64
 const UID_OUT_OF_RANGE = 1000000000
-
-var trig_wait_event func(event_obj unsafe.Pointer) int
 
 func str_str(cs *byte, ct *byte) *byte {
 	var (
@@ -47,7 +161,7 @@ func trgvar_in_room(vnum room_vnum) int {
 		script_log(libc.CString("people.vnum: world[rnum] does not exist"))
 		return -1
 	}
-	for ch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).People; ch != nil; ch = ch.Next_in_room {
+	for ch = world[rnum].People; ch != nil; ch = ch.Next_in_room {
 		i++
 	}
 	return i
@@ -134,13 +248,16 @@ func get_object_in_equip(ch *char_data, name *byte) *obj_data {
 	}
 	return nil
 }
+
+type eq_pos_list struct {
+	Pos   *byte
+	Where int
+}
+
+var eq_pos [25]eq_pos_list = [25]eq_pos_list{{Pos: libc.CString("hold"), Where: WEAR_WIELD2}, {Pos: libc.CString("held"), Where: WEAR_WIELD2}, {Pos: libc.CString("light"), Where: WEAR_WIELD2}, {Pos: libc.CString("wield"), Where: WEAR_WIELD1}, {Pos: libc.CString("rfinger"), Where: WEAR_FINGER_R}, {Pos: libc.CString("lfinger"), Where: WEAR_FINGER_L}, {Pos: libc.CString("neck1"), Where: WEAR_NECK_1}, {Pos: libc.CString("neck2"), Where: WEAR_NECK_2}, {Pos: libc.CString("body"), Where: WEAR_BODY}, {Pos: libc.CString("head"), Where: WEAR_HEAD}, {Pos: libc.CString("legs"), Where: WEAR_LEGS}, {Pos: libc.CString("feet"), Where: WEAR_FEET}, {Pos: libc.CString("hands"), Where: WEAR_HANDS}, {Pos: libc.CString("arms"), Where: WEAR_ARMS}, {Pos: libc.CString("shield"), Where: WEAR_WIELD2}, {Pos: libc.CString("about"), Where: WEAR_ABOUT}, {Pos: libc.CString("waist"), Where: WEAR_WAIST}, {Pos: libc.CString("rwrist"), Where: WEAR_WRIST_R}, {Pos: libc.CString("lwrist"), Where: WEAR_WRIST_L}, {Pos: libc.CString("backpack"), Where: WEAR_BACKPACK}, {Pos: libc.CString("rear"), Where: WEAR_EAR_R}, {Pos: libc.CString("lear"), Where: WEAR_EAR_L}, {Pos: libc.CString("shoulders"), Where: WEAR_SH}, {Pos: libc.CString("scouter"), Where: WEAR_EYE}, {Pos: libc.CString("none"), Where: -1}}
+
 func find_eq_pos_script(arg *byte) int {
 	var i int
-	type eq_pos_list struct {
-		Pos   *byte
-		Where int
-	}
-	var eq_pos [25]eq_pos_list = [25]eq_pos_list{{Pos: libc.CString("hold"), Where: WEAR_WIELD2}, {Pos: libc.CString("held"), Where: WEAR_WIELD2}, {Pos: libc.CString("light"), Where: WEAR_WIELD2}, {Pos: libc.CString("wield"), Where: WEAR_WIELD1}, {Pos: libc.CString("rfinger"), Where: WEAR_FINGER_R}, {Pos: libc.CString("lfinger"), Where: WEAR_FINGER_L}, {Pos: libc.CString("neck1"), Where: WEAR_NECK_1}, {Pos: libc.CString("neck2"), Where: WEAR_NECK_2}, {Pos: libc.CString("body"), Where: WEAR_BODY}, {Pos: libc.CString("head"), Where: WEAR_HEAD}, {Pos: libc.CString("legs"), Where: WEAR_LEGS}, {Pos: libc.CString("feet"), Where: WEAR_FEET}, {Pos: libc.CString("hands"), Where: WEAR_HANDS}, {Pos: libc.CString("arms"), Where: WEAR_ARMS}, {Pos: libc.CString("shield"), Where: WEAR_WIELD2}, {Pos: libc.CString("about"), Where: WEAR_ABOUT}, {Pos: libc.CString("waist"), Where: WEAR_WAIST}, {Pos: libc.CString("rwrist"), Where: WEAR_WRIST_R}, {Pos: libc.CString("lwrist"), Where: WEAR_WRIST_L}, {Pos: libc.CString("backpack"), Where: WEAR_BACKPACK}, {Pos: libc.CString("rear"), Where: WEAR_EAR_R}, {Pos: libc.CString("lear"), Where: WEAR_EAR_L}, {Pos: libc.CString("shoulders"), Where: WEAR_SH}, {Pos: libc.CString("scouter"), Where: WEAR_EYE}, {Pos: libc.CString("none"), Where: -1}}
 	if is_number(arg) != 0 && (func() int {
 		i = libc.Atoi(libc.GoString(arg))
 		return i
@@ -222,7 +339,7 @@ func find_room(n int) *room_data {
 	}
 	rnum = real_room(room_vnum(n))
 	if rnum != room_rnum(-1) {
-		return (*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))
+		return &world[rnum]
 	}
 	return nil
 }
@@ -255,7 +372,7 @@ func get_char_near_obj(obj *obj_data, name *byte) *char_data {
 			num = obj_room(obj)
 			return num
 		}()) != room_rnum(-1) {
-			for ch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(num)))).People; ch != nil; ch = ch.Next_in_room {
+			for ch = world[num].People; ch != nil; ch = ch.Next_in_room {
 				if isname(name, ch.Name) != 0 && valid_dg_target(ch, 1<<0) != 0 {
 					return ch
 				}
@@ -320,12 +437,12 @@ func get_obj_near_obj(obj *obj_data, name *byte) *obj_data {
 		return rm
 	}()) != int(-1) {
 		if (func() *obj_data {
-			i = get_obj_in_list(name, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rm)))).Contents)
+			i = get_obj_in_list(name, world[rm].Contents)
 			return i
 		}()) != nil {
 			return i
 		}
-		for ch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rm)))).People; ch != nil; ch = ch.Next_in_room {
+		for ch = world[rm].People; ch != nil; ch = ch.Next_in_room {
 			if (func() *obj_data {
 				i = get_object_in_equip(ch, name)
 				return i
@@ -359,7 +476,7 @@ func get_room(name *byte) *room_data {
 	}()) == room_rnum(-1) {
 		return nil
 	} else {
-		return (*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(nr)))
+		return &world[nr]
 	}
 }
 func get_char_by_obj(obj *obj_data, name *byte) *char_data {
@@ -441,7 +558,7 @@ func get_obj_by_obj(obj *obj_data, name *byte) *obj_data {
 		rm = int(obj_room(obj))
 		return rm
 	}()) != int(-1) && (func() *obj_data {
-		i = get_obj_in_list(name, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rm)))).Contents)
+		i = get_obj_in_list(name, world[rm].Contents)
 		return i
 	}()) != nil {
 		return i
@@ -449,42 +566,26 @@ func get_obj_by_obj(obj *obj_data, name *byte) *obj_data {
 	return get_obj(name)
 }
 func get_obj_in_room(room *room_data, name *byte) *obj_data {
-	var (
-		obj *obj_data
-		id  int
-	)
+	var obj *obj_data
+	_ = obj
+	var id int
+	_ = id
 	if *name == UID_CHAR {
-		id = libc.Atoi(libc.GoString((*byte)(unsafe.Add(unsafe.Pointer(name), 1))))
-		for obj = room.Contents; obj != nil; obj = obj.Next_content {
-			if id == int(obj.Id) {
-				return obj
-			}
-		}
+		return find_obj_in_list_id(room.Contents, libc.Atoi(libc.GoString((*byte)(unsafe.Add(unsafe.Pointer(name), 1)))))
 	} else {
-		for obj = room.Contents; obj != nil; obj = obj.Next_content {
-			if isname(name, obj.Name) != 0 {
-				return obj
-			}
-		}
+		return find_obj_in_list_name(room.Contents, name)
 	}
-	return nil
 }
 func get_obj_by_room(room *room_data, name *byte) *obj_data {
 	var obj *obj_data
 	if *name == UID_CHAR {
 		return find_obj(libc.Atoi(libc.GoString((*byte)(unsafe.Add(unsafe.Pointer(name), 1)))))
 	}
-	for obj = room.Contents; obj != nil; obj = obj.Next_content {
-		if isname(name, obj.Name) != 0 {
-			return obj
-		}
+	obj = find_obj_in_list_name(room.Contents, name)
+	if obj != nil {
+		return obj
 	}
-	for obj = object_list; obj != nil; obj = obj.Next {
-		if isname(name, obj.Name) != 0 {
-			return obj
-		}
-	}
-	return nil
+	return find_obj_in_list_name(object_list, name)
 }
 func script_trigger_check() {
 	var (
@@ -497,7 +598,7 @@ func script_trigger_check() {
 	for ch = character_list; ch != nil; ch = ch.Next {
 		if ch.Script != nil {
 			sc = ch.Script
-			if (sc.Types&(1<<1)) != 0 && (is_empty((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone) == 0 || (sc.Types&(1<<0)) != 0) {
+			if IS_SET(bitvector_t(int32(sc.Types)), 1<<1) && (is_empty(world[ch.In_room].Zone) == 0 || IS_SET(bitvector_t(int32(sc.Types)), 1<<0)) {
 				random_mtrigger(ch)
 			}
 		}
@@ -505,16 +606,16 @@ func script_trigger_check() {
 	for obj = object_list; obj != nil; obj = obj.Next {
 		if obj.Script != nil {
 			sc = obj.Script
-			if (sc.Types & (1 << 1)) != 0 {
+			if IS_SET(bitvector_t(int32(sc.Types)), 1<<1) {
 				random_otrigger(obj)
 			}
 		}
 	}
 	for nr = 0; nr <= int(top_of_world); nr++ {
-		if ((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(nr)))).Script != nil {
-			room = (*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(nr)))
+		if world[nr].Script != nil {
+			room = &world[nr]
 			sc = room.Script
-			if (sc.Types&(1<<1)) != 0 && (is_empty(room.Zone) == 0 || (sc.Types&(1<<0)) != 0) {
+			if IS_SET(bitvector_t(int32(sc.Types)), 1<<1) && (is_empty(room.Zone) == 0 || IS_SET(bitvector_t(int32(sc.Types)), 1<<0)) {
 				random_wtrigger(room)
 			}
 		}
@@ -531,7 +632,7 @@ func check_timed_triggers() {
 	for ch = character_list; ch != nil; ch = ch.Next {
 		if ch.Script != nil {
 			sc = ch.Script
-			if (sc.Types&(1<<19)) != 0 && (is_empty((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone) == 0 || (sc.Types&(1<<0)) != 0) {
+			if IS_SET(bitvector_t(int32(sc.Types)), 1<<19) && (is_empty(world[ch.In_room].Zone) == 0 || IS_SET(bitvector_t(int32(sc.Types)), 1<<0)) {
 				time_mtrigger(ch)
 			}
 		}
@@ -539,16 +640,16 @@ func check_timed_triggers() {
 	for obj = object_list; obj != nil; obj = obj.Next {
 		if obj.Script != nil {
 			sc = obj.Script
-			if (sc.Types & (1 << 19)) != 0 {
+			if IS_SET(bitvector_t(int32(sc.Types)), 1<<19) {
 				time_otrigger(obj)
 			}
 		}
 	}
 	for nr = 0; nr <= int(top_of_world); nr++ {
-		if ((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(nr)))).Script != nil {
-			room = (*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(nr)))
+		if world[nr].Script != nil {
+			room = &world[nr]
 			sc = room.Script
-			if (sc.Types&(1<<19)) != 0 && (is_empty(room.Zone) == 0 || (sc.Types&(1<<0)) != 0) {
+			if IS_SET(bitvector_t(int32(sc.Types)), 1<<19) && (is_empty(room.Zone) == 0 || IS_SET(bitvector_t(int32(sc.Types)), 1<<0)) {
 				time_wtrigger(room)
 			}
 		}
@@ -585,13 +686,13 @@ func trig_wait_event(event_obj unsafe.Pointer) int {
 		} else {
 			var i room_rnum
 			for i = 0; i < top_of_world && found == 0; i++ {
-				if (*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i))) == (*room_data)(gohere) {
+				if &world[i] == (*room_data)(gohere) {
 					found = TRUE
 				}
 			}
 		}
 		if found == 0 {
-			basic_mud_log(libc.CString("Trigger restarted on unknown entity. Vnum: %d"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
+			basic_mud_log(libc.CString("Trigger restarted on unknown entity. Vnum: %d"), trig_index[trig.Nr].Vnum)
 			basic_mud_log(libc.CString("Type: %s trigger"), func() string {
 				if type_ == MOB_TRIGGER {
 					return "Mob"
@@ -601,7 +702,7 @@ func trig_wait_event(event_obj unsafe.Pointer) int {
 				}
 				return "Room"
 			}())
-			basic_mud_log(libc.CString("attached %d places"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Number)
+			basic_mud_log(libc.CString("attached %d places"), trig_index[trig.Nr].Number)
 			script_log(libc.CString("Trigger restart attempt on unknown entity."))
 			return 0
 		}
@@ -620,7 +721,7 @@ func do_stat_trigger(ch *char_data, trig *trig_data) {
 		basic_mud_log(libc.CString("SYSERR: NULL trigger passed to do_stat_trigger."))
 		return
 	}
-	len_ += stdio.Snprintf(&sb[0], int(64936), "Name: '@y%s@n',  VNum: [@g%5d@n], RNum: [%5d]\r\n", trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, trig.Nr)
+	len_ += stdio.Snprintf(&sb[0], int(64936), "Name: '@y%s@n',  VNum: [@g%5d@n], RNum: [%5d]\r\n", trig.Name, trig_index[trig.Nr].Vnum, trig.Nr)
 	if int(trig.Attach_type) == OBJ_TRIGGER {
 		len_ += stdio.Snprintf(&sb[len_], int(64936-uintptr(len_)), "Trigger Intended Assignment: Objects\r\n")
 		sprintbit(bitvector_t(int32(trig.Trigger_type)), otrig_types[:], &buf[0], uint64(64936))
@@ -705,7 +806,7 @@ func script_stat(ch *char_data, sc *script_data) {
 		}
 	}
 	for t = sc.Trig_list; t != nil; t = t.Next {
-		send_to_char(ch, libc.CString("\r\n  Trigger: @y%s@n, VNum: [@y%5d@n], RNum: [%5d]\r\n"), t.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(t.Nr)))).Vnum, t.Nr)
+		send_to_char(ch, libc.CString("\r\n  Trigger: @y%s@n, VNum: [@y%5d@n], RNum: [%5d]\r\n"), t.Name, trig_index[t.Nr].Vnum, t.Nr)
 		if int(t.Attach_type) == OBJ_TRIGGER {
 			send_to_char(ch, libc.CString("  Trigger Intended Assignment: Objects\r\n"))
 			sprintbit(bitvector_t(int32(t.Trigger_type)), otrig_types[:], &buf1[0], uint64(64936))
@@ -834,7 +935,7 @@ func do_attach(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if is_abbrev(&arg[0], libc.CString("mobile")) != 0 || is_abbrev(&arg[0], libc.CString("mtr")) != 0 {
 		victim = get_char_vis(ch, &targ_name[0], nil, 1<<1)
 		if victim == nil {
-			for victim = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; victim != nil; victim = victim.Next_in_room {
+			for victim = world[ch.In_room].People; victim != nil; victim = victim.Next_in_room {
 				if GET_MOB_VNUM(victim) == mob_vnum(num_arg) {
 					break
 				}
@@ -848,7 +949,7 @@ func do_attach(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("Players can't have scripts.\r\n"))
 			return
 		}
-		if can_edit_zone(ch, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone) == 0 {
+		if can_edit_zone(ch, world[ch.In_room].Zone) == 0 {
 			send_to_char(ch, libc.CString("You can only attach triggers in your own zone\r\n"))
 			return
 		}
@@ -868,24 +969,16 @@ func do_attach(ch *char_data, argument *byte, cmd int, subcmd int) {
 	} else if is_abbrev(&arg[0], libc.CString("object")) != 0 || is_abbrev(&arg[0], libc.CString("otr")) != 0 {
 		object = get_obj_vis(ch, &targ_name[0], nil)
 		if object == nil {
-			for object = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; object != nil; object = object.Next_content {
-				if GET_OBJ_VNUM(object) == obj_vnum(num_arg) {
-					break
-				}
-			}
+			object = find_obj_in_list_vnum(world[ch.In_room].Contents, obj_vnum(num_arg))
 			if object == nil {
-				for object = ch.Carrying; object != nil; object = object.Next_content {
-					if GET_OBJ_VNUM(object) == obj_vnum(num_arg) {
-						break
-					}
-				}
+				object = find_obj_in_list_vnum(ch.Carrying, obj_vnum(num_arg))
 				if object == nil {
 					send_to_char(ch, libc.CString("That object does not exist.\r\n"))
 					return
 				}
 			}
 		}
-		if can_edit_zone(ch, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Zone) == 0 {
+		if can_edit_zone(ch, world[ch.In_room].Zone) == 0 {
 			send_to_char(ch, libc.CString("You can only attach triggers in your own zone\r\n"))
 			return
 		}
@@ -919,7 +1012,7 @@ func do_attach(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("You need to supply a room number or . for current room.\r\n"))
 			return
 		}
-		if can_edit_zone(ch, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Zone) == 0 {
+		if can_edit_zone(ch, world[rnum].Zone) == 0 {
 			send_to_char(ch, libc.CString("You can only attach triggers in your own zone\r\n"))
 			return
 		}
@@ -931,12 +1024,12 @@ func do_attach(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("That trigger does not exist.\r\n"))
 			return
 		}
-		room = (*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))
+		room = &world[rnum]
 		if room.Script == nil {
 			room.Script = new(script_data)
 		}
 		add_trigger(room.Script, trig, loc)
-		send_to_char(ch, libc.CString("Trigger %d (%s) attached to room %d.\r\n"), tn, trig.Name, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Number)
+		send_to_char(ch, libc.CString("Trigger %d (%s) attached to room %d.\r\n"), tn, trig.Name, world[rnum].Number)
 	} else {
 		send_to_char(ch, libc.CString("Please specify 'mob', 'obj', or 'room'.\r\n"))
 	}
@@ -1000,7 +1093,7 @@ func remove_trigger(sc *script_data, name *byte) int {
 			return *p
 		}() >= num {
 			break
-		} else if (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i.Nr)))).Vnum == mob_vnum(num) {
+		} else if trig_index[i.Nr].Vnum == mob_vnum(num) {
 			break
 		}
 	}
@@ -1040,7 +1133,7 @@ func do_detach(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	num_arg = libc.Atoi(libc.GoString(&arg2[0]))
 	if libc.StrCaseCmp(&arg1[0], libc.CString("room")) == 0 || libc.StrCaseCmp(&arg1[0], libc.CString("wtr")) == 0 {
-		room = (*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))
+		room = &world[ch.In_room]
 		if can_edit_zone(ch, room.Zone) == 0 {
 			send_to_char(ch, libc.CString("You can only detach triggers in your own zone\r\n"))
 			return
@@ -1062,7 +1155,7 @@ func do_detach(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if is_abbrev(&arg1[0], libc.CString("mobile")) != 0 || libc.StrCaseCmp(&arg1[0], libc.CString("mtr")) == 0 {
 			victim = get_char_vis(ch, &arg2[0], nil, 1<<1)
 			if victim == nil {
-				for victim = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; victim != nil; victim = victim.Next_in_room {
+				for victim = world[ch.In_room].People; victim != nil; victim = victim.Next_in_room {
 					if GET_MOB_VNUM(victim) == mob_vnum(num_arg) {
 						break
 					}
@@ -1072,7 +1165,7 @@ func do_detach(ch *char_data, argument *byte, cmd int, subcmd int) {
 					return
 				}
 			}
-			if arg3 == nil || arg3[0] == 0 {
+			if arg3[0] == 0 {
 				send_to_char(ch, libc.CString("You must specify a trigger to remove.\r\n"))
 			} else {
 				trigger = &arg3[0]
@@ -1080,24 +1173,16 @@ func do_detach(ch *char_data, argument *byte, cmd int, subcmd int) {
 		} else if is_abbrev(&arg1[0], libc.CString("object")) != 0 || libc.StrCaseCmp(&arg1[0], libc.CString("otr")) == 0 {
 			object = get_obj_vis(ch, &arg2[0], nil)
 			if object == nil {
-				for object = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; object != nil; object = object.Next_content {
-					if GET_OBJ_VNUM(object) == obj_vnum(num_arg) {
-						break
-					}
-				}
+				object = find_obj_in_list_vnum(world[ch.In_room].Contents, obj_vnum(num_arg))
 				if object == nil {
-					for object = ch.Carrying; object != nil; object = object.Next_content {
-						if GET_OBJ_VNUM(object) == obj_vnum(num_arg) {
-							break
-						}
-					}
+					object = find_obj_in_list_vnum(ch.Carrying, obj_vnum(num_arg))
 					if object == nil {
 						send_to_char(ch, libc.CString("No such object around.\r\n"))
 						return
 					}
 				}
 			}
-			if arg3 == nil || arg3[0] == 0 {
+			if arg3[0] == 0 {
 				send_to_char(ch, libc.CString("You must specify a trigger to remove.\r\n"))
 			} else {
 				trigger = &arg3[0]
@@ -1116,7 +1201,7 @@ func do_detach(ch *char_data, argument *byte, cmd int, subcmd int) {
 				return victim
 			}()) != nil {
 			} else if (func() *obj_data {
-				object = get_obj_in_list_vis(ch, &arg1[0], nil, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents)
+				object = get_obj_in_list_vis(ch, &arg1[0], nil, world[ch.In_room].Contents)
 				return object
 			}()) != nil {
 			} else if (func() *char_data {
@@ -1453,7 +1538,7 @@ func find_end(trig *trig_data, cl *cmdlist_element) *cmdlist_element {
 		p *byte
 	)
 	if cl.Next == nil {
-		script_log(libc.CString("Trigger VNum %d has 'if' without 'end'. (error 1)"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
+		script_log(libc.CString("Trigger VNum %d has 'if' without 'end'. (error 1)"), trig_index[trig.Nr].Vnum)
 		return cl
 	}
 	for c = cl.Next; c != nil; c = c.Next {
@@ -1465,11 +1550,11 @@ func find_end(trig *trig_data, cl *cmdlist_element) *cmdlist_element {
 			return c
 		}
 		if c.Next == nil {
-			script_log(libc.CString("Trigger VNum %d has 'if' without 'end'. (error 2)"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
+			script_log(libc.CString("Trigger VNum %d has 'if' without 'end'. (error 2)"), trig_index[trig.Nr].Vnum)
 			return c
 		}
 	}
-	script_log(libc.CString("Trigger VNum %d has 'if' without 'end'. (error 3)"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
+	script_log(libc.CString("Trigger VNum %d has 'if' without 'end'. (error 3)"), trig_index[trig.Nr].Vnum)
 	return c
 }
 func find_else_end(trig *trig_data, cl *cmdlist_element, gohere unsafe.Pointer, sc *script_data, type_ int) *cmdlist_element {
@@ -1497,14 +1582,14 @@ func find_else_end(trig *trig_data, cl *cmdlist_element, gohere unsafe.Pointer, 
 			return c
 		}
 		if c.Next == nil {
-			script_log(libc.CString("Trigger VNum %d has 'if' without 'end'. (error 4)"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
+			script_log(libc.CString("Trigger VNum %d has 'if' without 'end'. (error 4)"), trig_index[trig.Nr].Vnum)
 			return c
 		}
 	}
 	for p = c.Cmd; *p != 0 && unicode.IsSpace(rune(*p)); p = (*byte)(unsafe.Add(unsafe.Pointer(p), 1)) {
 	}
 	if libc.StrNCaseCmp(libc.CString("end"), p, 3) != 0 {
-		script_log(libc.CString("Trigger VNum %d has 'if' without 'end'. (error 5)"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
+		script_log(libc.CString("Trigger VNum %d has 'if' without 'end'. (error 5)"), trig_index[trig.Nr].Vnum)
 	}
 	return c
 }
@@ -1522,7 +1607,7 @@ func process_wait(gohere unsafe.Pointer, trig *trig_data, type_ int, cmd *byte, 
 	arg = any_one_arg(cmd, &buf[0])
 	skip_spaces(&arg)
 	if *arg == 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. wait w/o an arg: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, cl.Cmd)
+		script_log(libc.CString("Trigger: %s, VNum %d. wait w/o an arg: '%s'"), trig.Name, trig_index[trig.Nr].Vnum, cl.Cmd)
 		return
 	}
 	if libc.StrNCaseCmp(arg, libc.CString("until "), 6) == 0 {
@@ -1563,7 +1648,7 @@ func process_set(sc *script_data, trig *trig_data, cmd *byte) {
 	value = two_arguments(cmd, &arg[0], &name[0])
 	skip_spaces(&value)
 	if name[0] == 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. set w/o an arg: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, cmd)
+		script_log(libc.CString("Trigger: %s, VNum %d. set w/o an arg: '%s'"), trig.Name, trig_index[trig.Nr].Vnum, cmd)
 		return
 	}
 	add_var(&trig.Var_list, &name[0], value, func() int {
@@ -1584,7 +1669,7 @@ func process_eval(gohere unsafe.Pointer, sc *script_data, trig *trig_data, type_
 	expr = one_argument(expr, &name[0])
 	skip_spaces(&expr)
 	if name[0] == 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. eval w/o an arg: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, cmd)
+		script_log(libc.CString("Trigger: %s, VNum %d. eval w/o an arg: '%s'"), trig.Name, trig_index[trig.Nr].Vnum, cmd)
 		return
 	}
 	eval_expr(expr, &result[0], gohere, sc, trig, type_)
@@ -1611,11 +1696,11 @@ func process_attach(gohere unsafe.Pointer, sc *script_data, trig *trig_data, typ
 	id_p = two_arguments(cmd, &arg[0], &trignum_s[0])
 	skip_spaces(&id_p)
 	if trignum_s[0] == 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. attach w/o an arg: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, cmd)
+		script_log(libc.CString("Trigger: %s, VNum %d. attach w/o an arg: '%s'"), trig.Name, trig_index[trig.Nr].Vnum, cmd)
 		return
 	}
 	if id_p == nil || *id_p == 0 || libc.Atoi(libc.GoString(id_p)) == 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. attach invalid id arg: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, cmd)
+		script_log(libc.CString("Trigger: %s, VNum %d. attach invalid id arg: '%s'"), trig.Name, trig_index[trig.Nr].Vnum, cmd)
 		return
 	}
 	eval_expr(id_p, &result[0], gohere, sc, trig, type_)
@@ -1623,7 +1708,7 @@ func process_attach(gohere unsafe.Pointer, sc *script_data, trig *trig_data, typ
 		id = libc.Atoi(libc.GoString(&result[0]))
 		return id
 	}()) == 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. attach invalid id arg: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, cmd)
+		script_log(libc.CString("Trigger: %s, VNum %d. attach invalid id arg: '%s'"), trig.Name, trig_index[trig.Nr].Vnum, cmd)
 		return
 	}
 	c = find_char(id)
@@ -1632,7 +1717,7 @@ func process_attach(gohere unsafe.Pointer, sc *script_data, trig *trig_data, typ
 		if o == nil {
 			r = find_room(id)
 			if r == nil {
-				script_log(libc.CString("Trigger: %s, VNum %d. attach invalid id arg: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, cmd)
+				script_log(libc.CString("Trigger: %s, VNum %d. attach invalid id arg: '%s'"), trig.Name, trig_index[trig.Nr].Vnum, cmd)
 				return
 			}
 		}
@@ -1642,12 +1727,12 @@ func process_attach(gohere unsafe.Pointer, sc *script_data, trig *trig_data, typ
 		newtrig = read_trigger(trignum)
 		return newtrig
 	}()) == nil {
-		script_log(libc.CString("Trigger: %s, VNum %d. attach invalid trigger: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, &trignum_s[0])
+		script_log(libc.CString("Trigger: %s, VNum %d. attach invalid trigger: '%s'"), trig.Name, trig_index[trig.Nr].Vnum, &trignum_s[0])
 		return
 	}
 	if c != nil {
 		if !IS_NPC(c) {
-			script_log(libc.CString("Trigger: %s, VNum %d. attach invalid target: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, GET_NAME(c))
+			script_log(libc.CString("Trigger: %s, VNum %d. attach invalid target: '%s'"), trig.Name, trig_index[trig.Nr].Vnum, GET_NAME(c))
 			return
 		}
 		if c.Script == nil {
@@ -1685,11 +1770,11 @@ func process_detach(gohere unsafe.Pointer, sc *script_data, trig *trig_data, typ
 	id_p = two_arguments(cmd, &arg[0], &trignum_s[0])
 	skip_spaces(&id_p)
 	if trignum_s[0] == 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. detach w/o an arg: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, cmd)
+		script_log(libc.CString("Trigger: %s, VNum %d. detach w/o an arg: '%s'"), trig.Name, trig_index[trig.Nr].Vnum, cmd)
 		return
 	}
 	if id_p == nil || *id_p == 0 || libc.Atoi(libc.GoString(id_p)) == 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. detach invalid id arg: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, cmd)
+		script_log(libc.CString("Trigger: %s, VNum %d. detach invalid id arg: '%s'"), trig.Name, trig_index[trig.Nr].Vnum, cmd)
 		return
 	}
 	eval_expr(id_p, &result[0], gohere, sc, trig, type_)
@@ -1697,7 +1782,7 @@ func process_detach(gohere unsafe.Pointer, sc *script_data, trig *trig_data, typ
 		id = libc.Atoi(libc.GoString(&result[0]))
 		return id
 	}()) == 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. detach invalid id arg: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, cmd)
+		script_log(libc.CString("Trigger: %s, VNum %d. detach invalid id arg: '%s'"), trig.Name, trig_index[trig.Nr].Vnum, cmd)
 		return
 	}
 	c = find_char(id)
@@ -1706,7 +1791,7 @@ func process_detach(gohere unsafe.Pointer, sc *script_data, trig *trig_data, typ
 		if o == nil {
 			r = find_room(id)
 			if r == nil {
-				script_log(libc.CString("Trigger: %s, VNum %d. detach invalid id arg: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, cmd)
+				script_log(libc.CString("Trigger: %s, VNum %d. detach invalid id arg: '%s'"), trig.Name, trig_index[trig.Nr].Vnum, cmd)
 				return
 			}
 		}
@@ -1750,13 +1835,13 @@ func process_detach(gohere unsafe.Pointer, sc *script_data, trig *trig_data, typ
 }
 func dg_room_of_obj(obj *obj_data) *room_data {
 	if obj.In_room != room_rnum(-1) {
-		return (*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj.In_room)))
+		return &world[obj.In_room]
 	}
 	if obj.Carried_by != nil {
-		return (*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj.Carried_by.In_room)))
+		return &world[obj.Carried_by.In_room]
 	}
 	if obj.Worn_by != nil {
-		return (*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj.Worn_by.In_room)))
+		return &world[obj.Worn_by.In_room]
 	}
 	if obj.In_obj != nil {
 		return dg_room_of_obj(obj.In_obj)
@@ -1777,11 +1862,11 @@ func makeuid_var(gohere unsafe.Pointer, sc *script_data, trig *trig_data, type_ 
 	half_chop(cmd, &arg[0], cmd)
 	half_chop(cmd, &name[0], cmd)
 	if varname[0] == 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. makeuid w/o an arg: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, cmd)
+		script_log(libc.CString("Trigger: %s, VNum %d. makeuid w/o an arg: '%s'"), trig.Name, trig_index[trig.Nr].Vnum, cmd)
 		return
 	}
-	if arg == nil || arg[0] == 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. makeuid invalid id arg: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, cmd)
+	if arg[0] == 0 {
+		script_log(libc.CString("Trigger: %s, VNum %d. makeuid invalid id arg: '%s'"), trig.Name, trig_index[trig.Nr].Vnum, cmd)
 		return
 	}
 	if libc.Atoi(libc.GoString(&arg[0])) != 0 {
@@ -1789,8 +1874,8 @@ func makeuid_var(gohere unsafe.Pointer, sc *script_data, trig *trig_data, type_ 
 		eval_expr(&arg[0], &result[0], gohere, sc, trig, type_)
 		stdio.Snprintf(&uid[0], int(2048), "%c%s", UID_CHAR, &result[0])
 	} else {
-		if name == nil || name[0] == 0 {
-			script_log(libc.CString("Trigger: %s, VNum %d. makeuid needs name: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, cmd)
+		if name[0] == 0 {
+			script_log(libc.CString("Trigger: %s, VNum %d. makeuid needs name: '%s'"), trig.Name, trig_index[trig.Nr].Vnum, cmd)
 			return
 		}
 		if is_abbrev(&arg[0], libc.CString("mob")) != 0 {
@@ -1818,7 +1903,7 @@ func makeuid_var(gohere unsafe.Pointer, sc *script_data, trig *trig_data, type_ 
 					o = get_obj_in_list_vis((*char_data)(gohere), &name[0], nil, ((*char_data)(gohere)).Carrying)
 					return o
 				}()) == nil {
-					o = get_obj_in_list_vis((*char_data)(gohere), &name[0], nil, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*char_data)(gohere)).In_room)))).Contents)
+					o = get_obj_in_list_vis((*char_data)(gohere), &name[0], nil, world[((*char_data)(gohere)).In_room].Contents)
 				}
 			}
 			if o != nil {
@@ -1835,10 +1920,10 @@ func makeuid_var(gohere unsafe.Pointer, sc *script_data, trig *trig_data, type_ 
 				r = ((*char_data)(gohere)).In_room
 			}
 			if r != room_rnum(-1) {
-				stdio.Snprintf(&uid[0], int(2048), "%c%d", UID_CHAR, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(r)))).Number+ROOM_ID_BASE)
+				stdio.Snprintf(&uid[0], int(2048), "%c%d", UID_CHAR, world[r].Number+ROOM_ID_BASE)
 			}
 		} else {
-			script_log(libc.CString("Trigger: %s, VNum %d. makeuid syntax error: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, cmd)
+			script_log(libc.CString("Trigger: %s, VNum %d. makeuid syntax error: '%s'"), trig.Name, trig_index[trig.Nr].Vnum, cmd)
 			return
 		}
 	}
@@ -1858,7 +1943,7 @@ func process_return(trig *trig_data, cmd *byte) int {
 	)
 	two_arguments(cmd, &arg1[0], &arg2[0])
 	if arg2[0] == 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. return w/o an arg: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, cmd)
+		script_log(libc.CString("Trigger: %s, VNum %d. return w/o an arg: '%s'"), trig.Name, trig_index[trig.Nr].Vnum, cmd)
 		return 1
 	}
 	return libc.Atoi(libc.GoString(&arg2[0]))
@@ -1871,7 +1956,7 @@ func process_unset(sc *script_data, trig *trig_data, cmd *byte) {
 	var_ = any_one_arg(cmd, &arg[0])
 	skip_spaces(&var_)
 	if *var_ == 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. unset w/o an arg: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, cmd)
+		script_log(libc.CString("Trigger: %s, VNum %d. unset w/o an arg: '%s'"), trig.Name, trig_index[trig.Nr].Vnum, cmd)
 		return
 	}
 	if remove_var(&sc.Global_vars, var_) == 0 {
@@ -1901,7 +1986,7 @@ func process_remote(sc *script_data, trig *trig_data, cmd *byte) {
 	skip_spaces(&var_)
 	skip_spaces(&uid_p)
 	if buf[0] == 0 || buf2[0] == 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. remote: invalid arguments '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, cmd)
+		script_log(libc.CString("Trigger: %s, VNum %d. remote: invalid arguments '%s'"), trig.Name, trig_index[trig.Nr].Vnum, cmd)
 		return
 	}
 	for vd = trig.Var_list; vd != nil; vd = vd.Next {
@@ -1917,12 +2002,12 @@ func process_remote(sc *script_data, trig *trig_data, cmd *byte) {
 		}
 	}
 	if vd == nil {
-		script_log(libc.CString("Trigger: %s, VNum %d. local var '%s' not found in remote call"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, &buf[0])
+		script_log(libc.CString("Trigger: %s, VNum %d. local var '%s' not found in remote call"), trig.Name, trig_index[trig.Nr].Vnum, &buf[0])
 		return
 	}
 	uid = libc.Atoi(libc.GoString(&buf2[0]))
 	if uid <= 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. remote: illegal uid '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, &buf2[0])
+		script_log(libc.CString("Trigger: %s, VNum %d. remote: illegal uid '%s'"), trig.Name, trig_index[trig.Nr].Vnum, &buf2[0])
 		return
 	}
 	context = vd.Context
@@ -1945,7 +2030,7 @@ func process_remote(sc *script_data, trig *trig_data, cmd *byte) {
 	}()) != nil {
 		sc_remote = obj.Script
 	} else {
-		script_log(libc.CString("Trigger: %s, VNum %d. remote: uid '%ld' invalid"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, uid)
+		script_log(libc.CString("Trigger: %s, VNum %d. remote: uid '%ld' invalid"), trig.Name, trig_index[trig.Nr].Vnum, uid)
 		return
 	}
 	if sc_remote == nil {
@@ -2056,7 +2141,7 @@ func perform_set_dg_var(ch *char_data, vict *char_data, val_arg *byte) int {
 		var_value *byte
 	)
 	var_value = any_one_arg(val_arg, &var_name[0])
-	if var_name == nil || var_name[0] == 0 || var_value == nil || *var_value == 0 {
+	if var_name[0] == 0 || var_value == nil || *var_value == 0 {
 		send_to_char(ch, libc.CString("Usage: set <char> <varname> <value>\r\n"))
 		return 0
 	}
@@ -2091,12 +2176,12 @@ func process_rdelete(sc *script_data, trig *trig_data, cmd *byte) {
 	skip_spaces(&var_)
 	skip_spaces(&uid_p)
 	if buf[0] == 0 || buf2[0] == 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. rdelete: invalid arguments '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, cmd)
+		script_log(libc.CString("Trigger: %s, VNum %d. rdelete: invalid arguments '%s'"), trig.Name, trig_index[trig.Nr].Vnum, cmd)
 		return
 	}
 	uid = libc.Atoi(libc.GoString(&buf2[0]))
 	if uid <= 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. rdelete: illegal uid '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, &buf2[0])
+		script_log(libc.CString("Trigger: %s, VNum %d. rdelete: illegal uid '%s'"), trig.Name, trig_index[trig.Nr].Vnum, &buf2[0])
 		return
 	}
 	if (func() *room_data {
@@ -2118,7 +2203,7 @@ func process_rdelete(sc *script_data, trig *trig_data, cmd *byte) {
 	}()) != nil {
 		sc_remote = obj.Script
 	} else {
-		script_log(libc.CString("Trigger: %s, VNum %d. remote: uid '%ld' invalid"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, uid)
+		script_log(libc.CString("Trigger: %s, VNum %d. remote: uid '%ld' invalid"), trig.Name, trig_index[trig.Nr].Vnum, uid)
 		return
 	}
 	if sc_remote == nil {
@@ -2159,7 +2244,7 @@ func process_global(sc *script_data, trig *trig_data, cmd *byte, id int) {
 	var_ = any_one_arg(cmd, &arg[0])
 	skip_spaces(&var_)
 	if *var_ == 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. global w/o an arg: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, cmd)
+		script_log(libc.CString("Trigger: %s, VNum %d. global w/o an arg: '%s'"), trig.Name, trig_index[trig.Nr].Vnum, cmd)
 		return
 	}
 	for vd = trig.Var_list; vd != nil; vd = vd.Next {
@@ -2168,7 +2253,7 @@ func process_global(sc *script_data, trig *trig_data, cmd *byte, id int) {
 		}
 	}
 	if vd == nil {
-		script_log(libc.CString("Trigger: %s, VNum %d. local var '%s' not found in global call"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, var_)
+		script_log(libc.CString("Trigger: %s, VNum %d. local var '%s' not found in global call"), trig.Name, trig_index[trig.Nr].Vnum, var_)
 		return
 	}
 	add_var(&sc.Global_vars, vd.Name, vd.Value, id)
@@ -2182,7 +2267,7 @@ func process_context(sc *script_data, trig *trig_data, cmd *byte) {
 	var_ = any_one_arg(cmd, &arg[0])
 	skip_spaces(&var_)
 	if *var_ == 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. context w/o an arg: '%s'"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, cmd)
+		script_log(libc.CString("Trigger: %s, VNum %d. context w/o an arg: '%s'"), trig.Name, trig_index[trig.Nr].Vnum, cmd)
 		return
 	}
 	sc.Context = libc.Atoi(libc.GoString(var_))
@@ -2230,11 +2315,11 @@ func dg_letter_value(sc *script_data, trig *trig_data, cmd *byte) {
 	script_log(libc.CString("The use of dg_letter is deprecated"))
 	script_log(libc.CString("- Use 'set <new variable> %%<text/var>.charat(index)%%' instead."))
 	if num < 1 {
-		script_log(libc.CString("Trigger #%d : dg_letter number < 1!"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
+		script_log(libc.CString("Trigger #%d : dg_letter number < 1!"), trig_index[trig.Nr].Vnum)
 		return
 	}
 	if num > libc.StrLen(&string_[0]) {
-		script_log(libc.CString("Trigger #%d : dg_letter number > strlen!"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
+		script_log(libc.CString("Trigger #%d : dg_letter number > strlen!"), trig_index[trig.Nr].Vnum)
 		return
 	}
 	junk[0] = string_[num-1]
@@ -2265,7 +2350,7 @@ func script_driver(go_adress unsafe.Pointer, trig *trig_data, type_ int, mode in
 		sc = ((*room_data)(gohere)).Script
 	}
 	if depth > MAX_SCRIPT_DEPTH {
-		script_log(libc.CString("Trigger %d recursed beyond maximum allowed depth."), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
+		script_log(libc.CString("Trigger %d recursed beyond maximum allowed depth."), trig_index[trig.Nr].Vnum)
 		switch type_ {
 		case MOB_TRIGGER:
 			script_log(libc.CString("It was attached to %s [%d]"), GET_NAME((*char_data)(gohere)), GET_MOB_VNUM((*char_data)(gohere)))
@@ -2302,7 +2387,7 @@ func script_driver(go_adress unsafe.Pointer, trig *trig_data, type_ int, mode in
 			}
 		} else if libc.StrNCaseCmp(libc.CString("elseif "), p, 7) == 0 || libc.StrNCaseCmp(libc.CString("else"), p, 4) == 0 {
 			if trig.Depth == 1 {
-				script_log(libc.CString("Trigger VNum %d has 'else' without 'if'."), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
+				script_log(libc.CString("Trigger VNum %d has 'else' without 'if'."), trig_index[trig.Nr].Vnum)
 				continue
 			}
 			cl = find_end(trig, cl)
@@ -2310,7 +2395,7 @@ func script_driver(go_adress unsafe.Pointer, trig *trig_data, type_ int, mode in
 		} else if libc.StrNCaseCmp(libc.CString("while "), p, 6) == 0 {
 			temp = find_done(cl)
 			if temp == nil {
-				script_log(libc.CString("Trigger VNum %d has 'while' without 'done'."), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
+				script_log(libc.CString("Trigger VNum %d has 'while' without 'done'."), trig_index[trig.Nr].Vnum)
 				return ret_val
 			}
 			if process_if((*byte)(unsafe.Add(unsafe.Pointer(p), 6)), gohere, sc, trig, type_) != 0 {
@@ -2323,7 +2408,7 @@ func script_driver(go_adress unsafe.Pointer, trig *trig_data, type_ int, mode in
 			cl = find_case(trig, cl, gohere, sc, type_, (*byte)(unsafe.Add(unsafe.Pointer(p), 7)))
 		} else if libc.StrNCaseCmp(libc.CString("end"), p, 3) == 0 {
 			if trig.Depth == 1 {
-				script_log(libc.CString("Trigger VNum %d has 'end' without 'if'."), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
+				script_log(libc.CString("Trigger VNum %d has 'end' without 'if'."), trig_index[trig.Nr].Vnum)
 				continue
 			}
 			trig.Depth--
@@ -2343,7 +2428,7 @@ func script_driver(go_adress unsafe.Pointer, trig *trig_data, type_ int, mode in
 						return ret_val
 					}
 					if trig.Loops >= 5000 {
-						script_log(libc.CString("Trigger VNum %d has looped 5,000 times!!!"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
+						script_log(libc.CString("Trigger VNum %d has looped 5,000 times!!!"), trig_index[trig.Nr].Vnum)
 						break
 					}
 				} else {
@@ -2436,15 +2521,15 @@ func real_trigger(vnum trig_vnum) trig_rnum {
 	)
 	bot = 0
 	top = trig_rnum(top_of_trigt - 1)
-	if top_of_trigt == 0 || (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(bot)))).Vnum > mob_vnum(vnum) || (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(top)))).Vnum < mob_vnum(vnum) {
+	if top_of_trigt == 0 || trig_index[bot].Vnum > mob_vnum(vnum) || trig_index[top].Vnum < mob_vnum(vnum) {
 		return -1
 	}
 	for bot <= top {
 		mid = (bot + top) / 2
-		if (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(mid)))).Vnum == mob_vnum(vnum) {
+		if trig_index[mid].Vnum == mob_vnum(vnum) {
 			return mid
 		}
-		if (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(mid)))).Vnum > mob_vnum(vnum) {
+		if trig_index[mid].Vnum > mob_vnum(vnum) {
 			top = mid - 1
 		} else {
 			bot = mid + 1
@@ -2464,7 +2549,7 @@ func do_tstat(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("That vnum does not exist.\r\n"))
 			return
 		}
-		do_stat_trigger(ch, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(rnum)))).Proto)
+		do_stat_trigger(ch, trig_index[rnum].Proto)
 	} else {
 		send_to_char(ch, libc.CString("Usage: tstat <vnum>\r\n"))
 	}
@@ -2746,7 +2831,7 @@ func remove_from_lookup_table(uid int) {
 	}
 	basic_mud_log(libc.CString("remove_from_lookup. UID %ld not found."), uid)
 }
-func check_flags_by_name_ar(array *int, numflags int, search *byte, namelist [0]*byte) int {
+func check_flags_by_name_ar(array []bitvector_t, numflags int, search *byte, namelist []*byte) int {
 	var (
 		i    int
 		item int = -1
@@ -2759,7 +2844,7 @@ func check_flags_by_name_ar(array *int, numflags int, search *byte, namelist [0]
 	if item < 0 {
 		return FALSE
 	}
-	if IS_SET_AR([0]bitvector_t(array), bitvector_t(int32(item))) {
+	if IS_SET_AR(array, bitvector_t(item)) {
 		return item
 	}
 	return FALSE

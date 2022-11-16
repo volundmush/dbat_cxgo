@@ -16,14 +16,14 @@ func add_object(newobj *obj_data, ovnum obj_vnum) obj_rnum {
 		newobj.Item_number = obj_vnum(real_object(ovnum))
 		return *p
 	}()) != obj_vnum(-1) {
-		copy_object((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(newobj.Item_number))), newobj)
-		update_objects((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(newobj.Item_number))))
-		add_to_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(rznum)))).Number, SL_OBJ)
+		copy_object(&obj_proto[newobj.Item_number], newobj)
+		update_objects(&obj_proto[newobj.Item_number])
+		add_to_save_list(zone_table[rznum].Number, SL_OBJ)
 		return obj_rnum(newobj.Item_number)
 	}
 	found = int(insert_object(newobj, ovnum))
 	adjust_objects(obj_rnum(found))
-	add_to_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(rznum)))).Number, SL_OBJ)
+	add_to_save_list(zone_table[rznum].Number, SL_OBJ)
 	return obj_rnum(found)
 }
 func update_objects(refobj *obj_data) int {
@@ -65,25 +65,25 @@ func adjust_objects(refpt obj_rnum) obj_rnum {
 		obj.Item_number += obj_vnum(libc.BoolToInt(obj.Item_number != obj_vnum(-1) && obj.Item_number >= obj_vnum(refpt)))
 	}
 	for zone = 0; zone <= int(top_of_zone_table); zone++ {
-		for cmd_no = 0; int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command) != 'S'; cmd_no++ {
-			switch (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command {
+		for cmd_no = 0; int(zone_table[zone].Cmd[cmd_no].Command) != 'S'; cmd_no++ {
+			switch zone_table[zone].Cmd[cmd_no].Command {
 			case 'P':
-				(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 += vnum(libc.BoolToInt((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 >= vnum(refpt)))
+				zone_table[zone].Cmd[cmd_no].Arg3 += vnum(libc.BoolToInt(zone_table[zone].Cmd[cmd_no].Arg3 >= vnum(refpt)))
 				fallthrough
 			case 'O':
 				fallthrough
 			case 'G':
 				fallthrough
 			case 'E':
-				(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 += vnum(libc.BoolToInt((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 >= vnum(refpt)))
+				zone_table[zone].Cmd[cmd_no].Arg1 += vnum(libc.BoolToInt(zone_table[zone].Cmd[cmd_no].Arg1 >= vnum(refpt)))
 			case 'R':
-				(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2 += vnum(libc.BoolToInt((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2 >= vnum(refpt)))
+				zone_table[zone].Cmd[cmd_no].Arg2 += vnum(libc.BoolToInt(zone_table[zone].Cmd[cmd_no].Arg2 >= vnum(refpt)))
 			}
 		}
 	}
 	for shop = 0; shop <= top_shop; shop++ {
-		for i = 0; (*(*obj_vnum)(unsafe.Add(unsafe.Pointer((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop)))).Producing), unsafe.Sizeof(obj_vnum(0))*uintptr(i)))) != obj_vnum(-1); i++ {
-			*(*obj_vnum)(unsafe.Add(unsafe.Pointer((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop)))).Producing), unsafe.Sizeof(obj_vnum(0))*uintptr(i))) += obj_vnum(libc.BoolToInt((*(*obj_vnum)(unsafe.Add(unsafe.Pointer((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop)))).Producing), unsafe.Sizeof(obj_vnum(0))*uintptr(i)))) >= obj_vnum(refpt)))
+		for i = 0; (shop_index[shop].Producing[i]) != obj_vnum(-1); i++ {
+			shop_index[shop].Producing[i] += obj_vnum(libc.BoolToInt((shop_index[shop].Producing[i]) >= obj_vnum(refpt)))
 		}
 	}
 	return refpt
@@ -91,16 +91,17 @@ func adjust_objects(refpt obj_rnum) obj_rnum {
 func insert_object(obj *obj_data, ovnum obj_vnum) obj_rnum {
 	var i obj_rnum
 	top_of_objt++
-	obj_index = (*index_data)(libc.Realloc(unsafe.Pointer(obj_index), int(top_of_objt*obj_rnum(unsafe.Sizeof(index_data{}))+1)))
-	obj_proto = (*obj_data)(libc.Realloc(unsafe.Pointer(obj_proto), int(top_of_objt*obj_rnum(unsafe.Sizeof(obj_data{}))+1)))
+	// todo: fix this
+	//obj_index = []index_data((*index_data)(libc.Realloc(unsafe.Pointer(&obj_index[0]), int(top_of_objt*obj_rnum(unsafe.Sizeof(index_data{}))+1))))
+	//obj_proto = []obj_data((*obj_data)(libc.Realloc(unsafe.Pointer(&obj_proto[0]), int(top_of_objt*obj_rnum(unsafe.Sizeof(obj_data{}))+1))))
 	for i = top_of_objt; i > 0; i-- {
-		if ovnum > obj_vnum((*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(i-1)))).Vnum) {
+		if ovnum > obj_vnum(obj_index[i-1].Vnum) {
 			return index_object(obj, ovnum, i)
 		}
-		*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(i))) = *(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(i-1)))
-		*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i))) = *(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i-1)))
-		(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Item_number = obj_vnum(i)
-		htree_add(obj_htree, int64((*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Vnum), int64(i))
+		obj_index[i] = obj_index[i-1]
+		obj_proto[i] = obj_proto[i-1]
+		obj_proto[i].Item_number = obj_vnum(i)
+		htree_add(obj_htree, int64(obj_index[i].Vnum), int64(i))
 	}
 	return index_object(obj, ovnum, 0)
 }
@@ -109,12 +110,12 @@ func index_object(obj *obj_data, ovnum obj_vnum, ornum obj_rnum) obj_rnum {
 		return -1
 	}
 	obj.Item_number = obj_vnum(ornum)
-	(*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(ornum)))).Vnum = mob_vnum(ovnum)
-	(*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(ornum)))).Number = 0
-	(*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(ornum)))).Func = nil
-	copy_object_preserve((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(ornum))), obj)
-	(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(ornum)))).In_room = -1
-	htree_add(obj_htree, int64((*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(ornum)))).Vnum), int64(ornum))
+	obj_index[ornum].Vnum = mob_vnum(ovnum)
+	obj_index[ornum].Number = 0
+	obj_index[ornum].Func = nil
+	copy_object_preserve(&obj_proto[ornum], obj)
+	obj_proto[ornum].In_room = -1
+	htree_add(obj_htree, int64(obj_index[ornum].Vnum), int64(ornum))
 	return ornum
 }
 func save_objects(zone_num zone_rnum) int {
@@ -144,7 +145,7 @@ func save_objects(zone_num zone_rnum) int {
 		basic_mud_log(libc.CString("SYSERR: OasisOLC: save_objects: Invalid real zone number %d. (0-%d)"), zone_num, top_of_zone_table)
 		return FALSE
 	}
-	stdio.Snprintf(&cmfname[0], int(128), "%s%d.new", LIB_WORLD, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number)
+	stdio.Snprintf(&cmfname[0], int(128), "%s%d.new", LIB_WORLD, zone_table[zone_num].Number)
 	if (func() *stdio.File {
 		fp = stdio.FOpen(libc.GoString(&cmfname[0]), "w+")
 		return fp
@@ -152,13 +153,13 @@ func save_objects(zone_num zone_rnum) int {
 		mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("SYSERR: OLC: Cannot open objects file %s!"), &cmfname[0])
 		return FALSE
 	}
-	for counter = int(genolc_zone_bottom(zone_num)); counter <= int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Top); counter++ {
+	for counter = int(genolc_zone_bottom(zone_num)); counter <= int(zone_table[zone_num].Top); counter++ {
 		if (func() int {
 			realcounter = int(real_object(obj_vnum(counter)))
 			return realcounter
 		}()) != int(-1) {
 			if (func() *obj_data {
-				obj = (*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(realcounter)))
+				obj = &obj_proto[realcounter]
 				return obj
 			}()).Action_description != nil {
 				libc.StrNCpy(&buf[0], obj.Action_description, int(64936-1))
@@ -186,10 +187,10 @@ func save_objects(zone_num zone_rnum) int {
 			sprintascii(&ebuf2[0], obj.Extra_flags[1])
 			sprintascii(&ebuf3[0], obj.Extra_flags[2])
 			sprintascii(&ebuf4[0], obj.Extra_flags[3])
-			sprintascii(&wbuf1[0], bitvector_t(int32(obj.Wear_flags[0])))
-			sprintascii(&wbuf2[0], bitvector_t(int32(obj.Wear_flags[1])))
-			sprintascii(&wbuf3[0], bitvector_t(int32(obj.Wear_flags[2])))
-			sprintascii(&wbuf4[0], bitvector_t(int32(obj.Wear_flags[3])))
+			sprintascii(&wbuf1[0], obj.Wear_flags[0])
+			sprintascii(&wbuf2[0], obj.Wear_flags[1])
+			sprintascii(&wbuf3[0], obj.Wear_flags[2])
+			sprintascii(&wbuf4[0], obj.Wear_flags[3])
 			sprintascii(&pbuf1[0], obj.Bitvector[0])
 			sprintascii(&pbuf2[0], obj.Bitvector[1])
 			sprintascii(&pbuf3[0], obj.Bitvector[2])
@@ -215,10 +216,10 @@ func save_objects(zone_num zone_rnum) int {
 			}
 			if obj.Sbinfo != nil {
 				for counter2 = 0; counter2 < SKILL_TABLE_SIZE; counter2++ {
-					if (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(counter2)))).Spellname == 0 {
+					if obj.Sbinfo[counter2].Spellname == 0 {
 						break
 					}
-					stdio.Fprintf(fp, "S\n%d %d\n", (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(counter2)))).Spellname, (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(counter2)))).Pages)
+					stdio.Fprintf(fp, "S\n%d %d\n", obj.Sbinfo[counter2].Spellname, obj.Sbinfo[counter2].Pages)
 					continue
 				}
 			}
@@ -226,12 +227,12 @@ func save_objects(zone_num zone_rnum) int {
 	}
 	stdio.Fprintf(fp, "$~\n")
 	fp.Close()
-	stdio.Snprintf(&buf[0], int(64936), "%s%d.obj", LIB_WORLD, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number)
+	stdio.Snprintf(&buf[0], int(64936), "%s%d.obj", LIB_WORLD, zone_table[zone_num].Number)
 	stdio.Remove(libc.GoString(&buf[0]))
 	stdio.Rename(libc.GoString(&cmfname[0]), libc.GoString(&buf[0]))
-	if in_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number, SL_OBJ) != 0 {
-		remove_from_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number, SL_OBJ)
-		create_world_index(int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number), libc.CString("obj"))
+	if in_save_list(zone_table[zone_num].Number, SL_OBJ) != 0 {
+		remove_from_save_list(zone_table[zone_num].Number, SL_OBJ)
+		create_world_index(int(zone_table[zone_num].Number), libc.CString("obj"))
 		basic_mud_log(libc.CString("GenOLC: save_objects: Saving objects '%s'"), &buf[0])
 	}
 	return TRUE
@@ -255,16 +256,16 @@ func free_object_strings(obj *obj_data) {
 }
 func free_object_strings_proto(obj *obj_data) {
 	var robj_num int = int(obj.Item_number)
-	if obj.Name != nil && obj.Name != (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(robj_num)))).Name {
+	if obj.Name != nil && obj.Name != obj_proto[robj_num].Name {
 		libc.Free(unsafe.Pointer(obj.Name))
 	}
-	if obj.Description != nil && obj.Description != (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(robj_num)))).Description {
+	if obj.Description != nil && obj.Description != obj_proto[robj_num].Description {
 		libc.Free(unsafe.Pointer(obj.Description))
 	}
-	if obj.Short_description != nil && obj.Short_description != (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(robj_num)))).Short_description {
+	if obj.Short_description != nil && obj.Short_description != obj_proto[robj_num].Short_description {
 		libc.Free(unsafe.Pointer(obj.Short_description))
 	}
-	if obj.Action_description != nil && obj.Action_description != (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(robj_num)))).Action_description {
+	if obj.Action_description != nil && obj.Action_description != obj_proto[robj_num].Action_description {
 		libc.Free(unsafe.Pointer(obj.Action_description))
 	}
 	if obj.Ex_description != nil {
@@ -287,7 +288,7 @@ func free_object_strings_proto(obj *obj_data) {
 					return ok_key
 				}()
 				return func() *extra_descr_data {
-					plist = (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(robj_num)))).Ex_description
+					plist = obj_proto[robj_num].Ex_description
 					return plist
 				}()
 			}(); plist != nil; plist = plist.Next {
@@ -366,7 +367,7 @@ func delete_object(rnum obj_rnum) int {
 	if rnum == obj_rnum(-1) || rnum > top_of_objt {
 		return -1
 	}
-	obj = (*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(rnum)))
+	obj = &obj_proto[rnum]
 	zrnum = real_zone_by_thing(room_vnum(GET_OBJ_VNUM(obj)))
 	htree_del(obj_htree, int64(obj.Item_number))
 	basic_mud_log(libc.CString("GenOLC: delete_object: Deleting object #%d (%s)."), GET_OBJ_VNUM(obj), obj.Short_description)
@@ -395,49 +396,50 @@ func delete_object(rnum obj_rnum) int {
 		}
 		extract_obj(tmp)
 	}
-	if (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(rnum)))).Number != 0 {
+	if obj_index[rnum].Number != 0 {
 		panic("assert failed")
 	}
 	for tmp = object_list; tmp != nil; tmp = tmp.Next {
 		tmp.Item_number -= obj_vnum(libc.BoolToInt(tmp.Item_number > obj_vnum(rnum)))
 	}
 	for i = rnum; i < top_of_objt; i++ {
-		*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(i))) = *(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(i+1)))
-		*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i))) = *(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i+1)))
-		(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Item_number = obj_vnum(i)
+		obj_index[i] = obj_index[i+1]
+		obj_proto[i] = obj_proto[i+1]
+		obj_proto[i].Item_number = obj_vnum(i)
 	}
 	top_of_objt--
-	obj_index = (*index_data)(libc.Realloc(unsafe.Pointer(obj_index), int(top_of_objt*obj_rnum(unsafe.Sizeof(index_data{}))+1)))
-	obj_proto = (*obj_data)(libc.Realloc(unsafe.Pointer(obj_proto), int(top_of_objt*obj_rnum(unsafe.Sizeof(obj_data{}))+1)))
+	// todo: fix this
+	//obj_index = []index_data((*index_data)(libc.Realloc(unsafe.Pointer(&obj_index[0]), int(top_of_objt*obj_rnum(unsafe.Sizeof(index_data{}))+1))))
+	//obj_proto = []obj_data((*obj_data)(libc.Realloc(unsafe.Pointer(&obj_proto[0]), int(top_of_objt*obj_rnum(unsafe.Sizeof(obj_data{}))+1))))
 	for shop = 0; shop <= top_shop; shop++ {
-		for j = 0; (*(*obj_vnum)(unsafe.Add(unsafe.Pointer((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop)))).Producing), unsafe.Sizeof(obj_vnum(0))*uintptr(j)))) != obj_vnum(-1); j++ {
-			*(*obj_vnum)(unsafe.Add(unsafe.Pointer((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop)))).Producing), unsafe.Sizeof(obj_vnum(0))*uintptr(j))) -= obj_vnum(libc.BoolToInt((*(*obj_vnum)(unsafe.Add(unsafe.Pointer((*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(shop)))).Producing), unsafe.Sizeof(obj_vnum(0))*uintptr(j)))) > obj_vnum(rnum)))
+		for j = 0; (shop_index[shop].Producing[j]) != obj_vnum(-1); j++ {
+			shop_index[shop].Producing[j] -= obj_vnum(libc.BoolToInt((shop_index[shop].Producing[j]) > obj_vnum(rnum)))
 		}
 	}
 	for zone = 0; zone <= int(top_of_zone_table); zone++ {
-		for cmd_no = 0; int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command) != 'S'; cmd_no++ {
-			switch (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command {
+		for cmd_no = 0; int(zone_table[zone].Cmd[cmd_no].Command) != 'S'; cmd_no++ {
+			switch zone_table[zone].Cmd[cmd_no].Command {
 			case 'P':
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 == vnum(rnum) {
-					delete_zone_command((*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone))), cmd_no)
+				if zone_table[zone].Cmd[cmd_no].Arg3 == vnum(rnum) {
+					delete_zone_command(&zone_table[zone], cmd_no)
 				} else {
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 -= vnum(libc.BoolToInt((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 > vnum(rnum)))
+					zone_table[zone].Cmd[cmd_no].Arg3 -= vnum(libc.BoolToInt(zone_table[zone].Cmd[cmd_no].Arg3 > vnum(rnum)))
 				}
 			case 'O':
 				fallthrough
 			case 'G':
 				fallthrough
 			case 'E':
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 == vnum(rnum) {
-					delete_zone_command((*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone))), cmd_no)
+				if zone_table[zone].Cmd[cmd_no].Arg1 == vnum(rnum) {
+					delete_zone_command(&zone_table[zone], cmd_no)
 				} else {
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 -= vnum(libc.BoolToInt((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 > vnum(rnum)))
+					zone_table[zone].Cmd[cmd_no].Arg1 -= vnum(libc.BoolToInt(zone_table[zone].Cmd[cmd_no].Arg1 > vnum(rnum)))
 				}
 			case 'R':
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2 == vnum(rnum) {
-					delete_zone_command((*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone))), cmd_no)
+				if zone_table[zone].Cmd[cmd_no].Arg2 == vnum(rnum) {
+					delete_zone_command(&zone_table[zone], cmd_no)
 				} else {
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2 -= vnum(libc.BoolToInt((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2 > vnum(rnum)))
+					zone_table[zone].Cmd[cmd_no].Arg2 -= vnum(libc.BoolToInt(zone_table[zone].Cmd[cmd_no].Arg2 > vnum(rnum)))
 				}
 			}
 		}

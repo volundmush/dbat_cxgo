@@ -68,13 +68,13 @@ func real_guild(vnum guild_vnum) guild_rnum {
 	for {
 		last_top = top
 		mid = (bot + top) / 2
-		if (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(mid)))).Vnum == room_vnum(vnum) {
+		if guild_index[mid].Vnum == room_vnum(vnum) {
 			return mid
 		}
 		if bot >= top {
 			return -1
 		}
-		if (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(mid)))).Vnum > room_vnum(vnum) {
+		if guild_index[mid].Vnum > room_vnum(vnum) {
 			top = mid - 1
 		} else {
 			bot = mid + 1
@@ -110,9 +110,9 @@ func add_guild(ngld *guild_data) int {
 		rguild = real_guild(guild_vnum(ngld.Vnum))
 		return rguild
 	}()) != guild_rnum(-1) {
-		copy_guild((*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(rguild))), ngld)
+		copy_guild(&guild_index[rguild], ngld)
 		if rznum != zone_rnum(-1) {
-			add_to_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(rznum)))).Number, SL_GLD)
+			add_to_save_list(zone_table[rznum].Number, SL_GLD)
 		} else {
 			mudlog(BRF, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: GenOLC: Cannot determine guild zone."))
 		}
@@ -120,20 +120,21 @@ func add_guild(ngld *guild_data) int {
 	}
 	mudlog(BRF, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: GenOLC: Creating new guild."))
 	top_guild++
-	guild_index = (*guild_data)(libc.Realloc(unsafe.Pointer(guild_index), top_guild*int(unsafe.Sizeof(guild_data{}))+1))
+	// todo: figure this out
+	//guild_index = []guild_data((*guild_data)(libc.Realloc(unsafe.Pointer(&guild_index[0]), top_guild*int(unsafe.Sizeof(guild_data{}))+1)))
 	for rguild = guild_rnum(top_guild); rguild > 0; rguild-- {
-		if ngld.Vnum > (*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(rguild-1)))).Vnum {
+		if ngld.Vnum > guild_index[rguild-1].Vnum {
 			found = int(rguild)
-			copy_guild((*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(rguild))), ngld)
+			copy_guild(&guild_index[rguild], ngld)
 			break
 		}
-		*(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(rguild))) = *(*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(rguild-1)))
+		guild_index[rguild] = guild_index[rguild-1]
 	}
 	if found == 0 {
-		copy_guild((*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*0)), ngld)
+		copy_guild(&guild_index[0], ngld)
 	}
 	if rznum != zone_rnum(-1) {
-		add_to_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(rznum)))).Number, SL_GLD)
+		add_to_save_list(zone_table[rznum].Number, SL_GLD)
 	} else {
 		mudlog(BRF, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: GenOLC: Cannot determine guild zone."))
 	}
@@ -152,7 +153,7 @@ func save_guilds(zone_num zone_rnum) int {
 		basic_mud_log(libc.CString("SYSERR: GenOLC: save_guilds: Invalid real zone number %d. (0-%d)"), zone_num, top_of_zone_table)
 		return FALSE
 	}
-	stdio.Snprintf(&fname[0], int(64), "%s%d.gld", LIB_WORLD, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number)
+	stdio.Snprintf(&fname[0], int(64), "%s%d.gld", LIB_WORLD, zone_table[zone_num].Number)
 	if (func() *stdio.File {
 		guild_file = stdio.FOpen(libc.GoString(&fname[0]), "w")
 		return guild_file
@@ -160,13 +161,13 @@ func save_guilds(zone_num zone_rnum) int {
 		mudlog(BRF, ADMLVL_GOD, TRUE, libc.CString("SYSERR: OLC: Cannot open Guild file!"))
 		return FALSE
 	}
-	for i = int(genolc_zone_bottom(zone_num)); i <= int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Top); i++ {
+	for i = int(genolc_zone_bottom(zone_num)); i <= int(zone_table[zone_num].Top); i++ {
 		if (func() int {
 			rguild = int(real_guild(guild_vnum(i)))
 			return rguild
 		}()) != int(-1) {
 			stdio.Fprintf(guild_file, "#%d~\n", i)
-			guild = (*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(rguild)))
+			guild = &guild_index[rguild]
 			for j = 0; j < SKILL_TABLE_SIZE; j++ {
 				if (guild.Skills[j]) != 0 {
 					stdio.Fprintf(guild_file, "%d 1\n", j)
@@ -195,7 +196,7 @@ func save_guilds(zone_num zone_rnum) int {
 				if guild.Gm == mob_rnum(-1) {
 					return -1
 				}
-				return (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(guild.Gm)))).Vnum
+				return mob_index[guild.Gm].Vnum
 			}(), guild.With_who[0], guild.Open, guild.Close)
 			for j = 1; j < SW_ARRAY_MAX; j++ {
 				stdio.Fprintf(guild_file, "%s%d", func() string {
@@ -210,9 +211,9 @@ func save_guilds(zone_num zone_rnum) int {
 	}
 	stdio.Fprintf(guild_file, "$~\n")
 	guild_file.Close()
-	if in_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number, SL_GLD) != 0 {
-		remove_from_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number, SL_GLD)
-		create_world_index(int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number), libc.CString("gld"))
+	if in_save_list(zone_table[zone_num].Number, SL_GLD) != 0 {
+		remove_from_save_list(zone_table[zone_num].Number, SL_GLD)
+		create_world_index(int(zone_table[zone_num].Number), libc.CString("gld"))
 		basic_mud_log(libc.CString("GenOLC: save_guilds: Saving guilds '%s'"), &fname[0])
 	}
 	return TRUE

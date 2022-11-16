@@ -38,7 +38,7 @@ func do_masound(ch *char_data, argument *byte, cmd int, subcmd int) {
 	for door = 0; door < NUM_OF_DIRS; door++ {
 		var newexit *room_direction_data
 		if (func() *room_direction_data {
-			newexit = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(was_in_room)))).Dir_option[door]
+			newexit = world[was_in_room].Dir_option[door]
 			return newexit
 		}()) != nil && newexit.To_room != room_rnum(-1) && newexit.To_room != was_in_room {
 			ch.In_room = newexit.To_room
@@ -397,13 +397,13 @@ func do_mload(ch *char_data, argument *byte, cmd int, subcmd int) {
 			return
 		}
 		two_arguments(target, &arg1[0], &arg2[0])
-		if arg1 != nil && arg1[0] == UID_CHAR {
+		if arg1[0] == UID_CHAR {
 			tch = get_char(&arg1[0])
 		} else {
 			tch = get_char_room_vis(ch, &arg1[0], nil)
 		}
 		if tch != nil {
-			if arg2 != nil && arg2[0] != 0 && (func() int {
+			if arg2[0] != 0 && (func() int {
 				pos = find_eq_pos_script(&arg2[0])
 				return pos
 			}()) >= 0 && (tch.Equipment[pos]) == nil && can_wear_on_pos(object, pos) != 0 {
@@ -415,7 +415,7 @@ func do_mload(ch *char_data, argument *byte, cmd int, subcmd int) {
 			load_otrigger(object)
 			return
 		}
-		if arg1 != nil && arg1[0] == UID_CHAR {
+		if arg1[0] == UID_CHAR {
 			cnt = get_obj(&arg1[0])
 		} else {
 			cnt = get_obj_vis(ch, &arg1[0], nil)
@@ -455,13 +455,13 @@ func do_mpurge(ch *char_data, argument *byte, cmd int, subcmd int) {
 			vnext    *char_data
 			obj_next *obj_data
 		)
-		for victim = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; victim != nil; victim = vnext {
+		for victim = world[ch.In_room].People; victim != nil; victim = vnext {
 			vnext = victim.Next_in_room
 			if IS_NPC(victim) && victim != ch {
 				extract_char(victim)
 			}
 		}
-		for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; obj != nil; obj = obj_next {
+		for obj = world[ch.In_room].Contents; obj != nil; obj = obj_next {
 			obj_next = obj.Next_content
 			extract_obj(obj)
 		}
@@ -529,7 +529,7 @@ func do_mgoto(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	char_from_room(ch)
 	char_to_room(ch, location)
-	enter_wtrigger((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room))), ch, -1)
+	enter_wtrigger(&world[ch.In_room], ch, -1)
 }
 func do_mat(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var (
@@ -595,12 +595,12 @@ func do_mteleport(ch *char_data, argument *byte, cmd int, subcmd int) {
 			mob_log(ch, libc.CString("mteleport all target is itself"))
 			return
 		}
-		for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; vict != nil; vict = next_ch {
+		for vict = world[ch.In_room].People; vict != nil; vict = next_ch {
 			next_ch = vict.Next_in_room
 			if valid_dg_target(vict, 1<<0) != 0 {
 				char_from_room(vict)
 				char_to_room(vict, target)
-				enter_wtrigger((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room))), ch, -1)
+				enter_wtrigger(&world[ch.In_room], ch, -1)
 			}
 		}
 	} else {
@@ -622,7 +622,7 @@ func do_mteleport(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if valid_dg_target(ch, 1<<0) != 0 {
 			char_from_room(vict)
 			char_to_room(vict, target)
-			enter_wtrigger((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room))), ch, -1)
+			enter_wtrigger(&world[ch.In_room], ch, -1)
 		}
 	}
 }

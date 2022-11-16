@@ -16,13 +16,13 @@ var bfs_queue_head *bfs_queue_struct = nil
 var bfs_queue_tail *bfs_queue_struct = nil
 
 func VALID_EDGE(x room_rnum, y int) int {
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(x)))).Dir_option[y] == nil || (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(x)))).Dir_option[y].To_room == room_rnum(-1) {
+	if world[x].Dir_option[y] == nil || world[x].Dir_option[y].To_room == room_rnum(-1) {
 		return 0
 	}
-	if config_info.Play.Track_through_doors == FALSE && EXIT_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(x)))).Dir_option[y], 1<<1) {
+	if config_info.Play.Track_through_doors == FALSE && EXIT_FLAGGED(world[x].Dir_option[y], 1<<1) {
 		return 0
 	}
-	if ROOM_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(x)))).Dir_option[y].To_room, ROOM_NOTRACK) || ROOM_FLAGGED((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(x)))).Dir_option[y].To_room, ROOM_BFS_MARK) {
+	if ROOM_FLAGGED(world[x].Dir_option[y].To_room, ROOM_NOTRACK) || ROOM_FLAGGED(world[x].Dir_option[y].To_room, ROOM_BFS_MARK) {
 		return 0
 	}
 	return 1
@@ -65,20 +65,20 @@ func find_first_step(src room_rnum, target room_rnum) int {
 		curr_room room_rnum
 	)
 	if src == room_rnum(-1) || target == room_rnum(-1) || src > top_of_world || target > top_of_world {
-		basic_mud_log(libc.CString("SYSERR: Illegal value %d or %d passed to find_first_step. (%s)"), src, target, __FILE__)
+		basic_mud_log(libc.CString("SYSERR: Illegal value %d or %d passed to find_first_step. (%s)"), src, target, "__FILE__")
 		return -1
 	}
 	if src == target {
 		return -2
 	}
 	for curr_room = 0; curr_room <= top_of_world; curr_room++ {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(curr_room)))).Room_flags[int(ROOM_BFS_MARK/32)] &= bitvector_t(int32(^(1 << (int(ROOM_BFS_MARK % 32)))))
+		REMOVE_BIT_AR(world[curr_room].Room_flags[:], ROOM_BFS_MARK)
 	}
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(src)))).Room_flags[int(ROOM_BFS_MARK/32)] |= bitvector_t(int32(1 << (int(ROOM_BFS_MARK % 32))))
+	SET_BIT_AR(world[src].Room_flags[:], ROOM_BFS_MARK)
 	for curr_dir = 0; curr_dir < NUM_OF_DIRS; curr_dir++ {
 		if VALID_EDGE(src, curr_dir) != 0 {
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(src)))).Dir_option[curr_dir].To_room)))).Room_flags[int(ROOM_BFS_MARK/32)] |= bitvector_t(int32(1 << (int(ROOM_BFS_MARK % 32))))
-			bfs_enqueue((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(src)))).Dir_option[curr_dir].To_room, curr_dir)
+			SET_BIT_AR(world[world[src].Dir_option[curr_dir].To_room].Room_flags[:], ROOM_BFS_MARK)
+			bfs_enqueue(world[src].Dir_option[curr_dir].To_room, curr_dir)
 		}
 	}
 	for bfs_queue_head != nil {
@@ -89,8 +89,8 @@ func find_first_step(src room_rnum, target room_rnum) int {
 		} else {
 			for curr_dir = 0; curr_dir < NUM_OF_DIRS; curr_dir++ {
 				if VALID_EDGE(bfs_queue_head.Room, curr_dir) != 0 {
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(bfs_queue_head.Room)))).Dir_option[curr_dir].To_room)))).Room_flags[int(ROOM_BFS_MARK/32)] |= bitvector_t(int32(1 << (int(ROOM_BFS_MARK % 32))))
-					bfs_enqueue((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(bfs_queue_head.Room)))).Dir_option[curr_dir].To_room, int(bfs_queue_head.Dir))
+					SET_BIT_AR(world[world[bfs_queue_head.Room].Dir_option[curr_dir].To_room].Room_flags[:], ROOM_BFS_MARK)
+					bfs_enqueue(world[bfs_queue_head.Room].Dir_option[curr_dir].To_room, int(bfs_queue_head.Dir))
 				}
 			}
 			bfs_dequeue()
@@ -128,21 +128,11 @@ func do_sradar(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("@wYou can't find anything to pilot.\r\n"))
 		return
 	}
-	if noship == FALSE && (func() int {
-		if vehicle.In_room != room_rnum(-1) && vehicle.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vehicle.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) != SECT_SPACE {
+	if noship == FALSE && SECT(vehicle.In_room) != SECT_SPACE {
 		send_to_char(ch, libc.CString("@wYour ship is not in space!\r\n"))
 		return
 	}
-	if noship == TRUE && (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) != SECT_SPACE {
+	if noship == TRUE && SECT(ch.In_room) != SECT_SPACE {
 		send_to_char(ch, libc.CString("@wYou are not even in space!\r\n"))
 		return
 	}
@@ -262,24 +252,18 @@ func do_sradar(ch *char_data, argument *byte, cmd int, subcmd int) {
 }
 func do_radar(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var (
-		room     int = 0
-		dir      int
-		num      int = 0
-		found    int = FALSE
-		found2   int = FALSE
-		fcount   int = 0
-		tch      *char_data
-		obj      *obj_data
-		obj2     *obj_data
-		next_obj *obj_data
+		room   int = 0
+		dir    int
+		num    int = 0
+		found  int = FALSE
+		found2 int = FALSE
 	)
-	for obj2 = ch.Carrying; obj2 != nil; obj2 = next_obj {
-		next_obj = obj2.Next_content
-		if GET_OBJ_VNUM(obj2) == 12 && !OBJ_FLAGGED(obj2, ITEM_BROKEN) && !OBJ_FLAGGED(obj2, ITEM_FORGED) {
-			found2 = TRUE
-		}
-	}
-	if found2 == FALSE {
+	_ = found2
+	var fcount int = 0
+	var tch *char_data
+	var obj *obj_data
+	var radar *obj_data = find_obj_in_list_vnum_good(ch.Carrying, 12)
+	if radar == nil {
 		send_to_char(ch, libc.CString("You do not even have a dragon radar!\r\n"))
 		return
 	}
@@ -291,8 +275,7 @@ func do_radar(ch *char_data, argument *byte, cmd int, subcmd int) {
 		act(libc.CString("$n holds up a dragon radar and pushes its button."), FALSE, ch, nil, nil, TO_ROOM)
 		for num < 20000 {
 			if real_room(room_vnum(room)) != room_rnum(-1) {
-				for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(room_vnum(room)))))).Contents; obj != nil; obj = next_obj {
-					next_obj = obj.Next_content
+				for obj = world[real_room(room_vnum(room))].Contents; obj != nil; obj = obj.Next_content {
 					if OBJ_FLAGGED(obj, ITEM_FORGED) {
 						continue
 					} else if GET_OBJ_VNUM(obj) == 20 || GET_OBJ_VNUM(obj) == 21 || GET_OBJ_VNUM(obj) == 22 || GET_OBJ_VNUM(obj) == 23 || GET_OBJ_VNUM(obj) == 24 || GET_OBJ_VNUM(obj) == 25 || GET_OBJ_VNUM(obj) == 26 {
@@ -311,12 +294,11 @@ func do_radar(ch *char_data, argument *byte, cmd int, subcmd int) {
 						found = TRUE
 					}
 				}
-				for tch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(room_vnum(room)))))).People; tch != nil; tch = tch.Next_in_room {
+				for tch = world[real_room(room_vnum(room))].People; tch != nil; tch = tch.Next_in_room {
 					if tch == ch {
 						continue
 					}
-					for obj = tch.Carrying; obj != nil; obj = next_obj {
-						next_obj = obj.Next_content
+					for obj = tch.Carrying; obj != nil; obj = obj.Next_content {
 						if OBJ_FLAGGED(obj, ITEM_FORGED) {
 							continue
 						} else if GET_OBJ_VNUM(obj) == 20 || GET_OBJ_VNUM(obj) == 21 || GET_OBJ_VNUM(obj) == 22 || GET_OBJ_VNUM(obj) == 23 || GET_OBJ_VNUM(obj) == 24 || GET_OBJ_VNUM(obj) == 25 || GET_OBJ_VNUM(obj) == 26 {
@@ -611,57 +593,7 @@ func do_track(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("@WSense@D: @Y%s@n\r\n"), blah)
 			libc.Free(unsafe.Pointer(blah))
 		}
-	} else if int(ch.Skills[SKILL_SENSE]) == 100 && (((func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) < 3400 || (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) > 3599) && ((func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) < 62900 || (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) > 0xF617) && (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) != 19600 && ((func() room_vnum {
-		if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Number
-		}
-		return -1
-	}()) >= 3400 && (func() room_vnum {
-		if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Number
-		}
-		return -1
-	}()) <= 3599 || (func() room_vnum {
-		if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Number
-		}
-		return -1
-	}()) >= 62900 && (func() room_vnum {
-		if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Number
-		}
-		return -1
-	}()) <= 0xF617 || (func() room_vnum {
-		if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Number
-		}
-		return -1
-	}()) == 19600)) {
+	} else if int(ch.Skills[SKILL_SENSE]) == 100 && (!PLANET_ZENITH(ch.In_room) && PLANET_ZENITH(vict.In_room)) {
 		send_to_char(ch, libc.CString("@WSense@D: @CZenith@n\r\n"))
 		if func() *char_data {
 			vict = get_char_vis(ch, &arg[0], nil, 1<<1)

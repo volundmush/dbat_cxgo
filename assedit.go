@@ -65,9 +65,9 @@ func do_assedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	return
 }
 func assedit_setup(d *descriptor_data, number int) {
-	var pOldAssembly *ASSEMBLY = nil
-	d.Olc.OlcAssembly = (*assembly_data)(unsafe.Pointer(new(ASSEMBLY)))
-	if (func() *ASSEMBLY {
+	var pOldAssembly *assembly_data = nil
+	d.Olc.OlcAssembly = make([]assembly_data, 0)
+	if (func() *assembly_data {
 		pOldAssembly = assemblyGetAssemblyPtr(number)
 		return pOldAssembly
 	}()) == nil {
@@ -75,16 +75,16 @@ func assedit_setup(d *descriptor_data, number int) {
 		cleanup_olc(d, CLEANUP_ALL)
 		return
 	} else {
-		d.Olc.OlcAssembly.LVnum = pOldAssembly.LVnum
-		d.Olc.OlcAssembly.UchAssemblyType = pOldAssembly.UchAssemblyType
-		d.Olc.OlcAssembly.LNumComponents = pOldAssembly.LNumComponents
-		if d.Olc.OlcAssembly.LNumComponents > 0 {
-			d.Olc.OlcAssembly.PComponents = (*component_data)(unsafe.Pointer(&make([]COMPONENT, d.Olc.OlcAssembly.LNumComponents)[0]))
-			libc.MemMove(unsafe.Pointer(d.Olc.OlcAssembly.PComponents), unsafe.Pointer(pOldAssembly.PComponents), d.Olc.OlcAssembly.LNumComponents*int(unsafe.Sizeof(COMPONENT{})))
+		d.Olc.OlcAssembly[0].LVnum = pOldAssembly.LVnum
+		d.Olc.OlcAssembly[0].UchAssemblyType = pOldAssembly.UchAssemblyType
+		d.Olc.OlcAssembly[0].LNumComponents = pOldAssembly.LNumComponents
+		if d.Olc.OlcAssembly[0].LNumComponents > 0 {
+			d.Olc.OlcAssembly[0].PComponents = make([]component_data, d.Olc.OlcAssembly[0].LNumComponents)
+			libc.MemMove(unsafe.Pointer(&d.Olc.OlcAssembly[0].PComponents[0]), unsafe.Pointer(&pOldAssembly.PComponents[0]), d.Olc.OlcAssembly[0].LNumComponents*int(unsafe.Sizeof(component_data{})))
 		}
 	}
 	if (func() int {
-		lRnum = int(real_object(obj_vnum(d.Olc.OlcAssembly.LVnum)))
+		lRnum = int(real_object(obj_vnum(d.Olc.OlcAssembly[0].LVnum)))
 		return lRnum
 	}()) < 0 {
 		send_to_char(d.Character, libc.CString("Assembled item may not exist, check the vnum and assembles (show assemblies). \r\n"))
@@ -93,7 +93,7 @@ func assedit_setup(d *descriptor_data, number int) {
 	}
 	d.Connected = CON_ASSEDIT
 	act(libc.CString("$n starts using OLC."), TRUE, d.Character, nil, nil, TO_ROOM)
-	d.Character.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
+	SET_BIT_AR(d.Character.Act[:], PLR_WRITING)
 	assedit_disp_menu(d)
 }
 func assedit_disp_menu(d *descriptor_data) {
@@ -101,25 +101,25 @@ func assedit_disp_menu(d *descriptor_data) {
 		i          int        = 0
 		szAssmType [2048]byte = [2048]byte{0: '\x00'}
 	)
-	sprinttype(int(d.Olc.OlcAssembly.UchAssemblyType), AssemblyTypes[:], &szAssmType[0], uint64(2048))
-	send_to_char(d.Character, libc.CString("Assembly Number: @c%ld@n\r\nAssembly Name  : @y%s@n\r\nAssembly Type  : @y%s@n\r\nComponents:\r\n"), d.Olc.OlcAssembly.LVnum, (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(real_object(obj_vnum(d.Olc.OlcAssembly.LVnum)))))).Short_description, &szAssmType[0])
-	if d.Olc.OlcAssembly.LNumComponents <= 0 {
+	sprinttype(int(d.Olc.OlcAssembly[0].UchAssemblyType), AssemblyTypes[:], &szAssmType[0], uint64(2048))
+	send_to_char(d.Character, libc.CString("Assembly Number: @c%ld@n\r\nAssembly Name  : @y%s@n\r\nAssembly Type  : @y%s@n\r\nComponents:\r\n"), d.Olc.OlcAssembly[0].LVnum, obj_proto[real_object(obj_vnum(d.Olc.OlcAssembly[0].LVnum))].Short_description, &szAssmType[0])
+	if d.Olc.OlcAssembly[0].LNumComponents <= 0 {
 		send_to_char(d.Character, libc.CString("   < NONE > \r\n"))
 	} else {
-		for i = 0; i < d.Olc.OlcAssembly.LNumComponents; i++ {
+		for i = 0; i < d.Olc.OlcAssembly[0].LNumComponents; i++ {
 			if (func() int {
-				lRnum = int(real_object(obj_vnum((*(*component_data)(unsafe.Add(unsafe.Pointer(d.Olc.OlcAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(i)))).LVnum)))
+				lRnum = int(real_object(obj_vnum(d.Olc.OlcAssembly[0].PComponents[i].LVnum)))
 				return lRnum
 			}()) < 0 {
 				send_to_char(d.Character, libc.CString("@g%2d@n) @y ERROR --- Contact an Implementor @n\r\n "), i+1)
 			} else {
-				send_to_char(d.Character, libc.CString("@g%2d@n) [@c%5ld@n] %-20.20s  In room: @c%-3.3s@n    Extract: @y%-3.3s@n\r\n"), i+1, (*(*component_data)(unsafe.Add(unsafe.Pointer(d.Olc.OlcAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(i)))).LVnum, (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(lRnum)))).Short_description, func() string {
-					if (*(*component_data)(unsafe.Add(unsafe.Pointer(d.Olc.OlcAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(i)))).BInRoom {
+				send_to_char(d.Character, libc.CString("@g%2d@n) [@c%5ld@n] %-20.20s  In room: @c%-3.3s@n    Extract: @y%-3.3s@n\r\n"), i+1, d.Olc.OlcAssembly[0].PComponents[i].LVnum, obj_proto[lRnum].Short_description, func() string {
+					if d.Olc.OlcAssembly[0].PComponents[i].BInRoom {
 						return "Yes"
 					}
 					return "No"
 				}(), func() string {
-					if (*(*component_data)(unsafe.Add(unsafe.Pointer(d.Olc.OlcAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(i)))).BExtract {
+					if d.Olc.OlcAssembly[0].PComponents[i].BExtract {
 						return "Yes"
 					}
 					return "No"
@@ -136,8 +136,8 @@ func assedit_parse(d *descriptor_data, arg *byte) {
 		pos          int = 0
 		i            int = 0
 		counter      int
-		columns      int        = 0
-		pTComponents *COMPONENT = nil
+		columns      int              = 0
+		pTComponents []component_data = nil
 	)
 	switch d.Olc.Mode {
 	case ASSEDIT_MAIN_MENU:
@@ -145,10 +145,10 @@ func assedit_parse(d *descriptor_data, arg *byte) {
 		case 'q':
 			fallthrough
 		case 'Q':
-			assemblyDestroy(d.Olc.OlcAssembly.LVnum)
-			assemblyCreate(d.Olc.OlcAssembly.LVnum, int(d.Olc.OlcAssembly.UchAssemblyType))
-			for i = 0; i < d.Olc.OlcAssembly.LNumComponents; i++ {
-				assemblyAddComponent(d.Olc.OlcAssembly.LVnum, (*(*component_data)(unsafe.Add(unsafe.Pointer(d.Olc.OlcAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(i)))).LVnum, (*(*component_data)(unsafe.Add(unsafe.Pointer(d.Olc.OlcAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(i)))).BExtract, (*(*component_data)(unsafe.Add(unsafe.Pointer(d.Olc.OlcAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(i)))).BInRoom)
+			assemblyDestroy(d.Olc.OlcAssembly[0].LVnum)
+			assemblyCreate(d.Olc.OlcAssembly[0].LVnum, int(d.Olc.OlcAssembly[0].UchAssemblyType))
+			for i = 0; i < d.Olc.OlcAssembly[0].LNumComponents; i++ {
+				assemblyAddComponent(d.Olc.OlcAssembly[0].LVnum, d.Olc.OlcAssembly[0].PComponents[i].LVnum, d.Olc.OlcAssembly[0].PComponents[i].BExtract, d.Olc.OlcAssembly[0].PComponents[i].BInRoom)
 			}
 			send_to_char(d.Character, libc.CString("\r\nSaving all assemblies\r\n"))
 			assemblySaveAssemblies()
@@ -183,7 +183,7 @@ func assedit_parse(d *descriptor_data, arg *byte) {
 		case 'd':
 			fallthrough
 		case 'D':
-			if pos < 0 || pos > d.Olc.OlcAssembly.LNumComponents {
+			if pos < 0 || pos > d.Olc.OlcAssembly[0].LNumComponents {
 				send_to_char(d.Character, libc.CString("\r\nWhich component do you wish to remove?"))
 				assedit_disp_menu(d)
 			} else {
@@ -197,7 +197,7 @@ func assedit_parse(d *descriptor_data, arg *byte) {
 		if unicode.IsDigit(rune(*arg)) {
 			pos = libc.Atoi(libc.GoString(arg)) - 1
 			if pos >= 0 || pos < MAX_ASSM {
-				d.Olc.OlcAssembly.UchAssemblyType = uint8(int8(pos))
+				d.Olc.OlcAssembly[0].UchAssemblyType = uint8(int8(pos))
 				assedit_disp_menu(d)
 				break
 			}
@@ -210,20 +210,20 @@ func assedit_parse(d *descriptor_data, arg *byte) {
 			if real_object(obj_vnum(pos)) <= obj_rnum(-1) {
 				break
 			}
-			for i = 0; i < d.Olc.OlcAssembly.LNumComponents; i++ {
-				if (*(*component_data)(unsafe.Add(unsafe.Pointer(d.Olc.OlcAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(i)))).LVnum == pos {
+			for i = 0; i < d.Olc.OlcAssembly[0].LNumComponents; i++ {
+				if d.Olc.OlcAssembly[0].PComponents[i].LVnum == pos {
 					break
 				}
 			}
-			pTComponents = &make([]COMPONENT, d.Olc.OlcAssembly.LNumComponents+1)[0]
-			if d.Olc.OlcAssembly.PComponents != nil {
-				libc.MemMove(unsafe.Pointer(pTComponents), unsafe.Pointer(d.Olc.OlcAssembly.PComponents), d.Olc.OlcAssembly.LNumComponents*int(unsafe.Sizeof(COMPONENT{})))
+			pTComponents = make([]component_data, d.Olc.OlcAssembly[0].LNumComponents+1)
+			if d.Olc.OlcAssembly[0].PComponents != nil {
+				//libc.MemMove(unsafe.Pointer(pTComponents), unsafe.Pointer(&d.Olc.OlcAssembly[0].PComponents[0]), d.Olc.OlcAssembly[0].LNumComponents*int(unsafe.Sizeof(component_data{})))
 			}
-			d.Olc.OlcAssembly.PComponents = (*component_data)(unsafe.Pointer(pTComponents))
-			(*(*component_data)(unsafe.Add(unsafe.Pointer(d.Olc.OlcAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(d.Olc.OlcAssembly.LNumComponents)))).LVnum = pos
-			(*(*component_data)(unsafe.Add(unsafe.Pointer(d.Olc.OlcAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(d.Olc.OlcAssembly.LNumComponents)))).BExtract = YES != 0
-			(*(*component_data)(unsafe.Add(unsafe.Pointer(d.Olc.OlcAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(d.Olc.OlcAssembly.LNumComponents)))).BInRoom = NO != 0
-			d.Olc.OlcAssembly.LNumComponents += 1
+			d.Olc.OlcAssembly[0].PComponents = []component_data(pTComponents)
+			d.Olc.OlcAssembly[0].PComponents[d.Olc.OlcAssembly[0].LNumComponents].LVnum = pos
+			d.Olc.OlcAssembly[0].PComponents[d.Olc.OlcAssembly[0].LNumComponents].BExtract = YES != 0
+			d.Olc.OlcAssembly[0].PComponents[d.Olc.OlcAssembly[0].LNumComponents].BInRoom = NO != 0
+			d.Olc.OlcAssembly[0].LNumComponents += 1
 			assedit_disp_menu(d)
 		} else {
 			send_to_char(d.Character, libc.CString("That object does not exist. Please try again\r\n"))
@@ -243,16 +243,16 @@ func assedit_parse(d *descriptor_data, arg *byte) {
 		if unicode.IsDigit(rune(*arg)) {
 			pos = libc.Atoi(libc.GoString(arg))
 			pos -= 1
-			pTComponents = &make([]COMPONENT, d.Olc.OlcAssembly.LNumComponents-1)[0]
+			pTComponents = make([]component_data, d.Olc.OlcAssembly[0].LNumComponents-1)
 			if pos > 0 {
-				libc.MemMove(unsafe.Pointer(pTComponents), unsafe.Pointer(d.Olc.OlcAssembly.PComponents), pos*int(unsafe.Sizeof(COMPONENT{})))
+				//libc.MemMove(unsafe.Pointer(pTComponents), unsafe.Pointer(&d.Olc.OlcAssembly[0].PComponents[0]), pos*int(unsafe.Sizeof(component_data{})))
 			}
-			if pos < d.Olc.OlcAssembly.LNumComponents-1 {
-				libc.MemMove(unsafe.Pointer((*COMPONENT)(unsafe.Add(unsafe.Pointer(pTComponents), unsafe.Sizeof(COMPONENT{})*uintptr(pos)))), unsafe.Pointer((*component_data)(unsafe.Add(unsafe.Pointer((*component_data)(unsafe.Add(unsafe.Pointer(d.Olc.OlcAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(pos)))), unsafe.Sizeof(component_data{})*1))), (d.Olc.OlcAssembly.LNumComponents-pos-1)*int(unsafe.Sizeof(COMPONENT{})))
+			if pos < d.Olc.OlcAssembly[0].LNumComponents-1 {
+				//libc.MemMove(unsafe.Pointer((*component_data)(unsafe.Add(unsafe.Pointer(pTComponents), unsafe.Sizeof(component_data{})*uintptr(pos)))), unsafe.Pointer(&d.Olc.OlcAssembly[0].PComponents[pos+1]), (d.Olc.OlcAssembly[0].LNumComponents-pos-1)*int(unsafe.Sizeof(component_data{})))
 			}
-			libc.Free(unsafe.Pointer(d.Olc.OlcAssembly.PComponents))
-			d.Olc.OlcAssembly.PComponents = (*component_data)(unsafe.Pointer(pTComponents))
-			d.Olc.OlcAssembly.LNumComponents -= 1
+			libc.Free(unsafe.Pointer(&d.Olc.OlcAssembly[0].PComponents[0]))
+			d.Olc.OlcAssembly[0].PComponents = []component_data(pTComponents)
+			d.Olc.OlcAssembly[0].LNumComponents -= 1
 			assedit_disp_menu(d)
 			break
 		} else {
@@ -263,12 +263,12 @@ func assedit_parse(d *descriptor_data, arg *byte) {
 		case 'y':
 			fallthrough
 		case 'Y':
-			(*(*component_data)(unsafe.Add(unsafe.Pointer(d.Olc.OlcAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(d.Olc.Value)))).BExtract = TRUE != 0
+			d.Olc.OlcAssembly[0].PComponents[d.Olc.Value].BExtract = TRUE != 0
 			assedit_edit_inroom(d)
 		case 'n':
 			fallthrough
 		case 'N':
-			(*(*component_data)(unsafe.Add(unsafe.Pointer(d.Olc.OlcAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(d.Olc.Value)))).BExtract = FALSE != 0
+			d.Olc.OlcAssembly[0].PComponents[d.Olc.Value].BExtract = FALSE != 0
 			assedit_edit_inroom(d)
 		default:
 			send_to_char(d.Character, libc.CString("Is the item to be extracted when the assembly is created? (Y/N)"))
@@ -278,12 +278,12 @@ func assedit_parse(d *descriptor_data, arg *byte) {
 		case 'y':
 			fallthrough
 		case 'Y':
-			(*(*component_data)(unsafe.Add(unsafe.Pointer(d.Olc.OlcAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(d.Olc.Value)))).BInRoom = TRUE != 0
+			d.Olc.OlcAssembly[0].PComponents[d.Olc.Value].BInRoom = TRUE != 0
 			assedit_disp_menu(d)
 		case 'n':
 			fallthrough
 		case 'N':
-			(*(*component_data)(unsafe.Add(unsafe.Pointer(d.Olc.OlcAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(d.Olc.Value)))).BInRoom = FALSE != 0
+			d.Olc.OlcAssembly[0].PComponents[d.Olc.Value].BInRoom = FALSE != 0
 			assedit_disp_menu(d)
 		default:
 			send_to_char(d.Character, libc.CString("Object in the room when assembly is created? (n =  in inventory):"))

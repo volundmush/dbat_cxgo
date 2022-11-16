@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
 	"unicode"
@@ -43,8 +44,6 @@ type house_control_rec struct {
 	Spare7        int
 }
 
-const MAX_BAG_ROWS = 5
-
 var house_control [1000]house_control_rec
 var num_of_houses int = 0
 
@@ -67,7 +66,7 @@ func House_save(obj *obj_data, fp *stdio.File, location int) int {
 	}
 	if obj != nil {
 		House_save(obj.Next_content, fp, location)
-		House_save(obj.Contains, fp, MIN(0, location)-1)
+		House_save(obj.Contains, fp, int(MIN(0, int64(location))-1))
 		result = Obj_to_store(obj, fp, location)
 		if result == 0 {
 			return 0
@@ -106,16 +105,16 @@ func House_crashsave(vnum room_vnum) {
 		fp = stdio.FOpen(libc.GoString(&buf[0]), "wb")
 		return fp
 	}()) == nil {
-		perror(libc.CString("SYSERR: Error saving house file"))
+		fmt.Println(libc.CString("SYSERR: Error saving house file"))
 		return
 	}
-	if House_save((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Contents, fp, 0) == 0 {
+	if House_save(world[rnum].Contents, fp, 0) == 0 {
 		fp.Close()
 		return
 	}
 	fp.Close()
-	House_restore_weight((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Contents)
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Room_flags[int(ROOM_HOUSE_CRASH/32)] &= bitvector_t(int32(^(1 << (int(ROOM_HOUSE_CRASH % 32)))))
+	House_restore_weight(world[rnum].Contents)
+	REMOVE_BIT_AR(world[rnum].Room_flags[:], ROOM_HOUSE_CRASH)
 }
 func House_delete_file(vnum room_vnum) {
 	var (
@@ -129,7 +128,7 @@ func House_delete_file(vnum room_vnum) {
 		fl = stdio.FOpen(libc.GoString(&filename[0]), "rb")
 		return fl
 	}()) == nil {
-		if libc.Errno != ENOENT {
+		if libc.Errno != 2 {
 			basic_mud_log(libc.CString("SYSERR: Error deleting house file #%d. (1): %s"), vnum, libc.StrError(libc.Errno))
 		}
 		return
@@ -154,7 +153,7 @@ func House_save_control() {
 		fl = stdio.FOpen(LIB_ETC, "wb")
 		return fl
 	}()) == nil {
-		perror(libc.CString("SYSERR: Unable to open house control file."))
+		fmt.Println(libc.CString("SYSERR: Unable to open house control file."))
 		return
 	}
 	fl.WriteN((*byte)(unsafe.Pointer(&house_control[0])), int(unsafe.Sizeof(house_control_rec{})), num_of_houses)
@@ -171,10 +170,10 @@ func House_boot() {
 		fl = stdio.FOpen(LIB_ETC, "rb")
 		return fl
 	}()) == nil {
-		if libc.Errno == ENOENT {
+		if libc.Errno == 2 {
 			basic_mud_log(libc.CString("   No houses to load. File '%s' does not exist."), LIB_ETC)
 		} else {
-			perror(libc.CString("SYSERR: etc/hcontrol"))
+			fmt.Println(libc.CString("SYSERR: etc/hcontrol"))
 		}
 		return
 	}
@@ -201,7 +200,7 @@ func House_boot() {
 			*p++
 			return x
 		}()] = temp_house
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_house)))).Room_flags[int(ROOM_HOUSE/32)] |= bitvector_t(int32(1 << (int(ROOM_HOUSE % 32))))
+		SET_BIT_AR(world[real_house].Room_flags[:], ROOM_HOUSE)
 		House_load(temp_house.Vnum)
 	}
 	fl.Close()
@@ -296,8 +295,8 @@ func hcontrol_build_house(ch *char_data, arg *byte) {
 		return
 	}
 	if (func() room_rnum {
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_house)))).Dir_option[exit_num] != nil {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_house)))).Dir_option[exit_num].To_room
+		if world[real_house].Dir_option[exit_num] != nil {
+			return world[real_house].Dir_option[exit_num].To_room
 		}
 		return -1
 	}()) == room_rnum(-1) {
@@ -329,7 +328,7 @@ func hcontrol_build_house(ch *char_data, arg *byte) {
 		*p++
 		return x
 	}()] = temp_house
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_house)))).Room_flags[int(ROOM_HOUSE/32)] |= bitvector_t(int32(1 << (int(ROOM_HOUSE % 32))))
+	SET_BIT_AR(world[real_house].Room_flags[:], ROOM_HOUSE)
 	House_crashsave(virt_house)
 	send_to_char(ch, libc.CString("House built.  Mazel tov!\r\n"))
 	House_save_control()
@@ -358,7 +357,7 @@ func hcontrol_destroy_house(ch *char_data, arg *byte) {
 	}()) == room_rnum(-1) {
 		basic_mud_log(libc.CString("SYSERR: House %d had invalid atrium %d!"), libc.Atoi(libc.GoString(arg)), house_control[i].Atrium)
 	} else {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_atrium)))).Room_flags[int(ROOM_ATRIUM/32)] &= bitvector_t(int32(^(1 << (int(ROOM_ATRIUM % 32)))))
+		REMOVE_BIT_AR(world[real_atrium].Room_flags[:], ROOM_ATRIUM)
 	}
 	if (func() room_rnum {
 		real_house = real_room(house_control[i].Vnum)
@@ -366,8 +365,8 @@ func hcontrol_destroy_house(ch *char_data, arg *byte) {
 	}()) == room_rnum(-1) {
 		basic_mud_log(libc.CString("SYSERR: House %d had invalid vnum %d!"), libc.Atoi(libc.GoString(arg)), house_control[i].Vnum)
 	} else {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_house)))).Room_flags[int(ROOM_HOUSE/32)] &= bitvector_t(int32(^(1 << (int(ROOM_HOUSE % 32)))))
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_house)))).Room_flags[int(ROOM_HOUSE_CRASH/32)] &= bitvector_t(int32(^(1 << (int(ROOM_HOUSE_CRASH % 32)))))
+		REMOVE_BIT_AR(world[real_house].Room_flags[:], ROOM_HOUSE)
+		REMOVE_BIT_AR(world[real_house].Room_flags[:], ROOM_HOUSE_CRASH)
 	}
 	House_delete_file(house_control[i].Vnum)
 	for j = i; j < num_of_houses-1; j++ {
@@ -381,7 +380,7 @@ func hcontrol_destroy_house(ch *char_data, arg *byte) {
 			real_atrium = real_room(house_control[i].Atrium)
 			return real_atrium
 		}()) != room_rnum(-1) {
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_atrium)))).Room_flags[int(ROOM_ATRIUM/32)] |= bitvector_t(int32(1 << (int(ROOM_ATRIUM % 32))))
+			SET_BIT_AR(world[real_atrium].Room_flags[:], ROOM_ATRIUM)
 		}
 	}
 }
@@ -395,7 +394,7 @@ func hcontrol_pay_house(ch *char_data, arg *byte) {
 	}()) == int(-1) {
 		send_to_char(ch, libc.CString("Unknown house.\r\n"))
 	} else {
-		mudlog(NRM, MAX(ADMLVL_IMMORT, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("Payment for house %s collected by %s."), arg, GET_NAME(ch))
+		mudlog(NRM, int(MAX(ADMLVL_IMMORT, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("Payment for house %s collected by %s."), arg, GET_NAME(ch))
 		house_control[i].Last_payment = libc.GetTime(nil)
 		House_save_control()
 		send_to_char(ch, libc.CString("Payment recorded.\r\n"))
@@ -430,12 +429,7 @@ func do_house(ch *char_data, argument *byte, cmd int, subcmd int) {
 	if !ROOM_FLAGGED(ch.In_room, ROOM_HOUSE) {
 		send_to_char(ch, libc.CString("You must be in your house to set guests.\r\n"))
 	} else if (func() int {
-		i = find_house(func() room_vnum {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-			}
-			return -1
-		}())
+		i = find_house(room_vnum(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))))
 		return i
 	}()) == int(-1) {
 		send_to_char(ch, libc.CString("Um.. this house seems to be screwed up.\r\n"))
@@ -590,9 +584,9 @@ func House_load(rvnum room_vnum) int {
 		fl = stdio.FOpen(libc.GoString(&cmfname[0]), "r+b")
 		return fl
 	}()) == nil {
-		if libc.Errno != ENOENT {
+		if libc.Errno != 2 {
 			stdio.Sprintf(&buf1[0], "SYSERR: READING HOUSE FILE %s (5)", &cmfname[0])
-			perror(&buf1[0])
+			fmt.Println(&buf1[0])
 		}
 		return 0
 	}
@@ -683,10 +677,10 @@ func House_load(rvnum room_vnum) int {
 					return 0
 				}
 				temp.Type_flag = int8(t[0])
-				temp.Wear_flags[0] = t[1]
-				temp.Wear_flags[1] = t[2]
-				temp.Wear_flags[2] = t[3]
-				temp.Wear_flags[3] = t[4]
+				temp.Wear_flags[0] = bitvector_t(int32(t[1]))
+				temp.Wear_flags[1] = bitvector_t(int32(t[2]))
+				temp.Wear_flags[2] = bitvector_t(int32(t[3]))
+				temp.Wear_flags[3] = bitvector_t(int32(t[4]))
 				temp.Weight = int64(t[5])
 				temp.Cost = t[6]
 				temp.Cost_per_day = t[7]
@@ -741,11 +735,11 @@ func House_load(rvnum room_vnum) int {
 						get_line(fl, &line[0])
 						stdio.Sscanf(&line[0], "%d %d", &t[0], &t[1])
 						if temp.Sbinfo == nil {
-							temp.Sbinfo = &make([]obj_spellbook_spell, SPELLBOOK_SIZE)[0]
-							libc.MemSet(unsafe.Pointer((*byte)(unsafe.Pointer(temp.Sbinfo))), 0, int(SPELLBOOK_SIZE*unsafe.Sizeof(obj_spellbook_spell{})))
+							temp.Sbinfo = make([]obj_spellbook_spell, SPELLBOOK_SIZE)
+							libc.MemSet(unsafe.Pointer((*byte)(unsafe.Pointer(&temp.Sbinfo[0]))), 0, int(SPELLBOOK_SIZE*unsafe.Sizeof(obj_spellbook_spell{})))
 						}
-						(*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(temp.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(j)))).Spellname = t[0]
-						(*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(temp.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(j)))).Pages = t[1]
+						temp.Sbinfo[j].Spellname = t[0]
+						temp.Sbinfo[j].Pages = t[1]
 						j++
 						get_line(fl, &line[0])
 					case 'Z':

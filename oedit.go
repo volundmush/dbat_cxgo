@@ -74,14 +74,14 @@ func do_oasis_oedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if can_edit_zone(ch, d.Olc.Zone_num) == 0 {
-		send_cannot_edit(ch, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number)
+		send_cannot_edit(ch, zone_table[d.Olc.Zone_num].Number)
 		libc.Free(unsafe.Pointer(d.Olc))
 		d.Olc = nil
 		return
 	}
 	if save != 0 {
-		send_to_char(ch, libc.CString("Saving all objects in zone %d.\r\n"), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number)
-		mudlog(CMP, MAX(ADMLVL_BUILDER, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("OLC: %s saves object info for zone %d."), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number)
+		send_to_char(ch, libc.CString("Saving all objects in zone %d.\r\n"), zone_table[d.Olc.Zone_num].Number)
+		mudlog(CMP, int(MAX(ADMLVL_BUILDER, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("OLC: %s saves object info for zone %d."), GET_NAME(ch), zone_table[d.Olc.Zone_num].Number)
 		save_objects(d.Olc.Zone_num)
 		libc.Free(unsafe.Pointer(d.Olc))
 		d.Olc = nil
@@ -99,8 +99,8 @@ func do_oasis_oedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	oedit_disp_menu(d)
 	d.Connected = CON_OEDIT
 	act(libc.CString("$n starts using OLC."), TRUE, d.Character, nil, nil, TO_ROOM)
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
-	mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing zone %d allowed zone %d"), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number, ch.Player_specials.Olc_zone)
+	SET_BIT_AR(ch.Act[:], PLR_WRITING)
+	mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing zone %d allowed zone %d"), GET_NAME(ch), zone_table[d.Olc.Zone_num].Number, ch.Player_specials.Olc_zone)
 }
 func oedit_setup_new(d *descriptor_data) {
 	d.Olc.Obj = new(obj_data)
@@ -108,7 +108,7 @@ func oedit_setup_new(d *descriptor_data) {
 	d.Olc.Obj.Name = libc.CString("unfinished object")
 	d.Olc.Obj.Description = libc.CString("An unfinished object is lying here.")
 	d.Olc.Obj.Short_description = libc.CString("an unfinished object")
-	d.Olc.Obj.Wear_flags[int(ITEM_WEAR_TAKE/32)] |= 1 << (int(ITEM_WEAR_TAKE % 32))
+	SET_BIT_AR(d.Olc.Obj.Wear_flags[:], ITEM_WEAR_TAKE)
 	d.Olc.Value = 0
 	d.Olc.Item_type = OBJ_TRIGGER
 	d.Olc.Obj.Type_flag = ITEM_WORN
@@ -126,7 +126,7 @@ func oedit_setup_new(d *descriptor_data) {
 func oedit_setup_existing(d *descriptor_data, real_num int) {
 	var obj *obj_data
 	obj = new(obj_data)
-	copy_object(obj, (*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(real_num))))
+	copy_object(obj, &obj_proto[real_num])
 	d.Olc.Obj = obj
 	d.Olc.Value = 0
 	d.Olc.Item_type = OBJ_TRIGGER
@@ -149,10 +149,10 @@ func oedit_save_internally(d *descriptor_data) {
 		basic_mud_log(libc.CString("oedit_save_internally: add_object failed."))
 		return
 	}
-	if (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(robj_num)))).Proto_script != nil && (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(robj_num)))).Proto_script != d.Olc.Script {
-		free_proto_script(unsafe.Pointer((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(robj_num)))), OBJ_TRIGGER)
+	if obj_proto[robj_num].Proto_script != nil && obj_proto[robj_num].Proto_script != d.Olc.Script {
+		free_proto_script(unsafe.Pointer(&obj_proto[robj_num]), OBJ_TRIGGER)
 	}
-	(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(robj_num)))).Proto_script = d.Olc.Script
+	obj_proto[robj_num].Proto_script = d.Olc.Script
 	for obj = object_list; obj != nil; obj = obj.Next {
 		if obj.Item_number != obj_vnum(robj_num) {
 			continue
@@ -161,7 +161,7 @@ func oedit_save_internally(d *descriptor_data) {
 			extract_script(unsafe.Pointer(obj), OBJ_TRIGGER)
 		}
 		free_proto_script(unsafe.Pointer(obj), OBJ_TRIGGER)
-		copy_proto_script(unsafe.Pointer((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(robj_num)))), unsafe.Pointer(obj), OBJ_TRIGGER)
+		copy_proto_script(unsafe.Pointer(&obj_proto[robj_num]), unsafe.Pointer(obj), OBJ_TRIGGER)
 		assign_triggers(unsafe.Pointer(obj), OBJ_TRIGGER)
 	}
 	if i == 0 {
@@ -169,28 +169,28 @@ func oedit_save_internally(d *descriptor_data) {
 	}
 	for dsc = descriptor_list; dsc != nil; dsc = dsc.Next {
 		if dsc.Connected == CON_SEDIT {
-			for i = 0; (*(*obj_vnum)(unsafe.Add(unsafe.Pointer(dsc.Olc.Shop.Producing), unsafe.Sizeof(obj_vnum(0))*uintptr(i)))) != obj_vnum(-1); i++ {
-				if (*(*obj_vnum)(unsafe.Add(unsafe.Pointer(dsc.Olc.Shop.Producing), unsafe.Sizeof(obj_vnum(0))*uintptr(i)))) >= obj_vnum(robj_num) {
-					(*(*obj_vnum)(unsafe.Add(unsafe.Pointer(dsc.Olc.Shop.Producing), unsafe.Sizeof(obj_vnum(0))*uintptr(i))))++
+			for i = 0; (dsc.Olc.Shop.Producing[i]) != obj_vnum(-1); i++ {
+				if (dsc.Olc.Shop.Producing[i]) >= obj_vnum(robj_num) {
+					(dsc.Olc.Shop.Producing[i])++
 				}
 			}
 		}
 	}
 	for dsc = descriptor_list; dsc != nil; dsc = dsc.Next {
 		if dsc.Connected == CON_ZEDIT {
-			for i = 0; int((*(*reset_com)(unsafe.Add(unsafe.Pointer(dsc.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(i)))).Command) != 'S'; i++ {
-				switch (*(*reset_com)(unsafe.Add(unsafe.Pointer(dsc.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(i)))).Command {
+			for i = 0; int(dsc.Olc.Zone.Cmd[i].Command) != 'S'; i++ {
+				switch dsc.Olc.Zone.Cmd[i].Command {
 				case 'P':
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer(dsc.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(i)))).Arg3 += vnum(libc.BoolToInt((*(*reset_com)(unsafe.Add(unsafe.Pointer(dsc.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(i)))).Arg3 >= vnum(robj_num)))
+					dsc.Olc.Zone.Cmd[i].Arg3 += vnum(libc.BoolToInt(dsc.Olc.Zone.Cmd[i].Arg3 >= vnum(robj_num)))
 					fallthrough
 				case 'E':
 					fallthrough
 				case 'G':
 					fallthrough
 				case 'O':
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer(dsc.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(i)))).Arg1 += vnum(libc.BoolToInt((*(*reset_com)(unsafe.Add(unsafe.Pointer(dsc.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(i)))).Arg1 >= vnum(robj_num)))
+					dsc.Olc.Zone.Cmd[i].Arg1 += vnum(libc.BoolToInt(dsc.Olc.Zone.Cmd[i].Arg1 >= vnum(robj_num)))
 				case 'R':
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer(dsc.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(i)))).Arg2 += vnum(libc.BoolToInt((*(*reset_com)(unsafe.Add(unsafe.Pointer(dsc.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(i)))).Arg2 >= vnum(robj_num)))
+					dsc.Olc.Zone.Cmd[i].Arg2 += vnum(libc.BoolToInt(dsc.Olc.Zone.Cmd[i].Arg2 >= vnum(robj_num)))
 				default:
 				}
 			}
@@ -258,8 +258,8 @@ func oedit_disp_prompt_spellbook_menu(d *descriptor_data) {
 	)
 	clear_screen(d)
 	for counter = 0; counter < SPELLBOOK_SIZE; counter++ {
-		if d.Olc.Obj.Sbinfo != nil && (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(d.Olc.Obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(counter)))).Spellname != 0 && (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(d.Olc.Obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(counter)))).Spellname < SPELL_SENSU {
-			write_to_output(d, libc.CString(" @g%3d@n) %-20.20s %s"), counter+1, spell_info[(*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(d.Olc.Obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(counter)))).Spellname].Name, func() string {
+		if d.Olc.Obj.Sbinfo != nil && d.Olc.Obj.Sbinfo[counter].Spellname != 0 && d.Olc.Obj.Sbinfo[counter].Spellname < SPELL_SENSU {
+			write_to_output(d, libc.CString(" @g%3d@n) %-20.20s %s"), counter+1, spell_info[d.Olc.Obj.Sbinfo[counter].Spellname].Name, func() string {
 				if (func() int {
 					p := &columns
 					*p++
@@ -431,7 +431,7 @@ func oedit_disp_spells_menu(d *descriptor_data) {
 	)
 	clear_screen(d)
 	for counter = 0; counter < SKILL_TABLE_SIZE; counter++ {
-		if (skill_type(counter) & (1 << 0)) != 0 {
+		if IS_SET(bitvector_t(int32(skill_type(counter))), 1<<0) {
 			write_to_output(d, libc.CString("@g%2d@n) @y%-20.20s@n%s"), counter, spell_info[counter].Name, func() string {
 				if (func() int {
 					p := &columns
@@ -799,7 +799,8 @@ func oedit_disp_menu(d *descriptor_data) {
 	sprintbitarray(d.Olc.Obj.Wear_flags[:], wear_bits[:], EF_ARRAY_MAX, &tbitbuf[0])
 	sprintbitarray(d.Olc.Obj.Bitvector[:], affected_bits[:], EF_ARRAY_MAX, &ebitbuf[0])
 	write_to_output(d, libc.CString("@g7@n) Wear flags  : @c%s@n\r\n@g8@n) Weight      : @c%-4lld@n, \t@g9@n) Cost        : @c%-4d@n\r\n@gA@n) Cost/Day    : @c%-4d@n, \t@gB@n) Timer       : @c%-4d@n\r\n@gC@n) Values      : @c%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d@n\r\n@gD@n) Applies menu@n\r\n@gE@n) Extra descriptions menu %s\r\n@gM@n) Min Level   : @c%d@n\r\n@gN@n) Material    : @c%s@n\r\n@gP@n) Perm Affects: @c%s@n\r\n@gS@n) Script      : @c%s@n\r\n@gT@n) Spellbook menu\r\n@gW@n) Copy object        ,\t@gX@n) Delete object\r\n@gY@n) Size        : @c%s@n\r\n@gZ@n) Wiznet      :\r\n@gQ@n) Quit\r\nEnter choice : "), &tbitbuf[0], obj.Weight, obj.Cost, obj.Cost_per_day, obj.Timer, obj.Value[0], obj.Value[1], obj.Value[2], obj.Value[3], obj.Value[4], obj.Value[5], obj.Value[6], obj.Value[7], obj.Value[8], obj.Value[9], obj.Value[10], obj.Value[11], obj.Value[12], obj.Value[13], obj.Value[14], obj.Value[15], func() string {
-		if obj.Extra_flags != nil {
+		// todo: all flags
+		if obj.Extra_flags[0] > 0 {
 			return "Set."
 		}
 		return "Not Set."
@@ -828,7 +829,7 @@ func oedit_parse(d *descriptor_data, arg *byte) {
 			fallthrough
 		case 'Y':
 			oedit_save_internally(d)
-			mudlog(CMP, MAX(ADMLVL_BUILDER, int(d.Character.Player_specials.Invis_level)), TRUE, libc.CString("OLC: %s edits obj %d"), GET_NAME(d.Character), d.Olc.Number)
+			mudlog(CMP, int(MAX(ADMLVL_BUILDER, int64(d.Character.Player_specials.Invis_level))), TRUE, libc.CString("OLC: %s edits obj %d"), GET_NAME(d.Character), d.Olc.Number)
 			if config_info.Operation.Auto_save_olc != 0 {
 				oedit_save_to_disk(int(real_zone_by_thing(d.Olc.Number)))
 				write_to_output(d, libc.CString("Object saved to disk.\r\n"))
@@ -866,7 +867,6 @@ func oedit_parse(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("Do you wish to save your changes? : \r\n"))
 			return
 		}
-		fallthrough
 	case OEDIT_COPY:
 		if (func() int {
 			number = int(real_object(obj_vnum(libc.Atoi(libc.GoString(arg)))))
@@ -921,13 +921,13 @@ func oedit_parse(d *descriptor_data, arg *byte) {
 					}
 					free_proto_script(unsafe.Pointer(obj), OBJ_TRIGGER)
 					robj = real_object(GET_OBJ_VNUM(obj))
-					copy_proto_script(unsafe.Pointer((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(robj)))), unsafe.Pointer(obj), OBJ_TRIGGER)
+					copy_proto_script(unsafe.Pointer(&obj_proto[robj]), unsafe.Pointer(obj), OBJ_TRIGGER)
 					assign_triggers(unsafe.Pointer(obj), OBJ_TRIGGER)
 				}
-				obj.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(int32(1 << (int(ITEM_UNIQUE_SAVE % 32))))
-				mudlog(CMP, MAX(ADMLVL_BUILDER, int(d.Character.Player_specials.Invis_level)), TRUE, libc.CString("OLC: %s iedit a unique #%d"), GET_NAME(d.Character), GET_OBJ_VNUM(obj))
+				SET_BIT_AR(obj.Extra_flags[:], ITEM_UNIQUE_SAVE)
+				mudlog(CMP, int(MAX(ADMLVL_BUILDER, int64(d.Character.Player_specials.Invis_level))), TRUE, libc.CString("OLC: %s iedit a unique #%d"), GET_NAME(d.Character), GET_OBJ_VNUM(obj))
 				if d.Character != nil {
-					d.Character.Act[int(PLR_WRITING/32)] &= bitvector_t(int32(^(1 << (int(PLR_WRITING % 32)))))
+					REMOVE_BIT_AR(d.Character.Act[:], PLR_WRITING)
 					d.Connected = CON_PLAYING
 					act(libc.CString("$n stops using OLC."), TRUE, d.Character, nil, nil, TO_ROOM)
 				}
@@ -1114,7 +1114,7 @@ func oedit_parse(d *descriptor_data, arg *byte) {
 		} else if number == 0 {
 			break
 		} else {
-			d.Olc.Obj.Extra_flags[(number-1)/32] = bitvector_t(int32(int(d.Olc.Obj.Extra_flags[(number-1)/32]) ^ 1<<((number-1)%32)))
+			TOGGLE_BIT_AR(d.Olc.Obj.Extra_flags[:], bitvector_t(int32(number-1)))
 			oedit_disp_extra_menu(d)
 			return
 		}
@@ -1128,28 +1128,28 @@ func oedit_parse(d *descriptor_data, arg *byte) {
 		} else if number == 0 {
 			break
 		} else {
-			d.Olc.Obj.Wear_flags[(number-1)/32] = d.Olc.Obj.Wear_flags[(number-1)/32] ^ 1<<((number-1)%32)
+			TOGGLE_BIT_AR(d.Olc.Obj.Wear_flags[:], bitvector_t(int32(number-1)))
 			oedit_disp_wear_menu(d)
 			return
 		}
 		fallthrough
 	case OEDIT_WEIGHT:
-		d.Olc.Obj.Weight = int64(MIN(MAX_OBJ_WEIGHT, MAX(libc.Atoi(libc.GoString(arg)), 0)))
+		d.Olc.Obj.Weight = MIN(MAX_OBJ_WEIGHT, MAX(int64(libc.Atoi(libc.GoString(arg))), 0))
 	case OEDIT_COST:
-		d.Olc.Obj.Cost = MIN(MAX_OBJ_COST, MAX(libc.Atoi(libc.GoString(arg)), 0))
+		d.Olc.Obj.Cost = int(MIN(MAX_OBJ_COST, MAX(int64(libc.Atoi(libc.GoString(arg))), 0)))
 	case OEDIT_COSTPERDAY:
-		d.Olc.Obj.Cost_per_day = MIN(MAX_OBJ_RENT, MAX(libc.Atoi(libc.GoString(arg)), 0))
+		d.Olc.Obj.Cost_per_day = int(MIN(MAX_OBJ_RENT, MAX(int64(libc.Atoi(libc.GoString(arg))), 0)))
 	case OEDIT_TIMER:
 		switch d.Olc.Obj.Type_flag {
 		case ITEM_PORTAL:
-			d.Olc.Obj.Timer = MIN(MAX_OBJ_TIMER, MAX(libc.Atoi(libc.GoString(arg)), -1))
+			d.Olc.Obj.Timer = int(MIN(MAX_OBJ_TIMER, MAX(int64(libc.Atoi(libc.GoString(arg))), -1)))
 		default:
-			d.Olc.Obj.Timer = MIN(MAX_OBJ_TIMER, MAX(libc.Atoi(libc.GoString(arg)), 0))
+			d.Olc.Obj.Timer = int(MIN(MAX_OBJ_TIMER, MAX(int64(libc.Atoi(libc.GoString(arg))), 0)))
 		}
 	case OEDIT_LEVEL:
-		d.Olc.Obj.Level = MAX(libc.Atoi(libc.GoString(arg)), 0)
+		d.Olc.Obj.Level = int(MAX(int64(libc.Atoi(libc.GoString(arg))), 0))
 	case OEDIT_MATERIAL:
-		d.Olc.Obj.Value[VAL_ALL_MATERIAL] = MIN(NUM_MATERIALS, MAX(libc.Atoi(libc.GoString(arg)), 0))
+		d.Olc.Obj.Value[VAL_ALL_MATERIAL] = int(MIN(NUM_MATERIALS, MAX(int64(libc.Atoi(libc.GoString(arg))), 0)))
 	case OEDIT_PERM:
 		if (func() int {
 			number = libc.Atoi(libc.GoString(arg))
@@ -1159,20 +1159,20 @@ func oedit_parse(d *descriptor_data, arg *byte) {
 		}
 		if number > 0 && number <= NUM_AFF_FLAGS {
 			if number != AFF_CHARM {
-				d.Olc.Obj.Bitvector[number/32] = bitvector_t(int32(int(d.Olc.Obj.Bitvector[number/32]) ^ 1<<(number%32)))
+				TOGGLE_BIT_AR(d.Olc.Obj.Bitvector[:], bitvector_t(int32(number)))
 			}
 		}
 		oedit_disp_perm_menu(d)
 		return
 	case OEDIT_SIZE:
 		number = libc.Atoi(libc.GoString(arg)) - 1
-		d.Olc.Obj.Size = MIN(int(NUM_SIZES-1), MAX(number, 0))
+		d.Olc.Obj.Size = int(MIN(int64(int(NUM_SIZES-1)), MAX(int64(number), 0)))
 	case OEDIT_VALUE_1:
 		switch d.Olc.Obj.Type_flag {
 		case ITEM_WEAPON:
-			d.Olc.Obj.Value[0] = MIN(MAX_WEAPON_TYPES, MAX(libc.Atoi(libc.GoString(arg)), WEAPON_TYPE_UNARMED))
+			d.Olc.Obj.Value[0] = int(MIN(MAX_WEAPON_TYPES, MAX(int64(libc.Atoi(libc.GoString(arg))), WEAPON_TYPE_UNARMED)))
 		case ITEM_CONTAINER:
-			d.Olc.Obj.Value[0] = MIN(MAX_CONTAINER_SIZE, MAX(libc.Atoi(libc.GoString(arg)), -1))
+			d.Olc.Obj.Value[0] = int(MIN(MAX_CONTAINER_SIZE, MAX(int64(libc.Atoi(libc.GoString(arg))), -1)))
 		default:
 			d.Olc.Obj.Value[0] = libc.Atoi(libc.GoString(arg))
 		}
@@ -1187,7 +1187,7 @@ func oedit_parse(d *descriptor_data, arg *byte) {
 			if number == 0 || number == -1 {
 				d.Olc.Obj.Value[1] = -1
 			} else {
-				d.Olc.Obj.Value[1] = MIN(SKILL_TABLE_SIZE, MAX(number, 1))
+				d.Olc.Obj.Value[1] = int(MIN(SKILL_TABLE_SIZE, MAX(int64(number), 1)))
 			}
 			oedit_disp_val3_menu(d)
 		case ITEM_CONTROL:
@@ -1218,7 +1218,7 @@ func oedit_parse(d *descriptor_data, arg *byte) {
 				oedit_disp_val3_menu(d)
 			}
 		case ITEM_WEAPON:
-			d.Olc.Obj.Value[1] = MIN(MAX_WEAPON_NDICE, MAX(number, 1))
+			d.Olc.Obj.Value[1] = int(MIN(MAX_WEAPON_NDICE, MAX(int64(number), 1)))
 			oedit_disp_val3_menu(d)
 		default:
 			d.Olc.Obj.Value[1] = number
@@ -1252,7 +1252,7 @@ func oedit_parse(d *descriptor_data, arg *byte) {
 			min_val = -32000
 			max_val = 60000
 		}
-		d.Olc.Obj.Value[2] = MIN(max_val, MAX(number, min_val))
+		d.Olc.Obj.Value[2] = int(MIN(int64(max_val), MAX(int64(number), int64(min_val))))
 		oedit_disp_val4_menu(d)
 		return
 	case OEDIT_VALUE_4:
@@ -1279,13 +1279,13 @@ func oedit_parse(d *descriptor_data, arg *byte) {
 			min_val = -32000
 			max_val = 32000
 		}
-		d.Olc.Obj.Value[3] = MIN(max_val, MAX(number, min_val))
+		d.Olc.Obj.Value[3] = int(MIN(int64(max_val), MAX(int64(number), int64(min_val))))
 		oedit_disp_val5_menu(d)
 		return
 	case OEDIT_VALUE_5:
 		min_val = 1
 		max_val = 100
-		d.Olc.Obj.Value[4] = MIN(max_val, MAX(libc.Atoi(libc.GoString(arg)), min_val))
+		d.Olc.Obj.Value[4] = int(MIN(int64(max_val), MAX(int64(libc.Atoi(libc.GoString(arg))), int64(min_val))))
 		d.Olc.Obj.Value[5] = max_val
 		oedit_disp_val7_menu(d)
 		return
@@ -1302,7 +1302,7 @@ func oedit_parse(d *descriptor_data, arg *byte) {
 			min_val = -32000
 			max_val = 32000
 		}
-		d.Olc.Obj.Value[6] = MIN(max_val, MAX(libc.Atoi(libc.GoString(arg)), min_val))
+		d.Olc.Obj.Value[6] = int(MIN(int64(max_val), MAX(int64(libc.Atoi(libc.GoString(arg))), int64(min_val))))
 		oedit_disp_val9_menu(d)
 		return
 	case OEDIT_VALUE_9:
@@ -1315,7 +1315,7 @@ func oedit_parse(d *descriptor_data, arg *byte) {
 			min_val = -32000
 			max_val = 32000
 		}
-		d.Olc.Obj.Value[8] = MIN(max_val, MAX(libc.Atoi(libc.GoString(arg)), min_val))
+		d.Olc.Obj.Value[8] = int(MIN(int64(max_val), MAX(int64(libc.Atoi(libc.GoString(arg))), int64(min_val))))
 	case OEDIT_PROMPT_APPLY:
 		if (func() int {
 			number = libc.Atoi(libc.GoString(arg))
@@ -1468,12 +1468,12 @@ func oedit_parse(d *descriptor_data, arg *byte) {
 			return number
 		}()) == 0 {
 			if d.Olc.Obj.Sbinfo != nil {
-				(*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(d.Olc.Obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(d.Olc.Value)))).Spellname = 0
-				(*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(d.Olc.Obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(d.Olc.Value)))).Pages = 0
+				d.Olc.Obj.Sbinfo[d.Olc.Value].Spellname = 0
+				d.Olc.Obj.Sbinfo[d.Olc.Value].Pages = 0
 			} else {
-				d.Olc.Obj.Sbinfo = &make([]obj_spellbook_spell, SPELLBOOK_SIZE)[0]
-				(*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(d.Olc.Obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(d.Olc.Value)))).Spellname = 0
-				(*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(d.Olc.Obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(d.Olc.Value)))).Pages = 0
+				d.Olc.Obj.Sbinfo = make([]obj_spellbook_spell, SPELLBOOK_SIZE)
+				d.Olc.Obj.Sbinfo[d.Olc.Value].Spellname = 0
+				d.Olc.Obj.Sbinfo[d.Olc.Value].Pages = 0
 			}
 			oedit_disp_prompt_spellbook_menu(d)
 		} else if number < 0 || number >= SKILL_TABLE_SIZE {
@@ -1482,17 +1482,17 @@ func oedit_parse(d *descriptor_data, arg *byte) {
 			var counter int
 			if GET_LEVEL(d.Character) < ADMLVL_IMPL {
 				for counter = 0; counter < SKILL_TABLE_SIZE; counter++ {
-					if d.Olc.Obj.Sbinfo != nil && (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(d.Olc.Obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(counter)))).Spellname == number {
+					if d.Olc.Obj.Sbinfo != nil && d.Olc.Obj.Sbinfo[counter].Spellname == number {
 						write_to_output(d, libc.CString("Object already has that spell."))
 						return
 					}
 				}
 			}
 			if d.Olc.Obj.Sbinfo == nil {
-				d.Olc.Obj.Sbinfo = &make([]obj_spellbook_spell, SPELLBOOK_SIZE)[0]
+				d.Olc.Obj.Sbinfo = make([]obj_spellbook_spell, SPELLBOOK_SIZE)
 			}
-			(*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(d.Olc.Obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(d.Olc.Value)))).Spellname = number
-			(*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(d.Olc.Obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(d.Olc.Value)))).Pages = MAX(1, spell_info[number].Spell_level*2)
+			d.Olc.Obj.Sbinfo[d.Olc.Value].Spellname = number
+			d.Olc.Obj.Sbinfo[d.Olc.Value].Pages = int(MAX(1, int64(spell_info[number].Spell_level*2)))
 			oedit_disp_prompt_spellbook_menu(d)
 		}
 		return
@@ -1547,7 +1547,7 @@ func do_iedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}()) != nil {
 		found = 1
 	} else if (func() *obj_data {
-		k = get_obj_in_list_vis(ch, &arg[0], nil, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents)
+		k = get_obj_in_list_vis(ch, &arg[0], nil, world[ch.In_room].Contents)
 		return k
 	}()) != nil {
 		found = 1
@@ -1562,8 +1562,8 @@ func do_iedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	ch.Desc.Olc = new(oasis_olc_data)
-	k.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(int32(1 << (int(ITEM_UNIQUE_SAVE % 32))))
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
+	SET_BIT_AR(k.Extra_flags[:], ITEM_UNIQUE_SAVE)
+	SET_BIT_AR(ch.Act[:], PLR_WRITING)
 	iedit_setup_existing(ch.Desc, k)
 	ch.Desc.Olc.Value = 0
 	act(libc.CString("$n starts using OLC."), TRUE, ch, nil, nil, TO_ROOM)

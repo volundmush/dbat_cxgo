@@ -161,7 +161,7 @@ func pobj_edit_parse(d *descriptor_data, arg *byte) {
 				d.Character.Rbank = d.Character.Rbank
 				d.Rbank -= 2
 				userWrite(d, 0, 0, 0, libc.CString("index"))
-				obj.Extra_flags[int(ITEM_RESTRING/32)] |= bitvector_t(int32(1 << (int(ITEM_RESTRING % 32))))
+				SET_BIT_AR(obj.Extra_flags[:], ITEM_RESTRING)
 				write_to_output(d, libc.CString("Purchase complete."))
 				send_to_imm(libc.CString("Restring Eq: %s has bought: %s, which was %s."), GET_NAME(d.Character), obj.Short_description, d.Obj_was)
 				d.Connected = CON_PLAYING
@@ -341,35 +341,35 @@ func pobj_edit_parse(d *descriptor_data, arg *byte) {
 					obj_to_char(obj, d.Character)
 					switch d.Obj_type {
 					case 1:
-						obj.Wear_flags[int(ITEM_WEAR_BODY/32)] |= 1 << (int(ITEM_WEAR_BODY % 32))
+						SET_BIT_AR(obj.Wear_flags[:], ITEM_WEAR_BODY)
 					case 2:
-						obj.Wear_flags[int(ITEM_WEAR_ABOUT/32)] |= 1 << (int(ITEM_WEAR_ABOUT % 32))
+						SET_BIT_AR(obj.Wear_flags[:], ITEM_WEAR_ABOUT)
 					case 3:
-						obj.Wear_flags[int(ITEM_WEAR_WRIST/32)] |= 1 << (int(ITEM_WEAR_WRIST % 32))
+						SET_BIT_AR(obj.Wear_flags[:], ITEM_WEAR_WRIST)
 					case 4:
-						obj.Wear_flags[int(ITEM_WEAR_EAR/32)] |= 1 << (int(ITEM_WEAR_EAR % 32))
+						SET_BIT_AR(obj.Wear_flags[:], ITEM_WEAR_EAR)
 					case 5:
-						obj.Wear_flags[int(ITEM_WEAR_FINGER/32)] |= 1 << (int(ITEM_WEAR_FINGER % 32))
+						SET_BIT_AR(obj.Wear_flags[:], ITEM_WEAR_FINGER)
 					case 6:
-						obj.Wear_flags[int(ITEM_WEAR_EYE/32)] |= 1 << (int(ITEM_WEAR_EYE % 32))
+						SET_BIT_AR(obj.Wear_flags[:], ITEM_WEAR_EYE)
 					case 7:
-						obj.Wear_flags[int(ITEM_WEAR_HANDS/32)] |= 1 << (int(ITEM_WEAR_HANDS % 32))
+						SET_BIT_AR(obj.Wear_flags[:], ITEM_WEAR_HANDS)
 					case 8:
-						obj.Wear_flags[int(ITEM_WEAR_FEET/32)] |= 1 << (int(ITEM_WEAR_FEET % 32))
+						SET_BIT_AR(obj.Wear_flags[:], ITEM_WEAR_FEET)
 					case 9:
-						obj.Wear_flags[int(ITEM_WEAR_WAIST/32)] |= 1 << (int(ITEM_WEAR_WAIST % 32))
+						SET_BIT_AR(obj.Wear_flags[:], ITEM_WEAR_WAIST)
 					case 10:
-						obj.Wear_flags[int(ITEM_WEAR_LEGS/32)] |= 1 << (int(ITEM_WEAR_LEGS % 32))
+						SET_BIT_AR(obj.Wear_flags[:], ITEM_WEAR_LEGS)
 					case 11:
-						obj.Wear_flags[int(ITEM_WEAR_ARMS/32)] |= 1 << (int(ITEM_WEAR_ARMS % 32))
+						SET_BIT_AR(obj.Wear_flags[:], ITEM_WEAR_ARMS)
 					case 12:
-						obj.Wear_flags[int(ITEM_WEAR_HEAD/32)] |= 1 << (int(ITEM_WEAR_HEAD % 32))
+						SET_BIT_AR(obj.Wear_flags[:], ITEM_WEAR_HEAD)
 					case 13:
-						obj.Wear_flags[int(ITEM_WEAR_NECK/32)] |= 1 << (int(ITEM_WEAR_NECK % 32))
+						SET_BIT_AR(obj.Wear_flags[:], ITEM_WEAR_NECK)
 					case 14:
-						obj.Wear_flags[int(ITEM_WEAR_PACK/32)] |= 1 << (int(ITEM_WEAR_PACK % 32))
+						SET_BIT_AR(obj.Wear_flags[:], ITEM_WEAR_PACK)
 					case 15:
-						obj.Wear_flags[int(ITEM_WEAR_SH/32)] |= 1 << (int(ITEM_WEAR_SH % 32))
+						SET_BIT_AR(obj.Wear_flags[:], ITEM_WEAR_SH)
 					}
 					buf[0] = '\x00'
 					stdio.Sprintf(&buf[0], libc.GoString(d.Obj_name))
@@ -408,7 +408,7 @@ func pobj_edit_parse(d *descriptor_data, arg *byte) {
 					}
 					obj.Level = 20
 				}
-				obj.Extra_flags[int(ITEM_SLOT2/32)] |= bitvector_t(int32(1 << (int(ITEM_SLOT2 % 32))))
+				SET_BIT_AR(obj.Extra_flags[:], ITEM_SLOT2)
 				d.Obj_editflag = EDIT_NONE
 				d.Obj_editval = EDIT_NONE
 				d.Character.Rbank -= 30
@@ -416,7 +416,7 @@ func pobj_edit_parse(d *descriptor_data, arg *byte) {
 				d.Rbank -= 30
 				userWrite(d, 0, 0, 0, libc.CString("index"))
 				obj.Size = get_size(d.Character)
-				obj.Extra_flags[int(ITEM_CUSTOM/32)] |= bitvector_t(int32(1 << (int(ITEM_CUSTOM % 32))))
+				SET_BIT_AR(obj.Extra_flags[:], ITEM_CUSTOM)
 				send_to_imm(libc.CString("Custom Eq: %s has bought: %s."), GET_NAME(d.Character), obj.Short_description)
 				customWrite(d.Character, obj)
 				log_custom(d, obj)

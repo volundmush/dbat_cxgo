@@ -76,7 +76,7 @@ func mail_recip_ok(name *byte) int {
 		player_i = get_ptable_by_name(name)
 		return player_i
 	}()) >= 0 {
-		if ((*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(player_i)))).Flags & (1 << 0)) == 0 {
+		if !IS_SET(bitvector_t(int32(player_table[player_i].Flags)), 1<<0) {
 			ret = TRUE
 		}
 	}
@@ -237,7 +237,7 @@ func store_mail(to int, from int, message_pointer *byte) {
 		total_length   int = libc.StrLen(message_pointer)
 	)
 	if unsafe.Sizeof(header_block_type{}) != unsafe.Sizeof(data_block_type{}) || BLOCK_SIZE != unsafe.Sizeof(header_block_type{}) {
-		core_dump_real(libc.CString(__FILE__), __LINE__)
+		core_dump_real(libc.CString("__FILE__"), 0)
 		return
 	}
 	if from < 0 && from != -1337 || to < 0 || *message_pointer == 0 {
@@ -383,20 +383,20 @@ func postmaster(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
 	if ch.Desc == nil || IS_NPC(ch) {
 		return 0
 	}
-	if libc.StrCmp(libc.CString("mail"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) != 0 && libc.StrCmp(libc.CString("check"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) != 0 && libc.StrCmp(libc.CString("receive"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) != 0 {
+	if libc.StrCmp(libc.CString("mail"), complete_cmd_info[cmd].Command) != 0 && libc.StrCmp(libc.CString("check"), complete_cmd_info[cmd].Command) != 0 && libc.StrCmp(libc.CString("receive"), complete_cmd_info[cmd].Command) != 0 {
 		return 0
 	}
 	if no_mail != 0 {
 		send_to_char(ch, libc.CString("Sorry, the mail system is having technical difficulties.\r\n"))
 		return 0
 	}
-	if libc.StrCmp(libc.CString("mail"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	if libc.StrCmp(libc.CString("mail"), complete_cmd_info[cmd].Command) == 0 {
 		postmaster_send_mail(ch, (*char_data)(me), cmd, argument)
 		return 1
-	} else if libc.StrCmp(libc.CString("check"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	} else if libc.StrCmp(libc.CString("check"), complete_cmd_info[cmd].Command) == 0 {
 		postmaster_check_mail(ch, (*char_data)(me), cmd, argument)
 		return 1
-	} else if libc.StrCmp(libc.CString("receive"), (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command) == 0 {
+	} else if libc.StrCmp(libc.CString("receive"), complete_cmd_info[cmd].Command) == 0 {
 		postmaster_receive_mail(ch, (*char_data)(me), cmd, argument)
 		return 1
 	} else {
@@ -436,7 +436,7 @@ func postmaster_send_mail(ch *char_data, mailman *char_data, cmd int, arg *byte)
 	act(&buf[0], FALSE, mailman, nil, unsafe.Pointer(ch), TO_VICT)
 	act(libc.CString("@C$n@w starts writing a letter.@n"), TRUE, ch, nil, nil, TO_ROOM)
 	ch.Gold -= STAMP_PRICE
-	ch.Act[int(PLR_MAILING/32)] |= bitvector_t(int32(1 << (int(PLR_MAILING % 32))))
+	SET_BIT_AR(ch.Act[:], PLR_MAILING)
 	mailwrite = new(*byte)
 	string_write(ch.Desc, mailwrite, MAX_MAIL_SIZE, recipient, nil)
 }
@@ -466,8 +466,8 @@ func postmaster_receive_mail(ch *char_data, mailman *char_data, cmd int, arg *by
 		for y = 0; y < TW_ARRAY_MAX; y++ {
 			obj.Wear_flags[y] = 0
 		}
-		obj.Wear_flags[int(ITEM_WEAR_TAKE/32)] |= 1 << (int(ITEM_WEAR_TAKE % 32))
-		obj.Wear_flags[int(ITEM_WEAR_HOLD/32)] |= 1 << (int(ITEM_WEAR_HOLD % 32))
+		SET_BIT_AR(obj.Wear_flags[:], ITEM_WEAR_TAKE)
+		SET_BIT_AR(obj.Wear_flags[:], ITEM_WEAR_HOLD)
 		obj.Weight = 1
 		obj.Cost = 30
 		obj.Cost_per_day = 10
@@ -482,7 +482,7 @@ func postmaster_receive_mail(ch *char_data, mailman *char_data, cmd int, arg *by
 		obj.Name = libc.StrDup(&bla[0])
 		bla[0] = '\x00'
 		blm[0] = '\x00'
-		obj.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(int32(1 << (int(ITEM_UNIQUE_SAVE % 32))))
+		SET_BIT_AR(obj.Extra_flags[:], ITEM_UNIQUE_SAVE)
 		add_unique_id(obj)
 		obj.Value[VAL_ALL_MATERIAL] = MATERIAL_PAPER
 		obj.Value[VAL_NOTE_HEALTH] = 100
@@ -490,7 +490,7 @@ func postmaster_receive_mail(ch *char_data, mailman *char_data, cmd int, arg *by
 		if obj.Action_description == nil {
 			obj.Action_description = libc.CString("Mail system error - please report.  Error #11.\r\n")
 		}
-		obj.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(int32(1 << (int(ITEM_UNIQUE_SAVE % 32))))
+		SET_BIT_AR(obj.Extra_flags[:], ITEM_UNIQUE_SAVE)
 		if IS_PLAYING(ch.Desc) && mailman != nil {
 			obj_to_char(obj, ch)
 			act(libc.CString("$n gives you a piece of mail."), FALSE, mailman, nil, unsafe.Pointer(ch), TO_VICT)

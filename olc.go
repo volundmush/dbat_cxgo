@@ -25,7 +25,7 @@ const MAX_OBJ_DESC = 512
 const OLC_USAGE = "Usage: olc { . | set | show | obj | mob | room} [args]\r\n"
 
 var olc_ch *char_data
-var do_olc func(ch *char_data, argument *byte, cmd int, subcmd int)
+
 var olc_modes [8]*byte = [8]*byte{libc.CString("set"), libc.CString("show"), libc.CString("."), libc.CString("room"), libc.CString("mobile"), libc.CString("object"), libc.CString("assedit"), libc.CString("\n")}
 var olc_commands [5]*byte = [5]*byte{libc.CString("copy"), libc.CString("name"), libc.CString("description"), libc.CString("aliases"), libc.CString("\n")}
 
@@ -84,14 +84,10 @@ func do_olc(ch *char_data, argument *byte, cmd int, subcmd int) {
 			}
 		} else {
 			rnum = ch.In_room
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				vnum = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-			} else {
-				vnum = -1
-			}
+			vnum = room_vnum(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room)))
 			send_to_char(ch, libc.CString("(Using current room %d)\r\n"), vnum)
 		}
-		olc_targ = unsafe.Pointer((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum))))
+		olc_targ = unsafe.Pointer(&(world[rnum]))
 	case OLC_MOB_TYPE:
 		argument = one_argument(argument, &arg[0])
 		if is_number(&arg[0]) == 0 {
@@ -105,7 +101,7 @@ func do_olc(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}()) == room_rnum(-1) {
 			send_to_char(ch, libc.CString("No such mobile vnum.\r\n"))
 		} else {
-			olc_targ = unsafe.Pointer((*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(rnum))))
+			olc_targ = unsafe.Pointer(&(mob_proto[rnum]))
 		}
 	case OLC_OBJ_TYPE:
 		argument = one_argument(argument, &arg[0])
@@ -120,7 +116,7 @@ func do_olc(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}()) == room_rnum(-1) {
 			send_to_char(ch, libc.CString("No object with vnum %d.\r\n"), vnum)
 		} else {
-			olc_targ = unsafe.Pointer((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(rnum))))
+			olc_targ = unsafe.Pointer(&(obj_proto[rnum]))
 		}
 	default:
 		send_to_char(ch, libc.CString("Usage: olc {.|set|show|obj|mob|room} [args]\r\n"))
@@ -227,9 +223,9 @@ func olc_string(string_ **byte, maxlen uint64, arg *byte) {
 		}
 	}
 }
-func olc_bitvector(bv *int, names **byte, arg *byte) {
+func olc_bitvector(bv *bitvector_t, names **byte, arg *byte) {
 	var (
-		newbv     int
+		newbv     bitvector_t
 		flagnum   int
 		doremove  int = 0
 		this_name *byte
@@ -275,7 +271,7 @@ func olc_bitvector(bv *int, names **byte, arg *byte) {
 		}
 	}
 	*bv = newbv
-	sprintbit(bitvector_t(int32(newbv)), ([0]*byte)(names), &buf[0], uint64(64936))
+	//sprintbit(bitvector_t(int32(newbv)), ([]*byte)(names), &buf[0], uint64(64936))
 	send_to_char(olc_ch, libc.CString("Flags now set to: %s\r\n"), &buf[0])
 }
 func olc_set_show(ch *char_data, olc_mode int, arg *byte) {

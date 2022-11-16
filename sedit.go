@@ -82,14 +82,14 @@ func do_oasis_sedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if can_edit_zone(ch, d.Olc.Zone_num) == 0 {
-		send_cannot_edit(ch, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number)
+		send_cannot_edit(ch, zone_table[d.Olc.Zone_num].Number)
 		libc.Free(unsafe.Pointer(d.Olc))
 		d.Olc = nil
 		return
 	}
 	if save != 0 {
-		send_to_char(ch, libc.CString("Saving all shops in zone %d.\r\n"), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number)
-		mudlog(CMP, MAX(ADMLVL_BUILDER, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("OLC: %s saves shop info for zone %d."), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number)
+		send_to_char(ch, libc.CString("Saving all shops in zone %d.\r\n"), zone_table[d.Olc.Zone_num].Number)
+		mudlog(CMP, int(MAX(ADMLVL_BUILDER, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("OLC: %s saves shop info for zone %d."), GET_NAME(ch), zone_table[d.Olc.Zone_num].Number)
 		save_shops(d.Olc.Zone_num)
 		libc.Free(unsafe.Pointer(d.Olc))
 		d.Olc = nil
@@ -107,8 +107,8 @@ func do_oasis_sedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	sedit_disp_menu(d)
 	d.Connected = CON_SEDIT
 	act(libc.CString("$n starts using OLC."), TRUE, d.Character, nil, nil, TO_ROOM)
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
-	mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing zone %d allowed zone %d"), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number, ch.Player_specials.Olc_zone)
+	SET_BIT_AR(ch.Act[:], PLR_WRITING)
+	mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing zone %d allowed zone %d"), GET_NAME(ch), zone_table[d.Olc.Zone_num].Number, ch.Player_specials.Olc_zone)
 }
 func sedit_setup_new(d *descriptor_data) {
 	var shop *shop_data
@@ -124,18 +124,18 @@ func sedit_setup_new(d *descriptor_data) {
 	shop.Do_not_buy = libc.CString("%s I don't trade in such items.")
 	shop.Message_buy = libc.CString("%s That'll be %d zenni, thanks.")
 	shop.Message_sell = libc.CString("%s I'll give you %d zenni for that.")
-	shop.Producing = new(obj_vnum)
-	*(*obj_vnum)(unsafe.Add(unsafe.Pointer(shop.Producing), unsafe.Sizeof(obj_vnum(0))*0)) = -1
-	shop.In_room = (*room_vnum)(unsafe.Pointer(new(room_rnum)))
-	*(*room_vnum)(unsafe.Add(unsafe.Pointer(shop.In_room), unsafe.Sizeof(room_vnum(0))*0)) = -1
-	shop.Type = new(shop_buy_data)
-	(*(*shop_buy_data)(unsafe.Add(unsafe.Pointer(shop.Type), unsafe.Sizeof(shop_buy_data{})*0))).Type = -1
-	shop.With_who[int(TRADE_NOBROKEN/32)] |= 1 << (int(TRADE_NOBROKEN % 32))
+	shop.Producing = make([]obj_vnum, 0)
+	shop.Producing[0] = -1
+	shop.In_room = make([]room_vnum, 0)
+	shop.In_room[0] = -1
+	shop.Type = make([]shop_buy_data, 0)
+	(shop.Type[0]).Type = -1
+	SET_BIT_AR(shop.With_who[:], TRADE_NOBROKEN)
 	d.Olc.Shop = shop
 }
 func sedit_setup_existing(d *descriptor_data, rshop_num int) {
 	d.Olc.Shop = new(shop_data)
-	copy_shop(d.Olc.Shop, (*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(rshop_num))), FALSE)
+	copy_shop(d.Olc.Shop, &shop_index[rshop_num], FALSE)
 }
 func sedit_products_menu(d *descriptor_data) {
 	var (
@@ -145,8 +145,8 @@ func sedit_products_menu(d *descriptor_data) {
 	shop = d.Olc.Shop
 	clear_screen(d)
 	write_to_output(d, libc.CString("##     VNUM     Product\r\n"))
-	for i = 0; (*(*obj_vnum)(unsafe.Add(unsafe.Pointer(shop.Producing), unsafe.Sizeof(obj_vnum(0))*uintptr(i)))) != obj_vnum(-1); i++ {
-		write_to_output(d, libc.CString("%2d - [@c%5d@n] - @y%s@n\r\n"), i, (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(*(*obj_vnum)(unsafe.Add(unsafe.Pointer(shop.Producing), unsafe.Sizeof(obj_vnum(0))*uintptr(i))))))).Vnum, (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(*(*obj_vnum)(unsafe.Add(unsafe.Pointer(shop.Producing), unsafe.Sizeof(obj_vnum(0))*uintptr(i))))))).Short_description)
+	for i = 0; (shop.Producing[i]) != obj_vnum(-1); i++ {
+		write_to_output(d, libc.CString("%2d - [@c%5d@n] - @y%s@n\r\n"), i, obj_index[shop.Producing[i]].Vnum, obj_proto[shop.Producing[i]].Short_description)
 	}
 	write_to_output(d, libc.CString("\r\n@gA@n) Add a new product.\r\n@gD@n) Delete a product.\r\n@gQ@n) Quit\r\nEnter choice : "))
 	d.Olc.Mode = SEDIT_PRODUCTS_MENU
@@ -159,8 +159,8 @@ func sedit_compact_rooms_menu(d *descriptor_data) {
 	)
 	shop = d.Olc.Shop
 	clear_screen(d)
-	for i = 0; (*(*room_vnum)(unsafe.Add(unsafe.Pointer(shop.In_room), unsafe.Sizeof(room_vnum(0))*uintptr(i)))) != room_vnum(-1); i++ {
-		write_to_output(d, libc.CString("%2d - [@c%5d@n]  | %s"), i, *(*room_vnum)(unsafe.Add(unsafe.Pointer(shop.In_room), unsafe.Sizeof(room_vnum(0))*uintptr(i))), func() string {
+	for i = 0; (shop.In_room[i]) != room_vnum(-1); i++ {
+		write_to_output(d, libc.CString("%2d - [@c%5d@n]  | %s"), i, shop.In_room[i], func() string {
 			if (func() int {
 				p := &count
 				*p++
@@ -182,9 +182,9 @@ func sedit_rooms_menu(d *descriptor_data) {
 	shop = d.Olc.Shop
 	clear_screen(d)
 	write_to_output(d, libc.CString("##     VNUM     Room\r\n\r\n"))
-	for i = 0; (*(*room_vnum)(unsafe.Add(unsafe.Pointer(shop.In_room), unsafe.Sizeof(room_vnum(0))*uintptr(i)))) != room_vnum(-1); i++ {
-		if real_room(*(*room_vnum)(unsafe.Add(unsafe.Pointer(shop.In_room), unsafe.Sizeof(room_vnum(0))*uintptr(i)))) != room_rnum(-1) {
-			write_to_output(d, libc.CString("%2d - [@c%5d@n] - @y%s@n\r\n"), i, *(*room_vnum)(unsafe.Add(unsafe.Pointer(shop.In_room), unsafe.Sizeof(room_vnum(0))*uintptr(i))), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(*(*room_vnum)(unsafe.Add(unsafe.Pointer(shop.In_room), unsafe.Sizeof(room_vnum(0))*uintptr(i)))))))).Name)
+	for i = 0; (shop.In_room[i]) != room_vnum(-1); i++ {
+		if real_room(shop.In_room[i]) != room_rnum(-1) {
+			write_to_output(d, libc.CString("%2d - [@c%5d@n] - @y%s@n\r\n"), i, shop.In_room[i], world[real_room(shop.In_room[i])].Name)
 		} else {
 			write_to_output(d, libc.CString("%2d - [@R!Removed Room!@n]\r\n"), i)
 		}
@@ -200,10 +200,10 @@ func sedit_namelist_menu(d *descriptor_data) {
 	shop = d.Olc.Shop
 	clear_screen(d)
 	write_to_output(d, libc.CString("##              Type   Namelist\r\n\r\n"))
-	for i = 0; (*(*shop_buy_data)(unsafe.Add(unsafe.Pointer(shop.Type), unsafe.Sizeof(shop_buy_data{})*uintptr(i)))).Type != int(-1); i++ {
-		write_to_output(d, libc.CString("%2d - @c%15s@n - @y%s@n\r\n"), i, item_types[(*(*shop_buy_data)(unsafe.Add(unsafe.Pointer(shop.Type), unsafe.Sizeof(shop_buy_data{})*uintptr(i)))).Type], func() *byte {
-			if (*(*shop_buy_data)(unsafe.Add(unsafe.Pointer(shop.Type), unsafe.Sizeof(shop_buy_data{})*uintptr(i)))).Keywords != nil {
-				return (*(*shop_buy_data)(unsafe.Add(unsafe.Pointer(shop.Type), unsafe.Sizeof(shop_buy_data{})*uintptr(i)))).Keywords
+	for i = 0; (shop.Type[i]).Type != int(-1); i++ {
+		write_to_output(d, libc.CString("%2d - @c%15s@n - @y%s@n\r\n"), i, item_types[(shop.Type[i]).Type], func() *byte {
+			if (shop.Type[i]).Keywords != nil {
+				return (shop.Type[i]).Keywords
 			}
 			return libc.CString("<None>")
 		}())
@@ -230,7 +230,7 @@ func sedit_shop_flags_menu(d *descriptor_data) {
 			return ""
 		}())
 	}
-	sprintbit(d.Olc.Shop.Bitvector, shop_bits, &bits[0], uint64(64936))
+	sprintbit(d.Olc.Shop.Bitvector, shop_bits[:], &bits[0], uint64(64936))
 	write_to_output(d, libc.CString("\r\nCurrent Shop Flags : @c%s@n\r\nEnter choice : "), &bits[0])
 	d.Olc.Mode = SEDIT_SHOP_FLAGS
 }
@@ -288,17 +288,17 @@ func sedit_disp_menu(d *descriptor_data) {
 	shop = d.Olc.Shop
 	clear_screen(d)
 	sprintbitarray(shop.With_who[:], trade_letters[:], int(64936), &buf1[0])
-	sprintbit(shop.Bitvector, shop_bits, &buf2[0], uint64(64936))
+	sprintbit(shop.Bitvector, shop_bits[:], &buf2[0], uint64(64936))
 	write_to_output(d, libc.CString("-- Shop Number : [@c%d@n]\r\n@g0@n) Keeper      : [@c%d@n] @y%s\r\n@g1@n) Open 1      : @c%4d@n          @g2@n) Close 1     : @c%4d\r\n@g3@n) Open 2      : @c%4d@n          @g4@n) Close 2     : @c%4d\r\n@g5@n) Sell rate   : @c%1.2f@n          @g6@n) Buy rate    : @c%1.2f\r\n@g7@n) Keeper no item : @y%s\r\n@g8@n) Player no item : @y%s\r\n@g9@n) Keeper no cash : @y%s\r\n@gA@n) Player no cash : @y%s\r\n@gB@n) Keeper no buy  : @y%s\r\n@gC@n) Buy success    : @y%s\r\n@gD@n) Sell success   : @y%s\r\n@gE@n) No Trade With  : @c%s\r\n@gF@n) Shop flags     : @c%s\r\n@gR@n) Rooms Menu\r\n@gP@n) Products Menu\r\n@gT@n) Accept Types Menu\r\n@gW@n) Copy Shop\r\n@gQ@n) Quit\r\nEnter Choice : "), d.Olc.Number, func() mob_vnum {
 		if shop.Keeper == mob_rnum(-1) {
 			return -1
 		}
-		return (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(shop.Keeper)))).Vnum
+		return mob_index[shop.Keeper].Vnum
 	}(), func() string {
 		if shop.Keeper == mob_rnum(-1) {
 			return "None"
 		}
-		return libc.GoString((*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(shop.Keeper)))).Short_descr)
+		return libc.GoString(mob_proto[shop.Keeper].Short_descr)
 	}(), shop.Open1, shop.Close1, shop.Open2, shop.Close2, shop.Profit_buy, shop.Profit_sell, shop.No_such_item1, shop.No_such_item2, shop.Missing_cash1, shop.Missing_cash2, shop.Do_not_buy, shop.Message_buy, shop.Message_sell, &buf1[0], &buf2[0])
 	d.Olc.Mode = SEDIT_MAIN_MENU
 }
@@ -317,7 +317,7 @@ func sedit_parse(d *descriptor_data, arg *byte) {
 			fallthrough
 		case 'Y':
 			sedit_save_internally(d)
-			mudlog(CMP, MAX(ADMLVL_BUILDER, int(d.Character.Player_specials.Invis_level)), TRUE, libc.CString("OLC: %s edits shop %d"), GET_NAME(d.Character), d.Olc.Number)
+			mudlog(CMP, int(MAX(ADMLVL_BUILDER, int64(d.Character.Player_specials.Invis_level))), TRUE, libc.CString("OLC: %s edits shop %d"), GET_NAME(d.Character), d.Olc.Number)
 			if config_info.Operation.Auto_save_olc != 0 {
 				sedit_save_to_disk(int(real_zone_by_thing(d.Olc.Number)))
 				write_to_output(d, libc.CString("Shop saved to disk.\r\n"))
@@ -540,7 +540,7 @@ func sedit_parse(d *descriptor_data, arg *byte) {
 			var new_entry shop_buy_data
 			new_entry.Type = d.Olc.Value
 			new_entry.Keywords = libc.StrDup(arg)
-			add_to_type_list(&d.Olc.Shop.Type, &new_entry)
+			add_to_type_list((**shop_buy_data)(unsafe.Pointer(&d.Olc.Shop.Type[0])), &new_entry)
 		}
 		sedit_namelist_menu(d)
 		return
@@ -562,31 +562,38 @@ func sedit_parse(d *descriptor_data, arg *byte) {
 		if i == -1 {
 			break
 		}
-		if libc.FuncAddr((*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Func) != libc.FuncAddr(shop_keeper) {
-			d.Olc.Shop.Func = (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Func
-		} else {
-			d.Olc.Shop.Func = nil
+		d.Olc.Shop.Func = func(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
+			return func() SpecialFunc {
+				if libc.FuncAddr(mob_index[i].Func) != libc.FuncAddr(shop_keeper) {
+					return mob_index[i].Func
+				}
+				return nil
+			}()(ch, me, cmd, argument)
 		}
-		(*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Func = shop_keeper
+		mob_index[i].Func = func(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
+			return func(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
+				return shop_keeper(ch, me, cmd, argument)
+			}(ch, me, cmd, argument)
+		}
 	case SEDIT_OPEN1:
-		d.Olc.Shop.Open1 = MIN(28, MAX(libc.Atoi(libc.GoString(arg)), 0))
+		d.Olc.Shop.Open1 = int(MIN(28, MAX(int64(libc.Atoi(libc.GoString(arg))), 0)))
 	case SEDIT_OPEN2:
-		d.Olc.Shop.Open2 = MIN(28, MAX(libc.Atoi(libc.GoString(arg)), 0))
+		d.Olc.Shop.Open2 = int(MIN(28, MAX(int64(libc.Atoi(libc.GoString(arg))), 0)))
 	case SEDIT_CLOSE1:
-		d.Olc.Shop.Close1 = MIN(28, MAX(libc.Atoi(libc.GoString(arg)), 0))
+		d.Olc.Shop.Close1 = int(MIN(28, MAX(int64(libc.Atoi(libc.GoString(arg))), 0)))
 	case SEDIT_CLOSE2:
-		d.Olc.Shop.Close2 = MIN(28, MAX(libc.Atoi(libc.GoString(arg)), 0))
+		d.Olc.Shop.Close2 = int(MIN(28, MAX(int64(libc.Atoi(libc.GoString(arg))), 0)))
 	case SEDIT_BUY_PROFIT:
 		stdio.Sscanf(arg, "%f", &d.Olc.Shop.Profit_buy)
 	case SEDIT_SELL_PROFIT:
 		stdio.Sscanf(arg, "%f", &d.Olc.Shop.Profit_sell)
 	case SEDIT_TYPE_MENU:
-		d.Olc.Value = MIN(int(NUM_ITEM_TYPES-1), MAX(libc.Atoi(libc.GoString(arg)), 0))
+		d.Olc.Value = int(MIN(int64(int(NUM_ITEM_TYPES-1)), MAX(int64(libc.Atoi(libc.GoString(arg))), 0)))
 		write_to_output(d, libc.CString("Enter namelist (return for none) :-\r\n] "))
 		d.Olc.Mode = SEDIT_NAMELIST
 		return
 	case SEDIT_DELETE_TYPE:
-		remove_from_type_list(&d.Olc.Shop.Type, libc.Atoi(libc.GoString(arg)))
+		remove_from_type_list((**shop_buy_data)(unsafe.Pointer(&d.Olc.Shop.Type[0])), libc.Atoi(libc.GoString(arg)))
 		sedit_namelist_menu(d)
 		return
 	case SEDIT_NEW_PRODUCT:
@@ -603,12 +610,12 @@ func sedit_parse(d *descriptor_data, arg *byte) {
 			}
 		}
 		if i > 0 {
-			add_to_int_list((**int64)(unsafe.Pointer(&d.Olc.Shop.Producing)), int64(i))
+			add_to_int_list((**int64)(unsafe.Pointer(&d.Olc.Shop.Producing[0])), int64(i))
 		}
 		sedit_products_menu(d)
 		return
 	case SEDIT_DELETE_PRODUCT:
-		remove_from_int_list((**int64)(unsafe.Pointer(&d.Olc.Shop.Producing)), int64(libc.Atoi(libc.GoString(arg))))
+		remove_from_int_list((**int64)(unsafe.Pointer(&d.Olc.Shop.Producing[0])), int64(libc.Atoi(libc.GoString(arg))))
 		sedit_products_menu(d)
 		return
 	case SEDIT_NEW_ROOM:
@@ -625,17 +632,17 @@ func sedit_parse(d *descriptor_data, arg *byte) {
 			}
 		}
 		if i >= 0 {
-			add_to_int_list((**int64)(unsafe.Pointer(&d.Olc.Shop.In_room)), int64(libc.Atoi(libc.GoString(arg))))
+			add_to_int_list((**int64)(unsafe.Pointer(&d.Olc.Shop.In_room[0])), int64(libc.Atoi(libc.GoString(arg))))
 		}
 		sedit_rooms_menu(d)
 		return
 	case SEDIT_DELETE_ROOM:
-		remove_from_int_list((**int64)(unsafe.Pointer(&d.Olc.Shop.In_room)), int64(libc.Atoi(libc.GoString(arg))))
+		remove_from_int_list((**int64)(unsafe.Pointer(&d.Olc.Shop.In_room[0])), int64(libc.Atoi(libc.GoString(arg))))
 		sedit_rooms_menu(d)
 		return
 	case SEDIT_SHOP_FLAGS:
 		if (func() int {
-			i = MIN(NUM_SHOP_FLAGS, MAX(libc.Atoi(libc.GoString(arg)), 0))
+			i = int(MIN(NUM_SHOP_FLAGS, MAX(int64(libc.Atoi(libc.GoString(arg))), 0)))
 			return i
 		}()) > 0 {
 			d.Olc.Shop.Bitvector ^= bitvector_t(int32(1 << (i - 1)))
@@ -644,10 +651,10 @@ func sedit_parse(d *descriptor_data, arg *byte) {
 		}
 	case SEDIT_NOTRADE:
 		if (func() int {
-			i = MIN(NUM_TRADERS, MAX(libc.Atoi(libc.GoString(arg)), 0))
+			i = int(MIN(NUM_TRADERS, MAX(int64(libc.Atoi(libc.GoString(arg))), 0)))
 			return i
 		}()) > 0 {
-			d.Olc.Shop.With_who[(i-1)/32] = d.Olc.Shop.With_who[(i-1)/32] ^ 1<<((i-1)%32)
+			TOGGLE_BIT_AR(d.Olc.Shop.With_who[:], bitvector_t(int32(i-1)))
 			sedit_no_trade_menu(d)
 			return
 		}

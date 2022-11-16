@@ -2,24 +2,17 @@ package main
 
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
-	"math"
 	"unsafe"
 )
 
 const _OASISOLC = 518
 const AEDIT_PERMISSION = 999
 const HEDIT_PERMISSION = 888
-const NUM_ZONE_FLAGS = 36
 const NUM_GENDERS = 3
-const NUM_SHOP_FLAGS = 3
-const MAX_ROOM_NAME = 100
-const MAX_MOB_NAME = 50
-const MAX_OBJ_NAME = 50
-const MAX_ROOM_DESC = 4096
+
 const MAX_EXIT_DESC = 256
 const MAX_EXTRA_DESC = 512
-const MAX_MOB_DESC = 1024
-const MAX_OBJ_DESC = 512
+
 const MAX_DUPLICATES = 10000
 const MAX_FROM_ROOM = 50
 const MAX_WEAPON_SDICE = 50
@@ -38,7 +31,6 @@ const OASIS_OBJ = 2
 const OASIS_ZON = 3
 const OASIS_EXI = 4
 const OASIS_CFG = 5
-
 const CLEANUP_ALL = 1
 const CLEANUP_STRUCTS = 2
 const CLEANUP_CONFIG = 3
@@ -457,7 +449,7 @@ const CONTEXT_SCRIPT_DEL_TRIGGER = 123
 const CONTEXT_ZEDIT_ARG4 = 124
 const CONTEXT_GEDIT_MAIN_MENU = 125
 const CONTEXT_GEDIT_CONFIRM_SAVESTRING = 126
-const CONTEXT_GEDIT_NO_CASH uint8 = math.MaxInt8
+const CONTEXT_GEDIT_NO_CASH = 255
 const CONTEXT_GEDIT_NO_SKILL = 128
 const CONTEXT_GEDIT_NUMERICAL_RESPONSE = 129
 const CONTEXT_GEDIT_CHARGE = 130
@@ -517,10 +509,11 @@ type oasis_olc_data struct {
 	Trigger_position int
 	Item_type        int
 	Script           *trig_proto_list
-	OlcAssembly      *assembly_data
+	OlcAssembly      []assembly_data
 	Guild            *guild_data
 	Help             *help_index_element
 }
+
 type olc_scmd_info_t struct {
 	Text     *byte
 	Con_type int
@@ -617,7 +610,7 @@ func cleanup_olc(d *descriptor_data, cleanup_type int8) {
 			libc.Free(unsafe.Pointer(d.Olc.Zone.Name))
 		}
 		if d.Olc.Zone.Cmd != nil {
-			libc.Free(unsafe.Pointer(d.Olc.Zone.Cmd))
+			libc.Free(unsafe.Pointer(&d.Olc.Zone.Cmd[0]))
 		}
 		libc.Free(unsafe.Pointer(d.Olc.Zone))
 	}
@@ -660,7 +653,7 @@ func cleanup_olc(d *descriptor_data, cleanup_type int8) {
 		d.Olc.Trig = nil
 	}
 	if d.Character != nil {
-		d.Character.Act[int(PLR_WRITING/32)] &= bitvector_t(int32(^(1 << (int(PLR_WRITING % 32)))))
+		REMOVE_BIT_AR(d.Character.Act[:], PLR_WRITING)
 		act(libc.CString("$n stops using OLC."), TRUE, d.Character, nil, nil, TO_ROOM)
 		if int(cleanup_type) == CLEANUP_CONFIG {
 			mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s stops editing the game configuration"), GET_NAME(d.Character))
@@ -669,7 +662,7 @@ func cleanup_olc(d *descriptor_data, cleanup_type int8) {
 		} else if d.Connected == CON_HEDIT {
 			mudlog(CMP, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s stops editing help files."), GET_NAME(d.Character))
 		} else {
-			mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s stops editing zone %d allowed zone %d"), GET_NAME(d.Character), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number, d.Character.Player_specials.Olc_zone)
+			mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s stops editing zone %d allowed zone %d"), GET_NAME(d.Character), zone_table[d.Olc.Zone_num].Number, d.Character.Player_specials.Olc_zone)
 		}
 		d.Connected = CON_PLAYING
 	}
@@ -736,7 +729,7 @@ func can_edit_zone(ch *char_data, rnum zone_rnum) int {
 	if ch.Admlevel >= ADMLVL_GRGOD {
 		return TRUE
 	}
-	if is_name(GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(rnum)))).Builders) != 0 {
+	if is_name(GET_NAME(ch), zone_table[rnum].Builders) != 0 {
 		return TRUE
 	}
 	if ch.Player_specials.Olc_zone == int(-1) {

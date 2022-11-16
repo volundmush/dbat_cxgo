@@ -10,27 +10,9 @@ import (
 const SCMD_OSEND = 0
 const SCMD_OECHOAROUND = 1
 
-var do_oecho func(obj *obj_data, argument *byte, cmd int, subcmd int)
-var do_oforce func(obj *obj_data, argument *byte, cmd int, subcmd int)
-var do_ozoneecho func(obj *obj_data, argument *byte, cmd int, subcmd int)
-var do_osend func(obj *obj_data, argument *byte, cmd int, subcmd int)
-var do_orecho func(obj *obj_data, argument *byte, cmd int, subcmd int)
-var do_otimer func(obj *obj_data, argument *byte, cmd int, subcmd int)
-var do_otransform func(obj *obj_data, argument *byte, cmd int, subcmd int)
-var do_opurge func(obj *obj_data, argument *byte, cmd int, subcmd int)
-var do_dupe func(obj *obj_data, argument *byte, cmd int, subcmd int)
-var do_oteleport func(obj *obj_data, argument *byte, cmd int, subcmd int)
-var do_dgoload func(obj *obj_data, argument *byte, cmd int, subcmd int)
-var do_odamage func(obj *obj_data, argument *byte, cmd int, subcmd int)
-var do_oasound func(obj *obj_data, argument *byte, cmd int, subcmd int)
-var do_ogoto func(obj *obj_data, argument *byte, cmd int, subcmd int)
-var do_odoor func(obj *obj_data, argument *byte, cmd int, subcmd int)
-var do_osetval func(obj *obj_data, argument *byte, cmd int, subcmd int)
-var do_oat func(obj *obj_data, argument *byte, cmd int, subcmd int)
-
 type obj_command_info struct {
 	Command         *byte
-	Command_pointer func(obj *obj_data, argument *byte, cmd int, subcmd int)
+	Command_pointer CommandFunc
 	Subcmd          int
 }
 
@@ -108,9 +90,9 @@ func do_oecho(obj *obj_data, argument *byte, cmd int, subcmd int) {
 		room = int(obj_room(obj))
 		return room
 	}()) != int(-1) {
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).People != nil {
-			sub_write(argument, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).People, TRUE, TO_ROOM)
-			sub_write(argument, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).People, TRUE, TO_CHAR)
+		if world[room].People != nil {
+			sub_write(argument, world[room].People, TRUE, TO_ROOM)
+			sub_write(argument, world[room].People, TRUE, TO_CHAR)
 		}
 	} else {
 		obj_log(obj, libc.CString("oecho called by object in NOWHERE"))
@@ -136,7 +118,7 @@ func do_oforce(obj *obj_data, argument *byte, cmd int, subcmd int) {
 		}()) == int(-1) {
 			obj_log(obj, libc.CString("oforce called by object in NOWHERE"))
 		} else {
-			for ch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).People; ch != nil; ch = next_ch {
+			for ch = world[room].People; ch != nil; ch = next_ch {
 				next_ch = ch.Next_in_room
 				if valid_dg_target(ch, 0) != 0 {
 					command_interpreter(ch, line)
@@ -278,16 +260,14 @@ func do_otransform(obj *obj_data, argument *byte, cmd int, subcmd int) {
 	}
 }
 func do_dupe(obj *obj_data, argument *byte, cmd int, subcmd int) {
-	obj.Extra_flags[int(ITEM_DUPLICATE/32)] |= bitvector_t(int32(1 << (int(ITEM_DUPLICATE % 32))))
+	SET_BIT_AR(obj.Extra_flags[:], ITEM_DUPLICATE)
 }
 func do_opurge(obj *obj_data, argument *byte, cmd int, subcmd int) {
 	var (
-		arg      [2048]byte
-		ch       *char_data
-		next_ch  *char_data
-		o        *obj_data
-		next_obj *obj_data
-		rm       int
+		arg [2048]byte
+		ch  *char_data
+		o   *obj_data
+		rm  int
 	)
 	one_argument(argument, &arg[0])
 	if arg[0] == 0 {
@@ -295,14 +275,12 @@ func do_opurge(obj *obj_data, argument *byte, cmd int, subcmd int) {
 			rm = int(obj_room(obj))
 			return rm
 		}()) != int(-1) {
-			for ch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rm)))).People; ch != nil; ch = next_ch {
-				next_ch = ch.Next_in_room
+			for ch = world[rm].People; ch != nil; ch = ch.Next_in_room {
 				if IS_NPC(ch) {
 					extract_char(ch)
 				}
 			}
-			for o = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rm)))).Contents; o != nil; o = next_obj {
-				next_obj = o.Next_content
+			for o = world[rm].Contents; o != nil; o = o.Next_content {
 				if o != obj {
 					extract_obj(o)
 				}
@@ -371,14 +349,14 @@ func do_oteleport(obj *obj_data, argument *byte, cmd int, subcmd int) {
 		if target == rm {
 			obj_log(obj, libc.CString("oteleport target is itself"))
 		}
-		for ch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rm)))).People; ch != nil; ch = next_ch {
+		for ch = world[rm].People; ch != nil; ch = next_ch {
 			next_ch = ch.Next_in_room
 			if valid_dg_target(ch, 1<<0) == 0 {
 				continue
 			}
 			char_from_room(ch)
 			char_to_room(ch, target)
-			enter_wtrigger((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room))), ch, -1)
+			enter_wtrigger(&world[ch.In_room], ch, -1)
 		}
 	} else {
 		if (func() *char_data {
@@ -388,7 +366,7 @@ func do_oteleport(obj *obj_data, argument *byte, cmd int, subcmd int) {
 			if valid_dg_target(ch, 1<<0) != 0 {
 				char_from_room(ch)
 				char_to_room(ch, target)
-				enter_wtrigger((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room))), ch, -1)
+				enter_wtrigger(&world[ch.In_room], ch, -1)
 			}
 		} else {
 			obj_log(obj, libc.CString("oteleport: no target found"))
@@ -472,7 +450,7 @@ func do_dgoload(obj *obj_data, argument *byte, cmd int, subcmd int) {
 		two_arguments(target, &arg1[0], &arg2[0])
 		tch = get_char_near_obj(obj, &arg1[0])
 		if tch != nil {
-			if arg2 != nil && arg2[0] != 0 && (func() int {
+			if arg2[0] != 0 && (func() int {
 				pos = find_eq_pos_script(&arg2[0])
 				return pos
 			}()) >= 0 && (tch.Equipment[pos]) == nil && can_wear_on_pos(object, pos) != 0 {
@@ -536,9 +514,9 @@ func do_oasound(obj *obj_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	for door = 0; door < NUM_OF_DIRS; door++ {
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[door] != nil && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[door]).To_room != room_rnum(-1) && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[door]).To_room != room && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[door]).To_room)))).People != nil {
-			sub_write(argument, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[door]).To_room)))).People, TRUE, TO_ROOM)
-			sub_write(argument, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[door]).To_room)))).People, TRUE, TO_CHAR)
+		if world[room].Dir_option[door] != nil && (world[room].Dir_option[door]).To_room != room_rnum(-1) && (world[room].Dir_option[door]).To_room != room && world[(world[room].Dir_option[door]).To_room].People != nil {
+			sub_write(argument, world[(world[room].Dir_option[door]).To_room].People, TRUE, TO_ROOM)
+			sub_write(argument, world[(world[room].Dir_option[door]).To_room].People, TRUE, TO_CHAR)
 		}
 	}
 }
@@ -638,7 +616,7 @@ func do_osetval(obj *obj_data, argument *byte, cmd int, subcmd int) {
 		new_value int
 	)
 	two_arguments(argument, &arg1[0], &arg2[0])
-	if arg1 == nil || arg1[0] == 0 || arg2 == nil || arg2[0] == 0 || is_number(&arg1[0]) == 0 || is_number(&arg2[0]) == 0 {
+	if arg1[0] == 0 || arg2[0] == 0 || is_number(&arg1[0]) == 0 || is_number(&arg2[0]) == 0 {
 		obj_log(obj, libc.CString("osetval: bad syntax"))
 		return
 	}
@@ -694,7 +672,47 @@ func do_oat(obj *obj_data, argument *byte, cmd int, subcmd int) {
 	}
 }
 
-var obj_cmd_info [20]obj_command_info = [20]obj_command_info{{Command: libc.CString("RESERVED"), Command_pointer: nil, Subcmd: 0}, {Command: libc.CString("oasound "), Command_pointer: do_oasound, Subcmd: 0}, {Command: libc.CString("oat "), Command_pointer: do_oat, Subcmd: 0}, {Command: libc.CString("odoor "), Command_pointer: do_odoor, Subcmd: 0}, {Command: libc.CString("odupe "), Command_pointer: do_dupe, Subcmd: 0}, {Command: libc.CString("odamage "), Command_pointer: do_odamage, Subcmd: 0}, {Command: libc.CString("oecho "), Command_pointer: do_oecho, Subcmd: 0}, {Command: libc.CString("oechoaround "), Command_pointer: do_osend, Subcmd: SCMD_OECHOAROUND}, {Command: libc.CString("oforce "), Command_pointer: do_oforce, Subcmd: 0}, {Command: libc.CString("ogoto "), Command_pointer: do_ogoto, Subcmd: 0}, {Command: libc.CString("oload "), Command_pointer: do_dgoload, Subcmd: 0}, {Command: libc.CString("opurge "), Command_pointer: do_opurge, Subcmd: 0}, {Command: libc.CString("orecho "), Command_pointer: do_orecho, Subcmd: 0}, {Command: libc.CString("osend "), Command_pointer: do_osend, Subcmd: SCMD_OSEND}, {Command: libc.CString("osetval "), Command_pointer: do_osetval, Subcmd: 0}, {Command: libc.CString("oteleport "), Command_pointer: do_oteleport, Subcmd: 0}, {Command: libc.CString("otimer "), Command_pointer: do_otimer, Subcmd: 0}, {Command: libc.CString("otransform "), Command_pointer: do_otransform, Subcmd: 0}, {Command: libc.CString("ozoneecho "), Command_pointer: do_ozoneecho, Subcmd: 0}, {Command: libc.CString("\n"), Command_pointer: nil, Subcmd: 0}}
+var obj_cmd_info []obj_command_info
+
+func initObjCmd() {
+	obj_cmd_info = []obj_command_info{{Command: libc.CString("RESERVED"), Command_pointer: nil, Subcmd: 0}, {Command: libc.CString("oasound "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oasound((*obj_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("oat "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oat((*obj_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("odoor "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_odoor((*obj_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("odupe "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_dupe((*obj_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("odamage "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_odamage((*obj_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("oecho "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oecho((*obj_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("oechoaround "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_osend((*obj_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: SCMD_OECHOAROUND}, {Command: libc.CString("oforce "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oforce((*obj_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("ogoto "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_ogoto((*obj_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("oload "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_dgoload((*obj_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("opurge "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_opurge((*obj_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("orecho "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_orecho((*obj_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("osend "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_osend((*obj_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: SCMD_OSEND}, {Command: libc.CString("osetval "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_osetval((*obj_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("oteleport "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oteleport((*obj_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("otimer "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_otimer((*obj_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("otransform "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_otransform((*obj_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("ozoneecho "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_ozoneecho((*obj_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("\n"), Command_pointer: nil, Subcmd: 0}}
+}
 
 func obj_command_interpreter(obj *obj_data, argument *byte) {
 	var (
@@ -722,6 +740,6 @@ func obj_command_interpreter(obj *obj_data, argument *byte) {
 	if *obj_cmd_info[cmd].Command == '\n' {
 		obj_log(obj, libc.CString("Unknown object cmd: '%s'"), argument)
 	} else {
-		(obj_cmd_info[cmd].Command_pointer)(obj, line, cmd, obj_cmd_info[cmd].Subcmd)
+		(obj_cmd_info[cmd].Command_pointer)((*char_data)(unsafe.Pointer(obj)), line, cmd, obj_cmd_info[cmd].Subcmd)
 	}
 }

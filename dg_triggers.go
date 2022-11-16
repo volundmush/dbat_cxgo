@@ -85,11 +85,11 @@ func word_check(str *byte, wordlist *byte) int {
 }
 func random_mtrigger(ch *char_data) {
 	var t *trig_data
-	if ch.Script == nil || (ch.Script.Types&(1<<1)) == 0 || AFF_FLAGGED(ch, AFF_CHARM) {
+	if ch.Script == nil || !IS_SET(bitvector_t(int32(ch.Script.Types)), 1<<1) || AFF_FLAGGED(ch, AFF_CHARM) {
 		return
 	}
 	for t = ch.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<1)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<1) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 			script_driver(unsafe.Pointer(&ch), t, MOB_TRIGGER, TRIG_NEW)
 			break
 		}
@@ -100,11 +100,11 @@ func bribe_mtrigger(ch *char_data, actor *char_data, amount int) {
 		t   *trig_data
 		buf [2048]byte
 	)
-	if ch.Script == nil || (ch.Script.Types&(1<<12)) == 0 || AFF_FLAGGED(ch, AFF_CHARM) {
+	if ch.Script == nil || !IS_SET(bitvector_t(int32(ch.Script.Types)), 1<<12) || AFF_FLAGGED(ch, AFF_CHARM) {
 		return
 	}
 	for t = ch.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<12)) != 0 && t.Depth == 0 && amount >= t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<12) && t.Depth == 0 && amount >= t.Narg {
 			stdio.Snprintf(&buf[0], int(2048), "%d", amount)
 			add_var(&t.Var_list, libc.CString("amount"), &buf[0], 0)
 			for {
@@ -130,7 +130,7 @@ func greet_memory_mtrigger(actor *char_data) {
 	if valid_dg_target(actor, 1<<0) == 0 {
 		return
 	}
-	for ch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(actor.In_room)))).People; ch != nil; ch = ch.Next_in_room {
+	for ch = world[actor.In_room].People; ch != nil; ch = ch.Next_in_room {
 		if ch.Memory == nil || !AWAKE(ch) || ch.Fighting != nil || ch == actor || AFF_FLAGGED(ch, AFF_CHARM) {
 			continue
 		}
@@ -145,7 +145,7 @@ func greet_memory_mtrigger(actor *char_data) {
 			}
 			if mem != nil && command_performed == 0 {
 				for t = ch.Script.Trig_list; t != nil; t = t.Next {
-					if (t.Trigger_type&(1<<14)) != 0 && CAN_SEE(ch, actor) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+					if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<14) && CAN_SEE(ch, actor) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 						for {
 							stdio.Sprintf(&buf[0], "%c%d", UID_CHAR, actor.Id)
 							add_var(&t.Var_list, libc.CString("actor"), &buf[0], 0)
@@ -188,15 +188,15 @@ func greet_mtrigger(actor *char_data, dir int) int {
 	if valid_dg_target(actor, 1<<0) == 0 {
 		return TRUE
 	}
-	for ch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(actor.In_room)))).People; ch != nil; ch = ch.Next_in_room {
-		if ch.Script == nil || (ch.Script.Types&((1<<6)|1<<7)) == 0 || !AWAKE(ch) || ch.Fighting != nil || ch == actor || AFF_FLAGGED(ch, AFF_CHARM) {
+	for ch = world[actor.In_room].People; ch != nil; ch = ch.Next_in_room {
+		if ch.Script == nil || !IS_SET(bitvector_t(int32(ch.Script.Types)), (1<<6)|1<<7) || !AWAKE(ch) || ch.Fighting != nil || ch == actor || AFF_FLAGGED(ch, AFF_CHARM) {
 			continue
 		}
-		if (ch.Script == nil || (ch.Script.Types&(1<<7)) == 0) && IS_NPC(actor) {
+		if (ch.Script == nil || !IS_SET(bitvector_t(int32(ch.Script.Types)), 1<<7)) && IS_NPC(actor) {
 			continue
 		}
 		for t = ch.Script.Trig_list; t != nil; t = t.Next {
-			if ((t.Trigger_type&(1<<6)) != 0 && CAN_SEE(ch, actor) || (t.Trigger_type&(1<<7)) != 0) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+			if (IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<6) && CAN_SEE(ch, actor) || IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<7)) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 				if dir >= 0 && dir < NUM_OF_DIRS {
 					add_var(&t.Var_list, libc.CString("direction"), dirs[rev_dir[dir]], 0)
 				} else {
@@ -229,7 +229,7 @@ func entry_memory_mtrigger(ch *char_data) {
 	if ch.Memory == nil || AFF_FLAGGED(ch, AFF_CHARM) {
 		return
 	}
-	for actor = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; actor != nil && ch.Memory != nil; actor = actor.Next_in_room {
+	for actor = world[ch.In_room].People; actor != nil && ch.Memory != nil; actor = actor.Next_in_room {
 		if actor != ch && ch.Memory != nil {
 			for mem = ch.Memory; mem != nil && ch.Memory != nil; mem = mem.Next {
 				if int(actor.Id) == mem.Id {
@@ -238,7 +238,7 @@ func entry_memory_mtrigger(ch *char_data) {
 						command_interpreter(ch, mem.Cmd)
 					} else {
 						for t = ch.Script.Trig_list; t != nil; t = t.Next {
-							if (t.Trigger_type&(1<<14)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+							if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<14) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 								for {
 									stdio.Sprintf(&buf[0], "%c%d", UID_CHAR, actor.Id)
 									add_var(&t.Var_list, libc.CString("actor"), &buf[0], 0)
@@ -271,11 +271,11 @@ func entry_memory_mtrigger(ch *char_data) {
 }
 func entry_mtrigger(ch *char_data) int {
 	var t *trig_data
-	if ch.Script == nil || (ch.Script.Types&(1<<8)) == 0 || AFF_FLAGGED(ch, AFF_CHARM) {
+	if ch.Script == nil || !IS_SET(bitvector_t(int32(ch.Script.Types)), 1<<8) || AFF_FLAGGED(ch, AFF_CHARM) {
 		return 1
 	}
 	for t = ch.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<8)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<8) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 			return script_driver(unsafe.Pointer(&ch), t, MOB_TRIGGER, TRIG_NEW)
 			break
 		}
@@ -292,15 +292,15 @@ func command_mtrigger(actor *char_data, cmd *byte, argument *byte) int {
 	if valid_dg_target(actor, 0) == 0 {
 		return 0
 	}
-	for ch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(actor.In_room)))).People; ch != nil; ch = ch_next {
+	for ch = world[actor.In_room].People; ch != nil; ch = ch_next {
 		ch_next = ch.Next_in_room
-		if ch.Script != nil && (ch.Script.Types&(1<<2)) != 0 && !AFF_FLAGGED(ch, AFF_CHARM) && actor != ch {
+		if ch.Script != nil && IS_SET(bitvector_t(int32(ch.Script.Types)), 1<<2) && !AFF_FLAGGED(ch, AFF_CHARM) && actor != ch {
 			for t = ch.Script.Trig_list; t != nil; t = t.Next {
-				if (t.Trigger_type&(1<<2)) == 0 || t.Depth != 0 {
+				if !IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<2) || t.Depth != 0 {
 					continue
 				}
 				if t.Arglist == nil || *t.Arglist == 0 {
-					mudlog(NRM, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: Command Trigger #%d has no text argument!"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(t.Nr)))).Vnum)
+					mudlog(NRM, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: Command Trigger #%d has no text argument!"), trig_index[t.Nr].Vnum)
 					continue
 				}
 				if *t.Arglist == '*' || libc.StrNCaseCmp(t.Arglist, cmd, libc.StrLen(t.Arglist)) == 0 {
@@ -331,15 +331,15 @@ func speech_mtrigger(actor *char_data, str *byte) {
 		t       *trig_data
 		buf     [2048]byte
 	)
-	for ch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(actor.In_room)))).People; ch != nil; ch = ch_next {
+	for ch = world[actor.In_room].People; ch != nil; ch = ch_next {
 		ch_next = ch.Next_in_room
-		if ch.Script != nil && (ch.Script.Types&(1<<3)) != 0 && AWAKE(ch) && !AFF_FLAGGED(ch, AFF_CHARM) && actor != ch {
+		if ch.Script != nil && IS_SET(bitvector_t(int32(ch.Script.Types)), 1<<3) && AWAKE(ch) && !AFF_FLAGGED(ch, AFF_CHARM) && actor != ch {
 			for t = ch.Script.Trig_list; t != nil; t = t.Next {
-				if (t.Trigger_type&(1<<3)) == 0 || t.Depth != 0 {
+				if !IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<3) || t.Depth != 0 {
 					continue
 				}
 				if t.Arglist == nil || *t.Arglist == 0 {
-					mudlog(NRM, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: Speech Trigger #%d has no text argument!"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(t.Nr)))).Vnum)
+					mudlog(NRM, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: Speech Trigger #%d has no text argument!"), trig_index[t.Nr].Vnum)
 					continue
 				}
 				if t.Narg != 0 && word_check(str, t.Arglist) != 0 || t.Narg == 0 && is_substring(t.Arglist, str) != 0 {
@@ -363,13 +363,13 @@ func act_mtrigger(ch *char_data, str *byte, actor *char_data, victim *char_data,
 		t   *trig_data
 		buf [2048]byte
 	)
-	if ch.Script != nil && (ch.Script.Types&(1<<4)) != 0 && !AFF_FLAGGED(ch, AFF_CHARM) && actor != ch {
+	if ch.Script != nil && IS_SET(bitvector_t(int32(ch.Script.Types)), 1<<4) && !AFF_FLAGGED(ch, AFF_CHARM) && actor != ch {
 		for t = ch.Script.Trig_list; t != nil; t = t.Next {
-			if (t.Trigger_type&(1<<4)) == 0 || t.Depth != 0 {
+			if !IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<4) || t.Depth != 0 {
 				continue
 			}
 			if t.Arglist == nil || *t.Arglist == 0 {
-				mudlog(NRM, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: Act Trigger #%d has no text argument!"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(t.Nr)))).Vnum)
+				mudlog(NRM, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: Act Trigger #%d has no text argument!"), trig_index[t.Nr].Vnum)
 				continue
 			}
 			if t.Narg != 0 && word_check(str, t.Arglist) != 0 || t.Narg == 0 && is_substring(t.Arglist, str) != 0 {
@@ -433,11 +433,11 @@ func fight_mtrigger(ch *char_data) {
 		t     *trig_data
 		buf   [2048]byte
 	)
-	if ch.Script == nil || (ch.Script.Types&(1<<10)) == 0 || ch.Fighting == nil || AFF_FLAGGED(ch, AFF_CHARM) {
+	if ch.Script == nil || !IS_SET(bitvector_t(int32(ch.Script.Types)), 1<<10) || ch.Fighting == nil || AFF_FLAGGED(ch, AFF_CHARM) {
 		return
 	}
 	for t = ch.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<10)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<10) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 			actor = ch.Fighting
 			if actor != nil {
 				for {
@@ -461,11 +461,11 @@ func hitprcnt_mtrigger(ch *char_data) {
 		t     *trig_data
 		buf   [2048]byte
 	)
-	if ch.Script == nil || (ch.Script.Types&(1<<11)) == 0 || ch.Fighting == nil || AFF_FLAGGED(ch, AFF_CHARM) {
+	if ch.Script == nil || !IS_SET(bitvector_t(int32(ch.Script.Types)), 1<<11) || ch.Fighting == nil || AFF_FLAGGED(ch, AFF_CHARM) {
 		return
 	}
 	for t = ch.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<11)) != 0 && t.Depth == 0 && ch.Max_hit != 0 && ch.Hit <= (ch.Max_hit/100)*int64(t.Narg) {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<11) && t.Depth == 0 && ch.Max_hit != 0 && ch.Hit <= (ch.Max_hit/100)*int64(t.Narg) {
 			actor = ch.Fighting
 			for {
 				stdio.Sprintf(&buf[0], "%c%d", UID_CHAR, actor.Id)
@@ -485,11 +485,11 @@ func receive_mtrigger(ch *char_data, actor *char_data, obj *obj_data) int {
 		buf     [2048]byte
 		ret_val int
 	)
-	if ch.Script == nil || (ch.Script.Types&(1<<9)) == 0 || AFF_FLAGGED(ch, AFF_CHARM) {
+	if ch.Script == nil || !IS_SET(bitvector_t(int32(ch.Script.Types)), 1<<9) || AFF_FLAGGED(ch, AFF_CHARM) {
 		return 1
 	}
 	for t = ch.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<9)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<9) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 			for {
 				stdio.Sprintf(&buf[0], "%c%d", UID_CHAR, actor.Id)
 				add_var(&t.Var_list, libc.CString("actor"), &buf[0], 0)
@@ -519,11 +519,11 @@ func death_mtrigger(ch *char_data, actor *char_data) int {
 		t   *trig_data
 		buf [2048]byte
 	)
-	if ch.Script == nil || (ch.Script.Types&(1<<5)) == 0 || AFF_FLAGGED(ch, AFF_CHARM) {
+	if ch.Script == nil || !IS_SET(bitvector_t(int32(ch.Script.Types)), 1<<5) || AFF_FLAGGED(ch, AFF_CHARM) {
 		return 1
 	}
 	for t = ch.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<5)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<5) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 			if actor != nil {
 				for {
 					stdio.Sprintf(&buf[0], "%c%d", UID_CHAR, actor.Id)
@@ -543,18 +543,18 @@ func load_mtrigger(ch *char_data) {
 		t      *trig_data
 		result int = 0
 	)
-	if ch.Script == nil || (ch.Script.Types&(1<<13)) == 0 {
+	if ch.Script == nil || !IS_SET(bitvector_t(int32(ch.Script.Types)), 1<<13) {
 		return
 	}
 	for t = ch.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<13)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<13) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 			result = script_driver(unsafe.Pointer(&ch), t, MOB_TRIGGER, TRIG_NEW)
 			break
 		}
 	}
 	if result == int(-9999999) {
 		if ch.Nr != mob_rnum(-1) {
-			free_proto_script(unsafe.Pointer((*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(ch.Nr)))), MOB_TRIGGER)
+			free_proto_script(unsafe.Pointer(&mob_proto[ch.Nr]), MOB_TRIGGER)
 		}
 	}
 }
@@ -566,11 +566,11 @@ func cast_mtrigger(actor *char_data, ch *char_data, spellnum int) int {
 	if ch == nil {
 		return 1
 	}
-	if ch.Script == nil || (ch.Script.Types&(1<<15)) == 0 || AFF_FLAGGED(ch, AFF_CHARM) {
+	if ch.Script == nil || !IS_SET(bitvector_t(int32(ch.Script.Types)), 1<<15) || AFF_FLAGGED(ch, AFF_CHARM) {
 		return 1
 	}
 	for t = ch.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<15)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<15) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 			for {
 				stdio.Sprintf(&buf[0], "%c%d", UID_CHAR, actor.Id)
 				add_var(&t.Var_list, libc.CString("actor"), &buf[0], 0)
@@ -595,12 +595,12 @@ func leave_mtrigger(actor *char_data, dir int) int {
 	if valid_dg_target(actor, 1<<0) == 0 {
 		return 1
 	}
-	for ch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(actor.In_room)))).People; ch != nil; ch = ch.Next_in_room {
-		if ch.Script == nil || (ch.Script.Types&(1<<16)) == 0 || !AWAKE(ch) || ch.Fighting != nil || ch == actor || AFF_FLAGGED(ch, AFF_CHARM) {
+	for ch = world[actor.In_room].People; ch != nil; ch = ch.Next_in_room {
+		if ch.Script == nil || !IS_SET(bitvector_t(int32(ch.Script.Types)), 1<<16) || !AWAKE(ch) || ch.Fighting != nil || ch == actor || AFF_FLAGGED(ch, AFF_CHARM) {
 			continue
 		}
 		for t = ch.Script.Trig_list; t != nil; t = t.Next {
-			if (t.Trigger_type&(1<<16)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+			if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<16) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 				if dir >= 0 && dir < NUM_OF_DIRS {
 					add_var(&t.Var_list, libc.CString("direction"), dirs[dir], 0)
 				} else {
@@ -625,12 +625,12 @@ func door_mtrigger(actor *char_data, subcmd int, dir int) int {
 		ch  *char_data
 		buf [2048]byte
 	)
-	for ch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(actor.In_room)))).People; ch != nil; ch = ch.Next_in_room {
-		if ch.Script == nil || (ch.Script.Types&(1<<17)) == 0 || !AWAKE(ch) || ch.Fighting != nil || ch == actor || AFF_FLAGGED(ch, AFF_CHARM) {
+	for ch = world[actor.In_room].People; ch != nil; ch = ch.Next_in_room {
+		if ch.Script == nil || !IS_SET(bitvector_t(int32(ch.Script.Types)), 1<<17) || !AWAKE(ch) || ch.Fighting != nil || ch == actor || AFF_FLAGGED(ch, AFF_CHARM) {
 			continue
 		}
 		for t = ch.Script.Trig_list; t != nil; t = t.Next {
-			if (t.Trigger_type&(1<<17)) != 0 && CAN_SEE(ch, actor) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+			if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<17) && CAN_SEE(ch, actor) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 				add_var(&t.Var_list, libc.CString("cmd"), cmd_door[subcmd], 0)
 				if dir >= 0 && dir < NUM_OF_DIRS {
 					add_var(&t.Var_list, libc.CString("direction"), dirs[dir], 0)
@@ -655,11 +655,11 @@ func time_mtrigger(ch *char_data) {
 		t   *trig_data
 		buf [2048]byte
 	)
-	if ch.Script == nil || (ch.Script.Types&(1<<19)) == 0 || AFF_FLAGGED(ch, AFF_CHARM) {
+	if ch.Script == nil || !IS_SET(bitvector_t(int32(ch.Script.Types)), 1<<19) || AFF_FLAGGED(ch, AFF_CHARM) {
 		return
 	}
 	for t = ch.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<19)) != 0 && t.Depth == 0 && time_info.Hours == t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<19) && t.Depth == 0 && time_info.Hours == t.Narg {
 			stdio.Sprintf(&buf[0], "%d", time_info.Hours)
 			add_var(&t.Var_list, libc.CString("time"), &buf[0], 0)
 			script_driver(unsafe.Pointer(&ch), t, MOB_TRIGGER, TRIG_NEW)
@@ -669,11 +669,11 @@ func time_mtrigger(ch *char_data) {
 }
 func random_otrigger(obj *obj_data) {
 	var t *trig_data
-	if obj.Script == nil || (obj.Script.Types&(1<<1)) == 0 {
+	if obj.Script == nil || !IS_SET(bitvector_t(int32(obj.Script.Types)), 1<<1) {
 		return
 	}
 	for t = obj.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<1)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<1) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 			script_driver(unsafe.Pointer(&obj), t, OBJ_TRIGGER, TRIG_NEW)
 			break
 		}
@@ -681,11 +681,11 @@ func random_otrigger(obj *obj_data) {
 }
 func timer_otrigger(obj *obj_data) {
 	var t *trig_data
-	if obj.Script == nil || (obj.Script.Types&(1<<5)) == 0 {
+	if obj.Script == nil || !IS_SET(bitvector_t(int32(obj.Script.Types)), 1<<5) {
 		return
 	}
 	for t = obj.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<5)) != 0 && t.Depth == 0 {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<5) && t.Depth == 0 {
 			script_driver(unsafe.Pointer(&obj), t, OBJ_TRIGGER, TRIG_NEW)
 		}
 	}
@@ -697,11 +697,11 @@ func get_otrigger(obj *obj_data, actor *char_data) int {
 		buf     [2048]byte
 		ret_val int
 	)
-	if obj.Script == nil || (obj.Script.Types&(1<<6)) == 0 {
+	if obj.Script == nil || !IS_SET(bitvector_t(int32(obj.Script.Types)), 1<<6) {
 		return 1
 	}
 	for t = obj.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<6)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<6) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 			for {
 				stdio.Sprintf(&buf[0], "%c%d", UID_CHAR, actor.Id)
 				add_var(&t.Var_list, libc.CString("actor"), &buf[0], 0)
@@ -724,16 +724,16 @@ func cmd_otrig(obj *obj_data, actor *char_data, cmd *byte, argument *byte, type_
 		t   *trig_data
 		buf [2048]byte
 	)
-	if obj != nil && (obj.Script != nil && (obj.Script.Types&(1<<2)) != 0) {
+	if obj != nil && (obj.Script != nil && IS_SET(bitvector_t(int32(obj.Script.Types)), 1<<2)) {
 		for t = obj.Script.Trig_list; t != nil; t = t.Next {
-			if (t.Trigger_type&(1<<2)) == 0 || t.Depth != 0 {
+			if !IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<2) || t.Depth != 0 {
 				continue
 			}
-			if (t.Narg&type_) != 0 && (t.Arglist == nil || *t.Arglist == 0) {
-				mudlog(NRM, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: O-Command Trigger #%d has no text argument!"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(t.Nr)))).Vnum)
+			if IS_SET(bitvector_t(int32(t.Narg)), bitvector_t(int32(type_))) && (t.Arglist == nil || *t.Arglist == 0) {
+				mudlog(NRM, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: O-Command Trigger #%d has no text argument!"), trig_index[t.Nr].Vnum)
 				continue
 			}
-			if (t.Narg&type_) != 0 && (*t.Arglist == '*' || libc.StrNCaseCmp(t.Arglist, cmd, libc.StrLen(t.Arglist)) == 0) {
+			if IS_SET(bitvector_t(int32(t.Narg)), bitvector_t(int32(type_))) && (*t.Arglist == '*' || libc.StrNCaseCmp(t.Arglist, cmd, libc.StrLen(t.Arglist)) == 0) {
 				for {
 					stdio.Sprintf(&buf[0], "%c%d", UID_CHAR, actor.Id)
 					add_var(&t.Var_list, libc.CString("actor"), &buf[0], 0)
@@ -773,7 +773,7 @@ func command_otrigger(actor *char_data, cmd *byte, argument *byte) int {
 			return 1
 		}
 	}
-	for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(actor.In_room)))).Contents; obj != nil; obj = obj.Next_content {
+	for obj = world[actor.In_room].Contents; obj != nil; obj = obj.Next_content {
 		if cmd_otrig(obj, actor, cmd, argument, 1<<2) != 0 && !OBJ_FLAGGED(obj, ITEM_FORGED) {
 			return 1
 		}
@@ -786,11 +786,11 @@ func wear_otrigger(obj *obj_data, actor *char_data, where int) int {
 		buf     [2048]byte
 		ret_val int
 	)
-	if obj.Script == nil || (obj.Script.Types&(1<<9)) == 0 {
+	if obj.Script == nil || !IS_SET(bitvector_t(int32(obj.Script.Types)), 1<<9) {
 		return 1
 	}
 	for t = obj.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<9)) != 0 && t.Depth == 0 {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<9) && t.Depth == 0 {
 			for {
 				stdio.Sprintf(&buf[0], "%c%d", UID_CHAR, actor.Id)
 				add_var(&t.Var_list, libc.CString("actor"), &buf[0], 0)
@@ -814,14 +814,14 @@ func remove_otrigger(obj *obj_data, actor *char_data) int {
 		buf     [2048]byte
 		ret_val int
 	)
-	if obj.Script == nil || (obj.Script.Types&(1<<11)) == 0 {
+	if obj.Script == nil || !IS_SET(bitvector_t(int32(obj.Script.Types)), 1<<11) {
 		return 1
 	}
 	if valid_dg_target(actor, 0) == 0 {
 		return 1
 	}
 	for t = obj.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<11)) != 0 && t.Depth == 0 {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<11) && t.Depth == 0 {
 			for {
 				stdio.Sprintf(&buf[0], "%c%d", UID_CHAR, actor.Id)
 				add_var(&t.Var_list, libc.CString("actor"), &buf[0], 0)
@@ -845,11 +845,11 @@ func drop_otrigger(obj *obj_data, actor *char_data) int {
 		buf     [2048]byte
 		ret_val int
 	)
-	if obj.Script == nil || (obj.Script.Types&(1<<7)) == 0 {
+	if obj.Script == nil || !IS_SET(bitvector_t(int32(obj.Script.Types)), 1<<7) {
 		return 1
 	}
 	for t = obj.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<7)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<7) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 			for {
 				stdio.Sprintf(&buf[0], "%c%d", UID_CHAR, actor.Id)
 				add_var(&t.Var_list, libc.CString("actor"), &buf[0], 0)
@@ -873,11 +873,11 @@ func give_otrigger(obj *obj_data, actor *char_data, victim *char_data) int {
 		buf     [2048]byte
 		ret_val int
 	)
-	if obj.Script == nil || (obj.Script.Types&(1<<8)) == 0 {
+	if obj.Script == nil || !IS_SET(bitvector_t(int32(obj.Script.Types)), 1<<8) {
 		return 1
 	}
 	for t = obj.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<8)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<8) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 			for {
 				stdio.Sprintf(&buf[0], "%c%d", UID_CHAR, actor.Id)
 				add_var(&t.Var_list, libc.CString("actor"), &buf[0], 0)
@@ -907,18 +907,18 @@ func load_otrigger(obj *obj_data) {
 		t      *trig_data
 		result int = 0
 	)
-	if obj.Script == nil || (obj.Script.Types&(1<<13)) == 0 {
+	if obj.Script == nil || !IS_SET(bitvector_t(int32(obj.Script.Types)), 1<<13) {
 		return
 	}
 	for t = obj.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<13)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<13) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 			result = script_driver(unsafe.Pointer(&obj), t, OBJ_TRIGGER, TRIG_NEW)
 			break
 		}
 	}
 	if result == int(-9999999) {
 		if obj.Item_number != obj_vnum(-1) {
-			free_proto_script(unsafe.Pointer((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(obj.Item_number)))), OBJ_TRIGGER)
+			free_proto_script(unsafe.Pointer(&obj_proto[obj.Item_number]), OBJ_TRIGGER)
 		}
 	}
 }
@@ -930,11 +930,11 @@ func cast_otrigger(actor *char_data, obj *obj_data, spellnum int) int {
 	if obj == nil {
 		return 1
 	}
-	if obj.Script == nil || (obj.Script.Types&(1<<15)) == 0 {
+	if obj.Script == nil || !IS_SET(bitvector_t(int32(obj.Script.Types)), 1<<15) {
 		return 1
 	}
 	for t = obj.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<15)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<15) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 			for {
 				stdio.Sprintf(&buf[0], "%c%d", UID_CHAR, actor.Id)
 				add_var(&t.Var_list, libc.CString("actor"), &buf[0], 0)
@@ -964,11 +964,11 @@ func leave_otrigger(room *room_data, actor *char_data, dir int) int {
 	}
 	for obj = room.Contents; obj != nil; obj = obj_next {
 		obj_next = obj.Next_content
-		if obj.Script == nil || (obj.Script.Types&(1<<16)) == 0 {
+		if obj.Script == nil || !IS_SET(bitvector_t(int32(obj.Script.Types)), 1<<16) {
 			continue
 		}
 		for t = obj.Script.Trig_list; t != nil; t = t.Next {
-			if (t.Trigger_type&(1<<16)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+			if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<16) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 				if dir >= 0 && dir < NUM_OF_DIRS {
 					add_var(&t.Var_list, libc.CString("direction"), dirs[dir], 0)
 				} else {
@@ -996,11 +996,11 @@ func consume_otrigger(obj *obj_data, actor *char_data, cmd int) int {
 		buf     [2048]byte
 		ret_val int
 	)
-	if obj.Script == nil || (obj.Script.Types&(1<<18)) == 0 {
+	if obj.Script == nil || !IS_SET(bitvector_t(int32(obj.Script.Types)), 1<<18) {
 		return 1
 	}
 	for t = obj.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<18)) != 0 && t.Depth == 0 {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<18) && t.Depth == 0 {
 			for {
 				stdio.Sprintf(&buf[0], "%c%d", UID_CHAR, actor.Id)
 				add_var(&t.Var_list, libc.CString("actor"), &buf[0], 0)
@@ -1031,11 +1031,11 @@ func time_otrigger(obj *obj_data) {
 		t   *trig_data
 		buf [2048]byte
 	)
-	if obj.Script == nil || (obj.Script.Types&(1<<19)) == 0 {
+	if obj.Script == nil || !IS_SET(bitvector_t(int32(obj.Script.Types)), 1<<19) {
 		return
 	}
 	for t = obj.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<19)) != 0 && t.Depth == 0 && time_info.Hours == t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<19) && t.Depth == 0 && time_info.Hours == t.Narg {
 			stdio.Sprintf(&buf[0], "%d", time_info.Hours)
 			add_var(&t.Var_list, libc.CString("time"), &buf[0], 0)
 			script_driver(unsafe.Pointer(&obj), t, OBJ_TRIGGER, TRIG_NEW)
@@ -1045,11 +1045,11 @@ func time_otrigger(obj *obj_data) {
 }
 func reset_wtrigger(room *room_data) {
 	var t *trig_data
-	if room.Script == nil || (room.Script.Types&(1<<5)) == 0 {
+	if room.Script == nil || !IS_SET(bitvector_t(int32(room.Script.Types)), 1<<5) {
 		return
 	}
 	for t = room.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<5)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<5) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 			script_driver(unsafe.Pointer(&room), t, WLD_TRIGGER, TRIG_NEW)
 			break
 		}
@@ -1057,11 +1057,11 @@ func reset_wtrigger(room *room_data) {
 }
 func random_wtrigger(room *room_data) {
 	var t *trig_data
-	if room.Script == nil || (room.Script.Types&(1<<1)) == 0 {
+	if room.Script == nil || !IS_SET(bitvector_t(int32(room.Script.Types)), 1<<1) {
 		return
 	}
 	for t = room.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<1)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<1) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 			script_driver(unsafe.Pointer(&room), t, WLD_TRIGGER, TRIG_NEW)
 			break
 		}
@@ -1072,11 +1072,11 @@ func enter_wtrigger(room *room_data, actor *char_data, dir int) int {
 		t   *trig_data
 		buf [2048]byte
 	)
-	if room.Script == nil || (room.Script.Types&(1<<6)) == 0 {
+	if room.Script == nil || !IS_SET(bitvector_t(int32(room.Script.Types)), 1<<6) {
 		return 1
 	}
 	for t = room.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<6)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<6) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 			if dir >= 0 && dir < NUM_OF_DIRS {
 				add_var(&t.Var_list, libc.CString("direction"), dirs[rev_dir[dir]], 0)
 			} else {
@@ -1100,19 +1100,19 @@ func command_wtrigger(actor *char_data, cmd *byte, argument *byte) int {
 		t    *trig_data
 		buf  [2048]byte
 	)
-	if actor == nil || (((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(actor.In_room)))).Script == nil || (((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(actor.In_room)))).Script.Types&(1<<2)) == 0) {
+	if actor == nil || (world[actor.In_room].Script == nil || !IS_SET(bitvector_t(int32(world[actor.In_room].Script.Types)), 1<<2)) {
 		return 0
 	}
 	if valid_dg_target(actor, 0) == 0 {
 		return 0
 	}
-	room = (*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(actor.In_room)))
+	room = &world[actor.In_room]
 	for t = room.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<2)) == 0 || t.Depth != 0 {
+		if !IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<2) || t.Depth != 0 {
 			continue
 		}
 		if t.Arglist == nil || *t.Arglist == 0 {
-			mudlog(NRM, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: W-Command Trigger #%d has no text argument!"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(t.Nr)))).Vnum)
+			mudlog(NRM, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: W-Command Trigger #%d has no text argument!"), trig_index[t.Nr].Vnum)
 			continue
 		}
 		if *t.Arglist == '*' || libc.StrNCaseCmp(t.Arglist, cmd, libc.StrLen(t.Arglist)) == 0 {
@@ -1138,16 +1138,16 @@ func speech_wtrigger(actor *char_data, str *byte) {
 		t    *trig_data
 		buf  [2048]byte
 	)
-	if actor == nil || (((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(actor.In_room)))).Script == nil || (((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(actor.In_room)))).Script.Types&(1<<3)) == 0) {
+	if actor == nil || (world[actor.In_room].Script == nil || !IS_SET(bitvector_t(int32(world[actor.In_room].Script.Types)), 1<<3)) {
 		return
 	}
-	room = (*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(actor.In_room)))
+	room = &world[actor.In_room]
 	for t = room.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<3)) == 0 || t.Depth != 0 {
+		if !IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<3) || t.Depth != 0 {
 			continue
 		}
 		if t.Arglist == nil || *t.Arglist == 0 {
-			mudlog(NRM, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: W-Speech Trigger #%d has no text argument!"), (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(t.Nr)))).Vnum)
+			mudlog(NRM, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: W-Speech Trigger #%d has no text argument!"), trig_index[t.Nr].Vnum)
 			continue
 		}
 		if *t.Arglist == '*' || t.Narg != 0 && word_check(str, t.Arglist) != 0 || t.Narg == 0 && is_substring(t.Arglist, str) != 0 {
@@ -1171,12 +1171,12 @@ func drop_wtrigger(obj *obj_data, actor *char_data) int {
 		buf     [2048]byte
 		ret_val int
 	)
-	if actor == nil || (((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(actor.In_room)))).Script == nil || (((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(actor.In_room)))).Script.Types&(1<<7)) == 0) {
+	if actor == nil || (world[actor.In_room].Script == nil || !IS_SET(bitvector_t(int32(world[actor.In_room].Script.Types)), 1<<7)) {
 		return 1
 	}
-	room = (*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(actor.In_room)))
+	room = &world[actor.In_room]
 	for t = room.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<7)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<7) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 			for {
 				stdio.Sprintf(&buf[0], "%c%d", UID_CHAR, actor.Id)
 				add_var(&t.Var_list, libc.CString("actor"), &buf[0], 0)
@@ -1208,12 +1208,12 @@ func cast_wtrigger(actor *char_data, vict *char_data, obj *obj_data, spellnum in
 		t    *trig_data
 		buf  [2048]byte
 	)
-	if actor == nil || (((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(actor.In_room)))).Script == nil || (((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(actor.In_room)))).Script.Types&(1<<15)) == 0) {
+	if actor == nil || (world[actor.In_room].Script == nil || !IS_SET(bitvector_t(int32(world[actor.In_room].Script.Types)), 1<<15)) {
 		return 1
 	}
-	room = (*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(actor.In_room)))
+	room = &world[actor.In_room]
 	for t = room.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<15)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<15) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 			for {
 				stdio.Sprintf(&buf[0], "%c%d", UID_CHAR, actor.Id)
 				add_var(&t.Var_list, libc.CString("actor"), &buf[0], 0)
@@ -1255,11 +1255,11 @@ func leave_wtrigger(room *room_data, actor *char_data, dir int) int {
 	if valid_dg_target(actor, 1<<0) == 0 {
 		return 1
 	}
-	if room.Script == nil || (room.Script.Types&(1<<16)) == 0 {
+	if room.Script == nil || !IS_SET(bitvector_t(int32(room.Script.Types)), 1<<16) {
 		return 1
 	}
 	for t = room.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<16)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<16) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 			if dir >= 0 && dir < NUM_OF_DIRS {
 				add_var(&t.Var_list, libc.CString("direction"), dirs[dir], 0)
 			} else {
@@ -1283,12 +1283,12 @@ func door_wtrigger(actor *char_data, subcmd int, dir int) int {
 		t    *trig_data
 		buf  [2048]byte
 	)
-	if actor == nil || (((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(actor.In_room)))).Script == nil || (((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(actor.In_room)))).Script.Types&(1<<17)) == 0) {
+	if actor == nil || (world[actor.In_room].Script == nil || !IS_SET(bitvector_t(int32(world[actor.In_room].Script.Types)), 1<<17)) {
 		return 1
 	}
-	room = (*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(actor.In_room)))
+	room = &world[actor.In_room]
 	for t = room.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<17)) != 0 && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<17) && t.Depth == 0 && rand_number(1, 100) <= t.Narg {
 			add_var(&t.Var_list, libc.CString("cmd"), cmd_door[subcmd], 0)
 			if dir >= 0 && dir < NUM_OF_DIRS {
 				add_var(&t.Var_list, libc.CString("direction"), dirs[dir], 0)
@@ -1312,11 +1312,11 @@ func time_wtrigger(room *room_data) {
 		t   *trig_data
 		buf [2048]byte
 	)
-	if room.Script == nil || (room.Script.Types&(1<<19)) == 0 {
+	if room.Script == nil || !IS_SET(bitvector_t(int32(room.Script.Types)), 1<<19) {
 		return
 	}
 	for t = room.Script.Trig_list; t != nil; t = t.Next {
-		if (t.Trigger_type&(1<<19)) != 0 && t.Depth == 0 && time_info.Hours == t.Narg {
+		if IS_SET(bitvector_t(int32(t.Trigger_type)), 1<<19) && t.Depth == 0 && time_info.Hours == t.Narg {
 			stdio.Sprintf(&buf[0], "%d", time_info.Hours)
 			add_var(&t.Var_list, libc.CString("time"), &buf[0], 0)
 			script_driver(unsafe.Pointer(&room), t, WLD_TRIGGER, TRIG_NEW)

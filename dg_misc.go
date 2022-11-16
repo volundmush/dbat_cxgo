@@ -39,28 +39,28 @@ func do_dg_cast(gohere unsafe.Pointer, sc *script_data, trig *trig_data, type_ i
 	libc.StrCpy(&orig_cmd[0], cmd)
 	s = libc.StrTok(cmd, libc.CString("'"))
 	if s == nil {
-		script_log(libc.CString("Trigger: %s, VNum %d. dg_cast needs spell name."), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
+		script_log(libc.CString("Trigger: %s, VNum %d. dg_cast needs spell name."), trig.Name, trig_index[trig.Nr].Vnum)
 		return
 	}
 	s = libc.StrTok(nil, libc.CString("'"))
 	if s == nil {
-		script_log(libc.CString("Trigger: %s, VNum %d. dg_cast needs spell name in `'s."), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
+		script_log(libc.CString("Trigger: %s, VNum %d. dg_cast needs spell name in `'s."), trig.Name, trig_index[trig.Nr].Vnum)
 		return
 	}
 	t = libc.StrTok(nil, libc.CString("\x00"))
 	spellnum = find_skill_num(s, 1<<0)
-	if spellnum < 1 || (spellnum >= SKILL_TABLE_SIZE || (skill_type(spellnum)&(1<<0)) == 0) {
-		script_log(libc.CString("Trigger: %s, VNum %d. dg_cast: invalid spell name (%s)"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, &orig_cmd[0])
+	if spellnum < 1 || (spellnum >= SKILL_TABLE_SIZE || !IS_SET(bitvector_t(int32(skill_type(spellnum))), 1<<0)) {
+		script_log(libc.CString("Trigger: %s, VNum %d. dg_cast: invalid spell name (%s)"), trig.Name, trig_index[trig.Nr].Vnum, &orig_cmd[0])
 		return
 	}
 	if t != nil {
 		one_argument(libc.StrCpy(&buf2[0], t), t)
 		skip_spaces(&t)
 	}
-	if (spell_info[spellnum].Targets & (1 << 0)) != 0 {
+	if IS_SET(bitvector_t(int32(spell_info[spellnum].Targets)), 1<<0) {
 		target = TRUE
 	} else if t != nil && *t != 0 {
-		if target == 0 && ((spell_info[spellnum].Targets&(1<<1)) != 0 || (spell_info[spellnum].Targets&(1<<2)) != 0) {
+		if target == 0 && (IS_SET(bitvector_t(int32(spell_info[spellnum].Targets)), 1<<1) || IS_SET(bitvector_t(int32(spell_info[spellnum].Targets)), 1<<2)) {
 			if (func() *char_data {
 				tch = get_char(t)
 				return tch
@@ -68,7 +68,7 @@ func do_dg_cast(gohere unsafe.Pointer, sc *script_data, trig *trig_data, type_ i
 				target = TRUE
 			}
 		}
-		if target == 0 && ((spell_info[spellnum].Targets&(1<<7)) != 0 || (spell_info[spellnum].Targets&(1<<10)) != 0 || (spell_info[spellnum].Targets&(1<<8)) != 0 || (spell_info[spellnum].Targets&(1<<9)) != 0) {
+		if target == 0 && (IS_SET(bitvector_t(int32(spell_info[spellnum].Targets)), 1<<7) || IS_SET(bitvector_t(int32(spell_info[spellnum].Targets)), 1<<10) || IS_SET(bitvector_t(int32(spell_info[spellnum].Targets)), 1<<8) || IS_SET(bitvector_t(int32(spell_info[spellnum].Targets)), 1<<9)) {
 			if (func() *obj_data {
 				tobj = get_obj(t)
 				return tobj
@@ -77,12 +77,12 @@ func do_dg_cast(gohere unsafe.Pointer, sc *script_data, trig *trig_data, type_ i
 			}
 		}
 		if target == 0 {
-			script_log(libc.CString("Trigger: %s, VNum %d. dg_cast: target not found (%s)"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, &orig_cmd[0])
+			script_log(libc.CString("Trigger: %s, VNum %d. dg_cast: target not found (%s)"), trig.Name, trig_index[trig.Nr].Vnum, &orig_cmd[0])
 			return
 		}
 	}
-	if (spell_info[spellnum].Routines & (1 << 5)) != 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. dg_cast: group spells not permitted (%s)"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, &orig_cmd[0])
+	if IS_SET(bitvector_t(int32(spell_info[spellnum].Routines)), 1<<5) {
+		script_log(libc.CString("Trigger: %s, VNum %d. dg_cast: group spells not permitted (%s)"), trig.Name, trig_index[trig.Nr].Vnum, &orig_cmd[0])
 		return
 	}
 	if caster == nil {
@@ -123,14 +123,14 @@ func do_dg_affect(gohere unsafe.Pointer, sc *script_data, trig *trig_data, scrip
 	half_chop(cmd, &charname[0], cmd)
 	half_chop(cmd, &property[0], cmd)
 	half_chop(cmd, &value_p[0], &duration_p[0])
-	if charname == nil || charname[0] == 0 || property == nil || property[0] == 0 || value_p == nil || value_p[0] == 0 || duration_p == nil || duration_p[0] == 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. dg_affect usage: <target> <property> <value> <duration>"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
+	if charname[0] == 0 || property[0] == 0 || value_p[0] == 0 || duration_p[0] == 0 {
+		script_log(libc.CString("Trigger: %s, VNum %d. dg_affect usage: <target> <property> <value> <duration>"), trig.Name, trig_index[trig.Nr].Vnum)
 		return
 	}
 	value = libc.Atoi(libc.GoString(&value_p[0]))
 	duration = libc.Atoi(libc.GoString(&duration_p[0]))
 	if duration <= 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. dg_affect: need positive duration!"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
+		script_log(libc.CString("Trigger: %s, VNum %d. dg_affect: need positive duration!"), trig.Name, trig_index[trig.Nr].Vnum)
 		script_log(libc.CString("Line was: dg_affect %s %s %s %s (%d)"), &charname[0], &property[0], &value_p[0], &duration_p[0], duration)
 		return
 	}
@@ -153,12 +153,12 @@ func do_dg_affect(gohere unsafe.Pointer, sc *script_data, trig *trig_data, scrip
 		}
 	}
 	if type_ == 0 {
-		script_log(libc.CString("Trigger: %s, VNum %d. dg_affect: unknown property '%s'!"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum, &property[0])
+		script_log(libc.CString("Trigger: %s, VNum %d. dg_affect: unknown property '%s'!"), trig.Name, trig_index[trig.Nr].Vnum, &property[0])
 		return
 	}
 	ch = get_char(&charname[0])
 	if ch == nil {
-		script_log(libc.CString("Trigger: %s, VNum %d. dg_affect: cannot locate target!"), trig.Name, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Vnum)
+		script_log(libc.CString("Trigger: %s, VNum %d. dg_affect: cannot locate target!"), trig.Name, trig_index[trig.Nr].Vnum)
 		return
 	}
 	if libc.StrCaseCmp(&value_p[0], libc.CString("off")) == 0 {
@@ -205,7 +205,7 @@ func valid_dg_target(ch *char_data, bitvector int) int {
 		return TRUE
 	} else if ch.Admlevel < ADMLVL_IMMORT {
 		return TRUE
-	} else if (bitvector&(1<<0)) == 0 && (ch.Admlevel >= 2 && !PRF_FLAGGED(ch, PRF_TEST)) {
+	} else if !IS_SET(bitvector_t(int32(bitvector)), 1<<0) && (ch.Admlevel >= 2 && !PRF_FLAGGED(ch, PRF_TEST)) {
 		return FALSE
 	} else if !PRF_FLAGGED(ch, PRF_NOHASSLE) || PRF_FLAGGED(ch, PRF_TEST) {
 		return TRUE
@@ -220,19 +220,19 @@ func script_damage(vict *char_data, dam int) {
 	}
 	if vict.Suppressed <= 0 {
 		vict.Hit -= int64(dam)
-		vict.Hit = int64(MIN(int(vict.Hit), int(vict.Max_hit)))
+		vict.Hit = MIN(vict.Hit, vict.Max_hit)
 	} else if vict.Suppressed-int64(dam) >= 0 {
 		vict.Suppressed -= int64(dam)
 	} else {
 		dam -= int(vict.Suppressed)
 		vict.Hit -= int64(dam)
-		vict.Hit = int64(MIN(int(vict.Hit), int(vict.Max_hit)))
+		vict.Hit = MIN(vict.Hit, vict.Max_hit)
 	}
 	update_pos(vict)
 	send_char_pos(vict, dam)
 	if int(vict.Position) == POS_DEAD {
 		if !IS_NPC(vict) {
-			mudlog(BRF, 0, TRUE, libc.CString("%s killed by script at %s"), GET_NAME(vict), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Name)
+			mudlog(BRF, 0, TRUE, libc.CString("%s killed by script at %s"), GET_NAME(vict), world[vict.In_room].Name)
 		}
 		die(vict, nil)
 	}

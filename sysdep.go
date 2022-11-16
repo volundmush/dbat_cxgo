@@ -32,4 +32,5 @@ type shop_rnum = vnum
 type trig_rnum = vnum
 type guild_rnum = vnum
 type bitvector_t = uint32
-type SpecialFunc = func(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int
+type CommandFunc func(ch *char_data, argument *byte, cmd int, subcmd int)
+type SpecialFunc func(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int

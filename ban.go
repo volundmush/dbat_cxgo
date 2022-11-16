@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
 	"os"
@@ -28,7 +29,7 @@ func load_banned() {
 		fl = stdio.FOpen(LIB_ETC, "r")
 		return fl
 	}()) == nil {
-		if libc.Errno != ENOENT {
+		if libc.Errno != 2 {
 			basic_mud_log(libc.CString("SYSERR: Unable to open banfile '%s': %s"), LIB_ETC, libc.StrError(libc.Errno))
 		} else {
 			basic_mud_log(libc.CString("   Ban file '%s' doesn't exist."), LIB_ETC)
@@ -67,7 +68,7 @@ func isbanned(hostname *byte) int {
 	}
 	for banned_node = ban_list; banned_node != nil; banned_node = banned_node.Next {
 		if libc.StrStr(hostname, &banned_node.Site[0]) != nil {
-			i = MAX(i, banned_node.Type)
+			i = int(MAX(int64(i), int64(banned_node.Type)))
 		}
 	}
 	return i
@@ -84,13 +85,16 @@ func write_ban_list() {
 		fl = stdio.FOpen(LIB_ETC, "w")
 		return fl
 	}()) == nil {
-		perror(libc.CString("SYSERR: Unable to open 'etc/badsites' for writing"))
+		fmt.Println(libc.CString("SYSERR: Unable to open 'etc/badsites' for writing"))
 		return
 	}
 	_write_one_node(fl, ban_list)
 	fl.Close()
 	return
 }
+
+const BAN_LIST_FORMAT = "%-40.40s  %-8.8s  %-10.10s  %-16.16s\r\n"
+
 func do_ban(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var (
 		flag     [2048]byte
@@ -149,7 +153,7 @@ func do_ban(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	ban_node.Next = ban_list
 	ban_list = ban_node
-	mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("%s has banned %s for %s players."), GET_NAME(ch), &site[0], ban_types[ban_node.Type])
+	mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("%s has banned %s for %s players."), GET_NAME(ch), &site[0], ban_types[ban_node.Type])
 	send_to_char(ch, libc.CString("Site banned.\r\n"))
 	write_ban_list()
 }
@@ -189,7 +193,7 @@ func do_unban(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 	}
 	send_to_char(ch, libc.CString("Site unbanned.\r\n"))
-	mudlog(NRM, MAX(ADMLVL_GOD, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("%s removed the %s-player ban on %s."), GET_NAME(ch), ban_types[ban_node.Type], &ban_node.Site[0])
+	mudlog(NRM, int(MAX(ADMLVL_GOD, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("%s removed the %s-player ban on %s."), GET_NAME(ch), ban_types[ban_node.Type], &ban_node.Site[0])
 	libc.Free(unsafe.Pointer(ban_node))
 	write_ban_list()
 }
@@ -219,7 +223,7 @@ func Valid_Name(newname *byte) int {
 	if wovels == 0 {
 		return 0
 	}
-	if invalid_list == nil || num_invalid < 1 {
+	if invalid_list[0] == nil || num_invalid < 1 {
 		return 1
 	}
 	strlcpy(&tempname[0], newname, uint64(2048))
@@ -249,7 +253,7 @@ func Read_Invalid_List() {
 		fp = stdio.FOpen(LIB_MISC, "r")
 		return fp
 	}()) == nil {
-		perror(libc.CString("SYSERR: Unable to open 'misc/xnames' for reading"))
+		fmt.Println(libc.CString("SYSERR: Unable to open 'misc/xnames' for reading"))
 		return
 	}
 	num_invalid = 0

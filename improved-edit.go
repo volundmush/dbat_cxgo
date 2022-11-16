@@ -147,7 +147,7 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 				return
 			}
 		}
-		line_low = MAX(1, line_low)
+		line_low = int(MAX(1, int64(line_low)))
 		switch stdio.Sscanf(func() *byte {
 			if indent != 0 {
 				return (*byte)(unsafe.Add(unsafe.Pointer(string_), 1))
@@ -167,7 +167,7 @@ func parse_edit_action(command int, string_ *byte, d *descriptor_data) {
 				return
 			}
 		}
-		line_low = MAX(1, line_low)
+		line_low = int(MAX(1, int64(line_low)))
 		if format_text(d.Str, flags, d, uint(d.Max_str), line_low, line_high) != 0 {
 			write_to_output(d, libc.CString("Text formatted with%s indent.\r\n"), func() string {
 				if indent != 0 {
@@ -602,7 +602,7 @@ func format_text(ptr_string **byte, mode int, d *descriptor_data, maxlen uint, l
 			return *p
 		}())
 	}
-	if (mode & (1 << 0)) != 0 {
+	if IS_SET(bitvector_t(int32(mode)), 1<<0) {
 		libc.StrCat(&formatted[0], libc.CString("   "))
 		line_chars = 3
 	} else {
@@ -716,7 +716,7 @@ func format_text(ptr_string **byte, mode int, d *descriptor_data, maxlen uint, l
 	if libc.StrLen(&formatted[0])+1 > int(maxlen) {
 		formatted[maxlen-1] = '\x00'
 	}
-	*ptr_string = (*byte)(libc.Realloc(unsafe.Pointer(*ptr_string), MIN(int(maxlen), libc.StrLen(&formatted[0])+1)*int(unsafe.Sizeof(int8(0)))))
+	*ptr_string = (*byte)(libc.Realloc(unsafe.Pointer(*ptr_string), int(MIN(int64(maxlen), int64(libc.StrLen(&formatted[0])+1))*int64(unsafe.Sizeof(int8(0))))))
 	libc.StrCpy(*ptr_string, &formatted[0])
 	return 1
 }

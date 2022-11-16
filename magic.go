@@ -97,11 +97,11 @@ func mag_newsaves(ch *char_data, victim *char_data, spellnum int, level int, cas
 		dc    int
 		total int
 	)
-	if (spell_info[spellnum].Save_flags & (1 << 0)) != 0 {
+	if IS_SET(bitvector_t(int32(spell_info[spellnum].Save_flags)), 1<<0) {
 		stype = SAVING_FORTITUDE
-	} else if (spell_info[spellnum].Save_flags & (1 << 1)) != 0 {
+	} else if IS_SET(bitvector_t(int32(spell_info[spellnum].Save_flags)), 1<<1) {
 		stype = SAVING_REFLEX
-	} else if (spell_info[spellnum].Save_flags & (1 << 2)) != 0 {
+	} else if IS_SET(bitvector_t(int32(spell_info[spellnum].Save_flags)), 1<<2) {
 		stype = SAVING_WILL
 	} else {
 		return FALSE
@@ -109,10 +109,10 @@ func mag_newsaves(ch *char_data, victim *char_data, spellnum int, level int, cas
 	total = GET_SAVE(victim, stype) + rand_number(1, 20)
 	dc = spell_info[spellnum].Spell_level + level + int(ability_mod_value(cast_stat))
 	if ch != nil {
-		if ((ch.School_feats[CFEAT_SPELL_FOCUS]) & spell_info[spellnum].School) != 0 {
+		if IS_SET(bitvector_t(int32(ch.School_feats[CFEAT_SPELL_FOCUS])), bitvector_t(int32(spell_info[spellnum].School))) {
 			dc++
 		}
-		if ((ch.School_feats[CFEAT_GREATER_SPELL_FOCUS]) & spell_info[spellnum].School) != 0 {
+		if IS_SET(bitvector_t(int32(ch.School_feats[CFEAT_GREATER_SPELL_FOCUS])), bitvector_t(int32(spell_info[spellnum].School))) {
 			dc++
 		}
 	}
@@ -129,17 +129,17 @@ func mag_damage(level int, ch *char_data, victim *char_data, spellnum int) int {
 	}
 	switch spellnum {
 	case SPELL_MAGIC_MISSILE:
-		dam = dice(MIN(level, 5), 4) + MIN(level, 5)
+		dam = dice(int(MIN(int64(level), 5)), 4) + int(MIN(int64(level), 5))
 	case SPELL_CHILL_TOUCH:
 		dam = dice(1, 6)
 	case SPELL_BURNING_HANDS:
-		dam = dice(MIN(level, 5), 4)
+		dam = dice(int(MIN(int64(level), 5)), 4)
 	case SPELL_SHOCKING_GRASP:
-		dam = dice(1, 8) + MIN(level, 20)
+		dam = dice(1, 8) + int(MIN(int64(level), 20))
 	case SPELL_LIGHTNING_BOLT:
 		fallthrough
 	case SPELL_FIREBALL:
-		dam = dice(MIN(level, 10), 6)
+		dam = dice(int(MIN(int64(level), 10)), 6)
 	case SPELL_COLOR_SPRAY:
 		dam = dice(1, 1) + 1
 	case SPELL_DISPEL_EVIL:
@@ -161,7 +161,7 @@ func mag_damage(level int, ch *char_data, victim *char_data, spellnum int) int {
 			return 0
 		}
 	case SPELL_CALL_LIGHTNING:
-		dam = dice(MIN(level, 10), 10)
+		dam = dice(int(MIN(int64(level), 10)), 10)
 	case SPELL_HARM:
 		dam = dice(8, 8) + 8
 	case SPELL_ENERGY_DRAIN:
@@ -173,9 +173,9 @@ func mag_damage(level int, ch *char_data, victim *char_data, spellnum int) int {
 	case SPELL_EARTHQUAKE:
 		dam = dice(2, 8) + level
 	case SPELL_INFLICT_LIGHT:
-		dam = dice(1, 8) + MIN(level, 5)
+		dam = dice(1, 8) + int(MIN(int64(level), 5))
 	case SPELL_INFLICT_CRITIC:
-		dam = dice(4, 8) + MIN(level, 20)
+		dam = dice(4, 8) + int(MIN(int64(level), 20))
 	case SPELL_ACID_SPLASH:
 		fallthrough
 	case SPELL_RAY_OF_FROST:
@@ -192,14 +192,14 @@ func mag_damage(level int, ch *char_data, victim *char_data, spellnum int) int {
 	case SPELL_SHOUT:
 		dam = dice(5, 6)
 	case SPELL_CONE_OF_COLD:
-		dam = dice(MIN(level, 15), 6)
+		dam = dice(int(MIN(int64(level), 15)), 6)
 	}
 	if mag_newsaves(ch, victim, spellnum, level, int(ch.Aff_abils.Intel)) != 0 {
-		if (spell_info[spellnum].Save_flags & (1 << 4)) != 0 {
+		if IS_SET(bitvector_t(int32(spell_info[spellnum].Save_flags)), 1<<4) {
 			send_to_char(victim, libc.CString("@g*save*@y You avoid any injury.@n\r\n"))
 			dam = 0
-		} else if (spell_info[spellnum].Save_flags & (1 << 3)) != 0 {
-			if (spell_info[spellnum].Save_flags&(1<<1)) != 0 && int(victim.Feats[FEAT_EVASION]) != 0 && ((victim.Equipment[WEAR_BODY]) == nil || int((victim.Equipment[WEAR_BODY]).Type_flag) != ITEM_ARMOR || ((victim.Equipment[WEAR_BODY]).Value[VAL_ARMOR_SKILL]) < ARMOR_TYPE_MEDIUM) {
+		} else if IS_SET(bitvector_t(int32(spell_info[spellnum].Save_flags)), 1<<3) {
+			if IS_SET(bitvector_t(int32(spell_info[spellnum].Save_flags)), 1<<1) && int(victim.Feats[FEAT_EVASION]) != 0 && ((victim.Equipment[WEAR_BODY]) == nil || int((victim.Equipment[WEAR_BODY]).Type_flag) != ITEM_ARMOR || ((victim.Equipment[WEAR_BODY]).Value[VAL_ARMOR_SKILL]) < ARMOR_TYPE_MEDIUM) {
 				send_to_char(victim, libc.CString("@g*save*@y Your evasion ability allows you to avoid ANY injury.@n\r\n"))
 				dam = 0
 			} else {
@@ -207,7 +207,7 @@ func mag_damage(level int, ch *char_data, victim *char_data, spellnum int) int {
 				dam /= 2
 			}
 		}
-	} else if (spell_info[spellnum].Save_flags&(1<<3)) != 0 && (spell_info[spellnum].Save_flags&(1<<1)) != 0 && int(victim.Feats[FEAT_IMPROVED_EVASION]) != 0 && ((victim.Equipment[WEAR_BODY]) == nil || int((victim.Equipment[WEAR_BODY]).Type_flag) != ITEM_ARMOR || ((victim.Equipment[WEAR_BODY]).Value[VAL_ARMOR_SKILL]) < ARMOR_TYPE_MEDIUM) {
+	} else if IS_SET(bitvector_t(int32(spell_info[spellnum].Save_flags)), 1<<3) && IS_SET(bitvector_t(int32(spell_info[spellnum].Save_flags)), 1<<1) && int(victim.Feats[FEAT_IMPROVED_EVASION]) != 0 && ((victim.Equipment[WEAR_BODY]) == nil || int((victim.Equipment[WEAR_BODY]).Type_flag) != ITEM_ARMOR || ((victim.Equipment[WEAR_BODY]).Value[VAL_ARMOR_SKILL]) < ARMOR_TYPE_MEDIUM) {
 		send_to_char(victim, libc.CString("@r*save*@y Your improved evasion prevents full damage even on failure.@n\r\n"))
 		dam /= 2
 	}
@@ -232,7 +232,7 @@ func mag_affects(level int, ch *char_data, victim *char_data, spellnum int) {
 		af[i].Location = APPLY_NONE
 	}
 	if mag_newsaves(ch, victim, spellnum, level, int(ch.Aff_abils.Intel)) != 0 {
-		if (spell_info[spellnum].Save_flags & ((1 << 5) | 1<<4)) != 0 {
+		if IS_SET(bitvector_t(int32(spell_info[spellnum].Save_flags)), (1<<5)|1<<4) {
 			send_to_char(victim, libc.CString("@g*save*@y You avoid any lasting affects.@n\r\n"))
 			return
 		}
@@ -483,7 +483,7 @@ func mag_masses(level int, ch *char_data, spellnum int) {
 		tch      *char_data
 		tch_next *char_data
 	)
-	for tch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; tch != nil; tch = tch_next {
+	for tch = world[ch.In_room].People; tch != nil; tch = tch_next {
 		tch_next = tch.Next_in_room
 		if tch == ch {
 			continue
@@ -513,7 +513,7 @@ func mag_areas(level int, ch *char_data, spellnum int) {
 	if to_room != nil {
 		act(to_room, FALSE, ch, nil, nil, TO_ROOM)
 	}
-	for tch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; tch != nil; tch = next_tch {
+	for tch = world[ch.In_room].People; tch != nil; tch = next_tch {
 		next_tch = tch.Next_in_room
 		if tch == ch {
 			continue
@@ -686,7 +686,7 @@ func mag_summons(level int, ch *char_data, obj *obj_data, spellnum int, arg *byt
 					mob_num = *(*mob_vnum)(unsafe.Add(unsafe.Pointer(monsum_list[i][j]), unsafe.Sizeof(mob_vnum(0))*uintptr(count)))
 					if real_mobile(mob_num) == mob_rnum(-1) {
 						mob_num = -1
-					} else if is_name(&buf2[0], (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(real_mobile(mob_num))))).Name) == 0 {
+					} else if is_name(&buf2[0], mob_proto[real_mobile(mob_num)].Name) == 0 {
 						mob_num = -1
 					} else {
 						break
@@ -745,7 +745,7 @@ func mag_summons(level int, ch *char_data, obj *obj_data, spellnum int, arg *byt
 		}
 		mob.Carry_weight = 0
 		mob.Carry_items = 0
-		mob.Affected_by[int(AFF_CHARM/32)] |= 1 << (int(AFF_CHARM % 32))
+		SET_BIT_AR(mob.Affected_by[:], AFF_CHARM)
 		act(mag_summon_msgs[msg], FALSE, ch, nil, unsafe.Pointer(mob), TO_ROOM)
 		load_mtrigger(mob)
 		add_follower(mob, ch)
@@ -773,10 +773,10 @@ func mag_points(level int, ch *char_data, victim *char_data, spellnum int) {
 	}
 	switch spellnum {
 	case SPELL_CURE_LIGHT:
-		healing = dice(1, 8) + MIN(level, 5)
+		healing = dice(1, 8) + int(MIN(int64(level), 5))
 		send_to_char(victim, libc.CString("You feel better.\r\n"))
 	case SPELL_CURE_CRITIC:
-		healing = dice(4, 8) + MIN(level, 20)
+		healing = dice(4, 8) + int(MIN(int64(level), 20))
 		send_to_char(victim, libc.CString("You feel a lot better!\r\n"))
 	case SPELL_HEAL:
 		healing = dice(3, 8) + 100
@@ -797,7 +797,7 @@ func mag_points(level int, ch *char_data, victim *char_data, spellnum int) {
 		if AFF_FLAGGED(victim, AFF_KNOCKED) {
 			act(libc.CString("@W$n@W is no longer senseless, and wakes up.@n"), FALSE, ch, nil, nil, TO_ROOM)
 			send_to_char(victim, libc.CString("You are no longer knocked out, and wake up!@n\r\n"))
-			victim.Affected_by[int(AFF_KNOCKED/32)] &= ^(1 << (int(AFF_KNOCKED % 32)))
+			REMOVE_BIT_AR(victim.Affected_by[:], AFF_KNOCKED)
 			victim.Position = POS_SITTING
 		}
 		if victim.Suppression > 0 && victim.Hit > ((victim.Max_hit/100)*victim.Suppression) {
@@ -810,7 +810,7 @@ func mag_points(level int, ch *char_data, victim *char_data, spellnum int) {
 		if AFF_FLAGGED(victim, AFF_BURNED) {
 			send_to_char(victim, libc.CString("Your burns are healed now.\r\n"))
 			act(libc.CString("$n@w's burns are now healed.@n"), TRUE, victim, nil, nil, TO_ROOM)
-			victim.Affected_by[int(AFF_BURNED/32)] &= ^(1 << (int(AFF_BURNED % 32)))
+			REMOVE_BIT_AR(victim.Affected_by[:], AFF_BURNED)
 		}
 		if (victim.Limb_condition[0]) <= 0 {
 			send_to_char(victim, libc.CString("Your right arm grows back!\r\n"))
@@ -842,7 +842,7 @@ func mag_points(level int, ch *char_data, victim *char_data, spellnum int) {
 		}
 	case ART_WHOLENESS_OF_BODY:
 		healing = int(victim.Max_hit - victim.Hit)
-		healing = MAX(0, healing)
+		healing = int(MAX(0, int64(healing)))
 		tmp = int(ch.Ki / 2)
 		if tmp > healing {
 			tmp = healing
@@ -906,12 +906,12 @@ func mag_alter_objs(level int, ch *char_data, obj *obj_data, spellnum int) {
 	switch spellnum {
 	case SPELL_BLESS:
 		if !OBJ_FLAGGED(obj, ITEM_BLESS) && obj.Weight <= int64(level*5) {
-			obj.Extra_flags[int(ITEM_BLESS/32)] |= bitvector_t(int32(1 << (int(ITEM_BLESS % 32))))
+			SET_BIT_AR(obj.Extra_flags[:], ITEM_BLESS)
 			to_char = libc.CString("$p glows briefly.")
 		}
 	case SPELL_INVISIBLE:
 		if !OBJ_FLAGGED(obj, bitvector_t(int32(int(ITEM_NOINVIS|ITEM_INVISIBLE)))) {
-			obj.Extra_flags[int(ITEM_INVISIBLE/32)] |= bitvector_t(int32(1 << (int(ITEM_INVISIBLE % 32))))
+			SET_BIT_AR(obj.Extra_flags[:], ITEM_INVISIBLE)
 			to_char = libc.CString("$p vanishes.")
 		}
 	case SPELL_POISON:
@@ -921,7 +921,7 @@ func mag_alter_objs(level int, ch *char_data, obj *obj_data, spellnum int) {
 		}
 	case SPELL_REMOVE_CURSE:
 		if OBJ_FLAGGED(obj, ITEM_NODROP) {
-			obj.Extra_flags[int(ITEM_NODROP/32)] &= bitvector_t(int32(^(1 << (int(ITEM_NODROP % 32)))))
+			REMOVE_BIT_AR(obj.Extra_flags[:], ITEM_NODROP)
 			if int(obj.Type_flag) == ITEM_WEAPON {
 				(obj.Value[VAL_WEAPON_DAMSIZE])++
 			}
@@ -1014,8 +1014,8 @@ func affect_update_violence() {
 				if int(af.Type) == ART_QUIVERING_PALM {
 					maxdam = int(i.Hit + 8)
 					dam = int(i.Max_hit * 3 / 4)
-					dam = MIN(dam, maxdam)
-					dam = MAX(0, dam)
+					dam = int(MIN(int64(dam), int64(maxdam)))
+					dam = int(MAX(0, int64(dam)))
 					basic_mud_log(libc.CString("Creeping death strike doing %d dam"), dam)
 				}
 				affectv_remove(i, af)
@@ -1042,7 +1042,7 @@ func mag_affectsv(level int, ch *char_data, victim *char_data, spellnum int) {
 		af[i].Location = APPLY_NONE
 	}
 	if mag_newsaves(ch, victim, spellnum, level, int(ch.Aff_abils.Intel)) != 0 {
-		if (spell_info[spellnum].Save_flags & ((1 << 5) | 1<<4)) != 0 {
+		if IS_SET(bitvector_t(int32(spell_info[spellnum].Save_flags)), (1<<5)|1<<4) {
 			send_to_char(victim, libc.CString("@g*save*@y You avoid any lasting affects.@n\r\n"))
 			return
 		}
@@ -1071,7 +1071,7 @@ func mag_affectsv(level int, ch *char_data, victim *char_data, spellnum int) {
 			send_to_char(ch, libc.CString("They are too high level for that.\r\n"))
 			return
 		}
-		af[0].Duration = int16(MAX(6, 20-level))
+		af[0].Duration = int16(MAX(6, int64(20-level)))
 		af[0].Bitvector = AFF_CDEATH
 		accum_duration = FALSE != 0
 		to_vict = libc.CString("You feel death closing in.")

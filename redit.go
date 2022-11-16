@@ -22,18 +22,8 @@ func do_oasis_redit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("You can not remodel this room.\r\n"))
 		return
 	}
-	var capsule *obj_data = nil
-	var next_obj *obj_data = nil
-	var remove *obj_data = nil
 	var remodeling int = FALSE
-	for capsule = ch.Carrying; capsule != nil; capsule = next_obj {
-		next_obj = capsule.Next_content
-		if remove != nil {
-			continue
-		} else if GET_OBJ_VNUM(capsule) == 0x4A96 {
-			remove = capsule
-		}
-	}
+	var remove *obj_data = find_obj_in_list_vnum(ch.Carrying, 0x4A96)
 	if remove == nil && ch.Admlevel < 1 {
 		send_to_char(ch, libc.CString("You do not have a R.A.D. Remodeling Assistance Droid.\r\n"))
 		return
@@ -44,11 +34,7 @@ func do_oasis_redit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		remodeling = TRUE
 	}
 	if buf1[0] == 0 || ch.Admlevel < 1 {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			number = int((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number)
-		} else {
-			number = -1
-		}
+		number = int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room)))
 	} else if !unicode.IsDigit(rune(buf1[0])) {
 		if libc.StrCaseCmp(libc.CString("save"), &buf1[0]) != 0 {
 			send_to_char(ch, libc.CString("Yikes!  Stop that, someone will get hurt!\r\n"))
@@ -102,14 +88,14 @@ func do_oasis_redit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if can_edit_zone(ch, d.Olc.Zone_num) == 0 && remodeling == FALSE {
-		send_cannot_edit(ch, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number)
+		send_cannot_edit(ch, zone_table[d.Olc.Zone_num].Number)
 		libc.Free(unsafe.Pointer(d.Olc))
 		d.Olc = nil
 		return
 	}
 	if save != 0 {
-		send_to_char(ch, libc.CString("Saving all rooms in zone %d.\r\n"), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number)
-		mudlog(CMP, MAX(ADMLVL_BUILDER, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("OLC: %s saves room info for zone %d."), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number)
+		send_to_char(ch, libc.CString("Saving all rooms in zone %d.\r\n"), zone_table[d.Olc.Zone_num].Number)
+		mudlog(CMP, int(MAX(ADMLVL_BUILDER, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("OLC: %s saves room info for zone %d."), GET_NAME(ch), zone_table[d.Olc.Zone_num].Number)
 		save_rooms(d.Olc.Zone_num)
 		libc.Free(unsafe.Pointer(d.Olc))
 		d.Olc = nil
@@ -127,8 +113,8 @@ func do_oasis_redit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	redit_disp_menu(d)
 	d.Connected = CON_REDIT
 	act(libc.CString("$n starts using OLC."), TRUE, d.Character, nil, nil, TO_ROOM)
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
-	mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing zone %d allowed zone %d"), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number, ch.Player_specials.Olc_zone)
+	SET_BIT_AR(ch.Act[:], PLR_WRITING)
+	mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing zone %d allowed zone %d"), GET_NAME(ch), zone_table[d.Olc.Zone_num].Number, ch.Player_specials.Olc_zone)
 }
 func redit_setup_new(d *descriptor_data) {
 	d.Olc.Room = new(room_data)
@@ -149,22 +135,22 @@ func redit_setup_existing(d *descriptor_data, real_num int) {
 		counter int
 	)
 	room = new(room_data)
-	*room = *(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_num)))
-	room.Name = str_udup((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_num)))).Name)
-	room.Description = str_udup((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_num)))).Description)
+	*room = world[real_num]
+	room.Name = str_udup(world[real_num].Name)
+	room.Description = str_udup(world[real_num].Description)
 	for counter = 0; counter < NUM_OF_DIRS; counter++ {
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_num)))).Dir_option[counter] != nil {
+		if world[real_num].Dir_option[counter] != nil {
 			room.Dir_option[counter] = new(room_direction_data)
-			*room.Dir_option[counter] = *(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_num)))).Dir_option[counter]
-			if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_num)))).Dir_option[counter].General_description != nil {
-				room.Dir_option[counter].General_description = libc.StrDup((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_num)))).Dir_option[counter].General_description)
+			*room.Dir_option[counter] = *world[real_num].Dir_option[counter]
+			if world[real_num].Dir_option[counter].General_description != nil {
+				room.Dir_option[counter].General_description = libc.StrDup(world[real_num].Dir_option[counter].General_description)
 			}
-			if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_num)))).Dir_option[counter].Keyword != nil {
-				room.Dir_option[counter].Keyword = libc.StrDup((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_num)))).Dir_option[counter].Keyword)
+			if world[real_num].Dir_option[counter].Keyword != nil {
+				room.Dir_option[counter].Keyword = libc.StrDup(world[real_num].Dir_option[counter].Keyword)
 			}
 		}
 	}
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_num)))).Ex_description != nil {
+	if world[real_num].Ex_description != nil {
 		var (
 			tdesc *extra_descr_data
 			temp  *extra_descr_data
@@ -172,7 +158,7 @@ func redit_setup_existing(d *descriptor_data, real_num int) {
 		)
 		temp = new(extra_descr_data)
 		room.Ex_description = temp
-		for tdesc = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_num)))).Ex_description; tdesc != nil; tdesc = tdesc.Next {
+		for tdesc = world[real_num].Ex_description; tdesc != nil; tdesc = tdesc.Next {
 			temp.Keyword = libc.StrDup(tdesc.Keyword)
 			temp.Description = libc.StrDup(tdesc.Description)
 			if tdesc.Next != nil {
@@ -211,11 +197,11 @@ func redit_save_internally(d *descriptor_data) {
 		basic_mud_log(libc.CString("SYSERR: redit_save_internally: Something failed! (%d)"), room_num)
 		return
 	}
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_num)))).Proto_script != nil && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_num)))).Proto_script != d.Olc.Script {
-		free_proto_script(unsafe.Pointer((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_num)))), WLD_TRIGGER)
+	if world[room_num].Proto_script != nil && world[room_num].Proto_script != d.Olc.Script {
+		free_proto_script(unsafe.Pointer(&world[room_num]), WLD_TRIGGER)
 	}
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_num)))).Proto_script = d.Olc.Script
-	assign_triggers(unsafe.Pointer((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_num)))), WLD_TRIGGER)
+	world[room_num].Proto_script = d.Olc.Script
+	assign_triggers(unsafe.Pointer(&world[room_num]), WLD_TRIGGER)
 	if new_room == 0 {
 		return
 	}
@@ -224,8 +210,8 @@ func redit_save_internally(d *descriptor_data) {
 			continue
 		}
 		if dsc.Connected == CON_ZEDIT {
-			for j = 0; int((*(*reset_com)(unsafe.Add(unsafe.Pointer(dsc.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(j)))).Command) != 'S'; j++ {
-				switch (*(*reset_com)(unsafe.Add(unsafe.Pointer(dsc.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(j)))).Command {
+			for j = 0; int(dsc.Olc.Zone.Cmd[j].Command) != 'S'; j++ {
+				switch dsc.Olc.Zone.Cmd[j].Command {
 				case 'O':
 					fallthrough
 				case 'M':
@@ -233,12 +219,12 @@ func redit_save_internally(d *descriptor_data) {
 				case 'T':
 					fallthrough
 				case 'V':
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer(dsc.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(j)))).Arg3 += vnum(libc.BoolToInt((*(*reset_com)(unsafe.Add(unsafe.Pointer(dsc.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(j)))).Arg3 >= vnum(room_num)))
+					dsc.Olc.Zone.Cmd[j].Arg3 += vnum(libc.BoolToInt(dsc.Olc.Zone.Cmd[j].Arg3 >= vnum(room_num)))
 				case 'D':
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer(dsc.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(j)))).Arg2 += vnum(libc.BoolToInt((*(*reset_com)(unsafe.Add(unsafe.Pointer(dsc.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(j)))).Arg2 >= vnum(room_num)))
+					dsc.Olc.Zone.Cmd[j].Arg2 += vnum(libc.BoolToInt(dsc.Olc.Zone.Cmd[j].Arg2 >= vnum(room_num)))
 					fallthrough
 				case 'R':
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer(dsc.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(j)))).Arg1 += vnum(libc.BoolToInt((*(*reset_com)(unsafe.Add(unsafe.Pointer(dsc.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(j)))).Arg1 >= vnum(room_num)))
+					dsc.Olc.Zone.Cmd[j].Arg1 += vnum(libc.BoolToInt(dsc.Olc.Zone.Cmd[j].Arg1 >= vnum(room_num)))
 				}
 			}
 		} else if dsc.Connected == CON_REDIT {
@@ -296,7 +282,7 @@ func redit_disp_exit_menu(d *descriptor_data) {
 	clear_screen(d)
 	write_to_output(d, libc.CString("@g1@n) Exit to     \t\t: @c%d\r\n@g2@n) Description \t\t:-\r\n@y%s\r\n@g3@n) Door name   \t\t: @y%s\r\n@g4@n) Key         \t\t: @c%d\r\n@g5@n) Door flags  \t\t: @c%s\r\n@g6@n) Purge exit.\r\n@g7@n) DC Lock\t\t: @c%d\r\n@g8@n) DC Hide     \t\t: @c%d\r\n@g9@n) DC Skill\t\t: @c%s\r\n@gA@n) DC Move\t\t: @c%d\r\n@gB@n) Skill Fail Save Type\t\t: @c%d\r\n@gC@n) DC Skill Save\t\t: @c%d\r\n@gD@n) Minor Fail Dest. Room\t: @c%d\r\n@gE@n) Major Fail Dest. Room\t: @c%d@n\r\nEnter choice, 0 to quit : "), func() room_vnum {
 		if (d.Olc.Room.Dir_option[d.Olc.Value]).To_room != room_rnum(-1) {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((d.Olc.Room.Dir_option[d.Olc.Value]).To_room)))).Number
+			return world[(d.Olc.Room.Dir_option[d.Olc.Value]).To_room].Number
 		}
 		return -1
 	}(), func() *byte {
@@ -400,64 +386,64 @@ func redit_disp_menu(d *descriptor_data) {
 	sprintbitarray(room.Room_flags[:], room_bits[:], RF_ARRAY_MAX, &buf1[0])
 	sprinttype(room.Sector_type, sector_types[:], &buf2[0], uint64(64936))
 	if d.Character.Admlevel > 0 {
-		write_to_output(d, libc.CString("-- Room number : [@c%d@n]  \tRoom zone: [@c%d@n]\r\n@g1@n) Name        : @y%s\r\n@g2@n) Description :\r\n@y%s@g3@n) Room flags  : @c%s\r\n@g4@n) Sector type : @c%s\r\n@g5@n) Exit north  : [@c%6d@n],  @gB@n) Exit northwest : [@c%6d@n]\r\n@g6@n) Exit east   : [@c%6d@n],  @gC@n) Exit northeast : [@c%6d@n]\r\n@g7@n) Exit south  : [@c%6d@n],  @gD@n) Exit southeast : [@c%6d@n]\r\n@g8@n) Exit west   : [@c%6d@n],  @gE@n) Exit southwest : [@c%6d@n]\r\n@g9@n) Exit up     : [@c%6d@n],  @gF@n) Exit in        : [@c%6d@n]\r\n@gA@n) Exit down   : [@c%6d@n],  @gG@n) Exit out       : [@c%6d@n]\r\n@gH@n) Extra descriptions menu\r\n@gW@n) Copy Room\r\n@gX@n) Delete Room\r\n@gS@n) Script      : @c%s\r\n@gZ@n) Wiznet      :\r\n@gQ@n) Quit\r\nEnter choice : "), d.Olc.Number, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number, room.Name, room.Description, &buf1[0], &buf2[0], func() room_vnum {
+		write_to_output(d, libc.CString("-- Room number : [@c%d@n]  \tRoom zone: [@c%d@n]\r\n@g1@n) Name        : @y%s\r\n@g2@n) Description :\r\n@y%s@g3@n) Room flags  : @c%s\r\n@g4@n) Sector type : @c%s\r\n@g5@n) Exit north  : [@c%6d@n],  @gB@n) Exit northwest : [@c%6d@n]\r\n@g6@n) Exit east   : [@c%6d@n],  @gC@n) Exit northeast : [@c%6d@n]\r\n@g7@n) Exit south  : [@c%6d@n],  @gD@n) Exit southeast : [@c%6d@n]\r\n@g8@n) Exit west   : [@c%6d@n],  @gE@n) Exit southwest : [@c%6d@n]\r\n@g9@n) Exit up     : [@c%6d@n],  @gF@n) Exit in        : [@c%6d@n]\r\n@gA@n) Exit down   : [@c%6d@n],  @gG@n) Exit out       : [@c%6d@n]\r\n@gH@n) Extra descriptions menu\r\n@gW@n) Copy Room\r\n@gX@n) Delete Room\r\n@gS@n) Script      : @c%s\r\n@gZ@n) Wiznet      :\r\n@gQ@n) Quit\r\nEnter choice : "), d.Olc.Number, zone_table[d.Olc.Zone_num].Number, room.Name, room.Description, &buf1[0], &buf2[0], func() room_vnum {
 			if room.Dir_option[NORTH] != nil && room.Dir_option[NORTH].To_room != room_rnum(-1) {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room.Dir_option[NORTH].To_room)))).Number
+				return world[room.Dir_option[NORTH].To_room].Number
 			}
 			return -1
 		}(), func() room_vnum {
 			if room.Dir_option[NORTHWEST] != nil && room.Dir_option[NORTHWEST].To_room != room_rnum(-1) {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room.Dir_option[NORTHWEST].To_room)))).Number
+				return world[room.Dir_option[NORTHWEST].To_room].Number
 			}
 			return -1
 		}(), func() room_vnum {
 			if room.Dir_option[EAST] != nil && room.Dir_option[EAST].To_room != room_rnum(-1) {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room.Dir_option[EAST].To_room)))).Number
+				return world[room.Dir_option[EAST].To_room].Number
 			}
 			return -1
 		}(), func() room_vnum {
 			if room.Dir_option[NORTHEAST] != nil && room.Dir_option[NORTHEAST].To_room != room_rnum(-1) {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room.Dir_option[NORTHEAST].To_room)))).Number
+				return world[room.Dir_option[NORTHEAST].To_room].Number
 			}
 			return -1
 		}(), func() room_vnum {
 			if room.Dir_option[SOUTH] != nil && room.Dir_option[SOUTH].To_room != room_rnum(-1) {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room.Dir_option[SOUTH].To_room)))).Number
+				return world[room.Dir_option[SOUTH].To_room].Number
 			}
 			return -1
 		}(), func() room_vnum {
 			if room.Dir_option[SOUTHEAST] != nil && room.Dir_option[SOUTHEAST].To_room != room_rnum(-1) {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room.Dir_option[SOUTHEAST].To_room)))).Number
+				return world[room.Dir_option[SOUTHEAST].To_room].Number
 			}
 			return -1
 		}(), func() room_vnum {
 			if room.Dir_option[WEST] != nil && room.Dir_option[WEST].To_room != room_rnum(-1) {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room.Dir_option[WEST].To_room)))).Number
+				return world[room.Dir_option[WEST].To_room].Number
 			}
 			return -1
 		}(), func() room_vnum {
 			if room.Dir_option[SOUTHWEST] != nil && room.Dir_option[SOUTHWEST].To_room != room_rnum(-1) {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room.Dir_option[SOUTHWEST].To_room)))).Number
+				return world[room.Dir_option[SOUTHWEST].To_room].Number
 			}
 			return -1
 		}(), func() room_vnum {
 			if room.Dir_option[UP] != nil && room.Dir_option[UP].To_room != room_rnum(-1) {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room.Dir_option[UP].To_room)))).Number
+				return world[room.Dir_option[UP].To_room].Number
 			}
 			return -1
 		}(), func() room_vnum {
 			if room.Dir_option[INDIR] != nil && room.Dir_option[INDIR].To_room != room_rnum(-1) {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room.Dir_option[INDIR].To_room)))).Number
+				return world[room.Dir_option[INDIR].To_room].Number
 			}
 			return -1
 		}(), func() room_vnum {
 			if room.Dir_option[DOWN] != nil && room.Dir_option[DOWN].To_room != room_rnum(-1) {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room.Dir_option[DOWN].To_room)))).Number
+				return world[room.Dir_option[DOWN].To_room].Number
 			}
 			return -1
 		}(), func() room_vnum {
 			if room.Dir_option[OUTDIR] != nil && room.Dir_option[OUTDIR].To_room != room_rnum(-1) {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room.Dir_option[OUTDIR].To_room)))).Number
+				return world[room.Dir_option[OUTDIR].To_room].Number
 			}
 			return -1
 		}(), func() string {
@@ -467,7 +453,7 @@ func redit_disp_menu(d *descriptor_data) {
 			return "Not Set."
 		}())
 	} else {
-		write_to_output(d, libc.CString("-- Room number : [@c%d@n]    Room zone: [@c%d@n]\r\n@g1@n) Location Designation (Room Name)        : @y%s\r\n@g2@n) Remodeling Routine (Room Description)   :\r\n@y%s@gH@n) Extra descriptions menu\r\n@gQ@n) Quit\r\nEnter choice : "), d.Olc.Number, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number, room.Name, room.Description)
+		write_to_output(d, libc.CString("-- Room number : [@c%d@n]    Room zone: [@c%d@n]\r\n@g1@n) Location Designation (Room Name)        : @y%s\r\n@g2@n) Remodeling Routine (Room Description)   :\r\n@y%s@gH@n) Extra descriptions menu\r\n@gQ@n) Quit\r\nEnter choice : "), d.Olc.Number, zone_table[d.Olc.Zone_num].Number, room.Name, room.Description)
 	}
 	d.Olc.Mode = REDIT_MAIN_MENU
 }
@@ -483,7 +469,7 @@ func redit_parse(d *descriptor_data, arg *byte) {
 			fallthrough
 		case 'Y':
 			redit_save_internally(d)
-			mudlog(CMP, MAX(ADMLVL_BUILDER, int(d.Character.Player_specials.Invis_level)), TRUE, libc.CString("OLC: %s edits room %d."), GET_NAME(d.Character), d.Olc.Number)
+			mudlog(CMP, int(MAX(ADMLVL_BUILDER, int64(d.Character.Player_specials.Invis_level))), TRUE, libc.CString("OLC: %s edits room %d."), GET_NAME(d.Character), d.Olc.Number)
 			if config_info.Operation.Auto_save_olc != 0 {
 				redit_save_to_disk(zone_vnum(real_zone_by_thing(d.Olc.Number)))
 				if d.Character.Admlevel < 1 {
@@ -729,7 +715,7 @@ func redit_parse(d *descriptor_data, arg *byte) {
 		} else if number == 0 {
 			break
 		} else {
-			d.Olc.Room.Room_flags[(number-1)/32] = bitvector_t(int32(int(d.Olc.Room.Room_flags[(number-1)/32]) ^ 1<<((number-1)%32)))
+			TOGGLE_BIT_AR(d.Olc.Room.Room_flags[:], bitvector_t(int32(number-1)))
 			redit_disp_flag_menu(d)
 		}
 		return

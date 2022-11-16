@@ -192,7 +192,7 @@ type command_info struct {
 	Command          *byte
 	Sort_as          *byte
 	Minimum_position int8
-	Command_pointer  func(ch *char_data, argument *byte, cmd int, subcmd int)
+	Command_pointer  CommandFunc
 	Minimum_level    int16
 	Minimum_admlevel int16
 	Subcmd           int
@@ -209,9 +209,1084 @@ const RECON = 1
 const USURP = 2
 const UNSWITCH = 3
 
-var disabled_first *DISABLED_DATA = nil
-var complete_cmd_info *command_info
-var cmd_info [537]command_info = [537]command_info{{Command: libc.CString("RESERVED"), Sort_as: libc.CString(""), Minimum_position: 0, Command_pointer: nil, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("north"), Sort_as: libc.CString("n"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NORTH}, {Command: libc.CString("east"), Sort_as: libc.CString("e"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_EAST}, {Command: libc.CString("south"), Sort_as: libc.CString("s"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SOUTH}, {Command: libc.CString("west"), Sort_as: libc.CString("w"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_WEST}, {Command: libc.CString("up"), Sort_as: libc.CString("u"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_UP}, {Command: libc.CString("down"), Sort_as: libc.CString("d"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_DOWN}, {Command: libc.CString("northwest"), Sort_as: libc.CString("northw"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NW}, {Command: libc.CString("nw"), Sort_as: libc.CString("nw"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NW}, {Command: libc.CString("northeast"), Sort_as: libc.CString("northe"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NE}, {Command: libc.CString("ne"), Sort_as: libc.CString("ne"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NE}, {Command: libc.CString("southeast"), Sort_as: libc.CString("southe"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SE}, {Command: libc.CString("se"), Sort_as: libc.CString("se"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SE}, {Command: libc.CString("southwest"), Sort_as: libc.CString("southw"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SW}, {Command: libc.CString("sw"), Sort_as: libc.CString("sw"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SW}, {Command: libc.CString("i"), Sort_as: libc.CString("i"), Minimum_position: POS_DEAD, Command_pointer: do_inventory, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("inside"), Sort_as: libc.CString("in"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_IN}, {Command: libc.CString("outside"), Sort_as: libc.CString("out"), Minimum_position: POS_RESTING, Command_pointer: do_move, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_OUT}, {Command: libc.CString("absorb"), Sort_as: libc.CString("absor"), Minimum_position: POS_STANDING, Command_pointer: do_absorb, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("at"), Sort_as: libc.CString("at"), Minimum_position: POS_DEAD, Command_pointer: do_at, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("adrenaline"), Sort_as: libc.CString("adrenalin"), Minimum_position: POS_DEAD, Command_pointer: do_adrenaline, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("advance"), Sort_as: libc.CString("adv"), Minimum_position: POS_DEAD, Command_pointer: do_advance, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: 0}, {Command: libc.CString("aedit"), Sort_as: libc.CString("aed"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: SCMD_OASIS_AEDIT}, {Command: libc.CString("alias"), Sort_as: libc.CString("ali"), Minimum_position: POS_DEAD, Command_pointer: do_alias, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("afk"), Sort_as: libc.CString("afk"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_AFK}, {Command: libc.CString("aid"), Sort_as: libc.CString("aid"), Minimum_position: POS_STANDING, Command_pointer: do_aid, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("amnesiac"), Sort_as: libc.CString("amnesia"), Minimum_position: POS_STANDING, Command_pointer: do_amnisiac, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("appraise"), Sort_as: libc.CString("apprais"), Minimum_position: POS_STANDING, Command_pointer: do_appraise, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("approve"), Sort_as: libc.CString("approve"), Minimum_position: POS_STANDING, Command_pointer: do_approve, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("arena"), Sort_as: libc.CString("aren"), Minimum_position: POS_RESTING, Command_pointer: do_arena, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("ashcloud"), Sort_as: libc.CString("ashclou"), Minimum_position: POS_RESTING, Command_pointer: do_ashcloud, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("assedit"), Sort_as: libc.CString("assed"), Minimum_position: POS_STANDING, Command_pointer: do_assedit, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("assist"), Sort_as: libc.CString("assis"), Minimum_position: POS_STANDING, Command_pointer: do_assist, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("astat"), Sort_as: libc.CString("ast"), Minimum_position: POS_DEAD, Command_pointer: do_astat, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("ask"), Sort_as: libc.CString("ask"), Minimum_position: POS_RESTING, Command_pointer: do_spec_comm, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_ASK}, {Command: libc.CString("attack"), Sort_as: libc.CString("attack"), Minimum_position: POS_FIGHTING, Command_pointer: do_attack, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("auction"), Sort_as: libc.CString("auctio"), Minimum_position: POS_RESTING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("augment"), Sort_as: libc.CString("augmen"), Minimum_position: POS_SITTING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("aura"), Sort_as: libc.CString("aura"), Minimum_position: POS_RESTING, Command_pointer: do_aura, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("autoexit"), Sort_as: libc.CString("autoex"), Minimum_position: POS_DEAD, Command_pointer: do_autoexit, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("autogold"), Sort_as: libc.CString("autogo"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_AUTOGOLD}, {Command: libc.CString("autoloot"), Sort_as: libc.CString("autolo"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_AUTOLOOT}, {Command: libc.CString("autosplit"), Sort_as: libc.CString("autosp"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_AUTOSPLIT}, {Command: libc.CString("bakuhatsuha"), Sort_as: libc.CString("baku"), Minimum_position: POS_FIGHTING, Command_pointer: do_baku, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("ban"), Sort_as: libc.CString("ban"), Minimum_position: POS_DEAD, Command_pointer: do_ban, Minimum_level: 0, Minimum_admlevel: ADMLVL_VICE, Subcmd: 0}, {Command: libc.CString("balance"), Sort_as: libc.CString("bal"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("balefire"), Sort_as: libc.CString("balef"), Minimum_position: POS_FIGHTING, Command_pointer: do_balefire, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("barrage"), Sort_as: libc.CString("barrage"), Minimum_position: POS_FIGHTING, Command_pointer: do_pbarrage, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("barrier"), Sort_as: libc.CString("barri"), Minimum_position: POS_FIGHTING, Command_pointer: do_barrier, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("bash"), Sort_as: libc.CString("bas"), Minimum_position: POS_FIGHTING, Command_pointer: do_bash, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("beam"), Sort_as: libc.CString("bea"), Minimum_position: POS_FIGHTING, Command_pointer: do_beam, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("bexchange"), Sort_as: libc.CString("bexchan"), Minimum_position: POS_RESTING, Command_pointer: do_rbanktrans, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("bid"), Sort_as: libc.CString("bi"), Minimum_position: POS_RESTING, Command_pointer: do_bid, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("bigbang"), Sort_as: libc.CString("bigban"), Minimum_position: POS_FIGHTING, Command_pointer: do_bigbang, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("bite"), Sort_as: libc.CString("bit"), Minimum_position: POS_FIGHTING, Command_pointer: do_bite, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("blessedhammer"), Sort_as: libc.CString("bham"), Minimum_position: POS_FIGHTING, Command_pointer: do_blessedhammer, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("block"), Sort_as: libc.CString("block"), Minimum_position: POS_FIGHTING, Command_pointer: do_block, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("book"), Sort_as: libc.CString("boo"), Minimum_position: POS_SLEEPING, Command_pointer: do_gen_ps, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_INFO}, {Command: libc.CString("break"), Sort_as: libc.CString("break"), Minimum_position: POS_STANDING, Command_pointer: do_break, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("brief"), Sort_as: libc.CString("br"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_BRIEF}, {Command: libc.CString("build"), Sort_as: libc.CString("bui"), Minimum_position: POS_SITTING, Command_pointer: do_assemble, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_BREW}, {Command: libc.CString("buildwalk"), Sort_as: libc.CString("buildwalk"), Minimum_position: POS_STANDING, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_BUILDWALK}, {Command: libc.CString("buy"), Sort_as: libc.CString("bu"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("bug"), Sort_as: libc.CString("bug"), Minimum_position: POS_DEAD, Command_pointer: do_gen_write, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_BUG}, {Command: libc.CString("cancel"), Sort_as: libc.CString("cance"), Minimum_position: POS_RESTING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("candy"), Sort_as: libc.CString("cand"), Minimum_position: POS_FIGHTING, Command_pointer: do_candy, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("carry"), Sort_as: libc.CString("carr"), Minimum_position: POS_STANDING, Command_pointer: do_carry, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("carve"), Sort_as: libc.CString("carv"), Minimum_position: POS_SLEEPING, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: SCMD_CARVE}, {Command: libc.CString("cedit"), Sort_as: libc.CString("cedit"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: SCMD_OASIS_CEDIT}, {Command: libc.CString("channel"), Sort_as: libc.CString("channe"), Minimum_position: POS_FIGHTING, Command_pointer: do_channel, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("charge"), Sort_as: libc.CString("char"), Minimum_position: POS_FIGHTING, Command_pointer: do_charge, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("check"), Sort_as: libc.CString("ch"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("checkload"), Sort_as: libc.CString("checkl"), Minimum_position: POS_DEAD, Command_pointer: do_checkloadstatus, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("chown"), Sort_as: libc.CString("cho"), Minimum_position: POS_DEAD, Command_pointer: do_chown, Minimum_level: 1, Minimum_admlevel: ADMLVL_IMPL, Subcmd: 0}, {Command: libc.CString("clan"), Sort_as: libc.CString("cla"), Minimum_position: POS_DEAD, Command_pointer: do_clan, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("clear"), Sort_as: libc.CString("cle"), Minimum_position: POS_DEAD, Command_pointer: do_gen_ps, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_CLEAR}, {Command: libc.CString("close"), Sort_as: libc.CString("cl"), Minimum_position: POS_SITTING, Command_pointer: do_gen_door, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_CLOSE}, {Command: libc.CString("closeeyes"), Sort_as: libc.CString("closeey"), Minimum_position: POS_RESTING, Command_pointer: do_eyec, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("cls"), Sort_as: libc.CString("cls"), Minimum_position: POS_DEAD, Command_pointer: do_gen_ps, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_CLEAR}, {Command: libc.CString("clsolc"), Sort_as: libc.CString("clsolc"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: SCMD_CLS}, {Command: libc.CString("consider"), Sort_as: libc.CString("con"), Minimum_position: POS_RESTING, Command_pointer: do_consider, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("color"), Sort_as: libc.CString("col"), Minimum_position: POS_DEAD, Command_pointer: do_color, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("combine"), Sort_as: libc.CString("comb"), Minimum_position: POS_RESTING, Command_pointer: do_combine, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("compare"), Sort_as: libc.CString("comp"), Minimum_position: POS_RESTING, Command_pointer: do_compare, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("commands"), Sort_as: libc.CString("com"), Minimum_position: POS_DEAD, Command_pointer: do_commands, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_COMMANDS}, {Command: libc.CString("commune"), Sort_as: libc.CString("comm"), Minimum_position: POS_DEAD, Command_pointer: do_commune, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("compact"), Sort_as: libc.CString("compact"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_COMPACT}, {Command: libc.CString("cook"), Sort_as: libc.CString("coo"), Minimum_position: POS_RESTING, Command_pointer: do_cook, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("copyover"), Sort_as: libc.CString("copyover"), Minimum_position: POS_DEAD, Command_pointer: do_copyover, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("create"), Sort_as: libc.CString("crea"), Minimum_position: POS_STANDING, Command_pointer: do_form, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("credits"), Sort_as: libc.CString("cred"), Minimum_position: POS_DEAD, Command_pointer: do_gen_ps, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_CREDITS}, {Command: libc.CString("crusher"), Sort_as: libc.CString("crushe"), Minimum_position: POS_FIGHTING, Command_pointer: do_crusher, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("date"), Sort_as: libc.CString("da"), Minimum_position: POS_DEAD, Command_pointer: do_date, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_DATE}, {Command: libc.CString("darkness"), Sort_as: libc.CString("darknes"), Minimum_position: POS_FIGHTING, Command_pointer: do_ddslash, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("dc"), Sort_as: libc.CString("dc"), Minimum_position: POS_DEAD, Command_pointer: do_dc, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("deathball"), Sort_as: libc.CString("deathbal"), Minimum_position: POS_FIGHTING, Command_pointer: do_deathball, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("deathbeam"), Sort_as: libc.CString("deathbea"), Minimum_position: POS_FIGHTING, Command_pointer: do_deathbeam, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("decapitate"), Sort_as: libc.CString("decapit"), Minimum_position: POS_STANDING, Command_pointer: do_spoil, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("defend"), Sort_as: libc.CString("defen"), Minimum_position: POS_STANDING, Command_pointer: do_defend, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("deploy"), Sort_as: libc.CString("deplo"), Minimum_position: POS_STANDING, Command_pointer: do_deploy, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("dualbeam"), Sort_as: libc.CString("dualbea"), Minimum_position: POS_FIGHTING, Command_pointer: do_dualbeam, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("deposit"), Sort_as: libc.CString("depo"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("diagnose"), Sort_as: libc.CString("diagnos"), Minimum_position: POS_RESTING, Command_pointer: do_diagnose, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("dimizu"), Sort_as: libc.CString("dimizu"), Minimum_position: POS_STANDING, Command_pointer: do_dimizu, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("disable"), Sort_as: libc.CString("disa"), Minimum_position: POS_DEAD, Command_pointer: do_disable, Minimum_level: 0, Minimum_admlevel: ADMLVL_VICE, Subcmd: 0}, {Command: libc.CString("disguise"), Sort_as: libc.CString("disguis"), Minimum_position: POS_DEAD, Command_pointer: do_disguise, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("dig"), Sort_as: libc.CString("dig"), Minimum_position: POS_DEAD, Command_pointer: do_bury, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("display"), Sort_as: libc.CString("disp"), Minimum_position: POS_DEAD, Command_pointer: do_display, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("dodonpa"), Sort_as: libc.CString("dodon"), Minimum_position: POS_FIGHTING, Command_pointer: do_dodonpa, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("donate"), Sort_as: libc.CString("don"), Minimum_position: POS_RESTING, Command_pointer: do_drop, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_DONATE}, {Command: libc.CString("drag"), Sort_as: libc.CString("dra"), Minimum_position: POS_STANDING, Command_pointer: do_drag, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("draw"), Sort_as: libc.CString("dra"), Minimum_position: POS_SITTING, Command_pointer: do_draw, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("drink"), Sort_as: libc.CString("dri"), Minimum_position: POS_RESTING, Command_pointer: do_drink, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_DRINK}, {Command: libc.CString("drop"), Sort_as: libc.CString("dro"), Minimum_position: POS_RESTING, Command_pointer: do_drop, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_DROP}, {Command: libc.CString("dub"), Sort_as: libc.CString("du"), Minimum_position: POS_STANDING, Command_pointer: do_intro, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("eat"), Sort_as: libc.CString("ea"), Minimum_position: POS_RESTING, Command_pointer: do_eat, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_EAT}, {Command: libc.CString("eavesdrop"), Sort_as: libc.CString("eaves"), Minimum_position: POS_RESTING, Command_pointer: do_eavesdrop, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("echo"), Sort_as: libc.CString("ec"), Minimum_position: POS_SLEEPING, Command_pointer: do_echo, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_ECHO}, {Command: libc.CString("elbow"), Sort_as: libc.CString("elb"), Minimum_position: POS_FIGHTING, Command_pointer: do_elbow, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("emote"), Sort_as: libc.CString("em"), Minimum_position: POS_RESTING, Command_pointer: do_echo, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_EMOTE}, {Command: libc.CString("energize"), Sort_as: libc.CString("energiz"), Minimum_position: POS_RESTING, Command_pointer: do_energize, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString(":"), Sort_as: libc.CString(":"), Minimum_position: POS_RESTING, Command_pointer: do_echo, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_EMOTE}, {Command: libc.CString("ensnare"), Sort_as: libc.CString("ensnar"), Minimum_position: POS_FIGHTING, Command_pointer: do_ensnare, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("enter"), Sort_as: libc.CString("ent"), Minimum_position: POS_STANDING, Command_pointer: do_enter, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("equipment"), Sort_as: libc.CString("eq"), Minimum_position: POS_SLEEPING, Command_pointer: do_equipment, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("eraser"), Sort_as: libc.CString("eras"), Minimum_position: POS_FIGHTING, Command_pointer: do_eraser, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("escape"), Sort_as: libc.CString("esca"), Minimum_position: POS_RESTING, Command_pointer: do_escape, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("evolve"), Sort_as: libc.CString("evolv"), Minimum_position: POS_RESTING, Command_pointer: do_evolve, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("exchange"), Sort_as: libc.CString("exchan"), Minimum_position: POS_RESTING, Command_pointer: do_rptrans, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("exits"), Sort_as: libc.CString("ex"), Minimum_position: POS_RESTING, Command_pointer: do_exits, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("examine"), Sort_as: libc.CString("exa"), Minimum_position: POS_SITTING, Command_pointer: do_examine, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("extract"), Sort_as: libc.CString("extrac"), Minimum_position: POS_STANDING, Command_pointer: do_extract, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("feed"), Sort_as: libc.CString("fee"), Minimum_position: POS_STANDING, Command_pointer: do_feed, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("fill"), Sort_as: libc.CString("fil"), Minimum_position: POS_STANDING, Command_pointer: do_pour, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_FILL}, {Command: libc.CString("file"), Sort_as: libc.CString("fi"), Minimum_position: POS_SLEEPING, Command_pointer: do_file, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("finalflash"), Sort_as: libc.CString("finalflash"), Minimum_position: POS_FIGHTING, Command_pointer: do_final, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("finddoor"), Sort_as: libc.CString("findd"), Minimum_position: POS_SLEEPING, Command_pointer: do_finddoor, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("findkey"), Sort_as: libc.CString("findk"), Minimum_position: POS_SLEEPING, Command_pointer: do_findkey, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("finger"), Sort_as: libc.CString("finge"), Minimum_position: POS_SLEEPING, Command_pointer: do_finger, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("fireshield"), Sort_as: libc.CString("firesh"), Minimum_position: POS_STANDING, Command_pointer: do_fireshield, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("fish"), Sort_as: libc.CString("fis"), Minimum_position: POS_STANDING, Command_pointer: do_fish, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("fix"), Sort_as: libc.CString("fix"), Minimum_position: POS_STANDING, Command_pointer: do_fix, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("flee"), Sort_as: libc.CString("fl"), Minimum_position: POS_FIGHTING, Command_pointer: do_flee, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("fly"), Sort_as: libc.CString("fly"), Minimum_position: POS_RESTING, Command_pointer: do_fly, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("focus"), Sort_as: libc.CString("foc"), Minimum_position: POS_STANDING, Command_pointer: do_focus, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("follow"), Sort_as: libc.CString("fol"), Minimum_position: POS_RESTING, Command_pointer: do_follow, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("force"), Sort_as: libc.CString("force"), Minimum_position: POS_SLEEPING, Command_pointer: do_force, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("forgery"), Sort_as: libc.CString("forg"), Minimum_position: POS_RESTING, Command_pointer: do_forgery, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("forget"), Sort_as: libc.CString("forg"), Minimum_position: POS_RESTING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("freeze"), Sort_as: libc.CString("freeze"), Minimum_position: POS_DEAD, Command_pointer: do_wizutil, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_FREEZE}, {Command: libc.CString("fury"), Sort_as: libc.CString("fury"), Minimum_position: POS_FIGHTING, Command_pointer: do_fury, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("future"), Sort_as: libc.CString("futu"), Minimum_position: POS_STANDING, Command_pointer: do_future, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("gain"), Sort_as: libc.CString("ga"), Minimum_position: POS_RESTING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("galikgun"), Sort_as: libc.CString("galik"), Minimum_position: POS_FIGHTING, Command_pointer: do_galikgun, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("game"), Sort_as: libc.CString("gam"), Minimum_position: POS_RESTING, Command_pointer: do_show, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("garden"), Sort_as: libc.CString("garde"), Minimum_position: POS_STANDING, Command_pointer: do_garden, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("genkidama"), Sort_as: libc.CString("genkidam"), Minimum_position: POS_FIGHTING, Command_pointer: do_genki, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("genocide"), Sort_as: libc.CString("genocid"), Minimum_position: POS_FIGHTING, Command_pointer: do_geno, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("get"), Sort_as: libc.CString("get"), Minimum_position: POS_RESTING, Command_pointer: do_get, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("gecho"), Sort_as: libc.CString("gecho"), Minimum_position: POS_DEAD, Command_pointer: do_gecho, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("gedit"), Sort_as: libc.CString("gedit"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: SCMD_OASIS_GEDIT}, {Command: libc.CString("gemote"), Sort_as: libc.CString("gem"), Minimum_position: POS_SLEEPING, Command_pointer: do_gen_comm, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_GEMOTE}, {Command: libc.CString("generator"), Sort_as: libc.CString("genr"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("glist"), Sort_as: libc.CString("glist"), Minimum_position: POS_SLEEPING, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: SCMD_OASIS_GLIST}, {Command: libc.CString("give"), Sort_as: libc.CString("giv"), Minimum_position: POS_RESTING, Command_pointer: do_give, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("goto"), Sort_as: libc.CString("go"), Minimum_position: POS_SLEEPING, Command_pointer: do_goto, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("gold"), Sort_as: libc.CString("gol"), Minimum_position: POS_RESTING, Command_pointer: do_gold, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("group"), Sort_as: libc.CString("gro"), Minimum_position: POS_RESTING, Command_pointer: do_group, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("grab"), Sort_as: libc.CString("grab"), Minimum_position: POS_RESTING, Command_pointer: do_grab, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("grand"), Sort_as: libc.CString("gran"), Minimum_position: POS_RESTING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("grapple"), Sort_as: libc.CString("grapp"), Minimum_position: POS_FIGHTING, Command_pointer: do_grapple, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("grats"), Sort_as: libc.CString("grat"), Minimum_position: POS_SLEEPING, Command_pointer: do_gen_comm, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_GRATZ}, {Command: libc.CString("gravity"), Sort_as: libc.CString("grav"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("gsay"), Sort_as: libc.CString("gsay"), Minimum_position: POS_SLEEPING, Command_pointer: do_gsay, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("gtell"), Sort_as: libc.CString("gt"), Minimum_position: POS_SLEEPING, Command_pointer: do_gsay, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hand"), Sort_as: libc.CString("han"), Minimum_position: POS_SITTING, Command_pointer: do_hand, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("handout"), Sort_as: libc.CString("hand"), Minimum_position: POS_STANDING, Command_pointer: do_handout, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("hasshuken"), Sort_as: libc.CString("hasshuke"), Minimum_position: POS_STANDING, Command_pointer: do_hass, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hayasa"), Sort_as: libc.CString("hayas"), Minimum_position: POS_STANDING, Command_pointer: do_hayasa, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("headbutt"), Sort_as: libc.CString("headbut"), Minimum_position: POS_FIGHTING, Command_pointer: do_head, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("heal"), Sort_as: libc.CString("hea"), Minimum_position: POS_STANDING, Command_pointer: do_heal, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("health"), Sort_as: libc.CString("hea"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_GHEALTH}, {Command: libc.CString("healingglow"), Sort_as: libc.CString("healing"), Minimum_position: POS_STANDING, Command_pointer: do_healglow, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("heeldrop"), Sort_as: libc.CString("heeldr"), Minimum_position: POS_FIGHTING, Command_pointer: do_heeldrop, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hellflash"), Sort_as: libc.CString("hellflas"), Minimum_position: POS_FIGHTING, Command_pointer: do_hellflash, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hellspear"), Sort_as: libc.CString("hellspea"), Minimum_position: POS_FIGHTING, Command_pointer: do_hellspear, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("help"), Sort_as: libc.CString("h"), Minimum_position: POS_DEAD, Command_pointer: do_help, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hedit"), Sort_as: libc.CString("hedit"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_HEDIT}, {Command: libc.CString("hindex"), Sort_as: libc.CString("hind"), Minimum_position: POS_DEAD, Command_pointer: do_hindex, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("helpcheck"), Sort_as: libc.CString("helpch"), Minimum_position: POS_DEAD, Command_pointer: do_helpcheck, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("handbook"), Sort_as: libc.CString("handb"), Minimum_position: POS_DEAD, Command_pointer: do_gen_ps, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_HANDBOOK}, {Command: libc.CString("hide"), Sort_as: libc.CString("hide"), Minimum_position: POS_RESTING, Command_pointer: do_gen_tog, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_HIDE}, {Command: libc.CString("hints"), Sort_as: libc.CString("hints"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_HINTS}, {Command: libc.CString("history"), Sort_as: libc.CString("hist"), Minimum_position: POS_DEAD, Command_pointer: do_history, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hold"), Sort_as: libc.CString("hold"), Minimum_position: POS_RESTING, Command_pointer: do_grab, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("holylight"), Sort_as: libc.CString("holy"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_HOLYLIGHT}, {Command: libc.CString("honoo"), Sort_as: libc.CString("hono"), Minimum_position: POS_FIGHTING, Command_pointer: do_honoo, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("house"), Sort_as: libc.CString("house"), Minimum_position: POS_RESTING, Command_pointer: do_house, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hsedit"), Sort_as: libc.CString("hsedit"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: SCMD_OASIS_HSEDIT}, {Command: libc.CString("hspiral"), Sort_as: libc.CString("hspira"), Minimum_position: POS_FIGHTING, Command_pointer: do_hspiral, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("htank"), Sort_as: libc.CString("htan"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hydromancy"), Sort_as: libc.CString("hydrom"), Minimum_position: POS_STANDING, Command_pointer: do_hydromancy, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hyoga"), Sort_as: libc.CString("hyoga"), Minimum_position: POS_STANDING, Command_pointer: do_obstruct, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("ihealth"), Sort_as: libc.CString("ihea"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_IHEALTH}, {Command: libc.CString("info"), Sort_as: libc.CString("info"), Minimum_position: POS_DEAD, Command_pointer: do_ginfo, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("infuse"), Sort_as: libc.CString("infus"), Minimum_position: POS_STANDING, Command_pointer: do_infuse, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("ingest"), Sort_as: libc.CString("inges"), Minimum_position: POS_STANDING, Command_pointer: do_ingest, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("imotd"), Sort_as: libc.CString("imotd"), Minimum_position: POS_DEAD, Command_pointer: do_gen_ps, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_IMOTD}, {Command: libc.CString("immlist"), Sort_as: libc.CString("imm"), Minimum_position: POS_DEAD, Command_pointer: do_gen_ps, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_WIZLIST}, {Command: libc.CString("implant"), Sort_as: libc.CString("implan"), Minimum_position: POS_RESTING, Command_pointer: do_implant, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("instant"), Sort_as: libc.CString("insta"), Minimum_position: POS_STANDING, Command_pointer: do_instant, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("instill"), Sort_as: libc.CString("instil"), Minimum_position: POS_STANDING, Command_pointer: do_instill, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("instruct"), Sort_as: libc.CString("instruc"), Minimum_position: POS_STANDING, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: SCMD_INSTRUCT}, {Command: libc.CString("inventory"), Sort_as: libc.CString("inv"), Minimum_position: POS_DEAD, Command_pointer: do_inventory, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("interest"), Sort_as: libc.CString("inter"), Minimum_position: POS_DEAD, Command_pointer: do_interest, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: 0}, {Command: libc.CString("iedit"), Sort_as: libc.CString("ie"), Minimum_position: POS_DEAD, Command_pointer: do_iedit, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: 0}, {Command: libc.CString("invis"), Sort_as: libc.CString("invi"), Minimum_position: POS_DEAD, Command_pointer: do_invis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("iwarp"), Sort_as: libc.CString("iwarp"), Minimum_position: POS_RESTING, Command_pointer: do_warp, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("junk"), Sort_as: libc.CString("junk"), Minimum_position: POS_RESTING, Command_pointer: do_drop, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_JUNK}, {Command: libc.CString("kaioken"), Sort_as: libc.CString("kaioken"), Minimum_position: POS_STANDING, Command_pointer: do_kaioken, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kakusanha"), Sort_as: libc.CString("kakusan"), Minimum_position: POS_FIGHTING, Command_pointer: do_kakusanha, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kamehameha"), Sort_as: libc.CString("kame"), Minimum_position: POS_FIGHTING, Command_pointer: do_kamehameha, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kanso"), Sort_as: libc.CString("kans"), Minimum_position: POS_FIGHTING, Command_pointer: do_kanso, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kiball"), Sort_as: libc.CString("kibal"), Minimum_position: POS_FIGHTING, Command_pointer: do_kiball, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kiblast"), Sort_as: libc.CString("kiblas"), Minimum_position: POS_FIGHTING, Command_pointer: do_kiblast, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kienzan"), Sort_as: libc.CString("kienza"), Minimum_position: POS_FIGHTING, Command_pointer: do_kienzan, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kill"), Sort_as: libc.CString("kil"), Minimum_position: POS_FIGHTING, Command_pointer: do_kill, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("kick"), Sort_as: libc.CString("kic"), Minimum_position: POS_FIGHTING, Command_pointer: do_kick, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("knee"), Sort_as: libc.CString("kne"), Minimum_position: POS_FIGHTING, Command_pointer: do_knee, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("koteiru"), Sort_as: libc.CString("koteiru"), Minimum_position: POS_FIGHTING, Command_pointer: do_koteiru, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kousengan"), Sort_as: libc.CString("kousengan"), Minimum_position: POS_FIGHTING, Command_pointer: do_kousengan, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kuraiiro"), Sort_as: libc.CString("kuraiir"), Minimum_position: POS_FIGHTING, Command_pointer: do_kura, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kyodaika"), Sort_as: libc.CString("kyodaik"), Minimum_position: POS_STANDING, Command_pointer: do_kyodaika, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("look"), Sort_as: libc.CString("lo"), Minimum_position: POS_RESTING, Command_pointer: do_look, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_LOOK}, {Command: libc.CString("lag"), Sort_as: libc.CString("la"), Minimum_position: POS_RESTING, Command_pointer: do_lag, Minimum_level: 0, Minimum_admlevel: 5, Subcmd: 0}, {Command: libc.CString("land"), Sort_as: libc.CString("lan"), Minimum_position: POS_RESTING, Command_pointer: do_land, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("languages"), Sort_as: libc.CString("lang"), Minimum_position: POS_RESTING, Command_pointer: do_languages, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("last"), Sort_as: libc.CString("last"), Minimum_position: POS_DEAD, Command_pointer: do_last, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("learn"), Sort_as: libc.CString("lear"), Minimum_position: POS_RESTING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("leave"), Sort_as: libc.CString("lea"), Minimum_position: POS_STANDING, Command_pointer: do_leave, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("levels"), Sort_as: libc.CString("lev"), Minimum_position: POS_DEAD, Command_pointer: do_levels, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("light"), Sort_as: libc.CString("ligh"), Minimum_position: POS_STANDING, Command_pointer: do_lightgrenade, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("list"), Sort_as: libc.CString("lis"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("life"), Sort_as: libc.CString("lif"), Minimum_position: POS_SLEEPING, Command_pointer: do_lifeforce, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("links"), Sort_as: libc.CString("lin"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: SCMD_OASIS_LINKS}, {Command: libc.CString("liquefy"), Sort_as: libc.CString("liquef"), Minimum_position: POS_SLEEPING, Command_pointer: do_liquefy, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("lkeep"), Sort_as: libc.CString("lkee"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_LKEEP}, {Command: libc.CString("lock"), Sort_as: libc.CString("loc"), Minimum_position: POS_SITTING, Command_pointer: do_gen_door, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_LOCK}, {Command: libc.CString("lockout"), Sort_as: libc.CString("lock"), Minimum_position: POS_STANDING, Command_pointer: do_hell, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("load"), Sort_as: libc.CString("load"), Minimum_position: POS_DEAD, Command_pointer: do_load, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("majinize"), Sort_as: libc.CString("majini"), Minimum_position: POS_STANDING, Command_pointer: do_majinize, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("malice"), Sort_as: libc.CString("malic"), Minimum_position: POS_FIGHTING, Command_pointer: do_malice, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("masenko"), Sort_as: libc.CString("masenk"), Minimum_position: POS_FIGHTING, Command_pointer: do_masenko, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("motd"), Sort_as: libc.CString("motd"), Minimum_position: POS_DEAD, Command_pointer: do_gen_ps, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_MOTD}, {Command: libc.CString("mail"), Sort_as: libc.CString("mail"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 2, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("map"), Sort_as: libc.CString("map"), Minimum_position: POS_STANDING, Command_pointer: do_map, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("medit"), Sort_as: libc.CString("medit"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_MEDIT}, {Command: libc.CString("meditate"), Sort_as: libc.CString("medita"), Minimum_position: POS_SITTING, Command_pointer: do_meditate, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("metamorph"), Sort_as: libc.CString("metamorp"), Minimum_position: POS_STANDING, Command_pointer: do_metamorph, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mimic"), Sort_as: libc.CString("mimi"), Minimum_position: POS_STANDING, Command_pointer: do_mimic, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mlist"), Sort_as: libc.CString("mlist"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_MLIST}, {Command: libc.CString("moondust"), Sort_as: libc.CString("moondus"), Minimum_position: POS_STANDING, Command_pointer: do_moondust, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("multiform"), Sort_as: libc.CString("multifor"), Minimum_position: POS_STANDING, Command_pointer: do_multiform, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mute"), Sort_as: libc.CString("mute"), Minimum_position: POS_DEAD, Command_pointer: do_wizutil, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_SQUELCH}, {Command: libc.CString("music"), Sort_as: libc.CString("musi"), Minimum_position: POS_RESTING, Command_pointer: do_gen_comm, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_HOLLER}, {Command: libc.CString("newbie"), Sort_as: libc.CString("newbie"), Minimum_position: POS_SLEEPING, Command_pointer: do_gen_comm, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_AUCTION}, {Command: libc.CString("news"), Sort_as: libc.CString("news"), Minimum_position: POS_SLEEPING, Command_pointer: do_news, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("newsedit"), Sort_as: libc.CString("newsedi"), Minimum_position: POS_SLEEPING, Command_pointer: do_newsedit, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("nickname"), Sort_as: libc.CString("nicknam"), Minimum_position: POS_RESTING, Command_pointer: do_nickname, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("nocompress"), Sort_as: libc.CString("nocompress"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOCOMPRESS}, {Command: libc.CString("noeq"), Sort_as: libc.CString("noeq"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOEQSEE}, {Command: libc.CString("nolin"), Sort_as: libc.CString("nolin"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NODEC}, {Command: libc.CString("nomusic"), Sort_as: libc.CString("nomusi"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOMUSIC}, {Command: libc.CString("noooc"), Sort_as: libc.CString("noooc"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOGOSSIP}, {Command: libc.CString("nogive"), Sort_as: libc.CString("nogiv"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: SCMD_NOGIVE}, {Command: libc.CString("nograts"), Sort_as: libc.CString("nograts"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOGRATZ}, {Command: libc.CString("nogrow"), Sort_as: libc.CString("nogro"), Minimum_position: POS_DEAD, Command_pointer: do_nogrow, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("nohassle"), Sort_as: libc.CString("nohassle"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_NOHASSLE}, {Command: libc.CString("nomail"), Sort_as: libc.CString("nomail"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NMWARN}, {Command: libc.CString("nonewbie"), Sort_as: libc.CString("nonewbie"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOAUCTION}, {Command: libc.CString("noparry"), Sort_as: libc.CString("noparr"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOPARRY}, {Command: libc.CString("norepeat"), Sort_as: libc.CString("norepeat"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOREPEAT}, {Command: libc.CString("noshout"), Sort_as: libc.CString("noshout"), Minimum_position: POS_SLEEPING, Command_pointer: do_gen_tog, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_DEAF}, {Command: libc.CString("nosummon"), Sort_as: libc.CString("nosummon"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOSUMMON}, {Command: libc.CString("notell"), Sort_as: libc.CString("notell"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOTELL}, {Command: libc.CString("notitle"), Sort_as: libc.CString("notitle"), Minimum_position: POS_DEAD, Command_pointer: do_wizutil, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: SCMD_NOTITLE}, {Command: libc.CString("nova"), Sort_as: libc.CString("nov"), Minimum_position: POS_STANDING, Command_pointer: do_nova, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("nowiz"), Sort_as: libc.CString("nowiz"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_NOWIZ}, {Command: libc.CString("ooc"), Sort_as: libc.CString("ooc"), Minimum_position: POS_SLEEPING, Command_pointer: do_gen_comm, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_GOSSIP}, {Command: libc.CString("offer"), Sort_as: libc.CString("off"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("open"), Sort_as: libc.CString("ope"), Minimum_position: POS_SITTING, Command_pointer: do_gen_door, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_OPEN}, {Command: libc.CString("olc"), Sort_as: libc.CString("olc"), Minimum_position: POS_DEAD, Command_pointer: do_show_save_list, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("olist"), Sort_as: libc.CString("olist"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_OLIST}, {Command: libc.CString("oedit"), Sort_as: libc.CString("oedit"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_OEDIT}, {Command: libc.CString("osay"), Sort_as: libc.CString("osay"), Minimum_position: POS_RESTING, Command_pointer: do_osay, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("pack"), Sort_as: libc.CString("pac"), Minimum_position: POS_STANDING, Command_pointer: do_pack, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("page"), Sort_as: libc.CString("pag"), Minimum_position: POS_DEAD, Command_pointer: do_page, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("paralyze"), Sort_as: libc.CString("paralyz"), Minimum_position: POS_FIGHTING, Command_pointer: do_paralyze, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("pagelength"), Sort_as: libc.CString("pagel"), Minimum_position: POS_DEAD, Command_pointer: do_pagelength, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("peace"), Sort_as: libc.CString("pea"), Minimum_position: POS_DEAD, Command_pointer: do_peace, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("perfect"), Sort_as: libc.CString("perfec"), Minimum_position: POS_DEAD, Command_pointer: do_perf, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("permission"), Sort_as: libc.CString("permiss"), Minimum_position: POS_DEAD, Command_pointer: do_permission, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("phoenix"), Sort_as: libc.CString("phoeni"), Minimum_position: POS_FIGHTING, Command_pointer: do_pslash, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("pick"), Sort_as: libc.CString("pi"), Minimum_position: POS_STANDING, Command_pointer: do_gen_door, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_PICK}, {Command: libc.CString("pickup"), Sort_as: libc.CString("picku"), Minimum_position: POS_RESTING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("pilot"), Sort_as: libc.CString("pilot"), Minimum_position: POS_SITTING, Command_pointer: do_drive, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("plant"), Sort_as: libc.CString("plan"), Minimum_position: POS_STANDING, Command_pointer: do_plant, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("play"), Sort_as: libc.CString("pla"), Minimum_position: POS_SITTING, Command_pointer: do_play, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("players"), Sort_as: libc.CString("play"), Minimum_position: POS_DEAD, Command_pointer: do_plist, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: 0}, {Command: libc.CString("poofin"), Sort_as: libc.CString("poofi"), Minimum_position: POS_DEAD, Command_pointer: do_poofset, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_POOFIN}, {Command: libc.CString("poofout"), Sort_as: libc.CString("poofo"), Minimum_position: POS_DEAD, Command_pointer: do_poofset, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_POOFOUT}, {Command: libc.CString("pose"), Sort_as: libc.CString("pos"), Minimum_position: POS_STANDING, Command_pointer: do_pose, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("post"), Sort_as: libc.CString("pos"), Minimum_position: POS_STANDING, Command_pointer: do_post, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("potential"), Sort_as: libc.CString("poten"), Minimum_position: POS_STANDING, Command_pointer: do_potential, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("pour"), Sort_as: libc.CString("pour"), Minimum_position: POS_STANDING, Command_pointer: do_pour, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_POUR}, {Command: libc.CString("powerup"), Sort_as: libc.CString("poweru"), Minimum_position: POS_FIGHTING, Command_pointer: do_powerup, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("preference"), Sort_as: libc.CString("preferenc"), Minimum_position: POS_DEAD, Command_pointer: do_preference, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("program"), Sort_as: libc.CString("progra"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_OASIS_REDIT}, {Command: libc.CString("prompt"), Sort_as: libc.CString("pro"), Minimum_position: POS_DEAD, Command_pointer: do_display, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("practice"), Sort_as: libc.CString("pra"), Minimum_position: POS_RESTING, Command_pointer: do_practice, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("psychic"), Sort_as: libc.CString("psychi"), Minimum_position: POS_FIGHTING, Command_pointer: do_psyblast, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("punch"), Sort_as: libc.CString("punc"), Minimum_position: POS_FIGHTING, Command_pointer: do_punch, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("pushup"), Sort_as: libc.CString("pushu"), Minimum_position: POS_STANDING, Command_pointer: do_pushup, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("put"), Sort_as: libc.CString("put"), Minimum_position: POS_RESTING, Command_pointer: do_put, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("purge"), Sort_as: libc.CString("purge"), Minimum_position: POS_DEAD, Command_pointer: do_purge, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("qui"), Sort_as: libc.CString("qui"), Minimum_position: POS_DEAD, Command_pointer: do_quit, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("quit"), Sort_as: libc.CString("quit"), Minimum_position: POS_DEAD, Command_pointer: do_quit, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_QUIT}, {Command: libc.CString("radar"), Sort_as: libc.CString("rada"), Minimum_position: POS_RESTING, Command_pointer: do_sradar, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("raise"), Sort_as: libc.CString("rai"), Minimum_position: POS_DEAD, Command_pointer: do_raise, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rbank"), Sort_as: libc.CString("rban"), Minimum_position: POS_RESTING, Command_pointer: do_rbank, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("refuel"), Sort_as: libc.CString("refue"), Minimum_position: POS_SITTING, Command_pointer: do_refuel, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("resize"), Sort_as: libc.CString("resiz"), Minimum_position: POS_STANDING, Command_pointer: do_resize, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("restring"), Sort_as: libc.CString("restring"), Minimum_position: POS_STANDING, Command_pointer: do_restring, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rclone"), Sort_as: libc.CString("rclon"), Minimum_position: POS_DEAD, Command_pointer: do_rcopy, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("rcopy"), Sort_as: libc.CString("rcopy"), Minimum_position: POS_DEAD, Command_pointer: do_rcopy, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("roomdisplay"), Sort_as: libc.CString("roomdisplay"), Minimum_position: POS_STANDING, Command_pointer: do_rdisplay, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("read"), Sort_as: libc.CString("rea"), Minimum_position: POS_RESTING, Command_pointer: do_look, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_READ}, {Command: libc.CString("recall"), Sort_as: libc.CString("reca"), Minimum_position: POS_STANDING, Command_pointer: do_recall, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("recharge"), Sort_as: libc.CString("rechar"), Minimum_position: POS_STANDING, Command_pointer: do_recharge, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("regenerate"), Sort_as: libc.CString("regen"), Minimum_position: POS_RESTING, Command_pointer: do_regenerate, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("renzokou"), Sort_as: libc.CString("renzo"), Minimum_position: POS_FIGHTING, Command_pointer: do_renzo, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("repair"), Sort_as: libc.CString("repai"), Minimum_position: POS_STANDING, Command_pointer: do_srepair, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("reply"), Sort_as: libc.CString("rep"), Minimum_position: POS_SLEEPING, Command_pointer: do_reply, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rescue"), Sort_as: libc.CString("rescu"), Minimum_position: POS_STANDING, Command_pointer: do_rescue, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rest"), Sort_as: libc.CString("re"), Minimum_position: POS_RESTING, Command_pointer: do_rest, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("reward"), Sort_as: libc.CString("rewar"), Minimum_position: POS_RESTING, Command_pointer: do_reward, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("reload"), Sort_as: libc.CString("reload"), Minimum_position: POS_DEAD, Command_pointer: do_reboot, Minimum_level: 0, Minimum_admlevel: 5, Subcmd: 0}, {Command: libc.CString("receive"), Sort_as: libc.CString("rece"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("remove"), Sort_as: libc.CString("rem"), Minimum_position: POS_RESTING, Command_pointer: do_remove, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rent"), Sort_as: libc.CString("rent"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("report"), Sort_as: libc.CString("repor"), Minimum_position: POS_DEAD, Command_pointer: do_gen_write, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_IDEA}, {Command: libc.CString("reroll"), Sort_as: libc.CString("rero"), Minimum_position: POS_DEAD, Command_pointer: do_wizutil, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: SCMD_REROLL}, {Command: libc.CString("respond"), Sort_as: libc.CString("resp"), Minimum_position: POS_RESTING, Command_pointer: do_respond, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("restore"), Sort_as: libc.CString("resto"), Minimum_position: POS_DEAD, Command_pointer: do_restore, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("return"), Sort_as: libc.CString("retu"), Minimum_position: POS_DEAD, Command_pointer: do_return, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("redit"), Sort_as: libc.CString("redit"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_REDIT}, {Command: libc.CString("rip"), Sort_as: libc.CString("ri"), Minimum_position: POS_DEAD, Command_pointer: do_rip, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rlist"), Sort_as: libc.CString("rlist"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_RLIST}, {Command: libc.CString("rogafufuken"), Sort_as: libc.CString("rogafu"), Minimum_position: POS_FIGHTING, Command_pointer: do_rogafufuken, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("roomflags"), Sort_as: libc.CString("roomf"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_ROOMFLAGS}, {Command: libc.CString("roundhouse"), Sort_as: libc.CString("roundhou"), Minimum_position: POS_FIGHTING, Command_pointer: do_roundhouse, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rpbank"), Sort_as: libc.CString("rpban"), Minimum_position: POS_SLEEPING, Command_pointer: do_rpbank, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rpp"), Sort_as: libc.CString("rpp"), Minimum_position: POS_SLEEPING, Command_pointer: do_rpp, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("runic"), Sort_as: libc.CString("runi"), Minimum_position: POS_STANDING, Command_pointer: do_runic, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("say"), Sort_as: libc.CString("say"), Minimum_position: POS_RESTING, Command_pointer: do_say, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("'"), Sort_as: libc.CString("'"), Minimum_position: POS_RESTING, Command_pointer: do_say, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("save"), Sort_as: libc.CString("sav"), Minimum_position: POS_SLEEPING, Command_pointer: do_save, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("saveall"), Sort_as: libc.CString("saveall"), Minimum_position: POS_DEAD, Command_pointer: do_saveall, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("sbc"), Sort_as: libc.CString("sbc"), Minimum_position: POS_FIGHTING, Command_pointer: do_sbc, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("scan"), Sort_as: libc.CString("sca"), Minimum_position: POS_FIGHTING, Command_pointer: do_scan, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("scatter"), Sort_as: libc.CString("scatte"), Minimum_position: POS_FIGHTING, Command_pointer: do_scatter, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("score"), Sort_as: libc.CString("sc"), Minimum_position: POS_DEAD, Command_pointer: do_score, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("scouter"), Sort_as: libc.CString("scou"), Minimum_position: POS_RESTING, Command_pointer: do_scouter, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("scry"), Sort_as: libc.CString("scr"), Minimum_position: POS_STANDING, Command_pointer: do_scry, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("seishou"), Sort_as: libc.CString("seisho"), Minimum_position: POS_FIGHTING, Command_pointer: do_seishou, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("shell"), Sort_as: libc.CString("she"), Minimum_position: POS_STANDING, Command_pointer: do_shell, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("shimmer"), Sort_as: libc.CString("shimme"), Minimum_position: POS_STANDING, Command_pointer: do_shimmer, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("shogekiha"), Sort_as: libc.CString("shog"), Minimum_position: POS_STANDING, Command_pointer: do_shogekiha, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("shuffle"), Sort_as: libc.CString("shuff"), Minimum_position: POS_SITTING, Command_pointer: do_shuffle, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("snet"), Sort_as: libc.CString("snet"), Minimum_position: POS_RESTING, Command_pointer: do_snet, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("search"), Sort_as: libc.CString("sea"), Minimum_position: POS_STANDING, Command_pointer: do_look, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SEARCH}, {Command: libc.CString("sell"), Sort_as: libc.CString("sell"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("selfdestruct"), Sort_as: libc.CString("selfdest"), Minimum_position: POS_STANDING, Command_pointer: do_selfd, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("sedit"), Sort_as: libc.CString("sedit"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_SEDIT}, {Command: libc.CString("send"), Sort_as: libc.CString("send"), Minimum_position: POS_SLEEPING, Command_pointer: do_send, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("sense"), Sort_as: libc.CString("sense"), Minimum_position: POS_RESTING, Command_pointer: do_track, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("set"), Sort_as: libc.CString("set"), Minimum_position: POS_DEAD, Command_pointer: do_set, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("shout"), Sort_as: libc.CString("sho"), Minimum_position: POS_RESTING, Command_pointer: do_gen_comm, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SHOUT}, {Command: libc.CString("show"), Sort_as: libc.CString("show"), Minimum_position: POS_DEAD, Command_pointer: do_showoff, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("shutdow"), Sort_as: libc.CString("shutdow"), Minimum_position: POS_DEAD, Command_pointer: do_shutdown, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: 0}, {Command: libc.CString("shutdown"), Sort_as: libc.CString("shutdown"), Minimum_position: POS_DEAD, Command_pointer: do_shutdown, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: SCMD_SHUTDOWN}, {Command: libc.CString("silk"), Sort_as: libc.CString("sil"), Minimum_position: POS_RESTING, Command_pointer: do_silk, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("sip"), Sort_as: libc.CString("sip"), Minimum_position: POS_RESTING, Command_pointer: do_drink, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SIP}, {Command: libc.CString("sit"), Sort_as: libc.CString("sit"), Minimum_position: POS_RESTING, Command_pointer: do_sit, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("situp"), Sort_as: libc.CString("situp"), Minimum_position: POS_STANDING, Command_pointer: do_situp, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("skills"), Sort_as: libc.CString("skills"), Minimum_position: POS_SLEEPING, Command_pointer: do_skills, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("skillset"), Sort_as: libc.CString("skillset"), Minimum_position: POS_SLEEPING, Command_pointer: do_skillset, Minimum_level: 0, Minimum_admlevel: 5, Subcmd: 0}, {Command: libc.CString("slam"), Sort_as: libc.CString("sla"), Minimum_position: POS_FIGHTING, Command_pointer: do_slam, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("sleep"), Sort_as: libc.CString("sl"), Minimum_position: POS_SLEEPING, Command_pointer: do_sleep, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("slist"), Sort_as: libc.CString("slist"), Minimum_position: POS_SLEEPING, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_SLIST}, {Command: libc.CString("slowns"), Sort_as: libc.CString("slowns"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: SCMD_SLOWNS}, {Command: libc.CString("smote"), Sort_as: libc.CString("sm"), Minimum_position: POS_RESTING, Command_pointer: do_echo, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SMOTE}, {Command: libc.CString("sneak"), Sort_as: libc.CString("sneak"), Minimum_position: POS_STANDING, Command_pointer: do_gen_tog, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SNEAK}, {Command: libc.CString("snoop"), Sort_as: libc.CString("snoop"), Minimum_position: POS_DEAD, Command_pointer: do_snoop, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("song"), Sort_as: libc.CString("son"), Minimum_position: POS_RESTING, Command_pointer: do_song, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("spiral"), Sort_as: libc.CString("spiral"), Minimum_position: POS_STANDING, Command_pointer: do_spiral, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("socials"), Sort_as: libc.CString("socials"), Minimum_position: POS_DEAD, Command_pointer: do_commands, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SOCIALS}, {Command: libc.CString("solarflare"), Sort_as: libc.CString("solarflare"), Minimum_position: POS_FIGHTING, Command_pointer: do_solar, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("spar"), Sort_as: libc.CString("spa"), Minimum_position: POS_FIGHTING, Command_pointer: do_spar, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("spit"), Sort_as: libc.CString("spi"), Minimum_position: POS_STANDING, Command_pointer: do_spit, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("spiritball"), Sort_as: libc.CString("spiritball"), Minimum_position: POS_FIGHTING, Command_pointer: do_spiritball, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("spiritcontrol"), Sort_as: libc.CString("spiritcontro"), Minimum_position: POS_RESTING, Command_pointer: do_spiritcontrol, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("split"), Sort_as: libc.CString("split"), Minimum_position: POS_SITTING, Command_pointer: do_split, Minimum_level: 1, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("speak"), Sort_as: libc.CString("spe"), Minimum_position: POS_RESTING, Command_pointer: do_languages, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("spells"), Sort_as: libc.CString("spel"), Minimum_position: POS_RESTING, Command_pointer: do_spells, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("stand"), Sort_as: libc.CString("st"), Minimum_position: POS_RESTING, Command_pointer: do_stand, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("starbreaker"), Sort_as: libc.CString("starbr"), Minimum_position: POS_FIGHTING, Command_pointer: do_breaker, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("stake"), Sort_as: libc.CString("stak"), Minimum_position: POS_SLEEPING, Command_pointer: do_beacon, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("stat"), Sort_as: libc.CString("stat"), Minimum_position: POS_DEAD, Command_pointer: do_stat, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("status"), Sort_as: libc.CString("statu"), Minimum_position: POS_DEAD, Command_pointer: do_status, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("steal"), Sort_as: libc.CString("ste"), Minimum_position: POS_STANDING, Command_pointer: do_steal, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("stone"), Sort_as: libc.CString("ston"), Minimum_position: POS_STANDING, Command_pointer: do_spit, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("stop"), Sort_as: libc.CString("sto"), Minimum_position: POS_STANDING, Command_pointer: do_stop, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("study"), Sort_as: libc.CString("stu"), Minimum_position: POS_RESTING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("summon"), Sort_as: libc.CString("summo"), Minimum_position: POS_STANDING, Command_pointer: do_summon, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("sunder"), Sort_as: libc.CString("sunde"), Minimum_position: POS_STANDING, Command_pointer: do_sunder, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("suppress"), Sort_as: libc.CString("suppres"), Minimum_position: POS_STANDING, Command_pointer: do_suppress, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("swallow"), Sort_as: libc.CString("swall"), Minimum_position: POS_RESTING, Command_pointer: do_use, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_QUAFF}, {Command: libc.CString("switch"), Sort_as: libc.CString("switch"), Minimum_position: POS_DEAD, Command_pointer: do_switch, Minimum_level: 0, Minimum_admlevel: ADMLVL_VICE, Subcmd: 0}, {Command: libc.CString("syslog"), Sort_as: libc.CString("syslog"), Minimum_position: POS_DEAD, Command_pointer: do_syslog, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("tailhide"), Sort_as: libc.CString("tailh"), Minimum_position: POS_RESTING, Command_pointer: do_tailhide, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("table"), Sort_as: libc.CString("tabl"), Minimum_position: POS_SITTING, Command_pointer: do_table, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("teach"), Sort_as: libc.CString("teac"), Minimum_position: POS_STANDING, Command_pointer: do_teach, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("tell"), Sort_as: libc.CString("tel"), Minimum_position: POS_DEAD, Command_pointer: do_tell, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("take"), Sort_as: libc.CString("tak"), Minimum_position: POS_RESTING, Command_pointer: do_get, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("tailwhip"), Sort_as: libc.CString("tailw"), Minimum_position: POS_FIGHTING, Command_pointer: do_tailwhip, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("taisha"), Sort_as: libc.CString("taish"), Minimum_position: POS_FIGHTING, Command_pointer: do_taisha, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("taste"), Sort_as: libc.CString("tas"), Minimum_position: POS_RESTING, Command_pointer: do_eat, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_TASTE}, {Command: libc.CString("teleport"), Sort_as: libc.CString("tele"), Minimum_position: POS_DEAD, Command_pointer: do_teleport, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("telepathy"), Sort_as: libc.CString("telepa"), Minimum_position: POS_DEAD, Command_pointer: do_telepathy, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("tedit"), Sort_as: libc.CString("tedit"), Minimum_position: POS_DEAD, Command_pointer: do_tedit, Minimum_level: 0, Minimum_admlevel: ADMLVL_GRGOD, Subcmd: 0}, {Command: libc.CString("test"), Sort_as: libc.CString("test"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: SCMD_TEST}, {Command: libc.CString("thaw"), Sort_as: libc.CString("thaw"), Minimum_position: POS_DEAD, Command_pointer: do_wizutil, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_THAW}, {Command: libc.CString("think"), Sort_as: libc.CString("thin"), Minimum_position: POS_DEAD, Command_pointer: do_think, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("throw"), Sort_as: libc.CString("thro"), Minimum_position: POS_FIGHTING, Command_pointer: do_throw, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("title"), Sort_as: libc.CString("title"), Minimum_position: POS_DEAD, Command_pointer: do_title, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("time"), Sort_as: libc.CString("time"), Minimum_position: POS_DEAD, Command_pointer: do_time, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("toggle"), Sort_as: libc.CString("toggle"), Minimum_position: POS_DEAD, Command_pointer: do_toggle, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("toplist"), Sort_as: libc.CString("toplis"), Minimum_position: POS_DEAD, Command_pointer: do_toplist, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("trackthru"), Sort_as: libc.CString("trackthru"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: SCMD_TRACK}, {Command: libc.CString("train"), Sort_as: libc.CString("train"), Minimum_position: POS_STANDING, Command_pointer: do_train, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("transfer"), Sort_as: libc.CString("transfer"), Minimum_position: POS_SLEEPING, Command_pointer: do_trans, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("transform"), Sort_as: libc.CString("transform"), Minimum_position: POS_FIGHTING, Command_pointer: do_transform, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("transo"), Sort_as: libc.CString("trans"), Minimum_position: POS_STANDING, Command_pointer: do_transobj, Minimum_level: 0, Minimum_admlevel: 5, Subcmd: 0}, {Command: libc.CString("tribeam"), Sort_as: libc.CString("tribe"), Minimum_position: POS_FIGHTING, Command_pointer: do_tribeam, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("trigedit"), Sort_as: libc.CString("trigedit"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_TRIGEDIT}, {Command: libc.CString("trip"), Sort_as: libc.CString("trip"), Minimum_position: POS_FIGHTING, Command_pointer: do_trip, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("tsuihidan"), Sort_as: libc.CString("tsuihida"), Minimum_position: POS_FIGHTING, Command_pointer: do_tsuihidan, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("tunnel"), Sort_as: libc.CString("tunne"), Minimum_position: POS_DEAD, Command_pointer: do_dig, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("twinslash"), Sort_as: libc.CString("twins"), Minimum_position: POS_FIGHTING, Command_pointer: do_tslash, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("twohand"), Sort_as: libc.CString("twohand"), Minimum_position: POS_DEAD, Command_pointer: do_twohand, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("typo"), Sort_as: libc.CString("typo"), Minimum_position: POS_DEAD, Command_pointer: do_gen_write, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_TYPO}, {Command: libc.CString("unlock"), Sort_as: libc.CString("unlock"), Minimum_position: POS_SITTING, Command_pointer: do_gen_door, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_UNLOCK}, {Command: libc.CString("ungroup"), Sort_as: libc.CString("ungroup"), Minimum_position: POS_DEAD, Command_pointer: do_ungroup, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("unban"), Sort_as: libc.CString("unban"), Minimum_position: POS_DEAD, Command_pointer: do_unban, Minimum_level: 0, Minimum_admlevel: ADMLVL_GRGOD, Subcmd: 0}, {Command: libc.CString("unaffect"), Sort_as: libc.CString("unaffect"), Minimum_position: POS_DEAD, Command_pointer: do_wizutil, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: SCMD_UNAFFECT}, {Command: libc.CString("uppercut"), Sort_as: libc.CString("upperc"), Minimum_position: POS_FIGHTING, Command_pointer: do_uppercut, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("upgrade"), Sort_as: libc.CString("upgrad"), Minimum_position: POS_RESTING, Command_pointer: do_upgrade, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("uptime"), Sort_as: libc.CString("uptime"), Minimum_position: POS_DEAD, Command_pointer: do_date, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_UPTIME}, {Command: libc.CString("use"), Sort_as: libc.CString("use"), Minimum_position: POS_SITTING, Command_pointer: do_use, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_USE}, {Command: libc.CString("users"), Sort_as: libc.CString("users"), Minimum_position: POS_DEAD, Command_pointer: do_users, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("value"), Sort_as: libc.CString("val"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("varstat"), Sort_as: libc.CString("varst"), Minimum_position: POS_DEAD, Command_pointer: do_varstat, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("version"), Sort_as: libc.CString("ver"), Minimum_position: POS_DEAD, Command_pointer: do_gen_ps, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_VERSION}, {Command: libc.CString("vieworder"), Sort_as: libc.CString("view"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_VIEWORDER}, {Command: libc.CString("visible"), Sort_as: libc.CString("vis"), Minimum_position: POS_RESTING, Command_pointer: do_visible, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("vnum"), Sort_as: libc.CString("vnum"), Minimum_position: POS_DEAD, Command_pointer: do_vnum, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("voice"), Sort_as: libc.CString("voic"), Minimum_position: POS_RESTING, Command_pointer: do_voice, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("vstat"), Sort_as: libc.CString("vstat"), Minimum_position: POS_DEAD, Command_pointer: do_vstat, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("wake"), Sort_as: libc.CString("wa"), Minimum_position: POS_SLEEPING, Command_pointer: do_wake, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("warppool"), Sort_as: libc.CString("warppoo"), Minimum_position: POS_STANDING, Command_pointer: do_warppool, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("waterrazor"), Sort_as: libc.CString("waterraz"), Minimum_position: POS_STANDING, Command_pointer: do_razor, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("waterspikes"), Sort_as: libc.CString("waterspik"), Minimum_position: POS_STANDING, Command_pointer: do_spike, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("wear"), Sort_as: libc.CString("wea"), Minimum_position: POS_RESTING, Command_pointer: do_wear, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("weather"), Sort_as: libc.CString("weather"), Minimum_position: POS_RESTING, Command_pointer: do_weather, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("who"), Sort_as: libc.CString("who"), Minimum_position: POS_DEAD, Command_pointer: do_who, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("whoami"), Sort_as: libc.CString("whoami"), Minimum_position: POS_DEAD, Command_pointer: do_gen_ps, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_WHOAMI}, {Command: libc.CString("whohide"), Sort_as: libc.CString("whohide"), Minimum_position: POS_DEAD, Command_pointer: do_gen_tog, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_WHOHIDE}, {Command: libc.CString("whois"), Sort_as: libc.CString("whois"), Minimum_position: POS_DEAD, Command_pointer: do_whois, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("where"), Sort_as: libc.CString("where"), Minimum_position: POS_RESTING, Command_pointer: do_where, Minimum_level: 1, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("whisper"), Sort_as: libc.CString("whisper"), Minimum_position: POS_RESTING, Command_pointer: do_spec_comm, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_WHISPER}, {Command: libc.CString("wield"), Sort_as: libc.CString("wie"), Minimum_position: POS_RESTING, Command_pointer: do_wield, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("will"), Sort_as: libc.CString("wil"), Minimum_position: POS_RESTING, Command_pointer: do_willpower, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("wimpy"), Sort_as: libc.CString("wimpy"), Minimum_position: POS_DEAD, Command_pointer: do_value, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_WIMPY}, {Command: libc.CString("withdraw"), Sort_as: libc.CString("withdraw"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("wire"), Sort_as: libc.CString("wir"), Minimum_position: POS_STANDING, Command_pointer: do_not_here, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("wiznet"), Sort_as: libc.CString("wiz"), Minimum_position: POS_DEAD, Command_pointer: do_wiznet, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString(";"), Sort_as: libc.CString(";"), Minimum_position: POS_DEAD, Command_pointer: do_wiznet, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("wizhelp"), Sort_as: libc.CString("wizhelp"), Minimum_position: POS_SLEEPING, Command_pointer: do_commands, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_WIZHELP}, {Command: libc.CString("wizlist"), Sort_as: libc.CString("wizlist"), Minimum_position: POS_DEAD, Command_pointer: do_gen_ps, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_WIZLIST}, {Command: libc.CString("wizlock"), Sort_as: libc.CString("wizlock"), Minimum_position: POS_DEAD, Command_pointer: do_wizlock, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("wizupdate"), Sort_as: libc.CString("wizupdate"), Minimum_position: POS_DEAD, Command_pointer: do_wizupdate, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: 0}, {Command: libc.CString("write"), Sort_as: libc.CString("write"), Minimum_position: POS_STANDING, Command_pointer: do_write, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("zanzoken"), Sort_as: libc.CString("zanzo"), Minimum_position: POS_FIGHTING, Command_pointer: do_zanzoken, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("zen"), Sort_as: libc.CString("ze"), Minimum_position: POS_FIGHTING, Command_pointer: do_zen, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("zcheck"), Sort_as: libc.CString("zcheck"), Minimum_position: POS_DEAD, Command_pointer: do_zcheck, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("zreset"), Sort_as: libc.CString("zreset"), Minimum_position: POS_DEAD, Command_pointer: do_zreset, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("zedit"), Sort_as: libc.CString("zedit"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_ZEDIT}, {Command: libc.CString("zlist"), Sort_as: libc.CString("zlist"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_ZLIST}, {Command: libc.CString("zpurge"), Sort_as: libc.CString("zpurge"), Minimum_position: POS_DEAD, Command_pointer: do_zpurge, Minimum_level: 0, Minimum_admlevel: ADMLVL_GRGOD, Subcmd: 0}, {Command: libc.CString("attach"), Sort_as: libc.CString("attach"), Minimum_position: POS_DEAD, Command_pointer: do_attach, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("detach"), Sort_as: libc.CString("detach"), Minimum_position: POS_DEAD, Command_pointer: do_detach, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("detect"), Sort_as: libc.CString("detec"), Minimum_position: POS_STANDING, Command_pointer: do_radar, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("tlist"), Sort_as: libc.CString("tlist"), Minimum_position: POS_DEAD, Command_pointer: do_oasis, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_TLIST}, {Command: libc.CString("tstat"), Sort_as: libc.CString("tstat"), Minimum_position: POS_DEAD, Command_pointer: do_tstat, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("masound"), Sort_as: libc.CString("masound"), Minimum_position: POS_DEAD, Command_pointer: do_masound, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mheal"), Sort_as: libc.CString("mhea"), Minimum_position: POS_SITTING, Command_pointer: do_mheal, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mkill"), Sort_as: libc.CString("mkill"), Minimum_position: POS_STANDING, Command_pointer: do_mkill, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mjunk"), Sort_as: libc.CString("mjunk"), Minimum_position: POS_SITTING, Command_pointer: do_mjunk, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mdamage"), Sort_as: libc.CString("mdamage"), Minimum_position: POS_DEAD, Command_pointer: do_mdamage, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mdoor"), Sort_as: libc.CString("mdoor"), Minimum_position: POS_DEAD, Command_pointer: do_mdoor, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mecho"), Sort_as: libc.CString("mecho"), Minimum_position: POS_DEAD, Command_pointer: do_mecho, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mechoaround"), Sort_as: libc.CString("mechoaround"), Minimum_position: POS_DEAD, Command_pointer: do_mechoaround, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("msend"), Sort_as: libc.CString("msend"), Minimum_position: POS_DEAD, Command_pointer: do_msend, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mload"), Sort_as: libc.CString("mload"), Minimum_position: POS_DEAD, Command_pointer: do_mload, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mpurge"), Sort_as: libc.CString("mpurge"), Minimum_position: POS_DEAD, Command_pointer: do_mpurge, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mgoto"), Sort_as: libc.CString("mgoto"), Minimum_position: POS_DEAD, Command_pointer: do_mgoto, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mat"), Sort_as: libc.CString("mat"), Minimum_position: POS_DEAD, Command_pointer: do_mat, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mteleport"), Sort_as: libc.CString("mteleport"), Minimum_position: POS_DEAD, Command_pointer: do_mteleport, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mforce"), Sort_as: libc.CString("mforce"), Minimum_position: POS_DEAD, Command_pointer: do_mforce, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mremember"), Sort_as: libc.CString("mremember"), Minimum_position: POS_DEAD, Command_pointer: do_mremember, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mforget"), Sort_as: libc.CString("mforget"), Minimum_position: POS_DEAD, Command_pointer: do_mforget, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mtransform"), Sort_as: libc.CString("mtransform"), Minimum_position: POS_DEAD, Command_pointer: do_mtransform, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mzoneecho"), Sort_as: libc.CString("mzoneecho"), Minimum_position: POS_DEAD, Command_pointer: do_mzoneecho, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("vdelete"), Sort_as: libc.CString("vdelete"), Minimum_position: POS_DEAD, Command_pointer: do_vdelete, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("mfollow"), Sort_as: libc.CString("mfollow"), Minimum_position: POS_DEAD, Command_pointer: do_mfollow, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("\n"), Sort_as: libc.CString("zzzzzzz"), Minimum_position: 0, Command_pointer: nil, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}}
+var disabled_first *disabled_data = nil
+var complete_cmd_info []command_info
+var cmd_info []command_info
+
+func initCmdInfo() {
+	cmd_info = []command_info{{Command: libc.CString("RESERVED"), Sort_as: libc.CString(""), Minimum_position: 0, Command_pointer: nil, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("north"), Sort_as: libc.CString("n"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_move(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NORTH}, {Command: libc.CString("east"), Sort_as: libc.CString("e"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_move(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_EAST}, {Command: libc.CString("south"), Sort_as: libc.CString("s"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_move(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SOUTH}, {Command: libc.CString("west"), Sort_as: libc.CString("w"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_move(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_WEST}, {Command: libc.CString("up"), Sort_as: libc.CString("u"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_move(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_UP}, {Command: libc.CString("down"), Sort_as: libc.CString("d"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_move(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_DOWN}, {Command: libc.CString("northwest"), Sort_as: libc.CString("northw"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_move(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NW}, {Command: libc.CString("nw"), Sort_as: libc.CString("nw"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_move(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NW}, {Command: libc.CString("northeast"), Sort_as: libc.CString("northe"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_move(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NE}, {Command: libc.CString("ne"), Sort_as: libc.CString("ne"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_move(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NE}, {Command: libc.CString("southeast"), Sort_as: libc.CString("southe"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_move(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SE}, {Command: libc.CString("se"), Sort_as: libc.CString("se"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_move(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SE}, {Command: libc.CString("southwest"), Sort_as: libc.CString("southw"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_move(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SW}, {Command: libc.CString("sw"), Sort_as: libc.CString("sw"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_move(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SW}, {Command: libc.CString("i"), Sort_as: libc.CString("i"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_inventory(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("inside"), Sort_as: libc.CString("in"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_move(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_IN}, {Command: libc.CString("outside"), Sort_as: libc.CString("out"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_move(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_OUT}, {Command: libc.CString("absorb"), Sort_as: libc.CString("absor"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_absorb(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("at"), Sort_as: libc.CString("at"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_at(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("adrenaline"), Sort_as: libc.CString("adrenalin"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_adrenaline(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("advance"), Sort_as: libc.CString("adv"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_advance(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: 0}, {Command: libc.CString("aedit"), Sort_as: libc.CString("aed"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oasis(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: SCMD_OASIS_AEDIT}, {Command: libc.CString("alias"), Sort_as: libc.CString("ali"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_alias(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("afk"), Sort_as: libc.CString("afk"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_AFK}, {Command: libc.CString("aid"), Sort_as: libc.CString("aid"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_aid(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("amnesiac"), Sort_as: libc.CString("amnesia"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_amnisiac(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("appraise"), Sort_as: libc.CString("apprais"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_appraise(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("approve"), Sort_as: libc.CString("approve"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_approve(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("arena"), Sort_as: libc.CString("aren"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_arena(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("ashcloud"), Sort_as: libc.CString("ashclou"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_ashcloud(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("assedit"), Sort_as: libc.CString("assed"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_assedit(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("assist"), Sort_as: libc.CString("assis"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_assist(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("astat"), Sort_as: libc.CString("ast"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_astat(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("ask"), Sort_as: libc.CString("ask"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_spec_comm(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_ASK}, {Command: libc.CString("attack"), Sort_as: libc.CString("attack"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_attack(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("auction"), Sort_as: libc.CString("auctio"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("augment"), Sort_as: libc.CString("augmen"), Minimum_position: POS_SITTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("aura"), Sort_as: libc.CString("aura"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_aura(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("autoexit"), Sort_as: libc.CString("autoex"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_autoexit(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("autogold"), Sort_as: libc.CString("autogo"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_AUTOGOLD}, {Command: libc.CString("autoloot"), Sort_as: libc.CString("autolo"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_AUTOLOOT}, {Command: libc.CString("autosplit"), Sort_as: libc.CString("autosp"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_AUTOSPLIT}, {Command: libc.CString("bakuhatsuha"), Sort_as: libc.CString("baku"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_baku(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("ban"), Sort_as: libc.CString("ban"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_ban(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_VICE, Subcmd: 0}, {Command: libc.CString("balance"), Sort_as: libc.CString("bal"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("balefire"), Sort_as: libc.CString("balef"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_balefire(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("barrage"), Sort_as: libc.CString("barrage"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_pbarrage(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("barrier"), Sort_as: libc.CString("barri"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_barrier(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("bash"), Sort_as: libc.CString("bas"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_bash(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("beam"), Sort_as: libc.CString("bea"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_beam(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("bexchange"), Sort_as: libc.CString("bexchan"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_rbanktrans(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("bid"), Sort_as: libc.CString("bi"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_bid(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("bigbang"), Sort_as: libc.CString("bigban"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_bigbang(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("bite"), Sort_as: libc.CString("bit"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_bite(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("blessedhammer"), Sort_as: libc.CString("bham"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_blessedhammer(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("block"), Sort_as: libc.CString("block"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_block(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("book"), Sort_as: libc.CString("boo"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_ps(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_INFO}, {Command: libc.CString("break"), Sort_as: libc.CString("break"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_break(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("brief"), Sort_as: libc.CString("br"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_BRIEF}, {Command: libc.CString("build"), Sort_as: libc.CString("bui"), Minimum_position: POS_SITTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_assemble(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_BREW}, {Command: libc.CString("buildwalk"), Sort_as: libc.CString("buildwalk"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_BUILDWALK}, {Command: libc.CString("buy"), Sort_as: libc.CString("bu"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("bug"), Sort_as: libc.CString("bug"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_write(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_BUG}, {Command: libc.CString("cancel"), Sort_as: libc.CString("cance"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("candy"), Sort_as: libc.CString("cand"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_candy(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("carry"), Sort_as: libc.CString("carr"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_carry(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("carve"), Sort_as: libc.CString("carv"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: SCMD_CARVE}, {Command: libc.CString("cedit"), Sort_as: libc.CString("cedit"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oasis(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: SCMD_OASIS_CEDIT}, {Command: libc.CString("channel"), Sort_as: libc.CString("channe"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_channel(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("charge"), Sort_as: libc.CString("char"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_charge(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("check"), Sort_as: libc.CString("ch"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("checkload"), Sort_as: libc.CString("checkl"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_checkloadstatus(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("chown"), Sort_as: libc.CString("cho"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_chown(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_IMPL, Subcmd: 0}, {Command: libc.CString("clan"), Sort_as: libc.CString("cla"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_clan(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("clear"), Sort_as: libc.CString("cle"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_ps(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_CLEAR}, {Command: libc.CString("close"), Sort_as: libc.CString("cl"), Minimum_position: POS_SITTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_door(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_CLOSE}, {Command: libc.CString("closeeyes"), Sort_as: libc.CString("closeey"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_eyec(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("cls"), Sort_as: libc.CString("cls"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_ps(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_CLEAR}, {Command: libc.CString("clsolc"), Sort_as: libc.CString("clsolc"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: SCMD_CLS}, {Command: libc.CString("consider"), Sort_as: libc.CString("con"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_consider(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("color"), Sort_as: libc.CString("col"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_color(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("combine"), Sort_as: libc.CString("comb"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_combine(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("compare"), Sort_as: libc.CString("comp"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_compare(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("commands"), Sort_as: libc.CString("com"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_commands(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_COMMANDS}, {Command: libc.CString("commune"), Sort_as: libc.CString("comm"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_commune(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("compact"), Sort_as: libc.CString("compact"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_COMPACT}, {Command: libc.CString("cook"), Sort_as: libc.CString("coo"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_cook(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("copyover"), Sort_as: libc.CString("copyover"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_copyover(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("create"), Sort_as: libc.CString("crea"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_form(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("credits"), Sort_as: libc.CString("cred"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_ps(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_CREDITS}, {Command: libc.CString("crusher"), Sort_as: libc.CString("crushe"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_crusher(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("date"), Sort_as: libc.CString("da"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_date(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_DATE}, {Command: libc.CString("darkness"), Sort_as: libc.CString("darknes"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_ddslash(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("dc"), Sort_as: libc.CString("dc"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_dc(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("deathball"), Sort_as: libc.CString("deathbal"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_deathball(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("deathbeam"), Sort_as: libc.CString("deathbea"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_deathbeam(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("decapitate"), Sort_as: libc.CString("decapit"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_spoil(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("defend"), Sort_as: libc.CString("defen"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_defend(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("deploy"), Sort_as: libc.CString("deplo"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_deploy(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("dualbeam"), Sort_as: libc.CString("dualbea"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_dualbeam(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("deposit"), Sort_as: libc.CString("depo"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("diagnose"), Sort_as: libc.CString("diagnos"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_diagnose(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("dimizu"), Sort_as: libc.CString("dimizu"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_dimizu(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("disable"), Sort_as: libc.CString("disa"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_disable(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_VICE, Subcmd: 0}, {Command: libc.CString("disguise"), Sort_as: libc.CString("disguis"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_disguise(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("dig"), Sort_as: libc.CString("dig"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_bury(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("display"), Sort_as: libc.CString("disp"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_display(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("dodonpa"), Sort_as: libc.CString("dodon"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_dodonpa(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("donate"), Sort_as: libc.CString("don"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_drop(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_DONATE}, {Command: libc.CString("drag"), Sort_as: libc.CString("dra"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_drag(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("draw"), Sort_as: libc.CString("dra"), Minimum_position: POS_SITTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_draw(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("drink"), Sort_as: libc.CString("dri"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_drink(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_DRINK}, {Command: libc.CString("drop"), Sort_as: libc.CString("dro"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_drop(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_DROP}, {Command: libc.CString("dub"), Sort_as: libc.CString("du"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_intro(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("eat"), Sort_as: libc.CString("ea"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_eat(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_EAT}, {Command: libc.CString("eavesdrop"), Sort_as: libc.CString("eaves"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_eavesdrop(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("echo"), Sort_as: libc.CString("ec"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_echo(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_ECHO}, {Command: libc.CString("elbow"), Sort_as: libc.CString("elb"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_elbow(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("emote"), Sort_as: libc.CString("em"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_echo(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_EMOTE}, {Command: libc.CString("energize"), Sort_as: libc.CString("energiz"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_energize(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString(":"), Sort_as: libc.CString(":"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_echo(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_EMOTE}, {Command: libc.CString("ensnare"), Sort_as: libc.CString("ensnar"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_ensnare(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("enter"), Sort_as: libc.CString("ent"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_enter(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("equipment"), Sort_as: libc.CString("eq"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_equipment(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("eraser"), Sort_as: libc.CString("eras"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_eraser(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("escape"), Sort_as: libc.CString("esca"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_escape(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("evolve"), Sort_as: libc.CString("evolv"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_evolve(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("exchange"), Sort_as: libc.CString("exchan"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_rptrans(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("exits"), Sort_as: libc.CString("ex"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_exits(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("examine"), Sort_as: libc.CString("exa"), Minimum_position: POS_SITTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_examine(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("extract"), Sort_as: libc.CString("extrac"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_extract(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("feed"), Sort_as: libc.CString("fee"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_feed(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("fill"), Sort_as: libc.CString("fil"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_pour(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_FILL}, {Command: libc.CString("file"), Sort_as: libc.CString("fi"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_file(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("finalflash"), Sort_as: libc.CString("finalflash"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_final(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("finddoor"), Sort_as: libc.CString("findd"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_finddoor(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("findkey"), Sort_as: libc.CString("findk"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_findkey(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("finger"), Sort_as: libc.CString("finge"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_finger(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("fireshield"), Sort_as: libc.CString("firesh"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_fireshield(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("fish"), Sort_as: libc.CString("fis"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_fish(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("fix"), Sort_as: libc.CString("fix"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_fix(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("flee"), Sort_as: libc.CString("fl"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_flee(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("fly"), Sort_as: libc.CString("fly"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_fly(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("focus"), Sort_as: libc.CString("foc"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_focus(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("follow"), Sort_as: libc.CString("fol"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_follow(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("force"), Sort_as: libc.CString("force"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_force(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("forgery"), Sort_as: libc.CString("forg"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_forgery(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("forget"), Sort_as: libc.CString("forg"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("freeze"), Sort_as: libc.CString("freeze"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wizutil(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_FREEZE}, {Command: libc.CString("fury"), Sort_as: libc.CString("fury"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_fury(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("future"), Sort_as: libc.CString("futu"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_future(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("gain"), Sort_as: libc.CString("ga"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("galikgun"), Sort_as: libc.CString("galik"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_galikgun(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("game"), Sort_as: libc.CString("gam"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_show(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("garden"), Sort_as: libc.CString("garde"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_garden(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("genkidama"), Sort_as: libc.CString("genkidam"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_genki(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("genocide"), Sort_as: libc.CString("genocid"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_geno(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("get"), Sort_as: libc.CString("get"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_get(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("gecho"), Sort_as: libc.CString("gecho"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gecho(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("gedit"), Sort_as: libc.CString("gedit"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oasis(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: SCMD_OASIS_GEDIT}, {Command: libc.CString("gemote"), Sort_as: libc.CString("gem"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_comm(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_GEMOTE}, {Command: libc.CString("generator"), Sort_as: libc.CString("genr"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("glist"), Sort_as: libc.CString("glist"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oasis(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: SCMD_OASIS_GLIST}, {Command: libc.CString("give"), Sort_as: libc.CString("giv"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_give(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("goto"), Sort_as: libc.CString("go"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_goto(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("gold"), Sort_as: libc.CString("gol"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gold(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("group"), Sort_as: libc.CString("gro"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_group(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("grab"), Sort_as: libc.CString("grab"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_grab(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("grand"), Sort_as: libc.CString("gran"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("grapple"), Sort_as: libc.CString("grapp"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_grapple(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("grats"), Sort_as: libc.CString("grat"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_comm(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_GRATZ}, {Command: libc.CString("gravity"), Sort_as: libc.CString("grav"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("gsay"), Sort_as: libc.CString("gsay"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gsay(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("gtell"), Sort_as: libc.CString("gt"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gsay(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hand"), Sort_as: libc.CString("han"), Minimum_position: POS_SITTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_hand(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("handout"), Sort_as: libc.CString("hand"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_handout(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("hasshuken"), Sort_as: libc.CString("hasshuke"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_hass(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hayasa"), Sort_as: libc.CString("hayas"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_hayasa(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("headbutt"), Sort_as: libc.CString("headbut"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_head(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("heal"), Sort_as: libc.CString("hea"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_heal(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("health"), Sort_as: libc.CString("hea"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_GHEALTH}, {Command: libc.CString("healingglow"), Sort_as: libc.CString("healing"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_healglow(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("heeldrop"), Sort_as: libc.CString("heeldr"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_heeldrop(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hellflash"), Sort_as: libc.CString("hellflas"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_hellflash(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hellspear"), Sort_as: libc.CString("hellspea"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_hellspear(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("help"), Sort_as: libc.CString("h"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_help(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hedit"), Sort_as: libc.CString("hedit"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oasis(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_HEDIT}, {Command: libc.CString("hindex"), Sort_as: libc.CString("hind"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_hindex(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("helpcheck"), Sort_as: libc.CString("helpch"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_helpcheck(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("handbook"), Sort_as: libc.CString("handb"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_ps(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_HANDBOOK}, {Command: libc.CString("hide"), Sort_as: libc.CString("hide"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_HIDE}, {Command: libc.CString("hints"), Sort_as: libc.CString("hints"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_HINTS}, {Command: libc.CString("history"), Sort_as: libc.CString("hist"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_history(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hold"), Sort_as: libc.CString("hold"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_grab(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("holylight"), Sort_as: libc.CString("holy"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_HOLYLIGHT}, {Command: libc.CString("honoo"), Sort_as: libc.CString("hono"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_honoo(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("house"), Sort_as: libc.CString("house"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_house(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hsedit"), Sort_as: libc.CString("hsedit"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oasis(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: SCMD_OASIS_HSEDIT}, {Command: libc.CString("hspiral"), Sort_as: libc.CString("hspira"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_hspiral(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("htank"), Sort_as: libc.CString("htan"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hydromancy"), Sort_as: libc.CString("hydrom"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_hydromancy(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("hyoga"), Sort_as: libc.CString("hyoga"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_obstruct(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("ihealth"), Sort_as: libc.CString("ihea"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_IHEALTH}, {Command: libc.CString("info"), Sort_as: libc.CString("info"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_ginfo(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("infuse"), Sort_as: libc.CString("infus"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_infuse(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("ingest"), Sort_as: libc.CString("inges"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_ingest(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("imotd"), Sort_as: libc.CString("imotd"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_ps(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_IMOTD}, {Command: libc.CString("immlist"), Sort_as: libc.CString("imm"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_ps(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_WIZLIST}, {Command: libc.CString("implant"), Sort_as: libc.CString("implan"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_implant(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("instant"), Sort_as: libc.CString("insta"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_instant(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("instill"), Sort_as: libc.CString("instil"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_instill(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("instruct"), Sort_as: libc.CString("instruc"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: SCMD_INSTRUCT}, {Command: libc.CString("inventory"), Sort_as: libc.CString("inv"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_inventory(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("interest"), Sort_as: libc.CString("inter"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_interest(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: 0}, {Command: libc.CString("iedit"), Sort_as: libc.CString("ie"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_iedit(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: 0}, {Command: libc.CString("invis"), Sort_as: libc.CString("invi"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_invis(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("iwarp"), Sort_as: libc.CString("iwarp"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_warp(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("junk"), Sort_as: libc.CString("junk"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_drop(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_JUNK}, {Command: libc.CString("kaioken"), Sort_as: libc.CString("kaioken"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_kaioken(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kakusanha"), Sort_as: libc.CString("kakusan"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_kakusanha(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kamehameha"), Sort_as: libc.CString("kame"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_kamehameha(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kanso"), Sort_as: libc.CString("kans"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_kanso(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kiball"), Sort_as: libc.CString("kibal"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_kiball(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kiblast"), Sort_as: libc.CString("kiblas"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_kiblast(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kienzan"), Sort_as: libc.CString("kienza"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_kienzan(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kill"), Sort_as: libc.CString("kil"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_kill(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("kick"), Sort_as: libc.CString("kic"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_kick(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("knee"), Sort_as: libc.CString("kne"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_knee(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("koteiru"), Sort_as: libc.CString("koteiru"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_koteiru(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kousengan"), Sort_as: libc.CString("kousengan"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_kousengan(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kuraiiro"), Sort_as: libc.CString("kuraiir"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_kura(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("kyodaika"), Sort_as: libc.CString("kyodaik"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_kyodaika(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("look"), Sort_as: libc.CString("lo"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_look(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_LOOK}, {Command: libc.CString("lag"), Sort_as: libc.CString("la"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_lag(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 5, Subcmd: 0}, {Command: libc.CString("land"), Sort_as: libc.CString("lan"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_land(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("languages"), Sort_as: libc.CString("lang"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_languages(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("last"), Sort_as: libc.CString("last"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_last(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("learn"), Sort_as: libc.CString("lear"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("leave"), Sort_as: libc.CString("lea"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_leave(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("levels"), Sort_as: libc.CString("lev"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_levels(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("light"), Sort_as: libc.CString("ligh"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_lightgrenade(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("list"), Sort_as: libc.CString("lis"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("life"), Sort_as: libc.CString("lif"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_lifeforce(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("links"), Sort_as: libc.CString("lin"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oasis(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: SCMD_OASIS_LINKS}, {Command: libc.CString("liquefy"), Sort_as: libc.CString("liquef"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_liquefy(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("lkeep"), Sort_as: libc.CString("lkee"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_LKEEP}, {Command: libc.CString("lock"), Sort_as: libc.CString("loc"), Minimum_position: POS_SITTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_door(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_LOCK}, {Command: libc.CString("lockout"), Sort_as: libc.CString("lock"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_hell(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("load"), Sort_as: libc.CString("load"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_load(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("majinize"), Sort_as: libc.CString("majini"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_majinize(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("malice"), Sort_as: libc.CString("malic"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_malice(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("masenko"), Sort_as: libc.CString("masenk"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_masenko(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("motd"), Sort_as: libc.CString("motd"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_ps(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_MOTD}, {Command: libc.CString("mail"), Sort_as: libc.CString("mail"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 2, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("map"), Sort_as: libc.CString("map"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_map(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("medit"), Sort_as: libc.CString("medit"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oasis(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_MEDIT}, {Command: libc.CString("meditate"), Sort_as: libc.CString("medita"), Minimum_position: POS_SITTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_meditate(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("metamorph"), Sort_as: libc.CString("metamorp"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_metamorph(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mimic"), Sort_as: libc.CString("mimi"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_mimic(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mlist"), Sort_as: libc.CString("mlist"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oasis(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_MLIST}, {Command: libc.CString("moondust"), Sort_as: libc.CString("moondus"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_moondust(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("multiform"), Sort_as: libc.CString("multifor"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_multiform(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mute"), Sort_as: libc.CString("mute"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wizutil(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_SQUELCH}, {Command: libc.CString("music"), Sort_as: libc.CString("musi"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_comm(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_HOLLER}, {Command: libc.CString("newbie"), Sort_as: libc.CString("newbie"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_comm(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_AUCTION}, {Command: libc.CString("news"), Sort_as: libc.CString("news"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_news(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("newsedit"), Sort_as: libc.CString("newsedi"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_newsedit(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("nickname"), Sort_as: libc.CString("nicknam"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_nickname(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("nocompress"), Sort_as: libc.CString("nocompress"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOCOMPRESS}, {Command: libc.CString("noeq"), Sort_as: libc.CString("noeq"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOEQSEE}, {Command: libc.CString("nolin"), Sort_as: libc.CString("nolin"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NODEC}, {Command: libc.CString("nomusic"), Sort_as: libc.CString("nomusi"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOMUSIC}, {Command: libc.CString("noooc"), Sort_as: libc.CString("noooc"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOGOSSIP}, {Command: libc.CString("nogive"), Sort_as: libc.CString("nogiv"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: SCMD_NOGIVE}, {Command: libc.CString("nograts"), Sort_as: libc.CString("nograts"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOGRATZ}, {Command: libc.CString("nogrow"), Sort_as: libc.CString("nogro"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_nogrow(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("nohassle"), Sort_as: libc.CString("nohassle"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_NOHASSLE}, {Command: libc.CString("nomail"), Sort_as: libc.CString("nomail"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NMWARN}, {Command: libc.CString("nonewbie"), Sort_as: libc.CString("nonewbie"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOAUCTION}, {Command: libc.CString("noparry"), Sort_as: libc.CString("noparr"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOPARRY}, {Command: libc.CString("norepeat"), Sort_as: libc.CString("norepeat"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOREPEAT}, {Command: libc.CString("noshout"), Sort_as: libc.CString("noshout"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_DEAF}, {Command: libc.CString("nosummon"), Sort_as: libc.CString("nosummon"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOSUMMON}, {Command: libc.CString("notell"), Sort_as: libc.CString("notell"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_NOTELL}, {Command: libc.CString("notitle"), Sort_as: libc.CString("notitle"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wizutil(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: SCMD_NOTITLE}, {Command: libc.CString("nova"), Sort_as: libc.CString("nov"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_nova(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("nowiz"), Sort_as: libc.CString("nowiz"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_NOWIZ}, {Command: libc.CString("ooc"), Sort_as: libc.CString("ooc"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_comm(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_GOSSIP}, {Command: libc.CString("offer"), Sort_as: libc.CString("off"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("open"), Sort_as: libc.CString("ope"), Minimum_position: POS_SITTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_door(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_OPEN}, {Command: libc.CString("olc"), Sort_as: libc.CString("olc"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_show_save_list(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("olist"), Sort_as: libc.CString("olist"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oasis(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_OLIST}, {Command: libc.CString("oedit"), Sort_as: libc.CString("oedit"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oasis(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_OEDIT}, {Command: libc.CString("osay"), Sort_as: libc.CString("osay"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_osay(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("pack"), Sort_as: libc.CString("pac"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_pack(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("page"), Sort_as: libc.CString("pag"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_page(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("paralyze"), Sort_as: libc.CString("paralyz"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_paralyze(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("pagelength"), Sort_as: libc.CString("pagel"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_pagelength(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("peace"), Sort_as: libc.CString("pea"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_peace(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("perfect"), Sort_as: libc.CString("perfec"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_perf(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("permission"), Sort_as: libc.CString("permiss"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_permission(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("phoenix"), Sort_as: libc.CString("phoeni"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_pslash(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("pick"), Sort_as: libc.CString("pi"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_door(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_PICK}, {Command: libc.CString("pickup"), Sort_as: libc.CString("picku"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("pilot"), Sort_as: libc.CString("pilot"), Minimum_position: POS_SITTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_drive(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("plant"), Sort_as: libc.CString("plan"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_plant(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("play"), Sort_as: libc.CString("pla"), Minimum_position: POS_SITTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_play(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("players"), Sort_as: libc.CString("play"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_plist(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: 0}, {Command: libc.CString("poofin"), Sort_as: libc.CString("poofi"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_poofset(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_POOFIN}, {Command: libc.CString("poofout"), Sort_as: libc.CString("poofo"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_poofset(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_POOFOUT}, {Command: libc.CString("pose"), Sort_as: libc.CString("pos"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_pose(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("post"), Sort_as: libc.CString("pos"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_post(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("potential"), Sort_as: libc.CString("poten"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_potential(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("pour"), Sort_as: libc.CString("pour"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_pour(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_POUR}, {Command: libc.CString("powerup"), Sort_as: libc.CString("poweru"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_powerup(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("preference"), Sort_as: libc.CString("preferenc"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_preference(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("program"), Sort_as: libc.CString("progra"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oasis(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_OASIS_REDIT}, {Command: libc.CString("prompt"), Sort_as: libc.CString("pro"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_display(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("practice"), Sort_as: libc.CString("pra"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_practice(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("psychic"), Sort_as: libc.CString("psychi"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_psyblast(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("punch"), Sort_as: libc.CString("punc"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_punch(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("pushup"), Sort_as: libc.CString("pushu"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_pushup(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("put"), Sort_as: libc.CString("put"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_put(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("purge"), Sort_as: libc.CString("purge"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_purge(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("qui"), Sort_as: libc.CString("qui"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_quit(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("quit"), Sort_as: libc.CString("quit"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_quit(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_QUIT}, {Command: libc.CString("radar"), Sort_as: libc.CString("rada"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_sradar(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("raise"), Sort_as: libc.CString("rai"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_raise(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rbank"), Sort_as: libc.CString("rban"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_rbank(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("refuel"), Sort_as: libc.CString("refue"), Minimum_position: POS_SITTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_refuel(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("resize"), Sort_as: libc.CString("resiz"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_resize(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("restring"), Sort_as: libc.CString("restring"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_restring(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rclone"), Sort_as: libc.CString("rclon"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_rcopy(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("rcopy"), Sort_as: libc.CString("rcopy"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_rcopy(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("roomdisplay"), Sort_as: libc.CString("roomdisplay"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_rdisplay(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("read"), Sort_as: libc.CString("rea"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_look(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_READ}, {Command: libc.CString("recall"), Sort_as: libc.CString("reca"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_recall(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("recharge"), Sort_as: libc.CString("rechar"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_recharge(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("regenerate"), Sort_as: libc.CString("regen"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_regenerate(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("renzokou"), Sort_as: libc.CString("renzo"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_renzo(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("repair"), Sort_as: libc.CString("repai"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_srepair(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("reply"), Sort_as: libc.CString("rep"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_reply(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rescue"), Sort_as: libc.CString("rescu"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_rescue(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rest"), Sort_as: libc.CString("re"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_rest(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("reward"), Sort_as: libc.CString("rewar"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_reward(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("reload"), Sort_as: libc.CString("reload"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_reboot(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 5, Subcmd: 0}, {Command: libc.CString("receive"), Sort_as: libc.CString("rece"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("remove"), Sort_as: libc.CString("rem"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_remove(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rent"), Sort_as: libc.CString("rent"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("report"), Sort_as: libc.CString("repor"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_write(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_IDEA}, {Command: libc.CString("reroll"), Sort_as: libc.CString("rero"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wizutil(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: SCMD_REROLL}, {Command: libc.CString("respond"), Sort_as: libc.CString("resp"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_respond(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("restore"), Sort_as: libc.CString("resto"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_restore(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("return"), Sort_as: libc.CString("retu"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_return(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("redit"), Sort_as: libc.CString("redit"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oasis(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_REDIT}, {Command: libc.CString("rip"), Sort_as: libc.CString("ri"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_rip(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rlist"), Sort_as: libc.CString("rlist"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oasis(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_RLIST}, {Command: libc.CString("rogafufuken"), Sort_as: libc.CString("rogafu"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_rogafufuken(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("roomflags"), Sort_as: libc.CString("roomf"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_ROOMFLAGS}, {Command: libc.CString("roundhouse"), Sort_as: libc.CString("roundhou"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_roundhouse(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rpbank"), Sort_as: libc.CString("rpban"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_rpbank(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("rpp"), Sort_as: libc.CString("rpp"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_rpp(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("runic"), Sort_as: libc.CString("runi"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_runic(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("say"), Sort_as: libc.CString("say"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_say(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("'"), Sort_as: libc.CString("'"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_say(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("save"), Sort_as: libc.CString("sav"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_save(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("saveall"), Sort_as: libc.CString("saveall"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_saveall(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("sbc"), Sort_as: libc.CString("sbc"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_sbc(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("scan"), Sort_as: libc.CString("sca"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_scan(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("scatter"), Sort_as: libc.CString("scatte"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_scatter(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("score"), Sort_as: libc.CString("sc"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_score(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("scouter"), Sort_as: libc.CString("scou"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_scouter(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("scry"), Sort_as: libc.CString("scr"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_scry(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("seishou"), Sort_as: libc.CString("seisho"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_seishou(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("shell"), Sort_as: libc.CString("she"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_shell(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("shimmer"), Sort_as: libc.CString("shimme"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_shimmer(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("shogekiha"), Sort_as: libc.CString("shog"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_shogekiha(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("shuffle"), Sort_as: libc.CString("shuff"), Minimum_position: POS_SITTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_shuffle(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("snet"), Sort_as: libc.CString("snet"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_snet(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("search"), Sort_as: libc.CString("sea"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_look(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SEARCH}, {Command: libc.CString("sell"), Sort_as: libc.CString("sell"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("selfdestruct"), Sort_as: libc.CString("selfdest"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_selfd(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("sedit"), Sort_as: libc.CString("sedit"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oasis(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_SEDIT}, {Command: libc.CString("send"), Sort_as: libc.CString("send"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_send(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("sense"), Sort_as: libc.CString("sense"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_track(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("set"), Sort_as: libc.CString("set"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_set(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("shout"), Sort_as: libc.CString("sho"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_comm(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SHOUT}, {Command: libc.CString("show"), Sort_as: libc.CString("show"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_showoff(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("shutdow"), Sort_as: libc.CString("shutdow"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_shutdown(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: 0}, {Command: libc.CString("shutdown"), Sort_as: libc.CString("shutdown"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_shutdown(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: SCMD_SHUTDOWN}, {Command: libc.CString("silk"), Sort_as: libc.CString("sil"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_silk(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("sip"), Sort_as: libc.CString("sip"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_drink(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SIP}, {Command: libc.CString("sit"), Sort_as: libc.CString("sit"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_sit(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("situp"), Sort_as: libc.CString("situp"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_situp(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("skills"), Sort_as: libc.CString("skills"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_skills(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("skillset"), Sort_as: libc.CString("skillset"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_skillset(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 5, Subcmd: 0}, {Command: libc.CString("slam"), Sort_as: libc.CString("sla"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_slam(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("sleep"), Sort_as: libc.CString("sl"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_sleep(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("slist"), Sort_as: libc.CString("slist"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oasis(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_SLIST}, {Command: libc.CString("slowns"), Sort_as: libc.CString("slowns"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: SCMD_SLOWNS}, {Command: libc.CString("smote"), Sort_as: libc.CString("sm"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_echo(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SMOTE}, {Command: libc.CString("sneak"), Sort_as: libc.CString("sneak"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SNEAK}, {Command: libc.CString("snoop"), Sort_as: libc.CString("snoop"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_snoop(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("song"), Sort_as: libc.CString("son"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_song(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("spiral"), Sort_as: libc.CString("spiral"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_spiral(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("socials"), Sort_as: libc.CString("socials"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_commands(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_SOCIALS}, {Command: libc.CString("solarflare"), Sort_as: libc.CString("solarflare"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_solar(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("spar"), Sort_as: libc.CString("spa"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_spar(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("spit"), Sort_as: libc.CString("spi"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_spit(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("spiritball"), Sort_as: libc.CString("spiritball"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_spiritball(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("spiritcontrol"), Sort_as: libc.CString("spiritcontro"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_spiritcontrol(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("split"), Sort_as: libc.CString("split"), Minimum_position: POS_SITTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_split(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("speak"), Sort_as: libc.CString("spe"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_languages(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("spells"), Sort_as: libc.CString("spel"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_spells(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("stand"), Sort_as: libc.CString("st"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_stand(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("starbreaker"), Sort_as: libc.CString("starbr"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_breaker(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("stake"), Sort_as: libc.CString("stak"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_beacon(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("stat"), Sort_as: libc.CString("stat"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_stat(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("status"), Sort_as: libc.CString("statu"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_status(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 0, Subcmd: 0}, {Command: libc.CString("steal"), Sort_as: libc.CString("ste"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_steal(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("stone"), Sort_as: libc.CString("ston"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_spit(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("stop"), Sort_as: libc.CString("sto"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_stop(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("study"), Sort_as: libc.CString("stu"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("summon"), Sort_as: libc.CString("summo"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_summon(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("sunder"), Sort_as: libc.CString("sunde"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_sunder(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("suppress"), Sort_as: libc.CString("suppres"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_suppress(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("swallow"), Sort_as: libc.CString("swall"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_use(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_QUAFF}, {Command: libc.CString("switch"), Sort_as: libc.CString("switch"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_switch(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_VICE, Subcmd: 0}, {Command: libc.CString("syslog"), Sort_as: libc.CString("syslog"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_syslog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("tailhide"), Sort_as: libc.CString("tailh"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_tailhide(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("table"), Sort_as: libc.CString("tabl"), Minimum_position: POS_SITTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_table(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("teach"), Sort_as: libc.CString("teac"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_teach(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("tell"), Sort_as: libc.CString("tel"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_tell(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("take"), Sort_as: libc.CString("tak"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_get(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("tailwhip"), Sort_as: libc.CString("tailw"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_tailwhip(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("taisha"), Sort_as: libc.CString("taish"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_taisha(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("taste"), Sort_as: libc.CString("tas"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_eat(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_TASTE}, {Command: libc.CString("teleport"), Sort_as: libc.CString("tele"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_teleport(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("telepathy"), Sort_as: libc.CString("telepa"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_telepathy(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("tedit"), Sort_as: libc.CString("tedit"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_tedit(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_GRGOD, Subcmd: 0}, {Command: libc.CString("test"), Sort_as: libc.CString("test"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: SCMD_TEST}, {Command: libc.CString("thaw"), Sort_as: libc.CString("thaw"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wizutil(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_THAW}, {Command: libc.CString("think"), Sort_as: libc.CString("thin"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_think(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("throw"), Sort_as: libc.CString("thro"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_throw(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("title"), Sort_as: libc.CString("title"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_title(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("time"), Sort_as: libc.CString("time"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_time(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("toggle"), Sort_as: libc.CString("toggle"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_toggle(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("toplist"), Sort_as: libc.CString("toplis"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_toplist(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("trackthru"), Sort_as: libc.CString("trackthru"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: SCMD_TRACK}, {Command: libc.CString("train"), Sort_as: libc.CString("train"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_train(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("transfer"), Sort_as: libc.CString("transfer"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_trans(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("transform"), Sort_as: libc.CString("transform"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_transform(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("transo"), Sort_as: libc.CString("trans"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_transobj(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: 5, Subcmd: 0}, {Command: libc.CString("tribeam"), Sort_as: libc.CString("tribe"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_tribeam(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("trigedit"), Sort_as: libc.CString("trigedit"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oasis(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_TRIGEDIT}, {Command: libc.CString("trip"), Sort_as: libc.CString("trip"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_trip(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("tsuihidan"), Sort_as: libc.CString("tsuihida"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_tsuihidan(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("tunnel"), Sort_as: libc.CString("tunne"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_dig(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("twinslash"), Sort_as: libc.CString("twins"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_tslash(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("twohand"), Sort_as: libc.CString("twohand"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_twohand(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("typo"), Sort_as: libc.CString("typo"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_write(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_TYPO}, {Command: libc.CString("unlock"), Sort_as: libc.CString("unlock"), Minimum_position: POS_SITTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_door(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_UNLOCK}, {Command: libc.CString("ungroup"), Sort_as: libc.CString("ungroup"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_ungroup(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("unban"), Sort_as: libc.CString("unban"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_unban(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_GRGOD, Subcmd: 0}, {Command: libc.CString("unaffect"), Sort_as: libc.CString("unaffect"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wizutil(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: SCMD_UNAFFECT}, {Command: libc.CString("uppercut"), Sort_as: libc.CString("upperc"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_uppercut(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("upgrade"), Sort_as: libc.CString("upgrad"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_upgrade(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("uptime"), Sort_as: libc.CString("uptime"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_date(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_UPTIME}, {Command: libc.CString("use"), Sort_as: libc.CString("use"), Minimum_position: POS_SITTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_use(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_USE}, {Command: libc.CString("users"), Sort_as: libc.CString("users"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_users(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("value"), Sort_as: libc.CString("val"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("varstat"), Sort_as: libc.CString("varst"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_varstat(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("version"), Sort_as: libc.CString("ver"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_ps(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_VERSION}, {Command: libc.CString("vieworder"), Sort_as: libc.CString("view"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_VIEWORDER}, {Command: libc.CString("visible"), Sort_as: libc.CString("vis"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_visible(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("vnum"), Sort_as: libc.CString("vnum"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_vnum(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("voice"), Sort_as: libc.CString("voic"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_voice(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("vstat"), Sort_as: libc.CString("vstat"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_vstat(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("wake"), Sort_as: libc.CString("wa"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wake(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("warppool"), Sort_as: libc.CString("warppoo"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_warppool(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("waterrazor"), Sort_as: libc.CString("waterraz"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_razor(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("waterspikes"), Sort_as: libc.CString("waterspik"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_spike(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("wear"), Sort_as: libc.CString("wea"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wear(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("weather"), Sort_as: libc.CString("weather"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_weather(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("who"), Sort_as: libc.CString("who"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_who(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("whoami"), Sort_as: libc.CString("whoami"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_ps(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_WHOAMI}, {Command: libc.CString("whohide"), Sort_as: libc.CString("whohide"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_tog(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_WHOHIDE}, {Command: libc.CString("whois"), Sort_as: libc.CString("whois"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_whois(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("where"), Sort_as: libc.CString("where"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_where(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("whisper"), Sort_as: libc.CString("whisper"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_spec_comm(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_WHISPER}, {Command: libc.CString("wield"), Sort_as: libc.CString("wie"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wield(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("will"), Sort_as: libc.CString("wil"), Minimum_position: POS_RESTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_willpower(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("wimpy"), Sort_as: libc.CString("wimpy"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_value(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_WIMPY}, {Command: libc.CString("withdraw"), Sort_as: libc.CString("withdraw"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("wire"), Sort_as: libc.CString("wir"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_not_here(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("wiznet"), Sort_as: libc.CString("wiz"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wiznet(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString(";"), Sort_as: libc.CString(";"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wiznet(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("wizhelp"), Sort_as: libc.CString("wizhelp"), Minimum_position: POS_SLEEPING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_commands(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_WIZHELP}, {Command: libc.CString("wizlist"), Sort_as: libc.CString("wizlist"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_gen_ps(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: SCMD_WIZLIST}, {Command: libc.CString("wizlock"), Sort_as: libc.CString("wizlock"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wizlock(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("wizupdate"), Sort_as: libc.CString("wizupdate"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wizupdate(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMPL, Subcmd: 0}, {Command: libc.CString("write"), Sort_as: libc.CString("write"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_write(ch, argument, cmd, subcmd)
+	}, Minimum_level: 1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("zanzoken"), Sort_as: libc.CString("zanzo"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_zanzoken(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("zen"), Sort_as: libc.CString("ze"), Minimum_position: POS_FIGHTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_zen(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("zcheck"), Sort_as: libc.CString("zcheck"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_zcheck(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_GOD, Subcmd: 0}, {Command: libc.CString("zreset"), Sort_as: libc.CString("zreset"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_zreset(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("zedit"), Sort_as: libc.CString("zedit"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oasis(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_ZEDIT}, {Command: libc.CString("zlist"), Sort_as: libc.CString("zlist"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oasis(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_ZLIST}, {Command: libc.CString("zpurge"), Sort_as: libc.CString("zpurge"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_zpurge(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_GRGOD, Subcmd: 0}, {Command: libc.CString("attach"), Sort_as: libc.CString("attach"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_attach(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("detach"), Sort_as: libc.CString("detach"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_detach(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("detect"), Sort_as: libc.CString("detec"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_radar(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("tlist"), Sort_as: libc.CString("tlist"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_oasis(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: SCMD_OASIS_TLIST}, {Command: libc.CString("tstat"), Sort_as: libc.CString("tstat"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_tstat(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_IMMORT, Subcmd: 0}, {Command: libc.CString("masound"), Sort_as: libc.CString("masound"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_masound(ch, argument, cmd, subcmd)
+	}, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mheal"), Sort_as: libc.CString("mhea"), Minimum_position: POS_SITTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_mheal(ch, argument, cmd, subcmd)
+	}, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mkill"), Sort_as: libc.CString("mkill"), Minimum_position: POS_STANDING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_mkill(ch, argument, cmd, subcmd)
+	}, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mjunk"), Sort_as: libc.CString("mjunk"), Minimum_position: POS_SITTING, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_mjunk(ch, argument, cmd, subcmd)
+	}, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mdamage"), Sort_as: libc.CString("mdamage"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_mdamage(ch, argument, cmd, subcmd)
+	}, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mdoor"), Sort_as: libc.CString("mdoor"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_mdoor(ch, argument, cmd, subcmd)
+	}, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mecho"), Sort_as: libc.CString("mecho"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_mecho(ch, argument, cmd, subcmd)
+	}, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mechoaround"), Sort_as: libc.CString("mechoaround"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_mechoaround(ch, argument, cmd, subcmd)
+	}, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("msend"), Sort_as: libc.CString("msend"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_msend(ch, argument, cmd, subcmd)
+	}, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mload"), Sort_as: libc.CString("mload"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_mload(ch, argument, cmd, subcmd)
+	}, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mpurge"), Sort_as: libc.CString("mpurge"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_mpurge(ch, argument, cmd, subcmd)
+	}, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mgoto"), Sort_as: libc.CString("mgoto"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_mgoto(ch, argument, cmd, subcmd)
+	}, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mat"), Sort_as: libc.CString("mat"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_mat(ch, argument, cmd, subcmd)
+	}, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mteleport"), Sort_as: libc.CString("mteleport"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_mteleport(ch, argument, cmd, subcmd)
+	}, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mforce"), Sort_as: libc.CString("mforce"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_mforce(ch, argument, cmd, subcmd)
+	}, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mremember"), Sort_as: libc.CString("mremember"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_mremember(ch, argument, cmd, subcmd)
+	}, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mforget"), Sort_as: libc.CString("mforget"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_mforget(ch, argument, cmd, subcmd)
+	}, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mtransform"), Sort_as: libc.CString("mtransform"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_mtransform(ch, argument, cmd, subcmd)
+	}, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("mzoneecho"), Sort_as: libc.CString("mzoneecho"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_mzoneecho(ch, argument, cmd, subcmd)
+	}, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("vdelete"), Sort_as: libc.CString("vdelete"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_vdelete(ch, argument, cmd, subcmd)
+	}, Minimum_level: 0, Minimum_admlevel: ADMLVL_BUILDER, Subcmd: 0}, {Command: libc.CString("mfollow"), Sort_as: libc.CString("mfollow"), Minimum_position: POS_DEAD, Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_mfollow(ch, argument, cmd, subcmd)
+	}, Minimum_level: -1, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}, {Command: libc.CString("\n"), Sort_as: libc.CString("zzzzzzz"), Minimum_position: 0, Command_pointer: nil, Minimum_level: 0, Minimum_admlevel: ADMLVL_NONE, Subcmd: 0}}
+}
+
 var fill [9]*byte = [9]*byte{libc.CString("in"), libc.CString("into"), libc.CString("from"), libc.CString("with"), libc.CString("the"), libc.CString("on"), libc.CString("at"), libc.CString("to"), libc.CString("\n")}
 var reserved [9]*byte = [9]*byte{libc.CString("a"), libc.CString("an"), libc.CString("self"), libc.CString("me"), libc.CString("all"), libc.CString("room"), libc.CString("someone"), libc.CString("something"), libc.CString("\n")}
 
@@ -288,24 +1363,24 @@ func command_interpreter(ch *char_data, argument *byte) {
 			cmd = 0
 			return cmd
 		}()
-	}(); *(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command != '\n'; cmd++ {
-		if libc.StrNCmp((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, &arg[0], length) == 0 {
-			if GET_LEVEL(ch) >= int((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Minimum_level) && ch.Admlevel >= int((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Minimum_admlevel) {
+	}(); *complete_cmd_info[cmd].Command != '\n'; cmd++ {
+		if libc.StrNCmp(complete_cmd_info[cmd].Command, &arg[0], length) == 0 {
+			if GET_LEVEL(ch) >= int(complete_cmd_info[cmd].Minimum_level) && ch.Admlevel >= int(complete_cmd_info[cmd].Minimum_admlevel) {
 				break
 			}
 		}
 	}
 	var blah [2048]byte
-	stdio.Sprintf(&blah[0], "%s", (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command)
+	stdio.Sprintf(&blah[0], "%s", complete_cmd_info[cmd].Command)
 	if libc.StrCaseCmp(&blah[0], libc.CString("throw")) == 0 {
 		ch.Throws = rand_number(1, 3)
 	}
-	if *(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command == '\n' {
+	if *complete_cmd_info[cmd].Command == '\n' {
 		send_to_char(ch, libc.CString("Huh!?!\r\n"))
 		return
 	} else if command_pass(&blah[0], ch) == 0 && ch.Admlevel < 1 {
 		send_to_char(ch, libc.CString("It's unfortunate...\r\n"))
-	} else if check_disabled((*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))) != 0 {
+	} else if check_disabled(&complete_cmd_info[cmd]) != 0 {
 		send_to_char(ch, libc.CString("This command has been temporarily disabled.\r\n"))
 	} else if !IS_NPC(ch) && PLR_FLAGGED(ch, PLR_GOOP) && ch.Admlevel < ADMLVL_IMPL {
 		send_to_char(ch, libc.CString("You only have your internal thoughts until your body has finished regenerating!\r\n"))
@@ -313,11 +1388,11 @@ func command_interpreter(ch *char_data, argument *byte) {
 		send_to_char(ch, libc.CString("You try, but the mind-numbing cold prevents you...\r\n"))
 	} else if !IS_NPC(ch) && PLR_FLAGGED(ch, PLR_SPIRAL) {
 		send_to_char(ch, libc.CString("You are occupied with your Spiral Comet attack!\r\n"))
-	} else if (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command_pointer == nil {
+	} else if complete_cmd_info[cmd].Command_pointer == nil {
 		send_to_char(ch, libc.CString("Sorry, that command hasn't been implemented yet.\r\n"))
-	} else if IS_NPC(ch) && int((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Minimum_admlevel) >= ADMLVL_IMMORT {
+	} else if IS_NPC(ch) && int(complete_cmd_info[cmd].Minimum_admlevel) >= ADMLVL_IMMORT {
 		send_to_char(ch, libc.CString("You can't use immortal commands while switched.\r\n"))
-	} else if int(ch.Position) < int((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Minimum_position) && int(ch.Position) != POS_FIGHTING {
+	} else if int(ch.Position) < int(complete_cmd_info[cmd].Minimum_position) && int(ch.Position) != POS_FIGHTING {
 		switch ch.Position {
 		case POS_DEAD:
 			send_to_char(ch, libc.CString("Lie still; you are DEAD!!! :-(\r\n"))
@@ -338,7 +1413,7 @@ func command_interpreter(ch *char_data, argument *byte) {
 		}
 	} else if no_specials != 0 || special(ch, cmd, line) == 0 {
 		if skip_ld == 0 {
-			((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command_pointer)(ch, line, cmd, (*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Subcmd)
+			(complete_cmd_info[cmd].Command_pointer)(ch, line, cmd, complete_cmd_info[cmd].Subcmd)
 		}
 	}
 }
@@ -1143,8 +2218,8 @@ func half_chop(string_ *byte, arg1 *byte, arg2 *byte) {
 }
 func find_command(command *byte) int {
 	var cmd int
-	for cmd = 0; *(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command != '\n'; cmd++ {
-		if libc.StrCmp((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, command) == 0 {
+	for cmd = 0; *complete_cmd_info[cmd].Command != '\n'; cmd++ {
+		if libc.StrCmp(complete_cmd_info[cmd].Command, command) == 0 {
 			return cmd
 		}
 	}
@@ -1156,18 +2231,8 @@ func special(ch *char_data, cmd int, arg *byte) int {
 		k *char_data
 		j int
 	)
-	if (func() func(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Func
-		}
-		return nil
-	}()) != nil {
-		if (func() func(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Func
-			}
-			return nil
-		}())(ch, unsafe.Pointer((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))), cmd, arg) != 0 {
+	if GET_ROOM_SPEC(ch.In_room) != nil {
+		if GET_ROOM_SPEC(ch.In_room)(ch, unsafe.Pointer(&world[ch.In_room]), cmd, arg) != 0 {
 			return 1
 		}
 	}
@@ -1185,14 +2250,14 @@ func special(ch *char_data, cmd int, arg *byte) int {
 			}
 		}
 	}
-	for k = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; k != nil; k = k.Next_in_room {
+	for k = world[ch.In_room].People; k != nil; k = k.Next_in_room {
 		if !MOB_FLAGGED(k, MOB_NOTDEADYET) {
 			if GET_MOB_SPEC(k) != nil && GET_MOB_SPEC(k)(ch, unsafe.Pointer(k), cmd, arg) != 0 {
 				return 1
 			}
 		}
 	}
-	for i = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; i != nil; i = i.Next_content {
+	for i = world[ch.In_room].Contents; i != nil; i = i.Next_content {
 		if GET_OBJ_SPEC(i) != nil {
 			if GET_OBJ_SPEC(i)(ch, unsafe.Pointer(i), cmd, arg) != 0 {
 				return 1
@@ -1307,9 +2372,9 @@ func perform_dupe_check(d *descriptor_data) int {
 	d.Character.Desc = d
 	d.Original = nil
 	d.Character.Timer = 0
-	d.Character.Act[int(PLR_MAILING/32)] &= bitvector_t(int32(^(1 << (int(PLR_MAILING % 32)))))
-	d.Character.Act[int(PLR_WRITING/32)] &= bitvector_t(int32(^(1 << (int(PLR_WRITING % 32)))))
-	d.Character.Affected_by[int(AFF_GROUP/32)] &= ^(1 << (int(AFF_GROUP % 32)))
+	REMOVE_BIT_AR(d.Character.Act[:], PLR_MAILING)
+	REMOVE_BIT_AR(d.Character.Act[:], PLR_WRITING)
+	REMOVE_BIT_AR(d.Character.Affected_by[:], AFF_GROUP)
 	d.Connected = CON_PLAYING
 	switch mode {
 	case RECON:
@@ -1341,7 +2406,7 @@ func perform_dupe_check(d *descriptor_data) int {
 		}
 		d.Character.Time.Logon = libc.GetTime(nil)
 		act(libc.CString("$n has reconnected."), TRUE, d.Character, nil, nil, TO_ROOM)
-		mudlog(NRM, MAX(ADMLVL_NONE, int(d.Character.Player_specials.Invis_level)), TRUE, libc.CString("%s [%s] has reconnected."), GET_NAME(d.Character), &d.Host[0])
+		mudlog(NRM, int(MAX(ADMLVL_NONE, int64(d.Character.Player_specials.Invis_level))), TRUE, libc.CString("%s [%s] has reconnected."), GET_NAME(d.Character), &d.Host[0])
 		d.Character.Rp = d.Rpp
 		if has_mail(int(d.Character.Idnum)) != 0 {
 			write_to_output(d, libc.CString("You have mail waiting.\r\n"))
@@ -1397,10 +2462,10 @@ func perform_dupe_check(d *descriptor_data) int {
 		write_to_output(d, libc.CString("You take over your own body, already in use!\r\n"))
 		act(libc.CString("$n suddenly keels over in pain, surrounded by a white aura...\r\n$n's body has been taken over by a new spirit!"), TRUE, d.Character, nil, nil, TO_ROOM)
 		d.Character.Rp = d.Rpp
-		mudlog(NRM, MAX(ADMLVL_IMMORT, int(d.Character.Player_specials.Invis_level)), TRUE, libc.CString("%s has re-logged in ... disconnecting old socket."), GET_NAME(d.Character))
+		mudlog(NRM, int(MAX(ADMLVL_IMMORT, int64(d.Character.Player_specials.Invis_level))), TRUE, libc.CString("%s has re-logged in ... disconnecting old socket."), GET_NAME(d.Character))
 	case UNSWITCH:
 		write_to_output(d, libc.CString("Reconnecting to unswitched char."))
-		mudlog(NRM, MAX(ADMLVL_IMMORT, int(d.Character.Player_specials.Invis_level)), TRUE, libc.CString("%s [%s] has reconnected."), GET_NAME(d.Character), &d.Host[0])
+		mudlog(NRM, int(MAX(ADMLVL_IMMORT, int64(d.Character.Player_specials.Invis_level))), TRUE, libc.CString("%s [%s] has reconnected."), GET_NAME(d.Character), &d.Host[0])
 	}
 	return 1
 }
@@ -1459,19 +2524,19 @@ func enter_player_game(d *descriptor_data) int {
 	}
 	if PLR_FLAGGED(d.Character, PLR_RARM) {
 		d.Character.Limb_condition[0] = 100
-		d.Character.Act[int(PLR_RARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_RARM % 32)))))
+		REMOVE_BIT_AR(d.Character.Act[:], PLR_RARM)
 	}
 	if PLR_FLAGGED(d.Character, PLR_LARM) {
 		d.Character.Limb_condition[1] = 100
-		d.Character.Act[int(PLR_LARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_LARM % 32)))))
+		REMOVE_BIT_AR(d.Character.Act[:], PLR_LARM)
 	}
 	if PLR_FLAGGED(d.Character, PLR_LLEG) {
 		d.Character.Limb_condition[3] = 100
-		d.Character.Act[int(PLR_LLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_LLEG % 32)))))
+		REMOVE_BIT_AR(d.Character.Act[:], PLR_LLEG)
 	}
 	if PLR_FLAGGED(d.Character, PLR_RLEG) {
 		d.Character.Limb_condition[2] = 100
-		d.Character.Act[int(PLR_RLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_RLEG % 32)))))
+		REMOVE_BIT_AR(d.Character.Act[:], PLR_RLEG)
 	}
 	d.Character.Combine = -1
 	d.Character.Sleeptime = 8
@@ -1482,19 +2547,19 @@ func enter_player_game(d *descriptor_data) int {
 		d.Character.Altitude = 0
 	}
 	if AFF_FLAGGED(d.Character, AFF_POSITION) {
-		d.Character.Affected_by[int(AFF_POSITION/32)] &= ^(1 << (int(AFF_POSITION % 32)))
+		REMOVE_BIT_AR(d.Character.Affected_by[:], AFF_POSITION)
 	}
 	if AFF_FLAGGED(d.Character, AFF_SANCTUARY) {
-		d.Character.Affected_by[int(AFF_SANCTUARY/32)] &= ^(1 << (int(AFF_SANCTUARY % 32)))
+		REMOVE_BIT_AR(d.Character.Affected_by[:], AFF_SANCTUARY)
 	}
 	if AFF_FLAGGED(d.Character, AFF_ZANZOKEN) {
-		d.Character.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
+		REMOVE_BIT_AR(d.Character.Affected_by[:], AFF_ZANZOKEN)
 	}
 	if PLR_FLAGGED(d.Character, PLR_KNOCKED) {
-		d.Character.Act[int(PLR_KNOCKED/32)] &= bitvector_t(int32(^(1 << (int(PLR_KNOCKED % 32)))))
+		REMOVE_BIT_AR(d.Character.Act[:], PLR_KNOCKED)
 	}
 	if int(d.Character.Race) == RACE_ANDROID && !AFF_FLAGGED(d.Character, AFF_INFRAVISION) {
-		d.Character.Affected_by[int(AFF_INFRAVISION/32)] |= 1 << (int(AFF_INFRAVISION % 32))
+		SET_BIT_AR(d.Character.Affected_by[:], AFF_INFRAVISION)
 	}
 	d.Character.Absorbing = nil
 	d.Character.Absorbby = nil
@@ -1506,7 +2571,7 @@ func enter_player_game(d *descriptor_data) int {
 	d.Character.Rage_meter = 0
 	if d.Character.Affected == nil {
 		if AFF_FLAGGED(d.Character, AFF_HEALGLOW) {
-			d.Character.Affected_by[int(AFF_HEALGLOW/32)] &= ^(1 << (int(AFF_HEALGLOW % 32)))
+			REMOVE_BIT_AR(d.Character.Affected_by[:], AFF_HEALGLOW)
 		}
 	}
 	if AFF_FLAGGED(d.Character, AFF_HAYASA) {
@@ -1521,7 +2586,7 @@ func enter_player_game(d *descriptor_data) int {
 		d.Character.Player_specials.Conditions[HUNGER] = -1
 	}
 	if PLR_FLAGGED(d.Character, PLR_HEALT) {
-		d.Character.Act[int(PLR_HEALT/32)] &= bitvector_t(int32(^(1 << (int(PLR_HEALT % 32)))))
+		REMOVE_BIT_AR(d.Character.Act[:], PLR_HEALT)
 	}
 	if readIntro(d.Character, d.Character) == 2 {
 		introCreate(d.Character)
@@ -2793,7 +3858,7 @@ func nanny(d *descriptor_data, arg *byte) {
 			clear_char(d.Character)
 			d.Character.Player_specials = new(player_special_data)
 			d.Character.Desc = d
-			d.Character.Player_specials.Pref[int(PRF_COLOR/32)] |= bitvector_t(int32(1 << (int(PRF_COLOR % 32))))
+			SET_BIT_AR(d.Character.Player_specials.Pref[:], PRF_COLOR)
 		}
 		var buf [2048]byte
 		var tmp_name [2048]byte
@@ -2848,15 +3913,15 @@ func nanny(d *descriptor_data, arg *byte) {
 					d.Character.Name = (*byte)(unsafe.Pointer(&make([]int8, libc.StrLen(&tmp_name[0])+1)[0]))
 					libc.StrCpy(d.Character.Name, CAP(&tmp_name[0]))
 					d.Character.Pfilepos = player_i
-					d.Character.Player_specials.Pref[int(PRF_COLOR/32)] |= bitvector_t(int32(1 << (int(PRF_COLOR % 32))))
+					SET_BIT_AR(d.Character.Player_specials.Pref[:], PRF_COLOR)
 					display_races(d)
 					d.Character.Rp = d.Rpp
 					d.Connected = CON_QRACE
 				} else {
-					d.Character.Act[int(PLR_WRITING/32)] &= bitvector_t(int32(^(1 << (int(PLR_WRITING % 32)))))
-					d.Character.Act[int(PLR_MAILING/32)] &= bitvector_t(int32(^(1 << (int(PLR_MAILING % 32)))))
-					d.Character.Act[int(PLR_CRYO/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRYO % 32)))))
-					d.Character.Affected_by[int(AFF_GROUP/32)] &= ^(1 << (int(AFF_GROUP % 32)))
+					REMOVE_BIT_AR(d.Character.Act[:], PLR_WRITING)
+					REMOVE_BIT_AR(d.Character.Act[:], PLR_MAILING)
+					REMOVE_BIT_AR(d.Character.Act[:], PLR_CRYO)
+					REMOVE_BIT_AR(d.Character.Affected_by[:], AFF_GROUP)
 					if isbanned(&d.Host[0]) == BAN_SELECT && !PLR_FLAGGED(d.Character, PLR_SITEOK) {
 						write_to_output(d, libc.CString("Sorry, this char has not been cleared for login from your site!\r\n"))
 						mudlog(NRM, ADMLVL_GOD, TRUE, libc.CString("Connection attempt for %s denied from %s"), GET_NAME(d.Character), &d.Host[0])
@@ -4124,7 +5189,7 @@ func nanny(d *descriptor_data, arg *byte) {
 			d.Character.Max_hit += int64(roll_stats(d.Character, 5, 65))
 			d.Character.Max_move += int64(roll_stats(d.Character, 8, 65))
 			d.Character.Max_mana += int64(roll_stats(d.Character, 6, 65))
-			d.Character.Act[int(PLR_SKILLP/32)] |= bitvector_t(int32(1 << (int(PLR_SKILLP % 32))))
+			SET_BIT_AR(d.Character.Act[:], PLR_SKILLP)
 		case '5':
 			d.Character.Max_hit += int64(roll_stats(d.Character, 5, 75))
 			d.Character.Max_move += int64(roll_stats(d.Character, 8, 100))
@@ -4614,14 +5679,14 @@ func nanny(d *descriptor_data, arg *byte) {
 		} else if libc.StrCaseCmp(arg, libc.CString("forget")) == 0 {
 			if int(d.Character.Race) != RACE_BIO && int(d.Character.Race) != RACE_MUTANT {
 				d.Character.Player_specials.Class_skill_points[d.Character.Chclass] += 200
-				d.Character.Act[int(PLR_FORGET/32)] |= bitvector_t(int32(1 << (int(PLR_FORGET % 32))))
+				SET_BIT_AR(d.Character.Act[:], PLR_FORGET)
 				display_bonus_menu(d.Character, 0)
 				write_to_output(d, libc.CString("@CThis menu (and the Negatives menu) are for selecting various traits about your character.\n"))
 				write_to_output(d, libc.CString("@wChoose: "))
 				d.Connected = CON_BONUS
 			} else if int(d.Character.Race) == RACE_MUTANT {
 				d.Character.Player_specials.Class_skill_points[d.Character.Chclass] += 200
-				d.Character.Act[int(PLR_FORGET/32)] |= bitvector_t(int32(1 << (int(PLR_FORGET % 32))))
+				SET_BIT_AR(d.Character.Act[:], PLR_FORGET)
 				write_to_output(d, libc.CString("\n@RSelect a mutation. A second will be chosen automatically..\n"))
 				write_to_output(d, libc.CString("@D--------------------------------------------------------@n\n"))
 				write_to_output(d, libc.CString("@B 1@W) @CExtreme Speed       @c-+30%s to Speed Index @C@n\n"), "%")
@@ -4640,7 +5705,7 @@ func nanny(d *descriptor_data, arg *byte) {
 				d.Connected = CON_GENOME
 			} else {
 				d.Character.Player_specials.Class_skill_points[d.Character.Chclass] += 200
-				d.Character.Act[int(PLR_FORGET/32)] |= bitvector_t(int32(1 << (int(PLR_FORGET % 32))))
+				SET_BIT_AR(d.Character.Act[:], PLR_FORGET)
 				write_to_output(d, libc.CString("\n@RSelect two genomes to be your primary DNA strains.\n"))
 				write_to_output(d, libc.CString("@D--------------------------------------------------------@n\n"))
 				write_to_output(d, libc.CString("@B1@W) @CHuman   @c- @CHigher PS gains from fighting@n\n"))
@@ -4980,7 +6045,7 @@ func nanny(d *descriptor_data, arg *byte) {
 	case CON_ANDROID:
 		switch *arg {
 		case '1':
-			d.Character.Act[int(PLR_ABSORB/32)] |= bitvector_t(int32(1 << (int(PLR_ABSORB % 32))))
+			SET_BIT_AR(d.Character.Act[:], PLR_ABSORB)
 			write_to_output(d, libc.CString("\r\n@RAnswer The following questions carefully, they may construct your alignment in conflict with your trainer, or your stats contrary to your liking.\r\n\r\n"))
 			write_to_output(d, libc.CString("\r\n@WQuestion (@G1@W out of @g10@W)"))
 			write_to_output(d, libc.CString("@YAnswer the following question:\r\n"))
@@ -4994,7 +6059,7 @@ func nanny(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("@w\r\nMake a selection:@n\r\n"))
 			d.Connected = CON_Q1
 		case '2':
-			d.Character.Act[int(PLR_REPAIR/32)] |= bitvector_t(int32(1 << (int(PLR_REPAIR % 32))))
+			SET_BIT_AR(d.Character.Act[:], PLR_REPAIR)
 			write_to_output(d, libc.CString("\r\n@RAnswer The following questions carefully, they may construct your alignment in conflict with your trainer, or your stats contrary to your linking.\r\n\r\n"))
 			write_to_output(d, libc.CString("@YAnswer the following question:\r\n"))
 			write_to_output(d, libc.CString("@wYou go to train one day, but do not know the best\r\nway to approach it, What do you do?\r\n"))
@@ -5007,7 +6072,7 @@ func nanny(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("@w\r\nMake a selection:@n\r\n"))
 			d.Connected = CON_Q1
 		case '3':
-			d.Character.Act[int(PLR_SENSEM/32)] |= bitvector_t(int32(1 << (int(PLR_SENSEM % 32))))
+			SET_BIT_AR(d.Character.Act[:], PLR_SENSEM)
 			write_to_output(d, libc.CString("\r\n@RAnswer The following questions carefully, they may construct your alignment in conflict with your trainer or your stats contrary to your liking.\r\n\r\n"))
 			write_to_output(d, libc.CString("@YAnswer the following question:\r\n"))
 			write_to_output(d, libc.CString("@wYou go to train one day, but do not know the best\r\nway to approach it, What do you do?\r\n"))
@@ -5158,20 +6223,10 @@ func nanny(d *descriptor_data, arg *byte) {
 				do_start(d.Character)
 				send_to_char(d.Character, libc.CString("%s"), config_info.Operation.START_MESSG)
 			}
-			if (func() room_vnum {
-				if d.Character.In_room != room_rnum(-1) && d.Character.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(d.Character.In_room)))).Number
-				}
-				return -1
-			}()) <= 1 && d.Character.Player_specials.Load_room != room_vnum(-1) {
+			if int(libc.BoolToInt(GET_ROOM_VNUM(d.Character.In_room))) <= 1 && d.Character.Player_specials.Load_room != room_vnum(-1) {
 				char_from_room(d.Character)
 				char_to_room(d.Character, real_room(room_vnum(real_room(d.Character.Player_specials.Load_room))))
-			} else if (func() room_vnum {
-				if d.Character.In_room != room_rnum(-1) && d.Character.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(d.Character.In_room)))).Number
-				}
-				return -1
-			}()) <= 1 {
+			} else if int(libc.BoolToInt(GET_ROOM_VNUM(d.Character.In_room))) <= 1 {
 				char_from_room(d.Character)
 				char_to_room(d.Character, real_room(room_vnum(real_room(300))))
 			} else {
@@ -5237,9 +6292,9 @@ func nanny(d *descriptor_data, arg *byte) {
 				send_to_char(d.Character, libc.CString("\r\n\aYou could not afford your rent!\r\nYour possesions have been donated to the Salvation Army!\r\n"))
 			}
 			d.Has_prompt = 0
-			d.Character.Player_specials.Pref[int(PRF_BUILDWALK/32)] &= bitvector_t(int32(^(1 << (int(PRF_BUILDWALK % 32)))))
+			REMOVE_BIT_AR(d.Character.Player_specials.Pref[:], PRF_BUILDWALK)
 			if (d.Character.Equipment[WEAR_WIELD1]) == nil && PLR_FLAGGED(d.Character, PLR_THANDW) {
-				d.Character.Act[int(PLR_THANDW/32)] &= bitvector_t(int32(^(1 << (int(PLR_THANDW % 32)))))
+				REMOVE_BIT_AR(d.Character.Act[:], PLR_THANDW)
 			}
 		case '2':
 			if d.Character.Description != nil {
@@ -5281,7 +6336,7 @@ func nanny(d *descriptor_data, arg *byte) {
 				return
 			}
 			if d.Character.Admlevel < ADMLVL_GRGOD {
-				d.Character.Act[int(PLR_DELETED/32)] |= bitvector_t(int32(1 << (int(PLR_DELETED % 32))))
+				SET_BIT_AR(d.Character.Act[:], PLR_DELETED)
 			}
 			save_char(d.Character)
 			Crash_delete_file(GET_NAME(d.Character))
@@ -5290,7 +6345,7 @@ func nanny(d *descriptor_data, arg *byte) {
 					player_i = get_ptable_by_name(GET_NAME(d.Character))
 					return player_i
 				}()) >= 0 {
-					(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(player_i)))).Flags |= 1 << 2
+					player_table[player_i].Flags |= 1 << 2
 					remove_player(player_i)
 				}
 			}
@@ -5396,8 +6451,8 @@ func do_disable(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var (
 		i      int
 		length int
-		p      *DISABLED_DATA
-		temp   *DISABLED_DATA
+		p      *disabled_data
+		temp   *disabled_data
 	)
 	if IS_NPC(ch) {
 		send_to_char(ch, libc.CString("Monsters can't disable commands, silly.\r\n"))
@@ -5415,9 +6470,9 @@ func do_disable(ch *char_data, argument *byte, cmd int, subcmd int) {
 		}
 		return
 	}
-	for func() *DISABLED_DATA {
+	for func() *disabled_data {
 		length = libc.StrLen(argument)
-		return func() *DISABLED_DATA {
+		return func() *disabled_data {
 			p = disabled_first
 			return p
 		}()
@@ -5469,7 +6524,7 @@ func do_disable(ch *char_data, argument *byte, cmd int, subcmd int) {
 			send_to_char(ch, libc.CString("You cannot disable the disable command.\r\n"))
 			return
 		}
-		p = (*DISABLED_DATA)(unsafe.Pointer(new(disabled_data)))
+		p = (*disabled_data)(unsafe.Pointer(new(disabled_data)))
 		p.Command = &cmd_info[i]
 		p.Disabled_by = libc.StrDup(GET_NAME(ch))
 		p.Level = int16(ch.Admlevel)
@@ -5482,7 +6537,7 @@ func do_disable(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 }
 func check_disabled(command *command_info) int {
-	var p *DISABLED_DATA
+	var p *disabled_data
 	for p = disabled_first; p != nil; p = p.Next {
 		if libc.FuncAddr(p.Command.Command_pointer) == libc.FuncAddr(command.Command_pointer) {
 			if p.Command.Subcmd == command.Subcmd {
@@ -5495,7 +6550,7 @@ func check_disabled(command *command_info) int {
 func load_disabled() {
 	var (
 		fp   *stdio.File
-		p    *DISABLED_DATA
+		p    *disabled_data
 		i    int
 		line [256]byte
 		name [2048]byte
@@ -5514,7 +6569,7 @@ func load_disabled() {
 		if libc.StrCaseCmp(&line[0], libc.CString(END_MARKER)) == 0 {
 			break
 		}
-		p = (*DISABLED_DATA)(unsafe.Pointer(new(disabled_data)))
+		p = (*disabled_data)(unsafe.Pointer(new(disabled_data)))
 		stdio.Sscanf(&line[0], "%s %d %hd %s", &name[0], &p.Subcmd, &p.Level, &temp[0])
 		for i = 0; *cmd_info[i].Command != '\n'; i++ {
 			if libc.StrCaseCmp(cmd_info[i].Command, &name[0]) == 0 {
@@ -5536,7 +6591,7 @@ func load_disabled() {
 func save_disabled() {
 	var (
 		fp *stdio.File
-		p  *DISABLED_DATA
+		p  *disabled_data
 	)
 	if disabled_first == nil {
 		stdio.Unlink(libc.CString(DISABLED_FILE))
@@ -5556,7 +6611,7 @@ func save_disabled() {
 	fp.Close()
 }
 func free_disabled() {
-	var p *DISABLED_DATA
+	var p *disabled_data
 	for disabled_first != nil {
 		p = disabled_first
 		disabled_first = disabled_first.Next

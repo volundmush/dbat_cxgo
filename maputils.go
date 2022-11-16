@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
-	"unsafe"
 )
 
 const MAP_ROWS = 199
@@ -53,7 +52,7 @@ func checkship(rnum int, vnum int) int {
 		i     *obj_data = nil
 		there int       = FALSE
 	)
-	for i = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Contents; i != nil; i = i.Next_content {
+	for i = world[rnum].Contents; i != nil; i = i.Next_content {
 		if !ROOM_FLAGGED(room_rnum(rnum), ROOM_NEBULA) {
 			if int(i.Type_flag) == ITEM_VEHICLE && there != TRUE {
 				there = TRUE
@@ -124,12 +123,7 @@ func getmapchar(rnum int, ch *char_data, start int, vnum int) *byte {
 		} else {
 			stdio.Sprintf(&mapchar[0], "@gNN")
 		}
-	} else if (func() room_vnum {
-		if rnum != int(-1) && rnum <= int(top_of_world) {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Number
-		}
-		return -1
-	}()) == 0xC654 {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(room_rnum(rnum)))) == 0xC654 {
 		if there != 0 {
 			stdio.Sprintf(&mapchar[0], "@cZ@RX")
 		} else if enemy == TRUE {
@@ -185,12 +179,7 @@ func getmapchar(rnum int, ch *char_data, start int, vnum int) *byte {
 		} else {
 			stdio.Sprintf(&mapchar[0], "@m&&")
 		}
-	} else if (func() room_vnum {
-		if rnum != int(-1) && rnum <= int(top_of_world) {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Number
-		}
-		return -1
-	}()) == 0x948C {
+	} else if int(libc.BoolToInt(GET_ROOM_VNUM(room_rnum(rnum)))) == 0x948C {
 		if there != 0 {
 			stdio.Sprintf(&mapchar[0], "@yQ@RX")
 		} else if enemy == TRUE {
@@ -364,7 +353,7 @@ func printmap(rnum int, ch *char_data, type_ int, vnum int) {
 				libc.StrCat(&buf[0], libc.CString("      @RCompass@n           "))
 			} else if count == 2 {
 				stdio.Sprintf(&buf2[0], "@w       @w|%s@w|            ", func() string {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[0]) != nil {
+					if (world[rnum].Dir_option[0]) != nil {
 						return " @CN "
 					}
 					return "   "
@@ -372,17 +361,17 @@ func printmap(rnum int, ch *char_data, type_ int, vnum int) {
 				libc.StrCat(&buf[0], &buf2[0])
 			} else if count == 3 {
 				stdio.Sprintf(&buf2[0], "@w @w|%s@w| |%s@w| |%s@w|      ", func() string {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[6]) != nil {
+					if (world[rnum].Dir_option[6]) != nil {
 						return " @CNW"
 					}
 					return "   "
 				}(), func() string {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[4]) != nil {
+					if (world[rnum].Dir_option[4]) != nil {
 						return " @YU "
 					}
 					return "   "
 				}(), func() string {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[7]) != nil {
+					if (world[rnum].Dir_option[7]) != nil {
 						return "@CNE "
 					}
 					return "   "
@@ -390,20 +379,20 @@ func printmap(rnum int, ch *char_data, type_ int, vnum int) {
 				libc.StrCat(&buf[0], &buf2[0])
 			} else if count == 4 {
 				stdio.Sprintf(&buf2[0], "@w @w|%s@w| |%s@w| |%s@w|      ", func() string {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[3]) != nil {
+					if (world[rnum].Dir_option[3]) != nil {
 						return "  @CW"
 					}
 					return "   "
 				}(), func() string {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[10]) != nil {
+					if (world[rnum].Dir_option[10]) != nil {
 						return "@m I "
 					}
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[11]) != nil {
+					if (world[rnum].Dir_option[11]) != nil {
 						return "@mOUT"
 					}
 					return "   "
 				}(), func() string {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[1]) != nil {
+					if (world[rnum].Dir_option[1]) != nil {
 						return "@CE  "
 					}
 					return "   "
@@ -411,17 +400,17 @@ func printmap(rnum int, ch *char_data, type_ int, vnum int) {
 				libc.StrCat(&buf[0], &buf2[0])
 			} else if count == 5 {
 				stdio.Sprintf(&buf2[0], "@w @w|%s@w| |%s@w| |%s@w|      ", func() string {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[9]) != nil {
+					if (world[rnum].Dir_option[9]) != nil {
 						return " @CSW"
 					}
 					return "   "
 				}(), func() string {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[5]) != nil {
+					if (world[rnum].Dir_option[5]) != nil {
 						return " @YD "
 					}
 					return "   "
 				}(), func() string {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[8]) != nil {
+					if (world[rnum].Dir_option[8]) != nil {
 						return "@CSE "
 					}
 					return "   "
@@ -429,7 +418,7 @@ func printmap(rnum int, ch *char_data, type_ int, vnum int) {
 				libc.StrCat(&buf[0], &buf2[0])
 			} else if count == 6 {
 				stdio.Sprintf(&buf2[0], "@w       @w|%s@w|            ", func() string {
-					if ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rnum)))).Dir_option[2]) != nil {
+					if (world[rnum].Dir_option[2]) != nil {
 						return " @CS "
 					}
 					return "   "

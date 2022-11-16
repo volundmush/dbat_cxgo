@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
+	"os"
 	"unicode"
 	"unsafe"
 )
@@ -44,26 +46,18 @@ const SEEK_END = 2
 type xap_dir struct {
 	Total    int
 	Current  int
-	Namelist **bool
+	Namelist bool
 }
 
 var commastring [64936]byte
 
 func dispel_ash(ch *char_data) {
-	var (
-		obj      *obj_data
-		next_obj *obj_data
-		ash      *obj_data = nil
-		there    int       = FALSE
-	)
-	_ = there
-	for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; obj != nil; obj = next_obj {
-		next_obj = obj.Next_content
-		if GET_OBJ_VNUM(obj) == 1306 {
-			there = TRUE
-			ash = obj
-		}
-	}
+	var obj *obj_data
+	_ = obj
+	var next_obj *obj_data
+	_ = next_obj
+	var ash *obj_data = nil
+	ash = find_obj_in_list_vnum(world[ch.In_room].Contents, 1306)
 	if ash != nil {
 		var roll int = axion_dice(0)
 		if ash.Cost == 3 {
@@ -681,7 +675,7 @@ func physical_cost(ch *char_data, skill int) int64 {
 		result -= int64(float64(result) * 0.25)
 	}
 	if int(ch.Race) == RACE_ANDROID {
-		result *= int64(0.25)
+		result *= int64(float64(result) * .25)
 	}
 	return result
 }
@@ -1512,12 +1506,7 @@ func roll_pursue(ch *char_data, vict *char_data) int {
 		}
 	}
 	if skill > perc {
-		var inroom int = int(func() room_vnum {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-			}
-			return -1
-		}())
+		var inroom int = int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room)))
 		act(libc.CString("@C$n@R pursues after the fleeing @c$N@R!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 		char_from_room(ch)
 		char_to_room(ch, vict.In_room)
@@ -1529,12 +1518,7 @@ func roll_pursue(ch *char_data, vict *char_data) int {
 		if ch.Followers != nil {
 			for k = ch.Followers; k != nil; k = next {
 				next = k.Next
-				if (func() room_vnum {
-					if k.Follower.In_room != room_rnum(-1) && k.Follower.In_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k.Follower.In_room)))).Number
-					}
-					return -1
-				}()) == room_vnum(inroom) && int(k.Follower.Position) >= POS_STANDING && (!AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(k.Follower, AFF_GROUP)) {
+				if int(libc.BoolToInt(GET_ROOM_VNUM(k.Follower.In_room))) == inroom && int(k.Follower.Position) >= POS_STANDING && (!AFF_FLAGGED(ch, AFF_ZANZOKEN) || AFF_FLAGGED(ch, AFF_GROUP) && AFF_FLAGGED(k.Follower, AFF_GROUP)) {
 					act(libc.CString("You follow $N."), TRUE, k.Follower, nil, unsafe.Pointer(ch), TO_CHAR)
 					act(libc.CString("$n follows after $N."), TRUE, k.Follower, nil, unsafe.Pointer(ch), TO_NOTVICT)
 					act(libc.CString("$n follows after you."), TRUE, k.Follower, nil, unsafe.Pointer(ch), TO_VICT)
@@ -1543,7 +1527,7 @@ func roll_pursue(ch *char_data, vict *char_data) int {
 				}
 			}
 		}
-		vict.Affected_by[int(AFF_PURSUIT/32)] &= ^(1 << (int(AFF_PURSUIT % 32)))
+		REMOVE_BIT_AR(vict.Affected_by[:], AFF_PURSUIT)
 		return TRUE
 	} else {
 		send_to_char(ch, libc.CString("@RYou fail to pursue after them!@n\r\n"))
@@ -1586,7 +1570,7 @@ func broken_update() {
 				grav_change = TRUE
 			}
 			if grav_change == TRUE {
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k.In_room)))).Gravity = rand_gravity[grav_roll]
+				world[k.In_room].Gravity = rand_gravity[grav_roll]
 				k.Weight = int64(rand_gravity[grav_roll])
 				send_to_room(k.In_room, libc.CString("@RThe gravity generator malfunctions! The gravity level has changed!@n\r\n"))
 			}
@@ -1931,22 +1915,17 @@ func randomize_eq(obj *obj_data) {
 		}
 		var dice int = rand_number(2, 12)
 		if dice >= 10 {
-			obj.Extra_flags[int(ITEM_SLOT2/32)] |= bitvector_t(int32(1 << (int(ITEM_SLOT2 % 32))))
+			SET_BIT_AR(obj.Extra_flags[:], ITEM_SLOT2)
 		} else if dice >= 7 {
-			obj.Extra_flags[int(ITEM_SLOT1/32)] |= bitvector_t(int32(1 << (int(ITEM_SLOT1 % 32))))
+			SET_BIT_AR(obj.Extra_flags[:], ITEM_SLOT1)
 		}
 	}
 }
 func sense_location(ch *char_data) *byte {
 	var (
 		message *byte = (*byte)(libc.Malloc(MAX_INPUT_LENGTH))
-		roomnum int   = int(func() room_vnum {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-			}
-			return -1
-		}())
-		num int = 0
+		roomnum int   = int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room)))
+		num     int   = 0
 	)
 	if (func() int {
 		num = int(real_zone_by_thing(room_vnum(roomnum)))
@@ -2343,12 +2322,12 @@ func reveal_hiding(ch *char_data, type_ int) {
 	if type_ == 0 {
 		act(libc.CString("@MYou feel as though what you just did may have revealed your hiding spot...@n"), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("@M$n moves a little and you notice them!@n"), TRUE, ch, nil, nil, TO_ROOM)
-		ch.Affected_by[int(AFF_HIDE/32)] &= ^(1 << (int(AFF_HIDE % 32)))
+		REMOVE_BIT_AR(ch.Affected_by[:], AFF_HIDE)
 	} else if type_ == 1 {
 		if GET_SKILL(ch, SKILL_HIDE)+bonus < axion_dice(0) {
 			act(libc.CString("@MYou feel as though what you just did may have revealed your hiding spot...@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@M$n moves a little and you notice them!@n"), TRUE, ch, nil, nil, TO_ROOM)
-			ch.Affected_by[int(AFF_HIDE/32)] &= ^(1 << (int(AFF_HIDE % 32)))
+			REMOVE_BIT_AR(ch.Affected_by[:], AFF_HIDE)
 		}
 	} else if type_ == 2 {
 		var (
@@ -2367,7 +2346,7 @@ func reveal_hiding(ch *char_data, type_ int) {
 				continue
 			}
 			if GET_SKILL(tch, SKILL_SPOT)+rand1 >= GET_SKILL(ch, SKILL_HIDE)+rand2 {
-				ch.Affected_by[int(AFF_HIDE/32)] &= ^(1 << (int(AFF_HIDE % 32)))
+				REMOVE_BIT_AR(ch.Affected_by[:], AFF_HIDE)
 				act(libc.CString("@M$N seems to notice you!@n"), TRUE, ch, nil, unsafe.Pointer(tch), TO_CHAR)
 				act(libc.CString("@MYou notice $n's movements reveal $s hiding spot!@n"), TRUE, ch, nil, unsafe.Pointer(tch), TO_VICT)
 				act(libc.CString("@MYou notice $N look keenly somewhere nearby. At that spot you see $n hiding!@n"), TRUE, ch, nil, unsafe.Pointer(tch), TO_NOTVICT)
@@ -2401,7 +2380,7 @@ func reveal_hiding(ch *char_data, type_ int) {
 			}
 		}
 	} else if type_ == 4 {
-		ch.Affected_by[int(AFF_HIDE/32)] &= ^(1 << (int(AFF_HIDE % 32)))
+		REMOVE_BIT_AR(ch.Affected_by[:], AFF_HIDE)
 	}
 }
 func block_calc(ch *char_data) int {
@@ -2423,11 +2402,11 @@ func block_calc(ch *char_data) int {
 				act(libc.CString("You try to leave, but can't outrun $N!"), TRUE, ch, nil, unsafe.Pointer(blocker), TO_CHAR)
 				if AFF_FLAGGED(ch, AFF_FLYING) && !AFF_FLAGGED(blocker, AFF_FLYING) && ch.Altitude == 1 {
 					send_to_char(blocker, libc.CString("You're now floating in the air.\r\n"))
-					blocker.Affected_by[int(AFF_FLYING/32)] |= 1 << (int(AFF_FLYING % 32))
+					SET_BIT_AR(blocker.Affected_by[:], AFF_FLYING)
 					blocker.Altitude = ch.Altitude
 				} else if AFF_FLAGGED(ch, AFF_FLYING) && !AFF_FLAGGED(blocker, AFF_FLYING) && ch.Altitude == 2 {
 					send_to_char(blocker, libc.CString("You're now floating high in the sky.\r\n"))
-					blocker.Affected_by[int(AFF_FLYING/32)] |= 1 << (int(AFF_FLYING % 32))
+					SET_BIT_AR(blocker.Affected_by[:], AFF_FLYING)
 					blocker.Altitude = ch.Altitude
 				}
 				return 0
@@ -2576,7 +2555,7 @@ func handle_evolution(ch *char_data, dmg int64) {
 }
 func demon_refill_lf(ch *char_data, num int64) {
 	var tch *char_data = nil
-	for tch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; tch != nil; tch = tch.Next_in_room {
+	for tch = world[ch.In_room].People; tch != nil; tch = tch.Next_in_room {
 		if int(tch.Race) != RACE_DEMON {
 			continue
 		}
@@ -2600,7 +2579,7 @@ func mob_talk(ch *char_data, speech *byte) {
 	if IS_NPC(ch) {
 		return
 	}
-	for tch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; tch != nil; tch = tch.Next_in_room {
+	for tch = world[ch.In_room].People; tch != nil; tch = tch.Next_in_room {
 		if !IS_NPC(tch) {
 			continue
 		}
@@ -2763,10 +2742,10 @@ func mob_respond(ch *char_data, vict *char_data, speech *byte) int {
 					} else {
 						if MOB_FLAGGED(vict, MOB_SPAR) {
 							act(libc.CString("@w$n@W says, '@C$N, fine our match will wait till later then.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
-							vict.Act[int(MOB_SPAR/32)] &= bitvector_t(int32(^(1 << (int(MOB_SPAR % 32)))))
+							REMOVE_BIT_AR(vict.Act[:], MOB_SPAR)
 						} else {
 							act(libc.CString("@w$n@W says, '@C$N, sure. I'll spar with you.@W'@n"), TRUE, vict, nil, unsafe.Pointer(ch), TO_ROOM)
-							vict.Act[int(MOB_SPAR/32)] |= bitvector_t(int32(1 << (int(MOB_SPAR % 32))))
+							SET_BIT_AR(vict.Act[:], MOB_SPAR)
 						}
 						return 0
 					}
@@ -3290,38 +3269,38 @@ func soft_cap(ch *char_data, type_ int64) bool {
 func grav_cost(ch *char_data, num int64) int {
 	var cost int = 0
 	if num == 0 {
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10 && ch.Max_hit < 5000 && int(ch.Chclass) != CLASS_BARDOCK && !IS_NPC(ch) {
+		if world[ch.In_room].Gravity == 10 && ch.Max_hit < 5000 && int(ch.Chclass) != CLASS_BARDOCK && !IS_NPC(ch) {
 			send_to_char(ch, libc.CString("You sweat bullets straining against the current gravity.\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 20 && ch.Max_hit < 20000 {
+		} else if world[ch.In_room].Gravity == 20 && ch.Max_hit < 20000 {
 			send_to_char(ch, libc.CString("You sweat bullets straining against the current gravity.\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 30 && ch.Max_hit < 50000 {
+		} else if world[ch.In_room].Gravity == 30 && ch.Max_hit < 50000 {
 			send_to_char(ch, libc.CString("You sweat bullets straining against the current gravity.\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 40 && ch.Max_hit < 100000 {
+		} else if world[ch.In_room].Gravity == 40 && ch.Max_hit < 100000 {
 			send_to_char(ch, libc.CString("You sweat bullets straining against the current gravity.\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 50 && ch.Max_hit < 200000 {
+		} else if world[ch.In_room].Gravity == 50 && ch.Max_hit < 200000 {
 			send_to_char(ch, libc.CString("You sweat bullets straining against the current gravity.\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 100 && ch.Max_hit < 400000 {
+		} else if world[ch.In_room].Gravity == 100 && ch.Max_hit < 400000 {
 			send_to_char(ch, libc.CString("You sweat bullets straining against the current gravity.\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 200 && ch.Max_hit < 1000000 {
+		} else if world[ch.In_room].Gravity == 200 && ch.Max_hit < 1000000 {
 			send_to_char(ch, libc.CString("You sweat bullets straining against the current gravity.\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 300 && ch.Max_hit < 5000000 {
+		} else if world[ch.In_room].Gravity == 300 && ch.Max_hit < 5000000 {
 			send_to_char(ch, libc.CString("You sweat bullets straining against the current gravity.\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 400 && ch.Max_hit < 8000000 {
+		} else if world[ch.In_room].Gravity == 400 && ch.Max_hit < 8000000 {
 			send_to_char(ch, libc.CString("You sweat bullets straining against the current gravity.\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 500 && ch.Max_hit < 15000000 {
+		} else if world[ch.In_room].Gravity == 500 && ch.Max_hit < 15000000 {
 			send_to_char(ch, libc.CString("You sweat bullets straining against the current gravity.\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 1000 && ch.Max_hit < 25000000 {
+		} else if world[ch.In_room].Gravity == 1000 && ch.Max_hit < 25000000 {
 			send_to_char(ch, libc.CString("You sweat bullets straining against the current gravity.\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 5000 && ch.Max_hit < 100000000 {
+		} else if world[ch.In_room].Gravity == 5000 && ch.Max_hit < 100000000 {
 			send_to_char(ch, libc.CString("You sweat bullets straining against the current gravity.\r\n"))
-		} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10000 && ch.Max_hit < 200000000 {
+		} else if world[ch.In_room].Gravity == 10000 && ch.Max_hit < 200000000 {
 			send_to_char(ch, libc.CString("You sweat bullets straining against the current gravity.\r\n"))
 		}
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity != 0 {
-			if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10 && int(ch.Chclass) == CLASS_BARDOCK && !IS_NPC(ch) {
+		if world[ch.In_room].Gravity != 0 {
+			if world[ch.In_room].Gravity == 10 && int(ch.Chclass) == CLASS_BARDOCK && !IS_NPC(ch) {
 				cost = 0
 			} else {
-				cost = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity * (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity
+				cost = world[ch.In_room].Gravity * world[ch.In_room].Gravity
 			}
 		}
 		if ch.Move > int64(cost) {
@@ -3333,10 +3312,10 @@ func grav_cost(ch *char_data, num int64) int {
 		}
 	}
 	if num >= 1 {
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10 && int(ch.Chclass) == CLASS_BARDOCK && !IS_NPC(ch) {
+		if world[ch.In_room].Gravity == 10 && int(ch.Chclass) == CLASS_BARDOCK && !IS_NPC(ch) {
 			cost = 0
 		} else {
-			cost = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity * (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity
+			cost = world[ch.In_room].Gravity * world[ch.In_room].Gravity
 		}
 		if ch.Move > int64(cost+int(num)) {
 			return 1
@@ -3509,57 +3488,7 @@ func planet_check(ch *char_data, vict *char_data) int {
 				success = 1
 			} else if ROOM_FLAGGED(ch.In_room, ROOM_KONACK) && ROOM_FLAGGED(vict.In_room, ROOM_KONACK) {
 				success = 1
-			} else if ((func() room_vnum {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-				}
-				return -1
-			}()) >= 3400 && (func() room_vnum {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-				}
-				return -1
-			}()) <= 3599 || (func() room_vnum {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-				}
-				return -1
-			}()) >= 62900 && (func() room_vnum {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-				}
-				return -1
-			}()) <= 0xF617 || (func() room_vnum {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-				}
-				return -1
-			}()) == 19600) && ((func() room_vnum {
-				if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Number
-				}
-				return -1
-			}()) >= 3400 && (func() room_vnum {
-				if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Number
-				}
-				return -1
-			}()) <= 3599 || (func() room_vnum {
-				if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Number
-				}
-				return -1
-			}()) >= 62900 && (func() room_vnum {
-				if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Number
-				}
-				return -1
-			}()) <= 0xF617 || (func() room_vnum {
-				if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Number
-				}
-				return -1
-			}()) == 19600) {
+			} else if PLANET_ZENITH(ch.In_room) && PLANET_ZENITH(vict.In_room) {
 				success = 1
 			} else if ROOM_FLAGGED(ch.In_room, ROOM_KANASSA) && ROOM_FLAGGED(vict.In_room, ROOM_KANASSA) {
 				success = 1
@@ -3585,7 +3514,7 @@ func purge_homing(ch *char_data) {
 		obj      *obj_data = nil
 		next_obj *obj_data = nil
 	)
-	for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; obj != nil; obj = next_obj {
+	for obj = world[ch.In_room].Contents; obj != nil; obj = next_obj {
 		next_obj = obj.Next_content
 		if GET_OBJ_VNUM(obj) == 80 || GET_OBJ_VNUM(obj) == 81 {
 			if obj.Target == ch || obj.User == ch {
@@ -3646,7 +3575,7 @@ func improve_skill(ch *char_data, skill int, num int) {
 		roll -= 100
 	}
 	if int(ch.Race) == RACE_TRUFFLE || int(ch.Race) == RACE_BIO && ((ch.Genome[0]) == 6 || (ch.Genome[1]) == 6) {
-		roll *= int(0.5)
+		roll /= 2
 	} else if int(ch.Race) == RACE_MAJIN {
 		roll += int(float64(roll) * 0.3)
 	} else if int(ch.Race) == RACE_BIO && skill == SKILL_ABSORB {
@@ -3812,18 +3741,6 @@ func dice(num int, size int) int {
 	}
 	return sum
 }
-func MIN(a int, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-func MAX(a int, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
 func CAP(txt *byte) *byte {
 	var i int
 	for i = 0; *(*byte)(unsafe.Add(unsafe.Pointer(txt), i)) != '\x00' && (*(*byte)(unsafe.Add(unsafe.Pointer(txt), i)) == '@' && IS_COLOR_CHAR(int8(*(*byte)(unsafe.Add(unsafe.Pointer(txt), i+1))))); i += 2 {
@@ -3852,12 +3769,7 @@ func prune_crlf(txt *byte) {
 	}
 }
 func log_death_trap(ch *char_data) {
-	mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("%s hit death trap #%d (%s)"), GET_NAME(ch), func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}(), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Name)
+	mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("%s hit death trap #%d (%s)"), GET_NAME(ch), GET_ROOM_VNUM(ch.In_room), world[ch.In_room].Name)
 }
 func basic_mud_vlog(format *byte, args libc.ArgList) {
 	var (
@@ -3865,7 +3777,7 @@ func basic_mud_vlog(format *byte, args libc.ArgList) {
 		time_s *byte     = libc.AscTime(libc.LocalTime(&ct))
 	)
 	if logfile == nil {
-		puts(libc.CString("SYSERR: Using log() before stream was initialized!"))
+		fmt.Println(libc.CString("SYSERR: Using log() before stream was initialized!"))
 		return
 	}
 	if format == nil {
@@ -3944,7 +3856,7 @@ func mudlog(type_ int, level int, file int, str *byte, _rest ...interface{}) {
 		send_to_char(i.Character, libc.CString("@g%s@n"), &buf[0])
 	}
 }
-func sprintbit(bitvector bitvector_t, names [0]*byte, result *byte, reslen uint64) uint64 {
+func sprintbit(bitvector bitvector_t, names []*byte, result *byte, reslen uint64) uint64 {
 	var (
 		len_ uint64 = 0
 		nlen int
@@ -3952,7 +3864,7 @@ func sprintbit(bitvector bitvector_t, names [0]*byte, result *byte, reslen uint6
 	)
 	*result = '\x00'
 	for nr = 0; bitvector != 0 && len_ < reslen; bitvector >>= 1 {
-		if (bitvector & 1) != 0 {
+		if IS_SET(bitvector, 1) {
 			nlen = stdio.Snprintf((*byte)(unsafe.Add(unsafe.Pointer(result), len_)), int(reslen-len_), "%s ", func() *byte {
 				if *names[nr] != '\n' {
 					return names[nr]
@@ -3973,7 +3885,7 @@ func sprintbit(bitvector bitvector_t, names [0]*byte, result *byte, reslen uint6
 	}
 	return len_
 }
-func sprinttype(type_ int, names [0]*byte, result *byte, reslen uint64) uint64 {
+func sprinttype(type_ int, names []*byte, result *byte, reslen uint64) uint64 {
 	var nr int = 0
 	for type_ != 0 && *names[nr] != '\n' {
 		type_--
@@ -3986,7 +3898,7 @@ func sprinttype(type_ int, names [0]*byte, result *byte, reslen uint64) uint64 {
 		return libc.CString("UNDEFINED")
 	}(), reslen)
 }
-func sprintbitarray(bitvector [0]bitvector_t, names [0]*byte, maxar int, result *byte) {
+func sprintbitarray(bitvector []bitvector_t, names []*byte, maxar int, result *byte) {
 	var (
 		nr     int
 		teller int
@@ -4070,7 +3982,7 @@ func stop_follower(ch *char_data) {
 		k *follow_type
 	)
 	if ch.Master == nil {
-		core_dump_real(libc.CString(__FILE__), __LINE__)
+		core_dump_real(libc.CString("__FILE__"), 0)
 		return
 	}
 	act(libc.CString("You stop following $N."), FALSE, ch, nil, unsafe.Pointer(ch.Master), TO_CHAR)
@@ -4139,7 +4051,7 @@ func die_follower(ch *char_data) {
 func add_follower(ch *char_data, leader *char_data) {
 	var k *follow_type
 	if ch.Master != nil {
-		core_dump_real(libc.CString(__FILE__), __LINE__)
+		core_dump_real(libc.CString("__FILE__"), 0)
 		return
 	}
 	ch.Master = leader
@@ -4315,24 +4227,24 @@ func cook_element(room room_rnum) int {
 	var (
 		obj      *obj_data
 		next_obj *obj_data
-		found    int = FALSE
 	)
-	for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Contents; obj != nil; obj = next_obj {
-		next_obj = obj.Next_content
+	_ = next_obj
+	var found int = 0
+	for obj = world[room].Contents; obj != nil; obj = obj.Next_content {
 		if int(obj.Type_flag) == ITEM_CAMPFIRE {
 			found = 1
 		} else if GET_OBJ_VNUM(obj) == 0x4A95 {
-			found = 2
+			return 2
 		}
 	}
 	return found
 }
 func room_is_dark(room room_rnum) int {
-	if room == room_rnum(-1) || room > top_of_world {
+	if !VALID_ROOM_RNUM(room) {
 		basic_mud_log(libc.CString("room_is_dark: Invalid room rnum %d. (0-%d)"), room, top_of_world)
 		return FALSE
 	}
-	if int((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Light) != 0 {
+	if int(world[room].Light) != 0 {
 		return FALSE
 	}
 	if cook_element(room) != 0 {
@@ -4350,35 +4262,10 @@ func room_is_dark(room room_rnum) int {
 	if ROOM_FLAGGED(room, ROOM_INDOORS) {
 		return FALSE
 	}
-	if (func() int {
-		if room != room_rnum(-1) && room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) == SECT_INSIDE || (func() int {
-		if room != room_rnum(-1) && room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) == SECT_CITY || (func() int {
-		if room != room_rnum(-1) && room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) == SECT_IMPORTANT || (func() int {
-		if room != room_rnum(-1) && room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) == SECT_SHOP {
+	if SECT(room) == SECT_INSIDE || SECT(room) == SECT_CITY || SECT(room) == SECT_IMPORTANT || SECT(room) == SECT_SHOP {
 		return FALSE
 	}
-	if (func() int {
-		if room != room_rnum(-1) && room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) == SECT_SPACE {
+	if SECT(room) == SECT_SPACE {
 		return FALSE
 	}
 	if weather_info.Sunlight == SUN_SET {
@@ -4415,11 +4302,17 @@ func count_metamagic_feats(ch *char_data) int {
 	return count
 }
 func xdir_scan(dir_name *byte, xapdirp *xap_dir) int {
+	return 0
 }
 func xdir_get_name(xd *xap_dir, i int) *byte {
-	return &(*(**dirent)(unsafe.Add(unsafe.Pointer(xd.Namelist), unsafe.Sizeof((*dirent)(nil))*uintptr(i)))).D_name[0]
+	// todo: fix
+	//return &(*(**dirent)(unsafe.Add(unsafe.Pointer(xd.Namelist), unsafe.Sizeof((*dirent)(nil))*uintptr(i)))).D_name[0]
+	return nil
 }
 func insure_directory(path *byte, isfile int) int {
+	basic_mud_log(libc.CString("REIMPLEMENT THIS!"))
+	os.Exit(-1)
+	return 0
 }
 
 var default_admin_flags_mortal [1]int = [1]int{-1}
@@ -4439,43 +4332,43 @@ func admin_set(ch *char_data, value int) {
 		return
 	}
 	if ch.Admlevel < value {
-		mudlog(BRF, MAX(ADMLVL_IMMORT, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("%s promoted from %s to %s"), GET_NAME(ch), admin_level_names[ch.Admlevel], admin_level_names[value])
+		mudlog(BRF, int(MAX(ADMLVL_IMMORT, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("%s promoted from %s to %s"), GET_NAME(ch), admin_level_names[ch.Admlevel], admin_level_names[value])
 		for ch.Admlevel < value {
 			ch.Admlevel++
 			for i = 0; *(*int)(unsafe.Add(unsafe.Pointer(default_admin_flags[ch.Admlevel]), unsafe.Sizeof(int(0))*uintptr(i))) != -1; i++ {
-				ch.Admflags[(*(*int)(unsafe.Add(unsafe.Pointer(default_admin_flags[ch.Admlevel]), unsafe.Sizeof(int(0))*uintptr(i))))/32] |= bitvector_t(int32(1 << ((*(*int)(unsafe.Add(unsafe.Pointer(default_admin_flags[ch.Admlevel]), unsafe.Sizeof(int(0))*uintptr(i)))) % 32)))
+				SET_BIT_AR(ch.Admflags[:], bitvector_t(int32(*(*int)(unsafe.Add(unsafe.Pointer(default_admin_flags[ch.Admlevel]), unsafe.Sizeof(int(0))*uintptr(i))))))
 			}
 		}
 		run_autowiz()
 		if orig < ADMLVL_IMMORT && value >= ADMLVL_IMMORT {
-			ch.Player_specials.Pref[int(PRF_LOG2/32)] |= bitvector_t(int32(1 << (int(PRF_LOG2 % 32))))
-			ch.Player_specials.Pref[int(PRF_HOLYLIGHT/32)] |= bitvector_t(int32(1 << (int(PRF_HOLYLIGHT % 32))))
-			ch.Player_specials.Pref[int(PRF_ROOMFLAGS/32)] |= bitvector_t(int32(1 << (int(PRF_ROOMFLAGS % 32))))
-			ch.Player_specials.Pref[int(PRF_AUTOEXIT/32)] |= bitvector_t(int32(1 << (int(PRF_AUTOEXIT % 32))))
+			SET_BIT_AR(ch.Player_specials.Pref[:], PRF_LOG2)
+			SET_BIT_AR(ch.Player_specials.Pref[:], PRF_HOLYLIGHT)
+			SET_BIT_AR(ch.Player_specials.Pref[:], PRF_ROOMFLAGS)
+			SET_BIT_AR(ch.Player_specials.Pref[:], PRF_AUTOEXIT)
 		}
 		if ch.Admlevel >= ADMLVL_IMMORT {
 			for i = 0; i < 3; i++ {
 				ch.Player_specials.Conditions[i] = -1
 			}
-			ch.Player_specials.Pref[int(PRF_HOLYLIGHT/32)] |= bitvector_t(int32(1 << (int(PRF_HOLYLIGHT % 32))))
+			SET_BIT_AR(ch.Player_specials.Pref[:], PRF_HOLYLIGHT)
 		}
 		return
 	}
 	if ch.Admlevel > value {
-		mudlog(BRF, MAX(ADMLVL_IMMORT, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("%s demoted from %s to %s"), GET_NAME(ch), admin_level_names[ch.Admlevel], admin_level_names[value])
+		mudlog(BRF, int(MAX(ADMLVL_IMMORT, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("%s demoted from %s to %s"), GET_NAME(ch), admin_level_names[ch.Admlevel], admin_level_names[value])
 		for ch.Admlevel > value {
 			for i = 0; *(*int)(unsafe.Add(unsafe.Pointer(default_admin_flags[ch.Admlevel]), unsafe.Sizeof(int(0))*uintptr(i))) != -1; i++ {
-				ch.Admflags[(*(*int)(unsafe.Add(unsafe.Pointer(default_admin_flags[ch.Admlevel]), unsafe.Sizeof(int(0))*uintptr(i))))/32] &= bitvector_t(int32(^(1 << ((*(*int)(unsafe.Add(unsafe.Pointer(default_admin_flags[ch.Admlevel]), unsafe.Sizeof(int(0))*uintptr(i)))) % 32))))
+				REMOVE_BIT_AR(ch.Admflags[:], bitvector_t(int32(*(*int)(unsafe.Add(unsafe.Pointer(default_admin_flags[ch.Admlevel]), unsafe.Sizeof(int(0))*uintptr(i))))))
 			}
 			ch.Admlevel--
 		}
 		run_autowiz()
 		if orig >= ADMLVL_IMMORT && value < ADMLVL_IMMORT {
-			ch.Player_specials.Pref[int(PRF_LOG1/32)] &= bitvector_t(int32(^(1 << (int(PRF_LOG1 % 32)))))
-			ch.Player_specials.Pref[int(PRF_LOG2/32)] &= bitvector_t(int32(^(1 << (int(PRF_LOG2 % 32)))))
-			ch.Player_specials.Pref[int(PRF_NOHASSLE/32)] &= bitvector_t(int32(^(1 << (int(PRF_NOHASSLE % 32)))))
-			ch.Player_specials.Pref[int(PRF_HOLYLIGHT/32)] &= bitvector_t(int32(^(1 << (int(PRF_HOLYLIGHT % 32)))))
-			ch.Player_specials.Pref[int(PRF_ROOMFLAGS/32)] &= bitvector_t(int32(^(1 << (int(PRF_ROOMFLAGS % 32)))))
+			REMOVE_BIT_AR(ch.Player_specials.Pref[:], PRF_LOG1)
+			REMOVE_BIT_AR(ch.Player_specials.Pref[:], PRF_LOG2)
+			REMOVE_BIT_AR(ch.Player_specials.Pref[:], PRF_NOHASSLE)
+			REMOVE_BIT_AR(ch.Player_specials.Pref[:], PRF_HOLYLIGHT)
+			REMOVE_BIT_AR(ch.Player_specials.Pref[:], PRF_ROOMFLAGS)
 		}
 		return
 	}
@@ -4498,12 +4391,12 @@ func levenshtein_distance(s1 *byte, s2 *byte) int {
 	}
 	for i = 1; i <= s1_len; i++ {
 		for j = 1; j <= s2_len; j++ {
-			*(*int)(unsafe.Add(unsafe.Pointer(*(**int)(unsafe.Add(unsafe.Pointer(d), unsafe.Sizeof((*int)(nil))*uintptr(i)))), unsafe.Sizeof(int(0))*uintptr(j))) = MIN(*(*int)(unsafe.Add(unsafe.Pointer(*(**int)(unsafe.Add(unsafe.Pointer(d), unsafe.Sizeof((*int)(nil))*uintptr(i-1)))), unsafe.Sizeof(int(0))*uintptr(j)))+1, MIN(*(*int)(unsafe.Add(unsafe.Pointer(*(**int)(unsafe.Add(unsafe.Pointer(d), unsafe.Sizeof((*int)(nil))*uintptr(i)))), unsafe.Sizeof(int(0))*uintptr(j-1)))+1, *(*int)(unsafe.Add(unsafe.Pointer(*(**int)(unsafe.Add(unsafe.Pointer(d), unsafe.Sizeof((*int)(nil))*uintptr(i-1)))), unsafe.Sizeof(int(0))*uintptr(j-1)))+(func() int {
+			*(*int)(unsafe.Add(unsafe.Pointer(*(**int)(unsafe.Add(unsafe.Pointer(d), unsafe.Sizeof((*int)(nil))*uintptr(i)))), unsafe.Sizeof(int(0))*uintptr(j))) = int(MIN(int64(*(*int)(unsafe.Add(unsafe.Pointer(*(**int)(unsafe.Add(unsafe.Pointer(d), unsafe.Sizeof((*int)(nil))*uintptr(i-1)))), unsafe.Sizeof(int(0))*uintptr(j)))+1), MIN(int64(*(*int)(unsafe.Add(unsafe.Pointer(*(**int)(unsafe.Add(unsafe.Pointer(d), unsafe.Sizeof((*int)(nil))*uintptr(i)))), unsafe.Sizeof(int(0))*uintptr(j-1)))+1), int64(*(*int)(unsafe.Add(unsafe.Pointer(*(**int)(unsafe.Add(unsafe.Pointer(d), unsafe.Sizeof((*int)(nil))*uintptr(i-1)))), unsafe.Sizeof(int(0))*uintptr(j-1)))+(func() int {
 				if *(*byte)(unsafe.Add(unsafe.Pointer(s1), i-1)) == *(*byte)(unsafe.Add(unsafe.Pointer(s2), j-1)) {
 					return 0
 				}
 				return 1
-			}())))
+			}())))))
 		}
 	}
 	i = *(*int)(unsafe.Add(unsafe.Pointer(*(**int)(unsafe.Add(unsafe.Pointer(d), unsafe.Sizeof((*int)(nil))*uintptr(s1_len)))), unsafe.Sizeof(int(0))*uintptr(s2_len)))
@@ -4568,6 +4461,11 @@ func masadv(tmp *byte, ch *char_data) int {
 		return FALSE
 	}
 }
+
+const DIGITS_PER_GROUP = 3
+const BUFFER_COUNT = 19
+const DIGITS_PER_BUFFER = 25
+
 func add_commas(num int64) *byte {
 	var (
 		i            int64
@@ -4604,7 +4502,7 @@ func add_commas(num int64) *byte {
 	which = (which + 1) % BUFFER_COUNT
 	return &comma_string[i][0]
 }
-func get_flag_by_name(flag_list [0]*byte, flag_name *byte) int {
+func get_flag_by_name(flag_list []*byte, flag_name *byte) int {
 	var i int = 0
 	for ; flag_list[i] != nil && *flag_list[i] != 0 && libc.StrCmp(flag_list[i], libc.CString("\n")) != 0; i++ {
 		if libc.StrCmp(flag_list[i], flag_name) == 0 {
@@ -4613,7 +4511,7 @@ func get_flag_by_name(flag_list [0]*byte, flag_name *byte) int {
 	}
 	return -1
 }
-func IS_SET_AR(var_ [0]bitvector_t, bit bitvector_t) bool {
+func IS_SET_AR(var_ []bitvector_t, bit bitvector_t) bool {
 	return var_[int(bit)/32]&(1<<(bit%32)) != 0
 }
 func ISNEWL(ch int8) bool {
@@ -4641,16 +4539,16 @@ func ADM_FLAGGED(ch *char_data, flag bitvector_t) bool {
 	return IS_SET_AR(ch.Admflags[:], flag)
 }
 func ROOM_FLAGGED(loc room_rnum, flag bitvector_t) bool {
-	return IS_SET_AR((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(loc)))).Room_flags[:], flag)
+	return IS_SET_AR(world[loc].Room_flags[:], flag)
 }
 func EXIT_FLAGGED(exit *room_direction_data, flag bitvector_t) bool {
-	return exit.Exit_info&flag != 0
+	return IS_SET(exit.Exit_info, flag)
 }
 func OBJAFF_FLAGGED(obj *obj_data, flag bitvector_t) bool {
 	return IS_SET_AR(obj.Bitvector[:], flag)
 }
 func OBJVAL_FLAGGED(obj *obj_data, flag bitvector_t) bool {
-	return (obj.Value[VAL_CONTAINER_FLAGS])&int(flag) != 0
+	return IS_SET(bitvector_t(int32(obj.Value[VAL_CONTAINER_FLAGS])), flag)
 }
 func OBJWEAR_FLAGGED(obj *obj_data, flag bitvector_t) bool {
 	return IS_SET_AR(obj.Wear_flags[:], flag)
@@ -4662,7 +4560,7 @@ func BODY_FLAGGED(ch *char_data, flag bitvector_t) bool {
 	return IS_SET_AR(ch.Bodyparts[:], flag)
 }
 func ZONE_FLAGGED(rnum zone_rnum, flag bitvector_t) bool {
-	return IS_SET_AR((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(rnum)))).Zone_flags[:], flag)
+	return IS_SET_AR(zone_table[rnum].Zone_flags[:], flag)
 }
 func AN(str *byte) *byte {
 	if libc.StrChr(libc.CString("aeiouAEIOU"), *str) != nil {
@@ -4864,15 +4762,13 @@ func GET_SKILL(ch *char_data, i int) int {
 }
 func GET_MOB_SPEC(ch *char_data) SpecialFunc {
 	if IS_MOB(ch) {
-		return func(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
-			return (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(ch.Nr)))).Func(ch, me, cmd, argument)
-		}
+		return mob_index[ch.Nr].Func
 	}
 	return nil
 }
 func GET_MOB_VNUM(ch *char_data) mob_vnum {
 	if IS_MOB(ch) {
-		return (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(ch.Nr)))).Vnum
+		return mob_index[ch.Nr].Vnum
 	}
 	return -1
 }
@@ -4920,17 +4816,7 @@ func ALIGN_TYPE(ch *char_data) uint8 {
 	}())))
 }
 func IN_ARENA(ch *char_data) bool {
-	return (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) >= 17800 && (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) <= 0x45D2
+	return int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) >= 17800 && int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) <= 0x45D2
 }
 func WAIT_STATE(ch *char_data, cycle int) {
 	ch.Wait = cycle
@@ -4972,7 +4858,7 @@ func IS_PLAYING(d *descriptor_data) bool {
 	}
 }
 func SENDOK(ch *char_data) bool {
-	return (ch.Desc != nil || ch.Script != nil && (ch.Script.Types&(1<<4)) != 0) && (to_sleeping != 0 || AWAKE(ch)) && !PLR_FLAGGED(ch, PLR_WRITING)
+	return (ch.Desc != nil || ch.Script != nil && IS_SET(bitvector_t(int32(ch.Script.Types)), 1<<4)) && (to_sleeping != 0 || AWAKE(ch)) && !PLR_FLAGGED(ch, PLR_WRITING)
 }
 func VALID_OBJ_RNUM(obj *obj_data) bool {
 	var r obj_rnum = obj_rnum(obj.Item_number)
@@ -4980,15 +4866,13 @@ func VALID_OBJ_RNUM(obj *obj_data) bool {
 }
 func GET_OBJ_VNUM(obj *obj_data) obj_vnum {
 	if VALID_OBJ_RNUM(obj) {
-		return obj_vnum((*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(obj.Item_number)))).Vnum)
+		return obj_vnum(obj_index[obj.Item_number].Vnum)
 	}
 	return -1
 }
 func GET_OBJ_SPEC(obj *obj_data) SpecialFunc {
 	if VALID_OBJ_RNUM(obj) {
-		return func(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
-			return (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(obj.Item_number)))).Func(ch, me, cmd, argument)
-		}
+		return obj_index[obj.Item_number].Func
 	}
 	return nil
 }
@@ -5118,7 +5002,7 @@ func OBJN(obj *obj_data, vict *char_data) *byte {
 	return libc.CString("something")
 }
 func CAN_GO(ch *char_data, direction int) bool {
-	return ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[direction]) != nil && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[direction]).To_room != room_rnum(-1) && (((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dir_option[direction]).Exit_info&(1<<1)) == 0
+	return (world[ch.In_room].Dir_option[direction]) != nil && (world[ch.In_room].Dir_option[direction]).To_room != room_rnum(-1) && !IS_SET((world[ch.In_room].Dir_option[direction]).Exit_info, 1<<1)
 }
 func JUGGLERACE(ch *char_data) *byte {
 	if int(ch.Race) == RACE_HOSHIJIN {
@@ -5240,32 +5124,7 @@ func OOZARU_RACE(ch *char_data) bool {
 	return int(ch.Race) == RACE_SAIYAN || int(ch.Race) == RACE_HALFBREED
 }
 func ETHER_STREAM(ch *char_data) bool {
-	return ROOM_FLAGGED(ch.In_room, ROOM_EARTH) || ROOM_FLAGGED(ch.In_room, ROOM_AETHER) || ROOM_FLAGGED(ch.In_room, ROOM_NAMEK) || ((func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) >= 3400 && (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) <= 3599 || (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) >= 62900 && (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) <= 0xF617 || (func() room_vnum {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-		}
-		return -1
-	}()) == 19600)
+	return ROOM_FLAGGED(ch.In_room, ROOM_EARTH) || ROOM_FLAGGED(ch.In_room, ROOM_AETHER) || ROOM_FLAGGED(ch.In_room, ROOM_NAMEK) || PLANET_ZENITH(ch.In_room)
 }
 func HAS_MOON(ch *char_data) bool {
 	return ROOM_FLAGGED(ch.In_room, ROOM_VEGETA) || ROOM_FLAGGED(ch.In_room, ROOM_EARTH) || ROOM_FLAGGED(ch.In_room, ROOM_FRIGID) || ROOM_FLAGGED(ch.In_room, ROOM_AETHER)
@@ -5283,33 +5142,79 @@ func OUTSIDE_ROOMFLAG(ch *char_data) bool {
 	return !ROOM_FLAGGED(ch.In_room, ROOM_INDOORS) && !ROOM_FLAGGED(ch.In_room, ROOM_UNDERGROUND) && !ROOM_FLAGGED(ch.In_room, ROOM_SPACE)
 }
 func OUTSIDE_SECTTYPE(ch *char_data) bool {
-	return (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) != SECT_INSIDE && (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) != SECT_UNDERWATER && (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) != SECT_IMPORTANT && (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) != SECT_SHOP && (func() int {
-		if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-		}
-		return SECT_INSIDE
-	}()) != SECT_SPACE
+	return SECT(ch.In_room) != SECT_INSIDE && SECT(ch.In_room) != SECT_UNDERWATER && SECT(ch.In_room) != SECT_IMPORTANT && SECT(ch.In_room) != SECT_SHOP && SECT(ch.In_room) != SECT_SPACE
 }
 func IS_COLOR_CHAR(c int8) bool {
 	return libc.StrChr(libc.CString("nbcgmrywkoeul0234567"), byte(int8(unicode.ToLower(rune(c))))) != nil
+}
+func SECT(room room_rnum) int {
+	if VALID_ROOM_RNUM(room) {
+		return world[room].Sector_type
+	}
+	return SECT_INSIDE
+}
+func SUNKEN(room room_rnum) bool {
+	return world[room].Geffect < 0 || SECT(room) == SECT_UNDERWATER
+}
+func VALID_ROOM_RNUM(rnum room_rnum) bool {
+	return rnum != room_rnum(-1) && rnum <= top_of_world
+}
+func GET_ROOM_VNUM(rnum room_rnum) bool {
+	if VALID_ROOM_RNUM(rnum) {
+		return world[rnum].Number != 0
+	}
+	return true
+}
+func GET_ROOM_SPEC(rnum room_rnum) SpecialFunc {
+	if VALID_ROOM_RNUM(rnum) {
+		return world[rnum].Func
+	}
+	return nil
+}
+func PLANET_ZENITH(rnum room_rnum) bool {
+	var r room_vnum = room_vnum(libc.BoolToInt(GET_ROOM_VNUM(rnum)))
+	return r >= 3400 && r <= 3599 || r >= 62900 && r <= 0xF617 || r == 19600
+}
+func IN_ZONE(ch *char_data) zone_vnum {
+	return zone_table[world[ch.In_room].Zone].Number
+}
+func SET_BIT_AR(var_ []bitvector_t, bit bitvector_t) {
+	var_[int(bit)/32] |= 1 << (bit % 32)
+}
+func REMOVE_BIT_AR(var_ []bitvector_t, bit bitvector_t) {
+	var_[int(bit)/32] &= bitvector_t(int32(int(^(1 << (bit % 32)))))
+}
+func TOGGLE_BIT_AR(var_ []bitvector_t, bit bitvector_t) bitvector_t {
+	return func() bitvector_t {
+		p := &var_[int(bit)/32]
+		var_[int(bit)/32] = var_[int(bit)/32] ^ 1<<(bit%32)
+		return *p
+	}()
+}
+func IS_SET(flag bitvector_t, bit bitvector_t) bool {
+	return flag&bit != 0
+}
+func MIN(x int64, y int64) int64 {
+	if x > y {
+		return y
+	}
+	return x
+}
+func MAX(x int64, y int64) int64 {
+	if x > y {
+		return x
+	}
+	return y
+}
+func PLR_TOG_CHK(ch *char_data, flag bitvector_t) bitvector_t {
+	return TOGGLE_BIT_AR(ch.Act[:], flag) & (1 << (flag % 32))
+}
+func PRF_TOG_CHK(ch *char_data, flag bitvector_t) bitvector_t {
+	return TOGGLE_BIT_AR(ch.Player_specials.Pref[:], flag) & (1 << (flag % 32))
+}
+func ADM_TOG_CHK(ch *char_data, flag bitvector_t) bitvector_t {
+	return TOGGLE_BIT_AR(ch.Admflags[:], flag) & (1 << (flag % 32))
+}
+func AFF_TOG_CHK(ch *char_data, flag bitvector_t) bitvector_t {
+	return TOGGLE_BIT_AR(ch.Affected_by[:], flag) & (1 << (flag % 32))
 }

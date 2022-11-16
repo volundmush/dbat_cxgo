@@ -23,7 +23,7 @@ func do_action(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("That action is not supported.\r\n"))
 		return
 	}
-	action = (*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(act_nr)))
+	action = &soc_mess_list[act_nr]
 	if argument == nil || *argument == 0 {
 		send_to_char(ch, libc.CString("%s\r\n"), action.Char_no_arg)
 		act(action.Others_no_arg, action.Hide, ch, nil, nil, TO_ROOM)
@@ -47,7 +47,7 @@ func do_action(ch *char_data, argument *byte, cmd int, subcmd int) {
 		if action.Char_obj_found != nil {
 			targ = get_obj_in_list_vis(ch, &arg[0], nil, ch.Carrying)
 			if targ == nil {
-				targ = get_obj_in_list_vis(ch, &arg[0], nil, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents)
+				targ = get_obj_in_list_vis(ch, &arg[0], nil, world[ch.In_room].Contents)
 			}
 			if targ != nil {
 				act(action.Char_obj_found, action.Hide, ch, targ, nil, TO_CHAR)
@@ -172,8 +172,8 @@ func boot_social_messages() {
 		}
 	}
 	basic_mud_log(libc.CString("Social table contains %d socials."), top_of_socialt)
-	rewind(fl)
-	soc_mess_list = &make([]social_messg, top_of_socialt+1)[0]
+	fl.Seek(0, 0)
+	soc_mess_list = make([]social_messg, top_of_socialt+1)
 	for {
 		stdio.Fscanf(fl, " %s ", &next_soc[0])
 		if next_soc[0] == '$' {
@@ -185,44 +185,44 @@ func boot_social_messages() {
 				os.Exit(1)
 			}
 			curr_soc++
-			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Command = libc.StrDup(&next_soc[1])
-			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Sort_as = libc.StrDup(&sorted[0])
-			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Hide = hide
-			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Min_char_position = min_char_pos
-			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Min_victim_position = min_pos
-			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Min_level_char = min_lvl
+			soc_mess_list[curr_soc].Command = libc.StrDup(&next_soc[1])
+			soc_mess_list[curr_soc].Sort_as = libc.StrDup(&sorted[0])
+			soc_mess_list[curr_soc].Hide = hide
+			soc_mess_list[curr_soc].Min_char_position = min_char_pos
+			soc_mess_list[curr_soc].Min_victim_position = min_pos
+			soc_mess_list[curr_soc].Min_level_char = min_lvl
 		} else {
 			if stdio.Fscanf(fl, " %d %d \n", &hide, &min_pos) != 2 {
 				basic_mud_log(libc.CString("SYSERR: format error in social file near social '%s'"), &next_soc[0])
 				os.Exit(1)
 			}
 			curr_soc++
-			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Command = libc.StrDup(&next_soc[0])
-			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Sort_as = libc.StrDup(&next_soc[0])
-			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Hide = hide
-			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Min_char_position = POS_RESTING
-			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Min_victim_position = min_pos
-			(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Min_level_char = 0
+			soc_mess_list[curr_soc].Command = libc.StrDup(&next_soc[0])
+			soc_mess_list[curr_soc].Sort_as = libc.StrDup(&next_soc[0])
+			soc_mess_list[curr_soc].Hide = hide
+			soc_mess_list[curr_soc].Min_char_position = POS_RESTING
+			soc_mess_list[curr_soc].Min_victim_position = min_pos
+			soc_mess_list[curr_soc].Min_level_char = 0
 		}
-		(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Char_no_arg = fread_action(fl, nr)
-		(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Others_no_arg = fread_action(fl, nr)
-		(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Char_found = fread_action(fl, nr)
-		if config_info.Operation.Use_new_socials == FALSE && (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Char_found == nil {
+		soc_mess_list[curr_soc].Char_no_arg = fread_action(fl, nr)
+		soc_mess_list[curr_soc].Others_no_arg = fread_action(fl, nr)
+		soc_mess_list[curr_soc].Char_found = fread_action(fl, nr)
+		if config_info.Operation.Use_new_socials == FALSE && soc_mess_list[curr_soc].Char_found == nil {
 			continue
 		}
-		(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Others_found = fread_action(fl, nr)
-		(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Vict_found = fread_action(fl, nr)
-		(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Not_found = fread_action(fl, nr)
-		(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Char_auto = fread_action(fl, nr)
-		(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Others_auto = fread_action(fl, nr)
+		soc_mess_list[curr_soc].Others_found = fread_action(fl, nr)
+		soc_mess_list[curr_soc].Vict_found = fread_action(fl, nr)
+		soc_mess_list[curr_soc].Not_found = fread_action(fl, nr)
+		soc_mess_list[curr_soc].Char_auto = fread_action(fl, nr)
+		soc_mess_list[curr_soc].Others_auto = fread_action(fl, nr)
 		if config_info.Operation.Use_new_socials == FALSE {
 			continue
 		}
-		(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Char_body_found = fread_action(fl, nr)
-		(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Others_body_found = fread_action(fl, nr)
-		(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Vict_body_found = fread_action(fl, nr)
-		(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Char_obj_found = fread_action(fl, nr)
-		(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(curr_soc)))).Others_obj_found = fread_action(fl, nr)
+		soc_mess_list[curr_soc].Char_body_found = fread_action(fl, nr)
+		soc_mess_list[curr_soc].Others_body_found = fread_action(fl, nr)
+		soc_mess_list[curr_soc].Vict_body_found = fread_action(fl, nr)
+		soc_mess_list[curr_soc].Char_obj_found = fread_action(fl, nr)
+		soc_mess_list[curr_soc].Others_obj_found = fread_action(fl, nr)
 	}
 	fl.Close()
 	if curr_soc > top_of_socialt {
@@ -243,14 +243,14 @@ func create_command_list() {
 	for j = 0; j < top_of_socialt; j++ {
 		k = j
 		for i = j + 1; i <= top_of_socialt; i++ {
-			if libc.StrCaseCmp((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))).Sort_as, (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(k)))).Sort_as) < 0 {
+			if libc.StrCaseCmp(soc_mess_list[i].Sort_as, soc_mess_list[k].Sort_as) < 0 {
 				k = i
 			}
 		}
 		if j != k {
-			temp = *(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(j)))
-			*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(j))) = *(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(k)))
-			*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(k))) = temp
+			temp = soc_mess_list[j]
+			soc_mess_list[j] = soc_mess_list[k]
+			soc_mess_list[k] = temp
 		}
 	}
 	i = 0
@@ -258,17 +258,17 @@ func create_command_list() {
 		i++
 	}
 	i++
-	complete_cmd_info = &make([]command_info, top_of_socialt+i+2)[0]
+	complete_cmd_info = make([]command_info, top_of_socialt+i+2)
 	i = 0
 	j = 0
 	k = 0
 	for *cmd_info[i].Command != '\n' {
-		*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(func() int {
+		complete_cmd_info[func() int {
 			p := &k
 			x := *p
 			*p++
 			return x
-		}()))) = cmd_info[func() int {
+		}()] = cmd_info[func() int {
 			p := &i
 			x := *p
 			*p++
@@ -276,36 +276,40 @@ func create_command_list() {
 		}()]
 	}
 	for j <= top_of_socialt {
-		(*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(j)))).Act_nr = k
-		(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(k)))).Command = (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(j)))).Command
-		(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(k)))).Sort_as = (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(j)))).Sort_as
-		(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(k)))).Minimum_position = int8((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(j)))).Min_char_position)
-		(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(k)))).Command_pointer = do_action
-		(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(k)))).Minimum_level = int16((*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(func() int {
+		soc_mess_list[j].Act_nr = k
+		complete_cmd_info[k].Command = soc_mess_list[j].Command
+		complete_cmd_info[k].Sort_as = soc_mess_list[j].Sort_as
+		complete_cmd_info[k].Minimum_position = int8(soc_mess_list[j].Min_char_position)
+		complete_cmd_info[k].Command_pointer = func(ch *char_data, argument *byte, cmd int, subcmd int) {
+			func(ch *char_data, argument *byte, cmd int, subcmd int) {
+				do_action(ch, argument, cmd, subcmd)
+			}(ch, argument, cmd, subcmd)
+		}
+		complete_cmd_info[k].Minimum_level = int16(soc_mess_list[func() int {
 			p := &j
 			x := *p
 			*p++
 			return x
-		}())))).Min_level_char)
-		(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(k)))).Minimum_admlevel = ADMLVL_NONE
-		(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(func() int {
+		}()].Min_level_char)
+		complete_cmd_info[k].Minimum_admlevel = ADMLVL_NONE
+		complete_cmd_info[func() int {
 			p := &k
 			x := *p
 			*p++
 			return x
-		}())))).Subcmd = 0
+		}()].Subcmd = 0
 	}
-	(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(k)))).Command = libc.CString("\n")
-	(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(k)))).Sort_as = libc.CString("zzzzzzz")
-	(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(k)))).Minimum_position = 0
-	(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(k)))).Command_pointer = nil
-	(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(k)))).Minimum_level = 0
-	(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(k)))).Minimum_admlevel = 0
-	(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(k)))).Subcmd = 0
+	complete_cmd_info[k].Command = libc.CString("\n")
+	complete_cmd_info[k].Sort_as = libc.CString("zzzzzzz")
+	complete_cmd_info[k].Minimum_position = 0
+	complete_cmd_info[k].Command_pointer = nil
+	complete_cmd_info[k].Minimum_level = 0
+	complete_cmd_info[k].Minimum_admlevel = 0
+	complete_cmd_info[k].Subcmd = 0
 	basic_mud_log(libc.CString("Command info rebuilt, %d total commands."), k)
 }
 func free_command_list() {
-	libc.Free(unsafe.Pointer(complete_cmd_info))
+	libc.Free(unsafe.Pointer(&complete_cmd_info[0]))
 	complete_cmd_info = nil
 }
 func fread_action(fl *stdio.File, nr int) *byte {
@@ -327,10 +331,10 @@ func free_social_messages() {
 		i    int
 	)
 	for i = 0; i <= top_of_socialt; i++ {
-		mess = (*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(i)))
+		mess = &soc_mess_list[i]
 		free_action(mess)
 	}
-	libc.Free(unsafe.Pointer(soc_mess_list))
+	libc.Free(unsafe.Pointer(&soc_mess_list[0]))
 }
 func free_action(mess *social_messg) {
 	if mess.Command != nil {
@@ -393,13 +397,13 @@ func find_action(cmd int) int {
 	}
 	for {
 		mid = (bot + top) / 2
-		if (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(mid)))).Act_nr == cmd {
+		if soc_mess_list[mid].Act_nr == cmd {
 			return mid
 		}
 		if bot >= top {
 			return -1
 		}
-		if (*(*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(mid)))).Act_nr > cmd {
+		if soc_mess_list[mid].Act_nr > cmd {
 			top = func() int {
 				p := &mid
 				*p--
@@ -431,7 +435,7 @@ func find_social(name *byte) *social_messg {
 	}()) < 0 {
 		return nil
 	}
-	return (*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(socidx)))
+	return &soc_mess_list[socidx]
 }
 func do_gmote(ch *char_data, argument *byte, cmd int, subcmd int) {
 	var (
@@ -450,8 +454,8 @@ func do_gmote(ch *char_data, argument *byte, cmd int, subcmd int) {
 				cmd = 0
 				return cmd
 			}()
-		}(); *(*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command != '\n'; cmd++ {
-			if libc.StrNCmp((*(*command_info)(unsafe.Add(unsafe.Pointer(complete_cmd_info), unsafe.Sizeof(command_info{})*uintptr(cmd)))).Command, &buf[0], length) == 0 {
+		}(); *complete_cmd_info[cmd].Command != '\n'; cmd++ {
+			if libc.StrNCmp(complete_cmd_info[cmd].Command, &buf[0], length) == 0 {
 				break
 			}
 		}
@@ -473,7 +477,7 @@ func do_gmote(ch *char_data, argument *byte, cmd int, subcmd int) {
 		send_to_char(ch, libc.CString("The walls seem to absorb your actions.\r\n"))
 		return
 	}
-	action = (*social_messg)(unsafe.Add(unsafe.Pointer(soc_mess_list), unsafe.Sizeof(social_messg{})*uintptr(act_nr)))
+	action = &soc_mess_list[act_nr]
 	if action.Char_found == nil {
 		arg[0] = '\x00'
 	}

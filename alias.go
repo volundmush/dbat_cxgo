@@ -46,7 +46,7 @@ func read_aliases(ch *char_data) {
 		file = stdio.FOpen(libc.GoString(&xbuf[0]), "r")
 		return file
 	}()) == nil {
-		if libc.Errno != ENOENT {
+		if libc.Errno != 2 {
 			basic_mud_log(libc.CString("SYSERR: Couldn't open alias file '%s' for %s: %s"), &xbuf[0], GET_NAME(ch), libc.StrError(libc.Errno))
 		}
 		return
@@ -93,7 +93,7 @@ func delete_aliases(charname *byte) {
 	if get_filename(&filename[0], uint64(260), ALIAS_FILE, charname) == 0 {
 		return
 	}
-	if stdio.Remove(libc.GoString(&filename[0])) < 0 && libc.Errno != ENOENT {
+	if stdio.Remove(libc.GoString(&filename[0])) < 0 && libc.Errno != 2 {
 		basic_mud_log(libc.CString("SYSERR: deleting alias file %s: %s"), &filename[0], libc.StrError(libc.Errno))
 	}
 }

@@ -79,7 +79,7 @@ func extract_trigger(trig *trig_data) {
 		event_cancel(trig.Wait_event)
 		trig.Wait_event = nil
 	}
-	(*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(trig.Nr)))).Number--
+	trig_index[trig.Nr].Number--
 	if trig == trigger_list {
 		trigger_list = trig.Next_in_world
 	} else {
@@ -134,7 +134,7 @@ func extract_script(thing unsafe.Pointer, type_ int) {
 				}
 			}
 			for k = 0; k < top_of_world; k++ {
-				if sc == ((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k)))).Script {
+				if sc == world[k].Script {
 					panic("assert failed")
 				}
 			}
@@ -199,7 +199,7 @@ func free_proto_script(thing unsafe.Pointer, type_ int) {
 				}
 			}
 			for k = 0; k < top_of_world; k++ {
-				if proto == (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k)))).Proto_script {
+				if proto == world[k].Proto_script {
 					panic("assert failed")
 				}
 			}
@@ -249,7 +249,7 @@ func delete_variables(charname *byte) {
 	if get_filename(&filename[0], uint64(260), SCRIPT_VARS_FILE, charname) == 0 {
 		return
 	}
-	if stdio.Remove(libc.GoString(&filename[0])) < 0 && libc.Errno != ENOENT {
+	if stdio.Remove(libc.GoString(&filename[0])) < 0 && libc.Errno != 2 {
 		basic_mud_log(libc.CString("SYSERR: deleting variable file %s: %s"), &filename[0], libc.StrError(libc.Errno))
 	}
 }

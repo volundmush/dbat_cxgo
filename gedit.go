@@ -81,14 +81,14 @@ func do_oasis_gedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if can_edit_zone(ch, d.Olc.Zone_num) == 0 {
-		send_cannot_edit(ch, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number)
+		send_cannot_edit(ch, zone_table[d.Olc.Zone_num].Number)
 		libc.Free(unsafe.Pointer(d.Olc))
 		d.Olc = nil
 		return
 	}
 	if save != 0 {
-		send_to_char(ch, libc.CString("Saving all guilds in zone %d.\r\n"), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number)
-		mudlog(CMP, MAX(ADMLVL_BUILDER, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("OLC: %s saves guild info for zone %d."), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number)
+		send_to_char(ch, libc.CString("Saving all guilds in zone %d.\r\n"), zone_table[d.Olc.Zone_num].Number)
+		mudlog(CMP, int(MAX(ADMLVL_BUILDER, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("OLC: %s saves guild info for zone %d."), GET_NAME(ch), zone_table[d.Olc.Zone_num].Number)
 		gedit_save_to_disk(int(d.Olc.Zone_num))
 		libc.Free(unsafe.Pointer(d.Olc))
 		d.Olc = nil
@@ -105,8 +105,8 @@ func do_oasis_gedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	}
 	d.Connected = CON_GEDIT
 	act(libc.CString("$n starts using OLC."), TRUE, d.Character, nil, nil, TO_ROOM)
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
-	mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing zone %d allowed zone %d"), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number, ch.Player_specials.Olc_zone)
+	SET_BIT_AR(ch.Act[:], PLR_WRITING)
+	mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing zone %d allowed zone %d"), GET_NAME(ch), zone_table[d.Olc.Zone_num].Number, ch.Player_specials.Olc_zone)
 }
 func gedit_setup_new(d *descriptor_data) {
 	var (
@@ -140,7 +140,7 @@ func gedit_setup_new(d *descriptor_data) {
 }
 func gedit_setup_existing(d *descriptor_data, rgm_num int) {
 	d.Olc.Guild = new(guild_data)
-	copy_guild(d.Olc.Guild, (*guild_data)(unsafe.Add(unsafe.Pointer(guild_index), unsafe.Sizeof(guild_data{})*uintptr(rgm_num))))
+	copy_guild(d.Olc.Guild, &guild_index[rgm_num])
 	gedit_disp_menu(d)
 }
 func gedit_select_skills_menu(d *descriptor_data) {
@@ -183,7 +183,7 @@ func gedit_select_spells_menu(d *descriptor_data) {
 	clear_screen(d)
 	write_to_output(d, libc.CString("Spells known:\r\n"))
 	for i = 0; i <= SKILL_TABLE_SIZE; i++ {
-		if (spell_info[i].Skilltype&(1<<0)) != 0 && libc.StrCmp(spell_info[i].Name, libc.CString("!UNUSED!")) != 0 {
+		if IS_SET(bitvector_t(int32(spell_info[i].Skilltype)), 1<<0) && libc.StrCmp(spell_info[i].Name, libc.CString("!UNUSED!")) != 0 {
 			write_to_output(d, libc.CString("@n[@c%-3s@n] %-3d %-20.20s  "), func() string {
 				if (guilddata.Skills[i]) != 0 {
 					return "YES"
@@ -241,7 +241,7 @@ func gedit_select_lang_menu(d *descriptor_data) {
 	clear_screen(d)
 	write_to_output(d, libc.CString("Skills known:\r\n"))
 	for i = 0; i < SKILL_TABLE_SIZE; i++ {
-		if (spell_info[i].Skilltype&(1<<2)) != 0 && libc.StrCmp(spell_info[i].Name, libc.CString("!UNUSED!")) != 0 {
+		if IS_SET(bitvector_t(int32(spell_info[i].Skilltype)), 1<<2) && libc.StrCmp(spell_info[i].Name, libc.CString("!UNUSED!")) != 0 {
 			write_to_output(d, libc.CString("@n[@c%-3s@n] %-3d %-20.20s  "), func() string {
 				if (guilddata.Skills[i]) != 0 {
 					return "YES"
@@ -270,7 +270,7 @@ func gedit_select_wp_menu(d *descriptor_data) {
 	clear_screen(d)
 	write_to_output(d, libc.CString("Skills known:\r\n"))
 	for i = 0; i < SKILL_TABLE_SIZE; i++ {
-		if (spell_info[i].Skilltype&(1<<3)) != 0 && libc.StrCmp(spell_info[i].Name, libc.CString("!UNUSED!")) != 0 {
+		if IS_SET(bitvector_t(int32(spell_info[i].Skilltype)), 1<<3) && libc.StrCmp(spell_info[i].Name, libc.CString("!UNUSED!")) != 0 {
 			write_to_output(d, libc.CString("@n[@c%-3s@n] %-3d %-20.20s  "), func() string {
 				if (guilddata.Skills[i]) != 0 {
 					return "YES"
@@ -325,12 +325,12 @@ func gedit_disp_menu(d *descriptor_data) {
 		if guilddata.Gm == mob_rnum(-1) {
 			return -1
 		}
-		return (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(guilddata.Gm)))).Vnum
+		return mob_index[guilddata.Gm].Vnum
 	}(), func() string {
 		if guilddata.Gm == mob_rnum(-1) {
 			return "None"
 		}
-		return libc.GoString((*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(guilddata.Gm)))).Short_descr)
+		return libc.GoString(mob_proto[guilddata.Gm].Short_descr)
 	}(), guilddata.No_such_skill, guilddata.Not_enough_gold, guilddata.Open, guilddata.Close, guilddata.Charge, guilddata.Minlvl, &buf1[0])
 	d.Olc.Mode = GEDIT_MAIN_MENU
 }
@@ -350,7 +350,7 @@ func gedit_parse(d *descriptor_data, arg *byte) {
 		case 'Y':
 			send_to_char(d.Character, libc.CString("Saving Guild to memory.\r\n"))
 			gedit_save_internally(d)
-			mudlog(CMP, MAX(ADMLVL_BUILDER, int(d.Character.Player_specials.Invis_level)), TRUE, libc.CString("OLC: %s edits guild %d"), GET_NAME(d.Character), d.Olc.Number)
+			mudlog(CMP, int(MAX(ADMLVL_BUILDER, int64(d.Character.Player_specials.Invis_level))), TRUE, libc.CString("OLC: %s edits guild %d"), GET_NAME(d.Character), d.Olc.Number)
 			if config_info.Operation.Auto_save_olc != 0 {
 				gedit_save_to_disk(int(real_zone_by_thing(d.Olc.Number)))
 				write_to_output(d, libc.CString("Guild %d saved to disk.\r\n"), d.Olc.Number)
@@ -462,12 +462,16 @@ func gedit_parse(d *descriptor_data, arg *byte) {
 			if i == -1 {
 				break
 			}
-			if libc.FuncAddr((*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Func) != libc.FuncAddr(guild) {
-				d.Olc.Guild.Func = (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Func
+			if libc.FuncAddr(mob_index[i].Func) != libc.FuncAddr(guild) {
+				d.Olc.Guild.Func = mob_index[i].Func
 			} else {
 				d.Olc.Guild.Func = nil
 			}
-			(*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Func = guild
+			mob_index[i].Func = func(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
+				return func(ch *char_data, me unsafe.Pointer, cmd int, argument *byte) int {
+					return guild(ch, me, cmd, argument)
+				}(ch, me, cmd, argument)
+			}
 			break
 		} else {
 			write_to_output(d, libc.CString("Invalid response.\r\n"))
@@ -476,28 +480,28 @@ func gedit_parse(d *descriptor_data, arg *byte) {
 		}
 		fallthrough
 	case GEDIT_OPEN:
-		d.Olc.Guild.Open = MIN(28, MAX(libc.Atoi(libc.GoString(arg)), 0))
+		d.Olc.Guild.Open = int(MIN(28, MAX(int64(libc.Atoi(libc.GoString(arg))), 0)))
 	case GEDIT_CLOSE:
-		d.Olc.Guild.Close = MIN(28, MAX(libc.Atoi(libc.GoString(arg)), 0))
+		d.Olc.Guild.Close = int(MIN(28, MAX(int64(libc.Atoi(libc.GoString(arg))), 0)))
 	case GEDIT_CHARGE:
 		stdio.Sscanf(arg, "%f", &d.Olc.Guild.Charge)
 	case GEDIT_NO_TRAIN:
 		if (func() int {
-			i = MIN(int(NUM_TRADERS-1), MAX(libc.Atoi(libc.GoString(arg)), 0))
+			i = int(MIN(int64(int(NUM_TRADERS-1)), MAX(int64(libc.Atoi(libc.GoString(arg))), 0)))
 			return i
 		}()) > 0 {
-			d.Olc.Guild.With_who[(i-1)/32] = d.Olc.Guild.With_who[(i-1)/32] ^ 1<<((i-1)%32)
+			TOGGLE_BIT_AR(d.Olc.Guild.With_who[:], bitvector_t(int32(i-1)))
 			gedit_no_train_menu(d)
 			return
 		}
 	case GEDIT_MINLVL:
-		d.Olc.Guild.Minlvl = MAX(libc.Atoi(libc.GoString(arg)), 0)
+		d.Olc.Guild.Minlvl = int(MAX(int64(libc.Atoi(libc.GoString(arg))), 0))
 	case GEDIT_SELECT_SPELLS:
 		i = libc.Atoi(libc.GoString(arg))
 		if i == 0 {
 			break
 		}
-		i = MAX(1, MIN(i, SKILL_TABLE_SIZE))
+		i = int(MAX(1, MIN(int64(i), SKILL_TABLE_SIZE)))
 		d.Olc.Guild.Skills[i] = int(libc.BoolToInt((d.Olc.Guild.Skills[i]) == 0))
 		gedit_select_spells_menu(d)
 		return
@@ -506,7 +510,7 @@ func gedit_parse(d *descriptor_data, arg *byte) {
 		if i == 0 {
 			break
 		}
-		i = MAX(1, MIN(i, NUM_FEATS_DEFINED))
+		i = int(MAX(1, MIN(int64(i), NUM_FEATS_DEFINED)))
 		d.Olc.Guild.Feats[i] = int(libc.BoolToInt((d.Olc.Guild.Feats[i]) == 0))
 		gedit_select_feats_menu(d)
 		return
@@ -515,7 +519,7 @@ func gedit_parse(d *descriptor_data, arg *byte) {
 		if i == 0 {
 			break
 		}
-		i = MAX(1, MIN(i, SKILL_TABLE_SIZE))
+		i = int(MAX(1, MIN(int64(i), SKILL_TABLE_SIZE)))
 		d.Olc.Guild.Skills[i] = int(libc.BoolToInt((d.Olc.Guild.Skills[i]) == 0))
 		gedit_select_skills_menu(d)
 		return
@@ -524,7 +528,7 @@ func gedit_parse(d *descriptor_data, arg *byte) {
 		if i == 0 {
 			break
 		}
-		i = MAX(1, MIN(i, SKILL_TABLE_SIZE))
+		i = int(MAX(1, MIN(int64(i), SKILL_TABLE_SIZE)))
 		d.Olc.Guild.Skills[i] = int(libc.BoolToInt((d.Olc.Guild.Skills[i]) == 0))
 		gedit_select_wp_menu(d)
 		return
@@ -533,7 +537,7 @@ func gedit_parse(d *descriptor_data, arg *byte) {
 		if i == 0 {
 			break
 		}
-		i = MAX(1, MIN(i, SKILL_TABLE_SIZE))
+		i = int(MAX(1, MIN(int64(i), SKILL_TABLE_SIZE)))
 		d.Olc.Guild.Skills[i] = int(libc.BoolToInt((d.Olc.Guild.Skills[i]) == 0))
 		gedit_select_lang_menu(d)
 		return

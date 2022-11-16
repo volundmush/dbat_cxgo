@@ -237,10 +237,10 @@ func racial_body_parts(ch *char_data) {
 	var i int
 	for i = 1; i < NUM_WEARS; i++ {
 		if race_bodyparts[ch.Race][i] != 0 {
-			ch.Bodyparts[i/32] |= 1 << (i % 32)
+			SET_BIT_AR(ch.Bodyparts[:], bitvector_t(int32(i)))
 		} else {
 			if BODY_FLAGGED(ch, bitvector_t(int32(i))) {
-				ch.Bodyparts[i/32] &= ^(1 << (i % 32))
+				REMOVE_BIT_AR(ch.Bodyparts[:], bitvector_t(int32(i)))
 			}
 		}
 	}

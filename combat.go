@@ -99,7 +99,7 @@ func damage_weapon(ch *char_data, obj *obj_data, vict *char_data) {
 			act(libc.CString("@RYour @C$p@R shatters on @r$N's@R body!@n"), TRUE, ch, obj, unsafe.Pointer(vict), TO_CHAR)
 			act(libc.CString("@r$n's@R @C$p@R shatters on YOUR body!@n"), TRUE, ch, obj, unsafe.Pointer(vict), TO_VICT)
 			act(libc.CString("@r$n's@R @C$p@R shatters on @r$N's@R body!@n"), TRUE, ch, obj, unsafe.Pointer(vict), TO_NOTVICT)
-			obj.Extra_flags[int(ITEM_BROKEN/32)] |= bitvector_t(int32(1 << (int(ITEM_BROKEN % 32))))
+			SET_BIT_AR(obj.Extra_flags[:], ITEM_BROKEN)
 			perform_remove(vict, 16)
 			perform_remove(vict, 17)
 		} else if result >= 8 {
@@ -135,16 +135,16 @@ func handle_multihit(ch *char_data, vict *char_data) {
 		ch.Throws = 0
 	}
 	if int(ch.Race) == RACE_KONATSU {
-		perc *= int(1.5)
+		perc += int(float64(perc) * .5)
 	}
 	if int(ch.Race) == RACE_BIO && ((ch.Genome[0]) == 8 || (ch.Genome[1]) == 8) {
-		perc *= int(1.4)
+		perc += int(float64(perc) * .4)
 	}
 	if IS_NPC(ch) {
-		perc -= int(float64(perc) * 0.3)
+		perc -= int(float64(perc) * .3)
 	}
 	if ch.Lastattack == -1 {
-		perc *= int(0.75)
+		perc += int(float64(perc) * .75)
 	}
 	var amt int = 70
 	if GET_SKILL(ch, SKILL_STYLE) >= 100 {
@@ -167,7 +167,7 @@ func handle_multihit(ch *char_data, vict *char_data) {
 		act(libc.CString("@Y...in a lightning flash of speed @y$n@Y attacks YOU again!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 		act(libc.CString("@Y...in a lightning flash of speed @y$n@Y attacks @y$N@Y again!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 		ch.Throws += 1
-		ch.Act[int(PLR_MULTIHIT/32)] |= bitvector_t(int32(1 << (int(PLR_MULTIHIT % 32))))
+		SET_BIT_AR(ch.Act[:], PLR_MULTIHIT)
 		if ch.Combo > -1 {
 			switch ch.Combo {
 			case 0:
@@ -261,10 +261,10 @@ func handle_disarm(ch *char_data, vict *char_data) {
 	if rand_number(1, 100) <= 50 && int(ch.Race) != RACE_KONATSU {
 		roll1 = -500
 	} else if rand_number(1, 100) <= 75 {
-		roll1 *= int(1.5)
+		roll1 += int(float64(roll1) * 1.5)
 	}
 	if int(vict.Race) == RACE_KONATSU {
-		roll1 *= int(0.75)
+		roll1 += int(float64(roll1) * 0.75)
 	}
 	if GET_SKILL(ch, SKILL_HANDLING) >= axion_dice(10) {
 		handled = TRUE
@@ -471,20 +471,20 @@ func combine_attacks(ch *char_data, vict *char_data) {
 		if !AFF_FLAGGED(vict, AFF_BURNED) && rand_number(1, 4) == 3 && int(vict.Race) != RACE_DEMON && (vict.Bonuses[BONUS_FIREPROOF]) == 0 {
 			send_to_char(vict, libc.CString("@RYou are burned by the attack!@n\r\n"))
 			send_to_char(ch, libc.CString("@RThey are burned by the attack!@n\r\n"))
-			vict.Affected_by[int(AFF_BURNED/32)] |= 1 << (int(AFF_BURNED % 32))
+			SET_BIT_AR(vict.Affected_by[:], AFF_BURNED)
 		} else if (vict.Bonuses[BONUS_FIREPROOF]) != 0 || int(vict.Race) == RACE_DEMON {
 			send_to_char(ch, libc.CString("@RThey appear to be fireproof!@n\r\n"))
 		} else if (vict.Bonuses[BONUS_FIREPRONE]) != 0 {
 			send_to_char(vict, libc.CString("@RYou are extremely flammable and are burned by the attack!@n\r\n"))
 			send_to_char(ch, libc.CString("@RThey are easily burned!@n\r\n"))
-			vict.Affected_by[int(AFF_BURNED/32)] |= 1 << (int(AFF_BURNED % 32))
+			SET_BIT_AR(vict.Affected_by[:], AFF_BURNED)
 		}
 	}
 	if shocked == TRUE {
 		if !AFF_FLAGGED(vict, AFF_SHOCKED) && rand_number(1, 4) == 4 && !AFF_FLAGGED(vict, AFF_SANCTUARY) {
 			act(libc.CString("@MYour mind has been shocked!@n"), TRUE, vict, nil, nil, TO_CHAR)
 			act(libc.CString("@M$n@m's mind has been shocked!@n"), TRUE, vict, nil, nil, TO_ROOM)
-			vict.Affected_by[int(AFF_SHOCKED/32)] |= 1 << (int(AFF_SHOCKED % 32))
+			SET_BIT_AR(vict.Affected_by[:], AFF_SHOCKED)
 		}
 	}
 	hurt(0, 0, ch, vict, nil, totki, 1)
@@ -495,23 +495,12 @@ func combine_attacks(ch *char_data, vict *char_data) {
 		send_to_char(ch, libc.CString("@YS@yy@Yn@ye@Yr@yg@Yi@ys@Yt@yi@Yc @yB@Yo@yn@Yu@ys@Y!@n\r\n"))
 	}
 }
+func is_hot_ruby(obj *obj_data) bool {
+	return GET_OBJ_VNUM(obj) == 6600 && OBJ_FLAGGED(obj, ITEM_HOT)
+}
 func check_ruby(ch *char_data) int {
-	var (
-		obj      *obj_data
-		next_obj *obj_data = nil
-		ruby     *obj_data = nil
-		found    int       = 0
-	)
-	for obj = ch.Carrying; obj != nil; obj = next_obj {
-		next_obj = obj.Next_content
-		if found == 0 && GET_OBJ_VNUM(obj) == 6600 {
-			if OBJ_FLAGGED(obj, ITEM_HOT) {
-				found = 1
-				ruby = obj
-			}
-		}
-	}
-	if found > 0 {
+	var ruby *obj_data = find_obj_in_list_lambda(ch.Carrying, is_hot_ruby)
+	if ruby != nil {
 		act(libc.CString("@RYour $p@R flares up and disappears. Your fire attack has been aided!@n"), TRUE, ch, ruby, nil, TO_CHAR)
 		act(libc.CString("@R$n's@R $p@R flares up and disappears!@n"), TRUE, ch, ruby, nil, TO_ROOM)
 		extract_obj(ruby)
@@ -777,7 +766,7 @@ func cut_limb(ch *char_data, vict *char_data, wlvl int, hitspot int) {
 				if (vict.Limb_condition[1]) > 0 {
 					vict.Limb_condition[1] = 0
 					if PLR_FLAGGED(vict, PLR_CLARM) {
-						vict.Act[int(PLR_CLARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLARM % 32)))))
+						REMOVE_BIT_AR(vict.Act[:], PLR_CLARM)
 					}
 					act(libc.CString("@R$N@r loses $s left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@RYOU lose your left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -786,7 +775,7 @@ func cut_limb(ch *char_data, vict *char_data, wlvl int, hitspot int) {
 				} else if (vict.Limb_condition[0]) > 0 {
 					vict.Limb_condition[0] = 100
 					if PLR_FLAGGED(vict, PLR_CRARM) {
-						vict.Act[int(PLR_CRARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRARM % 32)))))
+						REMOVE_BIT_AR(vict.Act[:], PLR_CRARM)
 					}
 					act(libc.CString("@R$N@r loses $s right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@RYOU lose your right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -797,7 +786,7 @@ func cut_limb(ch *char_data, vict *char_data, wlvl int, hitspot int) {
 				if (vict.Limb_condition[3]) > 0 {
 					vict.Limb_condition[3] = 100
 					if PLR_FLAGGED(vict, PLR_CLLEG) {
-						vict.Act[int(PLR_CLLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLLEG % 32)))))
+						REMOVE_BIT_AR(vict.Act[:], PLR_CLLEG)
 					}
 					act(libc.CString("@R$N@r loses $s left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@RYOU lose your left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -806,7 +795,7 @@ func cut_limb(ch *char_data, vict *char_data, wlvl int, hitspot int) {
 				} else if (vict.Limb_condition[2]) > 0 {
 					vict.Limb_condition[2] = 100
 					if PLR_FLAGGED(vict, PLR_CRLEG) {
-						vict.Act[int(PLR_CRLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRLEG % 32)))))
+						REMOVE_BIT_AR(vict.Act[:], PLR_CRLEG)
 					}
 					act(libc.CString("@R$N@r loses $s right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@RYOU lose your right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -817,13 +806,13 @@ func cut_limb(ch *char_data, vict *char_data, wlvl int, hitspot int) {
 		} else {
 			if HAS_ARMS(vict) && rand_number(1, 2) == 2 {
 				if MOB_FLAGGED(vict, MOB_LARM) {
-					vict.Act[int(MOB_LARM/32)] &= bitvector_t(int32(^(1 << (int(MOB_LARM % 32)))))
+					REMOVE_BIT_AR(vict.Act[:], MOB_LARM)
 					remove_limb(vict, 2)
 					act(libc.CString("@R$N@r loses $s left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@RYOU lose your left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@R$N@r loses $s left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				} else if MOB_FLAGGED(vict, MOB_RARM) {
-					vict.Act[int(MOB_RARM/32)] &= bitvector_t(int32(^(1 << (int(MOB_RARM % 32)))))
+					REMOVE_BIT_AR(vict.Act[:], MOB_RARM)
 					remove_limb(vict, 1)
 					act(libc.CString("@R$N@r loses $s right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@RYOU lose your right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -831,13 +820,13 @@ func cut_limb(ch *char_data, vict *char_data, wlvl int, hitspot int) {
 				}
 			} else {
 				if MOB_FLAGGED(vict, MOB_LLEG) {
-					vict.Act[int(MOB_LLEG/32)] &= bitvector_t(int32(^(1 << (int(MOB_LLEG % 32)))))
+					REMOVE_BIT_AR(vict.Act[:], MOB_LLEG)
 					remove_limb(vict, 4)
 					act(libc.CString("@R$N@r loses $s left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@RYOU lose your left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 					act(libc.CString("@R$N@r loses $s left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				} else if MOB_FLAGGED(vict, MOB_RLEG) {
-					vict.Act[int(MOB_RLEG/32)] &= bitvector_t(int32(^(1 << (int(MOB_RLEG % 32)))))
+					REMOVE_BIT_AR(vict.Act[:], MOB_RLEG)
 					remove_limb(vict, 3)
 					act(libc.CString("@R$N@r loses $s right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("@RYOU lose your right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
@@ -1242,10 +1231,10 @@ func hurt_limb(ch *char_data, vict *char_data, chance int, area int, power int64
 				act(libc.CString("@r$n's@R attack @YDESTROYS @r$N's@R left arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				vict.Limb_condition[1] = 0
 				if PLR_FLAGGED(vict, PLR_THANDW) {
-					vict.Act[int(PLR_THANDW/32)] &= bitvector_t(int32(^(1 << (int(PLR_THANDW % 32)))))
+					REMOVE_BIT_AR(vict.Act[:], PLR_THANDW)
 				}
 				if PLR_FLAGGED(vict, PLR_CLARM) {
-					vict.Act[int(PLR_CLARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLARM % 32)))))
+					REMOVE_BIT_AR(vict.Act[:], PLR_CLARM)
 				}
 				remove_limb(vict, 2)
 			} else if (vict.Limb_condition[1]) > 0 {
@@ -1259,10 +1248,10 @@ func hurt_limb(ch *char_data, vict *char_data, chance int, area int, power int64
 				act(libc.CString("@r$n's@R attack @YDESTROYS @r$N's@R right arm!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				vict.Limb_condition[0] = 0
 				if PLR_FLAGGED(vict, PLR_THANDW) {
-					vict.Act[int(PLR_THANDW/32)] &= bitvector_t(int32(^(1 << (int(PLR_THANDW % 32)))))
+					REMOVE_BIT_AR(vict.Act[:], PLR_THANDW)
 				}
 				if PLR_FLAGGED(vict, PLR_CLARM) {
-					vict.Act[int(PLR_CRARM/32)] &= bitvector_t(int32(^(1 << (int(PLR_CRARM % 32)))))
+					REMOVE_BIT_AR(vict.Act[:], PLR_CRARM)
 				}
 				remove_limb(vict, 2)
 			} else if (vict.Limb_condition[0]) > 0 {
@@ -1278,10 +1267,10 @@ func hurt_limb(ch *char_data, vict *char_data, chance int, area int, power int64
 				act(libc.CString("@r$n's@R attack @YDESTROYS @r$N's@R left leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				vict.Limb_condition[3] = 0
 				if PLR_FLAGGED(vict, PLR_THANDW) {
-					vict.Act[int(PLR_THANDW/32)] &= bitvector_t(int32(^(1 << (int(PLR_THANDW % 32)))))
+					REMOVE_BIT_AR(vict.Act[:], PLR_THANDW)
 				}
 				if PLR_FLAGGED(vict, PLR_CLLEG) {
-					vict.Act[int(PLR_CLLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLLEG % 32)))))
+					REMOVE_BIT_AR(vict.Act[:], PLR_CLLEG)
 				}
 				remove_limb(vict, 2)
 			} else if (vict.Limb_condition[3]) > 0 {
@@ -1295,10 +1284,10 @@ func hurt_limb(ch *char_data, vict *char_data, chance int, area int, power int64
 				act(libc.CString("@r$n's@R attack @YDESTROYS @r$N's@R right leg!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				vict.Limb_condition[2] = 0
 				if PLR_FLAGGED(vict, PLR_THANDW) {
-					vict.Act[int(PLR_THANDW/32)] &= bitvector_t(int32(^(1 << (int(PLR_THANDW % 32)))))
+					REMOVE_BIT_AR(vict.Act[:], PLR_THANDW)
 				}
 				if PLR_FLAGGED(vict, PLR_CLLEG) {
-					vict.Act[int(PLR_CLLEG/32)] &= bitvector_t(int32(^(1 << (int(PLR_CLLEG % 32)))))
+					REMOVE_BIT_AR(vict.Act[:], PLR_CLLEG)
 				}
 				remove_limb(vict, 2)
 			} else if (vict.Limb_condition[2]) > 0 {
@@ -1402,7 +1391,7 @@ func damage_eq(vict *char_data, location int) {
 		eq.Value[VAL_ALL_HEALTH] -= loss
 		if (eq.Value[VAL_ALL_HEALTH]) <= 0 {
 			eq.Value[VAL_ALL_HEALTH] = 0
-			eq.Extra_flags[int(ITEM_BROKEN/32)] |= bitvector_t(int32(1 << (int(ITEM_BROKEN % 32))))
+			SET_BIT_AR(eq.Extra_flags[:], ITEM_BROKEN)
 			act(libc.CString("@WYour $p@W completely breaks!@n"), FALSE, nil, eq, unsafe.Pointer(vict), TO_VICT)
 			act(libc.CString("@C$N's@W $p@W completely breaks!@n"), FALSE, nil, eq, unsafe.Pointer(vict), TO_NOTVICT)
 			perform_remove(vict, location)
@@ -1516,14 +1505,9 @@ func huge_update() {
 	)
 	for k = object_list; k != nil; k = k.Next {
 		if int(k.Aucter) > 0 && k.AucTime+604800 <= libc.GetTime(nil) {
-			if k.In_room != 0 && (func() room_vnum {
-				if k.In_room != room_rnum(-1) && k.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k.In_room)))).Number
-				}
-				return -1
-			}()) == 80 {
+			if k.In_room != 0 && int(libc.BoolToInt(GET_ROOM_VNUM(k.In_room))) == 80 {
 				var inroom room_vnum = room_vnum(k.In_room)
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(inroom)))).Room_flags[int(ROOM_HOUSE_CRASH/32)] &= bitvector_t(int32(^(1 << (int(ROOM_HOUSE_CRASH % 32)))))
+				REMOVE_BIT_AR(world[inroom].Room_flags[:], ROOM_HOUSE_CRASH)
 				extract_obj(k)
 				continue
 			}
@@ -1537,17 +1521,7 @@ func huge_update() {
 			if k.Kitype == 497 {
 				if k.Target.In_room == k.In_room {
 					ch = k.User
-					if (func() room_vnum {
-						if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-							return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-						}
-						return -1
-					}()) == (func() room_vnum {
-						if k.In_room != room_rnum(-1) && k.In_room <= top_of_world {
-							return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k.In_room)))).Number
-						}
-						return -1
-					}()) {
+					if GET_ROOM_VNUM(ch.In_room) == GET_ROOM_VNUM(k.In_room) {
 						bonus = 2
 					}
 					act(libc.CString("@WThe large @cS@Cp@wi@cr@Ci@wt @cB@Co@wm@cb@W descends on YOU! It eclipses everything above you as it crushes down into you! You struggle against it with all your might!@n"), TRUE, k.Target, nil, nil, TO_CHAR)
@@ -1560,7 +1534,7 @@ func huge_update() {
 						dmg = int64(float64(k.Kicharge) * 1.25)
 						hurt(0, 0, ch, k.Target, nil, dmg, 1)
 						dmg /= 2
-						for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k.In_room)))).People; vict != nil; vict = next_v {
+						for vict = world[k.In_room].People; vict != nil; vict = next_v {
 							next_v = vict.Next_in_room
 							if vict == ch {
 								continue
@@ -1591,7 +1565,7 @@ func huge_update() {
 								act(libc.CString("@C$N@c disappears, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 								act(libc.CString("@cYou disappear, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 								act(libc.CString("@C$N@c disappears, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-								vict.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
+								REMOVE_BIT_AR(vict.Affected_by[:], AFF_ZANZOKEN)
 								pcost(vict, 0, vict.Max_hit/200)
 								hurt(0, 0, ch, vict, nil, 0, 1)
 								continue
@@ -1626,15 +1600,10 @@ func huge_update() {
 								continue
 							}
 						}
-						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k.In_room)))).Dmg = 100
+						world[k.In_room].Dmg = 100
 						var zone int = 0
 						if (func() int {
-							zone = int(real_zone_by_thing(func() room_vnum {
-								if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-									return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-								}
-								return -1
-							}()))
+							zone = int(real_zone_by_thing(room_vnum(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room)))))
 							return zone
 						}()) != int(-1) {
 							send_to_zone(libc.CString("A MASSIVE explosion shakes the entire area!\r\n"), zone_rnum(zone))
@@ -1655,7 +1624,7 @@ func huge_update() {
 					skill = init_skill(ch, SKILL_GENKIDAMA)
 					dmg = k.Kicharge
 					dmg /= 2
-					for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k.In_room)))).People; vict != nil; vict = next_v {
+					for vict = world[k.In_room].People; vict != nil; vict = next_v {
 						next_v = vict.Next_in_room
 						if vict == ch {
 							continue
@@ -1677,7 +1646,7 @@ func huge_update() {
 							act(libc.CString("@C$N@c disappears, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 							act(libc.CString("@cYou disappear, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 							act(libc.CString("@C$N@c disappears, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-							vict.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
+							REMOVE_BIT_AR(vict.Affected_by[:], AFF_ZANZOKEN)
 							pcost(vict, 0, vict.Max_hit/200)
 							hurt(0, 0, ch, vict, nil, 0, 1)
 							continue
@@ -1696,15 +1665,10 @@ func huge_update() {
 							continue
 						}
 					}
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k.In_room)))).Dmg = 100
+					world[k.In_room].Dmg = 100
 					var zone int = 0
 					if (func() int {
-						zone = int(real_zone_by_thing(func() room_vnum {
-							if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-								return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-							}
-							return -1
-						}()))
+						zone = int(real_zone_by_thing(room_vnum(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room)))))
 						return zone
 					}()) != int(-1) {
 						send_to_zone(libc.CString("A MASSIVE explosion shakes the entire area!\r\n"), zone_rnum(zone))
@@ -1717,17 +1681,7 @@ func huge_update() {
 			if k.Kitype == 498 {
 				if k.Target.In_room == k.In_room {
 					ch = k.User
-					if (func() room_vnum {
-						if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-							return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-						}
-						return -1
-					}()) == (func() room_vnum {
-						if k.In_room != room_rnum(-1) && k.In_room <= top_of_world {
-							return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k.In_room)))).Number
-						}
-						return -1
-					}()) {
+					if GET_ROOM_VNUM(ch.In_room) == GET_ROOM_VNUM(k.In_room) {
 						bonus = 2
 					}
 					act(libc.CString("@WThe large @mG@Me@wn@mo@Mc@wi@md@Me@W descends on YOU! It eclipses everything above you as it crushes down into you! You struggle against it with all your might!@n"), TRUE, k.Target, nil, nil, TO_CHAR)
@@ -1740,7 +1694,7 @@ func huge_update() {
 						dmg = k.Kicharge
 						hurt(0, 0, ch, k.Target, nil, dmg, 1)
 						dmg /= 2
-						for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k.In_room)))).People; vict != nil; vict = next_v {
+						for vict = world[k.In_room].People; vict != nil; vict = next_v {
 							next_v = vict.Next_in_room
 							if vict == ch {
 								continue
@@ -1771,7 +1725,7 @@ func huge_update() {
 								act(libc.CString("@C$N@c disappears, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 								act(libc.CString("@cYou disappear, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 								act(libc.CString("@C$N@c disappears, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-								vict.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
+								REMOVE_BIT_AR(vict.Affected_by[:], AFF_ZANZOKEN)
 								pcost(vict, 0, vict.Max_hit/200)
 								continue
 							} else if dge+rand_number(-10, 5) > skill {
@@ -1805,15 +1759,10 @@ func huge_update() {
 								continue
 							}
 						}
-						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k.In_room)))).Dmg = 100
+						world[k.In_room].Dmg = 100
 						var zone int = 0
 						if (func() int {
-							zone = int(real_zone_by_thing(func() room_vnum {
-								if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-									return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-								}
-								return -1
-							}()))
+							zone = int(real_zone_by_thing(room_vnum(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room)))))
 							return zone
 						}()) != int(-1) {
 							send_to_zone(libc.CString("A MASSIVE explosion shakes the entire area!\r\n"), zone_rnum(zone))
@@ -1834,7 +1783,7 @@ func huge_update() {
 					skill = init_skill(ch, SKILL_GENOCIDE)
 					dmg = k.Kicharge
 					dmg /= 2
-					for vict = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k.In_room)))).People; vict != nil; vict = next_v {
+					for vict = world[k.In_room].People; vict != nil; vict = next_v {
 						next_v = vict.Next_in_room
 						if vict == ch {
 							continue
@@ -1856,7 +1805,7 @@ func huge_update() {
 							act(libc.CString("@C$N@c disappears, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 							act(libc.CString("@cYou disappear, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 							act(libc.CString("@C$N@c disappears, avoiding the explosion!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-							vict.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
+							REMOVE_BIT_AR(vict.Affected_by[:], AFF_ZANZOKEN)
 							pcost(vict, 0, vict.Max_hit/200)
 							continue
 						} else if dge+rand_number(-10, 5) > skill {
@@ -1874,15 +1823,10 @@ func huge_update() {
 							continue
 						}
 					}
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k.In_room)))).Dmg = 100
+					world[k.In_room].Dmg = 100
 					var zone int = 0
 					if (func() int {
-						zone = int(real_zone_by_thing(func() room_vnum {
-							if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-								return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-							}
-							return -1
-						}()))
+						zone = int(real_zone_by_thing(room_vnum(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room)))))
 						return zone
 					}()) != int(-1) {
 						send_to_zone(libc.CString("A MASSIVE explosion shakes the entire area!\r\n"), zone_rnum(zone))
@@ -1945,8 +1889,8 @@ func homing_update() {
 					} else {
 						act(libc.CString("@wYou manage to deflect the $p@w sending it flying away into the nearby surroundings!@n"), TRUE, vict, k, nil, TO_CHAR)
 						act(libc.CString("@C$n @wmanages to deflect the $p@w sending it flying away into the nearby surroundings!@n"), TRUE, vict, k, nil, TO_ROOM)
-						if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Dmg <= 95 {
-							(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Dmg += 5
+						if world[vict.In_room].Dmg <= 95 {
+							world[vict.In_room].Dmg += 5
 						}
 						extract_obj(k)
 						continue
@@ -2041,8 +1985,8 @@ func homing_update() {
 					} else {
 						act(libc.CString("@wYou manage to deflect the $p@w sending it flying away into the nearby surroundings!@n"), TRUE, vict, k, nil, TO_CHAR)
 						act(libc.CString("@C$n @wmanages to deflect the $p@w sending it flying away into the nearby surroundings!@n"), TRUE, vict, k, nil, TO_ROOM)
-						if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Dmg <= 95 {
-							(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Dmg += 5
+						if world[vict.In_room].Dmg <= 95 {
+							world[vict.In_room].Dmg += 5
 						}
 						extract_obj(k)
 						continue
@@ -2083,7 +2027,7 @@ func limb_ok(ch *char_data, type_ int) int {
 		} else if AFF_FLAGGED(ch, AFF_ENSNARED) {
 			act(libc.CString("You manage to break the silk ensnaring your arms!"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("$n manages to break the silk ensnaring $s arms!"), TRUE, ch, nil, nil, TO_ROOM)
-			ch.Affected_by[int(AFF_ENSNARED/32)] &= ^(1 << (int(AFF_ENSNARED % 32)))
+			REMOVE_BIT_AR(ch.Affected_by[:], AFF_ENSNARED)
 		}
 		if (ch.Equipment[WEAR_WIELD1]) != nil && (ch.Equipment[WEAR_WIELD2]) != nil {
 			send_to_char(ch, libc.CString("Your hands are full!\r\n"))
@@ -2329,7 +2273,7 @@ func parry_ki(attperc float64, ch *char_data, vict *char_data, sname [1000]byte,
 		tch      *char_data
 		next_v   *char_data
 	)
-	for tch = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).People; tch != nil; tch = next_v {
+	for tch = world[ch.In_room].People; tch != nil; tch = next_v {
 		next_v = tch.Next_in_room
 		if tch == ch {
 			continue
@@ -2363,7 +2307,7 @@ func parry_ki(attperc float64, ch *char_data, vict *char_data, sname [1000]byte,
 			}
 		}
 	}
-	for tob = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Contents; tob != nil; tob = next_obj {
+	for tob = world[ch.In_room].Contents; tob != nil; tob = next_obj {
 		next_obj = tob.Next_content
 		if OBJ_FLAGGED(tob, ITEM_UNBREAKABLE) {
 			continue
@@ -2386,50 +2330,15 @@ func parry_ki(attperc float64, ch *char_data, vict *char_data, sname [1000]byte,
 		stdio.Sprintf(&buf2[0], "@WThe deflected %s slams into the ground, exploding with a roar of blinding light!@n", &sname[0])
 		act(&buf[0], TRUE, vict, nil, nil, TO_CHAR)
 		act(&buf2[0], TRUE, vict, nil, nil, TO_ROOM)
-		if (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) != SECT_INSIDE && (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) != SECT_UNDERWATER && (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) != SECT_WATER_SWIM && (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) != SECT_WATER_NOSWIM && (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) != SECT_UNDERWATER && (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) != SECT_WATER_SWIM && (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) != SECT_WATER_NOSWIM {
+		if SECT(vict.In_room) != SECT_INSIDE && SECT(vict.In_room) != SECT_UNDERWATER && SECT(vict.In_room) != SECT_WATER_SWIM && SECT(vict.In_room) != SECT_WATER_NOSWIM && SECT(vict.In_room) != SECT_UNDERWATER && SECT(vict.In_room) != SECT_WATER_SWIM && SECT(vict.In_room) != SECT_WATER_NOSWIM {
 			impact_sound(ch, libc.CString("@wA loud roar is heard nearby!@n\r\n"))
 			switch rand_number(1, 8) {
 			case 1:
 				act(libc.CString("Debris is thrown into the air and showers down thunderously!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("Debris is thrown into the air and showers down thunderously!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_ROOM)
 			case 2:
-				if rand_number(1, 4) == 4 && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Geffect == 0 {
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Geffect = 1
+				if rand_number(1, 4) == 4 && world[vict.In_room].Geffect == 0 {
+					world[vict.In_room].Geffect = 1
 					act(libc.CString("Lava spews up through cracks in the ground, roaring into the sky as a large column of molten rock!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("Lava spews up through cracks in the ground, roaring into the sky as a large column of molten rock!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_ROOM)
 				}
@@ -2448,12 +2357,7 @@ func parry_ki(attperc float64, ch *char_data, vict *char_data, sname [1000]byte,
 			default:
 			}
 		}
-		if (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_UNDERWATER {
+		if SECT(vict.In_room) == SECT_UNDERWATER {
 			switch rand_number(1, 3) {
 			case 1:
 				act(libc.CString("The water churns violently!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
@@ -2466,17 +2370,7 @@ func parry_ki(attperc float64, ch *char_data, vict *char_data, sname [1000]byte,
 				act(libc.CString("The water collapses in on the hole create!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_ROOM)
 			}
 		}
-		if (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_WATER_SWIM || (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_WATER_NOSWIM {
+		if SECT(vict.In_room) == SECT_WATER_SWIM || SECT(vict.In_room) == SECT_WATER_NOSWIM {
 			switch rand_number(1, 3) {
 			case 1:
 				act(libc.CString("A huge column of water erupts from the impact!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
@@ -2489,12 +2383,7 @@ func parry_ki(attperc float64, ch *char_data, vict *char_data, sname [1000]byte,
 				act(libc.CString("A huge depression forms in the water and erupts into a wave from the impact!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_ROOM)
 			}
 		}
-		if (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_INSIDE {
+		if SECT(vict.In_room) == SECT_INSIDE {
 			impact_sound(ch, libc.CString("@wA loud roar is heard nearby!@n\r\n"))
 			switch rand_number(1, 8) {
 			case 1:
@@ -2518,17 +2407,12 @@ func parry_ki(attperc float64, ch *char_data, vict *char_data, sname [1000]byte,
 			default:
 			}
 		}
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dmg <= 95 {
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dmg += 5
+		if world[ch.In_room].Dmg <= 95 {
+			world[ch.In_room].Dmg += 5
 		}
 		var zone int = 0
 		if (func() int {
-			zone = int(real_zone_by_thing(func() room_vnum {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-				}
-				return -1
-			}()))
+			zone = int(real_zone_by_thing(room_vnum(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room)))))
 			return zone
 		}()) != int(-1) {
 			send_to_zone(libc.CString("An explosion shakes the entire area!\r\n"), zone_rnum(zone))
@@ -2538,20 +2422,15 @@ func parry_ki(attperc float64, ch *char_data, vict *char_data, sname [1000]byte,
 }
 func dodge_ki(ch *char_data, vict *char_data, type_ int, type2 int, skill int, skill2 int) {
 	if type_ == 0 && !ROOM_FLAGGED(vict.In_room, ROOM_SPACE) {
-		if (func() int {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) != SECT_INSIDE {
+		if SECT(ch.In_room) != SECT_INSIDE {
 			impact_sound(ch, libc.CString("@wA loud roar is heard nearby!@n\r\n"))
 			switch rand_number(1, 8) {
 			case 1:
 				act(libc.CString("Debris is thrown into the air and showers down thunderously!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("Debris is thrown into the air and showers down thunderously!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_ROOM)
 			case 2:
-				if rand_number(1, 4) == 4 && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Geffect == 0 {
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Geffect = 1
+				if rand_number(1, 4) == 4 && world[vict.In_room].Geffect == 0 {
+					world[vict.In_room].Geffect = 1
 					act(libc.CString("Lava spews up through cracks in the ground, roaring into the sky as a large column of molten rock!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 					act(libc.CString("Lava spews up through cracks in the ground, roaring into the sky as a large column of molten rock!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_ROOM)
 				}
@@ -2570,12 +2449,7 @@ func dodge_ki(ch *char_data, vict *char_data, type_ int, type2 int, skill int, s
 			default:
 			}
 		}
-		if (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_UNDERWATER {
+		if SECT(vict.In_room) == SECT_UNDERWATER {
 			switch rand_number(1, 3) {
 			case 1:
 				act(libc.CString("The water churns violently!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
@@ -2588,17 +2462,7 @@ func dodge_ki(ch *char_data, vict *char_data, type_ int, type2 int, skill int, s
 				act(libc.CString("The water collapses in on the hole create!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_ROOM)
 			}
 		}
-		if (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_WATER_SWIM || (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_WATER_NOSWIM {
+		if SECT(vict.In_room) == SECT_WATER_SWIM || SECT(vict.In_room) == SECT_WATER_NOSWIM {
 			switch rand_number(1, 3) {
 			case 1:
 				act(libc.CString("A huge column of water erupts from the impact!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
@@ -2611,12 +2475,7 @@ func dodge_ki(ch *char_data, vict *char_data, type_ int, type2 int, skill int, s
 				act(libc.CString("A huge depression forms in the water and erupts into a wave from the impact!"), TRUE, ch, nil, unsafe.Pointer(vict), TO_ROOM)
 			}
 		}
-		if (func() int {
-			if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_INSIDE {
+		if SECT(ch.In_room) == SECT_INSIDE {
 			impact_sound(ch, libc.CString("@wA loud roar is heard nearby!@n\r\n"))
 			switch rand_number(1, 8) {
 			case 1:
@@ -2640,17 +2499,12 @@ func dodge_ki(ch *char_data, vict *char_data, type_ int, type2 int, skill int, s
 			default:
 			}
 		}
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dmg <= 95 {
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dmg += 5
+		if world[ch.In_room].Dmg <= 95 {
+			world[ch.In_room].Dmg += 5
 		}
 		var zone int = 0
 		if (func() int {
-			zone = int(real_zone_by_thing(func() room_vnum {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-				}
-				return -1
-			}()))
+			zone = int(real_zone_by_thing(room_vnum(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room)))))
 			return zone
 		}()) != int(-1) {
 			send_to_zone(libc.CString("An explosion shakes the entire area!\r\n"), zone_rnum(zone))
@@ -3049,7 +2903,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			}
 		case 7:
 			dam = int64(float64(ch.Max_mana) * percent)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 1000)
 			}
@@ -3091,7 +2945,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			}
 		case 9:
 			dam = int64(float64(ch.Max_mana) * percent)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 500)
 			}
@@ -3100,7 +2954,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			}
 		case 10:
 			dam = int64(float64(ch.Max_mana) * percent)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3110,7 +2964,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 11:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 500)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3120,7 +2974,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 12:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 500)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3147,7 +3001,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 14:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 1000)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3164,7 +3018,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 15:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 650)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3181,7 +3035,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 16:
 			dam += int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 800)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3198,7 +3052,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 17:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 650)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3215,7 +3069,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 18:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 700)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3232,7 +3086,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 19:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 650)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3249,7 +3103,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 20:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 1200)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3266,7 +3120,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 21:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 900)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3283,14 +3137,14 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 22:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 600)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
 		case 23:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 500)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			dam += (dam / 100) * int64(ch.Aff_abils.Str)
 			if focus > 0 {
 				dam += focus * (dam / 200)
@@ -3308,7 +3162,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 24:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 600)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3325,7 +3179,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 25:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 500)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3349,14 +3203,14 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 				if difference < 1 {
 					dam = int64(float64(ch.Max_mana) * percent)
 					dam += int64(GET_LEVEL(ch) * 800)
-					dam *= int64(1.25)
+					dam += int64(float64(dam) * .25)
 					dam += ch.Hit - 1
 					ch.Hit = 1
 				} else {
 					ch.Hit = difference
 					dam = int64(float64(ch.Max_mana) * percent)
 					dam += int64(GET_LEVEL(ch) * 800)
-					dam *= int64(1.25)
+					dam += int64(float64(dam) * .25)
 					dam += amount
 				}
 				if focus > 0 {
@@ -3365,7 +3219,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 			} else {
 				dam = int64(float64(ch.Max_mana) * percent)
 				dam += int64(GET_LEVEL(ch) * 800)
-				dam *= int64(1.25)
+				dam += int64(float64(dam) * .25)
 				if focus > 0 {
 					dam += focus * (dam / 200)
 				}
@@ -3383,7 +3237,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 27:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 1200)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			dam += (dam / 100) * int64(ch.Aff_abils.Intel)
 			if focus > 0 {
 				dam += focus * (dam / 200)
@@ -3401,7 +3255,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 28:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 1500)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3418,7 +3272,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 29:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 1200)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3432,7 +3286,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 30:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 1000)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3449,7 +3303,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 31:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 1100)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3466,7 +3320,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 32:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 1400)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3480,7 +3334,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 33:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 700)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3490,7 +3344,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 34:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 1050)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3507,7 +3361,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 35:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 1600)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3524,7 +3378,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 36:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 1100)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3541,7 +3395,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 37:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 1200)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3558,7 +3412,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 38:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 1700)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3575,7 +3429,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 39:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 900)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3592,7 +3446,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 40:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 2000)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3609,7 +3463,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 41:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 2000)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3626,7 +3480,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 42:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 550)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3640,7 +3494,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 43:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 1000)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3654,7 +3508,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 44:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 1000)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3668,7 +3522,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 45:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 1000)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3682,28 +3536,28 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 46:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 1400)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
 		case 47:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 900)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
 		case 48:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 900)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
 		case 49:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 900)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3725,7 +3579,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 50:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 800)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3800,7 +3654,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 53:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 1600)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3810,7 +3664,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 54:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 700)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3827,7 +3681,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 55:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 700)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3864,7 +3718,7 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		case 57:
 			dam = int64(float64(ch.Max_mana) * percent)
 			dam += int64(GET_LEVEL(ch) * 1700)
-			dam *= int64(1.25)
+			dam += int64(float64(dam) * .25)
 			if focus > 0 {
 				dam += focus * (dam / 200)
 			}
@@ -3873,11 +3727,11 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		dam = int64((float64(ch.Hit) * 0.05) + float64(ch.Max_hit)*0.025)
 		dam += int64((float64(dam) * 0.005) * float64(ch.Aff_abils.Str))
 		if GET_LEVEL(ch) >= 120 {
-			dam *= int64(0.25)
+			dam /= 4
 		} else if GET_LEVEL(ch) >= 110 {
-			dam *= int64(0.45)
+			dam = int64(float64(dam) * .45)
 		} else if GET_LEVEL(ch) >= 100 {
-			dam *= int64(0.75)
+			dam = int64(float64(dam) * .75)
 		}
 	}
 	if IS_NPC(ch) {
@@ -3908,25 +3762,25 @@ func damtype(ch *char_data, type_ int, skill int, percent float64) int64 {
 		dam += (dam / 200) * int64(ch.Kaioken)
 	}
 	if PLR_FLAGGED(ch, PLR_FURY) && (type_ == 0 || type_ == 1 || type_ == 2 || type_ == 3 || type_ == 4 || type_ == 5 || type_ == 6 || type_ == 8 || type_ == 51 || type_ == 52) {
-		dam *= int64(1.5)
+		dam += int64(float64(dam) * .5)
 		act(libc.CString("Your rage magnifies your attack power!"), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("Swirling energy flows around $n as $e releases $s rage in the attack!"), TRUE, ch, nil, nil, TO_ROOM)
 		if rand_number(1, 10) >= 7 {
 			send_to_char(ch, libc.CString("You feel less angry.\r\n"))
-			ch.Act[int(PLR_FURY/32)] &= bitvector_t(int32(^(1 << (int(PLR_FURY % 32)))))
+			REMOVE_BIT_AR(ch.Act[:], PLR_FURY)
 		}
 	} else if PLR_FLAGGED(ch, PLR_FURY) {
 		dam *= 2
 		act(libc.CString("Your rage magnifies your attack power!"), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("Swirling energy flows around $n as $e releases $s rage in the attack!"), TRUE, ch, nil, nil, TO_ROOM)
-		ch.Act[int(PLR_FURY/32)] &= bitvector_t(int32(^(1 << (int(PLR_FURY % 32)))))
+		REMOVE_BIT_AR(ch.Act[:], PLR_FURY)
 	}
 	if type_ == -1 || type_ == 0 || type_ == 1 || type_ == 2 || type_ == 3 || type_ == 4 || type_ == 5 || type_ == 6 || type_ == 8 {
 		if !IS_NPC(ch) {
 			dam -= int64(float64(dam) * 0.08)
 		}
 		if !IS_NPC(ch) && float64(dam) > float64(ch.Max_hit)*0.1 {
-			dam *= int64(0.6)
+			dam = int64(float64(dam) * .6)
 		}
 	} else {
 		dam += int64((float64(dam) * 0.005) * float64(ch.Aff_abils.Intel))
@@ -4017,7 +3871,7 @@ func spar_gain(ch *char_data, vict *char_data, type_ int, dmg int64) {
 		} else if ch.Relax_count >= 116 {
 			chance -= int(float64(chance) * 0.2)
 		}
-		gravity = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity
+		gravity = world[ch.In_room].Gravity
 		gmult = GET_LEVEL(ch) * ((gravity / 5) + 6)
 		if (ch.Equipment[WEAR_SH]) != nil {
 			var obj *obj_data = (ch.Equipment[WEAR_SH])
@@ -4026,21 +3880,11 @@ func spar_gain(ch *char_data, vict *char_data, type_ int, dmg int64) {
 			}
 		}
 		if ROOM_FLAGGED(ch.In_room, ROOM_WORKOUT) || ROOM_FLAGGED(ch.In_room, ROOM_HBTC) {
-			if (func() room_vnum {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-				}
-				return -1
-			}()) >= 19100 && (func() room_vnum {
-				if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-				}
-				return -1
-			}()) <= 0x4AFF {
-				gmult *= int(1.75)
+			if int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) >= 19100 && int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) <= 0x4AFF {
+				gmult += int(float64(gmult) * .75)
 				pscost += 2
 			} else {
-				gmult *= int(1.25)
+				gmult += int(float64(gmult) * .25)
 				pscost += 1
 			}
 			pl = large_rand(int64(float64(gmult)*0.8), int64(float64(gmult)*1.2))
@@ -4138,20 +3982,10 @@ func spar_gain(ch *char_data, vict *char_data, type_ int, dmg int64) {
 				gaincalc = int64(float64(gaincalc) - float64(gaincalc)*0.2)
 			}
 			if ROOM_FLAGGED(ch.In_room, ROOM_WORKOUT) || ROOM_FLAGGED(ch.In_room, ROOM_HBTC) {
-				if (func() room_vnum {
-					if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-					}
-					return -1
-				}()) >= 19100 && (func() room_vnum {
-					if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-					}
-					return -1
-				}()) <= 0x4AFF {
-					gaincalc *= int64(1.5)
+				if int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) >= 19100 && int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) <= 0x4AFF {
+					gaincalc += int64(float64(gaincalc) * .5)
 				} else {
-					gaincalc *= int64(1.25)
+					gaincalc += int64(float64(gaincalc) * .25)
 				}
 			}
 			gain = gear_exp(ch, gaincalc)
@@ -4199,23 +4033,13 @@ func spar_gain(ch *char_data, vict *char_data, type_ int, dmg int64) {
 		} else if vict.Relax_count >= 116 {
 			chance -= int(float64(chance) * 0.2)
 		}
-		gravity = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity
+		gravity = world[ch.In_room].Gravity
 		gmult = GET_LEVEL(vict) * ((gravity / 5) + 6)
 		if ROOM_FLAGGED(vict.In_room, ROOM_WORKOUT) || ROOM_FLAGGED(ch.In_room, ROOM_HBTC) {
-			if (func() room_vnum {
-				if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Number
-				}
-				return -1
-			}()) >= 19100 && (func() room_vnum {
-				if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-					return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Number
-				}
-				return -1
-			}()) <= 0x4AFF {
-				gmult *= int(1.75)
+			if int(libc.BoolToInt(GET_ROOM_VNUM(vict.In_room))) >= 19100 && int(libc.BoolToInt(GET_ROOM_VNUM(vict.In_room))) <= 0x4AFF {
+				gmult += int(float64(gmult) * .75)
 			} else {
-				gmult *= int(1.25)
+				gmult += int(float64(gmult) * .25)
 			}
 			st = large_rand(int64(float64(gmult)*0.8), int64(float64(gmult)*1.2))
 		} else {
@@ -4279,20 +4103,10 @@ func spar_gain(ch *char_data, vict *char_data, type_ int, dmg int64) {
 				gain = int64(float64(gain) - float64(gain)*0.1)
 			}
 			if ROOM_FLAGGED(ch.In_room, ROOM_WORKOUT) || ROOM_FLAGGED(ch.In_room, ROOM_HBTC) {
-				if (func() room_vnum {
-					if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-					}
-					return -1
-				}()) >= 19100 && (func() room_vnum {
-					if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Number
-					}
-					return -1
-				}()) <= 0x4AFF {
-					gain *= int64(1.5)
+				if int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) >= 19100 && int(libc.BoolToInt(GET_ROOM_VNUM(ch.In_room))) <= 0x4AFF {
+					gain += int64(float64(gain) * .5)
 				} else {
-					gain *= int64(1.25)
+					gain += int64(float64(gain) * .25)
 				}
 			}
 			if (vict.Player_specials.Class_skill_points[vict.Chclass]) >= pscost {
@@ -4319,43 +4133,43 @@ func spar_gain(ch *char_data, vict *char_data, type_ int, dmg int64) {
 	}
 }
 func can_grav(ch *char_data) int {
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10 && ch.Max_hit < 5000 && int(ch.Chclass) != CLASS_BARDOCK && !IS_NPC(ch) {
+	if world[ch.In_room].Gravity == 10 && ch.Max_hit < 5000 && int(ch.Chclass) != CLASS_BARDOCK && !IS_NPC(ch) {
 		send_to_char(ch, libc.CString("You are hardly able to move in this gravity!\r\n"))
 		return 0
-	} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 20 && ch.Max_hit < 20000 {
+	} else if world[ch.In_room].Gravity == 20 && ch.Max_hit < 20000 {
 		send_to_char(ch, libc.CString("You are hardly able to move in this gravity!\r\n"))
 		return 0
-	} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 30 && ch.Max_hit < 50000 {
+	} else if world[ch.In_room].Gravity == 30 && ch.Max_hit < 50000 {
 		send_to_char(ch, libc.CString("You are hardly able to move in this gravity!\r\n"))
 		return 0
-	} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 40 && ch.Max_hit < 100000 {
+	} else if world[ch.In_room].Gravity == 40 && ch.Max_hit < 100000 {
 		send_to_char(ch, libc.CString("You are hardly able to move in this gravity!\r\n"))
 		return 0
-	} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 50 && ch.Max_hit < 200000 {
+	} else if world[ch.In_room].Gravity == 50 && ch.Max_hit < 200000 {
 		send_to_char(ch, libc.CString("You are hardly able to move in this gravity!\r\n"))
 		return 0
-	} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 100 && ch.Max_hit < 400000 {
+	} else if world[ch.In_room].Gravity == 100 && ch.Max_hit < 400000 {
 		send_to_char(ch, libc.CString("You are hardly able to move in this gravity!\r\n"))
 		return 0
-	} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 200 && ch.Max_hit < 1000000 {
+	} else if world[ch.In_room].Gravity == 200 && ch.Max_hit < 1000000 {
 		send_to_char(ch, libc.CString("You are hardly able to move in this gravity!\r\n"))
 		return 0
-	} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 300 && ch.Max_hit < 5000000 {
+	} else if world[ch.In_room].Gravity == 300 && ch.Max_hit < 5000000 {
 		send_to_char(ch, libc.CString("You are hardly able to move in this gravity!\r\n"))
 		return 0
-	} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 400 && ch.Max_hit < 8000000 {
+	} else if world[ch.In_room].Gravity == 400 && ch.Max_hit < 8000000 {
 		send_to_char(ch, libc.CString("You are hardly able to move in this gravity!\r\n"))
 		return 0
-	} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 500 && ch.Max_hit < 15000000 {
+	} else if world[ch.In_room].Gravity == 500 && ch.Max_hit < 15000000 {
 		send_to_char(ch, libc.CString("You are hardly able to move in this gravity!\r\n"))
 		return 0
-	} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 1000 && ch.Max_hit < 25000000 {
+	} else if world[ch.In_room].Gravity == 1000 && ch.Max_hit < 25000000 {
 		send_to_char(ch, libc.CString("You are hardly able to move in this gravity!\r\n"))
 		return 0
-	} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 5000 && ch.Max_hit < 100000000 {
+	} else if world[ch.In_room].Gravity == 5000 && ch.Max_hit < 100000000 {
 		send_to_char(ch, libc.CString("You are hardly able to move in this gravity!\r\n"))
 		return 0
-	} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Gravity == 10000 && ch.Max_hit < 200000000 {
+	} else if world[ch.In_room].Gravity == 10000 && ch.Max_hit < 200000000 {
 		send_to_char(ch, libc.CString("You are hardly able to move in this gravity!\r\n"))
 		return 0
 	} else {
@@ -4668,16 +4482,11 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 		} else if float64(ch.Mana)-float64(ch.Max_mana)*0.005 <= 0 {
 			act(libc.CString("@wYou can no longer infuse ki into your attacks!@n"), TRUE, ch, nil, nil, TO_CHAR)
 			act(libc.CString("@c$n@w can no longer infuse ki into $s attacks!@n"), TRUE, ch, nil, nil, TO_ROOM)
-			ch.Affected_by[int(AFF_INFUSE/32)] &= ^(1 << (int(AFF_INFUSE % 32)))
+			REMOVE_BIT_AR(ch.Affected_by[:], AFF_INFUSE)
 		}
 	}
 	if vict != nil {
-		if (func() room_vnum {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Number
-			}
-			return -1
-		}()) == 0x45D3 {
+		if int(libc.BoolToInt(GET_ROOM_VNUM(vict.In_room))) == 0x45D3 {
 			return
 		}
 		reveal_hiding(vict, 0)
@@ -4769,12 +4578,7 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 		}
 		if AFF_FLAGGED(vict, AFF_SANCTUARY) {
 			if GET_SKILL(vict, SKILL_AQUA_BARRIER) != 0 {
-				if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Geffect >= 0 && (func() int {
-					if ch.In_room != room_rnum(-1) && ch.In_room <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) != SECT_UNDERWATER {
+				if !SUNKEN(ch.In_room) {
 					dmg = int64(float64(dmg) * 0.85)
 				} else {
 					dmg = int64(float64(dmg) * 0.75)
@@ -4794,7 +4598,7 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 				act(libc.CString("@c$N's@C barrier bursts!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@CYour barrier bursts!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$N's@C barrier bursts!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				vict.Affected_by[int(AFF_SANCTUARY/32)] &= ^(1 << (int(AFF_SANCTUARY % 32)))
+				REMOVE_BIT_AR(vict.Affected_by[:], AFF_SANCTUARY)
 			}
 		}
 		if AFF_FLAGGED(vict, AFF_FIRESHIELD) && rand_number(1, 200) < GET_SKILL(vict, SKILL_FIRESHIELD) {
@@ -4805,7 +4609,7 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 				act(libc.CString("@c$N's@C fireshield disappears...@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@CYour fireshield disappears...@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@c$N's@C fireshield disappears...@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				vict.Affected_by[int(AFF_FIRESHIELD/32)] &= ^(1 << (int(AFF_FIRESHIELD % 32)))
+				REMOVE_BIT_AR(vict.Affected_by[:], AFF_FIRESHIELD)
 			}
 			dmg = 0
 		}
@@ -4987,7 +4791,7 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 					carry_drop(vict.Player_specials.Carried_by, 1)
 				}
 			}
-			vict.Affected_by[int(AFF_KNOCKED/32)] &= ^(1 << (int(AFF_KNOCKED % 32)))
+			REMOVE_BIT_AR(vict.Affected_by[:], AFF_KNOCKED)
 			vict.Position = POS_SITTING
 			if IS_NPC(vict) && rand_number(1, 20) >= 12 {
 				act(libc.CString("@W$n@W stands up.@n"), FALSE, vict, nil, nil, TO_ROOM)
@@ -5062,7 +4866,7 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 				}
 				vict.Position = POS_SLEEPING
 				if !IS_NPC(ch) {
-					vict.Affected_by[int(AFF_KNOCKED/32)] |= 1 << (int(AFF_KNOCKED % 32))
+					SET_BIT_AR(vict.Affected_by[:], AFF_KNOCKED)
 				}
 			} else {
 				act(libc.CString("@c$N@w admits defeat to you, stops sparring, and stumbles away.@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
@@ -5099,14 +4903,14 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 			}
 			vict.Position = POS_SLEEPING
 			if !IS_NPC(ch) {
-				vict.Affected_by[int(AFF_KNOCKED/32)] |= 1 << (int(AFF_KNOCKED % 32))
+				SET_BIT_AR(vict.Affected_by[:], AFF_KNOCKED)
 			}
 		} else if is_sparring(ch) && !is_sparring(vict) && IS_NPC(ch) {
 			act(libc.CString("@w$n@w stops sparring!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_ROOM)
-			ch.Act[int(MOB_SPAR/32)] &= bitvector_t(int32(^(1 << (int(MOB_SPAR % 32)))))
+			REMOVE_BIT_AR(ch.Act[:], MOB_SPAR)
 		} else if !is_sparring(ch) && is_sparring(vict) && IS_NPC(vict) {
 			act(libc.CString("@w$n@w stops sparring!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_ROOM)
-			vict.Act[int(MOB_SPAR/32)] &= bitvector_t(int32(^(1 << (int(MOB_SPAR % 32)))))
+			REMOVE_BIT_AR(vict.Act[:], MOB_SPAR)
 		}
 		if vict.Suppressed > 0 && vict.Suppression > 0 {
 			if vict.Suppressed > dmg {
@@ -5299,7 +5103,7 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 					solo_gain(ch, vict)
 				}
 				if int(ch.Race) == RACE_DEMON && type_ == 1 {
-					vict.Affected_by[int(AFF_ASHED/32)] |= 1 << (int(AFF_ASHED % 32))
+					SET_BIT_AR(vict.Affected_by[:], AFF_ASHED)
 				}
 				die(vict, ch)
 				dead = TRUE
@@ -5507,7 +5311,7 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 				act(libc.CString("$p@w shatters apart!@n"), TRUE, ch, obj, nil, TO_CHAR)
 				act(libc.CString("$p@w shatters apart!@n"), TRUE, ch, obj, nil, TO_ROOM)
 				obj.Value[VAL_ALL_HEALTH] = 0
-				obj.Extra_flags[int(ITEM_BROKEN/32)] |= bitvector_t(int32(1 << (int(ITEM_BROKEN % 32))))
+				SET_BIT_AR(obj.Extra_flags[:], ITEM_BROKEN)
 				if int(obj.Type_flag) == ITEM_DRINKCON && int(obj.Type_flag) == ITEM_FOUNTAIN {
 					obj.Value[VAL_DRINKCON_HOWFULL] = 0
 				}
@@ -5524,7 +5328,7 @@ func hurt(limb int, chance int, ch *char_data, vict *char_data, obj *obj_data, d
 func handle_cooldown(ch *char_data, cooldown int) {
 	if !IS_NPC(ch) {
 		if PLR_FLAGGED(ch, PLR_MULTIHIT) {
-			ch.Act[int(PLR_MULTIHIT/32)] &= bitvector_t(int32(^(1 << (int(PLR_MULTIHIT % 32)))))
+			REMOVE_BIT_AR(ch.Act[:], PLR_MULTIHIT)
 			return
 		}
 	}
@@ -6392,13 +6196,13 @@ func handle_spiral(ch *char_data, vict *char_data, skill int, first int) {
 	} else if vict == nil {
 		act(libc.CString("@WHaving lost your target you slow down until your vortex disappears, and end your attack.@n"), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("@C$n@W slows down until $s vortex disappears.@n"), TRUE, ch, nil, nil, TO_ROOM)
-		ch.Act[int(PLR_SPIRAL/32)] &= bitvector_t(int32(^(1 << (int(PLR_SPIRAL % 32)))))
+		REMOVE_BIT_AR(ch.Act[:], PLR_SPIRAL)
 		return
 	}
 	if ch.Charge <= 0 {
 		act(libc.CString("@WHaving no more charged ki you slow down until your vortex disappears, and end your attack.@n"), TRUE, ch, nil, nil, TO_CHAR)
 		act(libc.CString("@C$n@W slows down until $s vortex disappears.@n"), TRUE, ch, nil, nil, TO_ROOM)
-		ch.Act[int(PLR_SPIRAL/32)] &= bitvector_t(int32(^(1 << (int(PLR_SPIRAL % 32)))))
+		REMOVE_BIT_AR(ch.Act[:], PLR_SPIRAL)
 		return
 	}
 	if vict != nil {
@@ -6437,9 +6241,9 @@ func handle_spiral(ch *char_data, vict *char_data, skill int, first int) {
 				act(libc.CString("@cYou disappear, avoiding @C$n's@c Spiral Comet blast before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@C$N@c disappears, avoiding @C$n's@c Spiral Comet blast before reappearing!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 				if AFF_FLAGGED(ch, AFF_ZANZOKEN) {
-					ch.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
+					REMOVE_BIT_AR(ch.Affected_by[:], AFF_ZANZOKEN)
 				}
-				vict.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
+				REMOVE_BIT_AR(vict.Affected_by[:], AFF_ZANZOKEN)
 				pcost(ch, amount, 0)
 				pcost(vict, 0, vict.Max_hit/200)
 				return
@@ -6447,8 +6251,8 @@ func handle_spiral(ch *char_data, vict *char_data, skill int, first int) {
 				act(libc.CString("@C$N@c disappears, trying to avoid your attack but your zanzoken is faster!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
 				act(libc.CString("@cYou zanzoken to avoid the attack but @C$n's@c zanzoken is faster!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@C$N@c disappears, trying to avoid @C$n's@c attack but @C$n's@c zanzoken is faster!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
-				vict.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
-				ch.Affected_by[int(AFF_ZANZOKEN/32)] &= ^(1 << (int(AFF_ZANZOKEN % 32)))
+				REMOVE_BIT_AR(vict.Affected_by[:], AFF_ZANZOKEN)
+				REMOVE_BIT_AR(ch.Affected_by[:], AFF_ZANZOKEN)
 			}
 		}
 		if prob < perc {
@@ -6468,8 +6272,8 @@ func handle_spiral(ch *char_data, vict *char_data, skill int, first int) {
 					act(libc.CString("@C$N@W manages to dodge @c$n's@W Spiral Comet blast, letting it slam into the surroundings!@n"), FALSE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 					send_to_room(vict.In_room, libc.CString("@wA bright explosion erupts from the impact!\r\n"))
 					dodge_ki(ch, vict, 0, 45, skill, SKILL_SPIRAL)
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dmg <= 95 {
-						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room)))).Dmg += 5
+					if world[ch.In_room].Dmg <= 95 {
+						world[ch.In_room].Dmg += 5
 					}
 					pcost(ch, amount, 0)
 					hurt(0, 0, ch, vict, nil, 0, 1)
@@ -6540,27 +6344,7 @@ func handle_spiral(ch *char_data, vict *char_data, skill int, first int) {
 }
 func handle_death_msg(ch *char_data, vict *char_data, type_ int) {
 	if type_ == 0 {
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Geffect >= 0 && (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) != SECT_UNDERWATER && (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) != SECT_WATER_SWIM && (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) != SECT_WATER_NOSWIM && !ROOM_FLAGGED(vict.In_room, ROOM_SPACE) && (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) != SECT_FLYING {
+		if !SUNKEN(vict.In_room) && SECT(vict.In_room) != SECT_WATER_SWIM && SECT(vict.In_room) != SECT_WATER_NOSWIM && !ROOM_FLAGGED(vict.In_room, ROOM_SPACE) && SECT(vict.In_room) != SECT_FLYING {
 			switch rand_number(1, 5) {
 			case 1:
 				act(libc.CString("@R$N@r coughs up blood before falling to the ground dead.@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
@@ -6589,17 +6373,7 @@ func handle_death_msg(ch *char_data, vict *char_data, type_ int) {
 					vict.Death_type = DTYPE_PULP
 				}
 			}
-		} else if (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_WATER_SWIM || (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_WATER_NOSWIM {
+		} else if SECT(vict.In_room) == SECT_WATER_SWIM || SECT(vict.In_room) == SECT_WATER_NOSWIM {
 			switch rand_number(1, 5) {
 			case 1:
 				act(libc.CString("@R$N@r coughs up blood and dies before falling down to the water. A large splash accompanies $S body hitting the water!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
@@ -6657,12 +6431,7 @@ func handle_death_msg(ch *char_data, vict *char_data, type_ int) {
 					vict.Death_type = DTYPE_PULP
 				}
 			}
-		} else if (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_FLYING {
+		} else if SECT(vict.In_room) == SECT_FLYING {
 			switch rand_number(1, 5) {
 			case 1:
 				act(libc.CString("@R$N@r coughs up blood before $s corpse starts to fall to the ground far below.@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
@@ -6722,27 +6491,7 @@ func handle_death_msg(ch *char_data, vict *char_data, type_ int) {
 			}
 		}
 	} else {
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Geffect >= 0 && (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) != SECT_UNDERWATER && (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) != SECT_WATER_SWIM && (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) != SECT_WATER_NOSWIM && !ROOM_FLAGGED(vict.In_room, ROOM_SPACE) && (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) != SECT_FLYING {
+		if !SUNKEN(vict.In_room) && SECT(vict.In_room) != SECT_WATER_SWIM && SECT(vict.In_room) != SECT_WATER_NOSWIM && !ROOM_FLAGGED(vict.In_room, ROOM_SPACE) && SECT(vict.In_room) != SECT_FLYING {
 			switch rand_number(1, 5) {
 			case 1:
 				act(libc.CString("@R$N@r explodes and chunks of $M shower to the ground.@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
@@ -6768,17 +6517,7 @@ func handle_death_msg(ch *char_data, vict *char_data, type_ int) {
 				act(libc.CString("@rWhat's left of your body slams into the ground as you die!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@rWhat's left of @R$N@r's body slams into the ground as $E dies!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 			}
-		} else if (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_WATER_SWIM || (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_WATER_NOSWIM {
+		} else if SECT(vict.In_room) == SECT_WATER_SWIM || SECT(vict.In_room) == SECT_WATER_NOSWIM {
 			switch rand_number(1, 5) {
 			case 1:
 				act(libc.CString("@R$N@r explodes and chunks of $M shower to the ground.@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)
@@ -6830,12 +6569,7 @@ func handle_death_msg(ch *char_data, vict *char_data, type_ int) {
 				act(libc.CString("@rWhat's left of your body floats away through space!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_VICT)
 				act(libc.CString("@rWhat's left of @R$N@r's body floats away through space!@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_NOTVICT)
 			}
-		} else if (func() int {
-			if vict.In_room != room_rnum(-1) && vict.In_room <= top_of_world {
-				return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(vict.In_room)))).Sector_type
-			}
-			return SECT_INSIDE
-		}()) == SECT_FLYING {
+		} else if SECT(vict.In_room) == SECT_FLYING {
 			switch rand_number(1, 5) {
 			case 1:
 				act(libc.CString("@R$N@r explodes and chunks of $M shower towards the ground far below.@n"), TRUE, ch, nil, unsafe.Pointer(vict), TO_CHAR)

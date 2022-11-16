@@ -10,23 +10,9 @@ import (
 const SCMD_WSEND = 0
 const SCMD_WECHOAROUND = 1
 
-var do_wasound func(room *room_data, argument *byte, cmd int, subcmd int)
-var do_wecho func(room *room_data, argument *byte, cmd int, subcmd int)
-var do_wsend func(room *room_data, argument *byte, cmd int, subcmd int)
-var do_wzoneecho func(room *room_data, argument *byte, cmd int, subcmd int)
-var do_wrecho func(room *room_data, argument *byte, cmd int, subcmd int)
-var do_wdoor func(room *room_data, argument *byte, cmd int, subcmd int)
-var do_wteleport func(room *room_data, argument *byte, cmd int, subcmd int)
-var do_wforce func(room *room_data, argument *byte, cmd int, subcmd int)
-var do_wpurge func(room *room_data, argument *byte, cmd int, subcmd int)
-var do_wload func(room *room_data, argument *byte, cmd int, subcmd int)
-var do_wdamage func(room *room_data, argument *byte, cmd int, subcmd int)
-var do_wat func(room *room_data, argument *byte, cmd int, subcmd int)
-var do_weffect func(room *room_data, argument *byte, cmd int, subcmd int)
-
 type wld_command_info struct {
 	Command         *byte
-	Command_pointer func(room *room_data, argument *byte, cmd int, subcmd int)
+	Command_pointer CommandFunc
 	Subcmd          int
 }
 
@@ -72,7 +58,7 @@ func do_weffect(room *room_data, argument *byte, cmd int, subcmd int) {
 			wld_log(room, libc.CString("weffect setting out of bounds, 0 - 10000 only."))
 			return
 		} else {
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(room.Number))))).Gravity = num
+			world[real_room(room.Number)].Gravity = num
 		}
 	} else if libc.StrCaseCmp(&arg[0], libc.CString("light")) == 0 {
 		if target == room_rnum(-1) {
@@ -80,9 +66,9 @@ func do_weffect(room *room_data, argument *byte, cmd int, subcmd int) {
 			return
 		} else {
 			if !ROOM_FLAGGED(target, ROOM_INDOORS) {
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target)))).Room_flags[int(ROOM_INDOORS/32)] |= bitvector_t(int32(1 << (int(ROOM_INDOORS % 32))))
+				SET_BIT_AR(world[target].Room_flags[:], ROOM_INDOORS)
 			} else {
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target)))).Room_flags[int(ROOM_INDOORS/32)] &= bitvector_t(int32(^(1 << (int(ROOM_INDOORS % 32)))))
+				REMOVE_BIT_AR(world[target].Room_flags[:], ROOM_INDOORS)
 			}
 		}
 	} else if libc.StrCaseCmp(&arg[0], libc.CString("lava")) == 0 {
@@ -90,8 +76,8 @@ func do_weffect(room *room_data, argument *byte, cmd int, subcmd int) {
 			wld_log(room, libc.CString("weffect target is NOWHERE."))
 			return
 		} else {
-			if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target)))).Geffect != 0 {
-				(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(target)))).Geffect = 5
+			if world[target].Geffect != 0 {
+				world[target].Geffect = 5
 			} else {
 				wld_log(room, libc.CString("weffect target already has lava."))
 				return
@@ -111,8 +97,8 @@ func do_wasound(room *room_data, argument *byte, cmd int, subcmd int) {
 		if (func() *room_direction_data {
 			newexit = room.Dir_option[door]
 			return newexit
-		}()) != nil && newexit.To_room != room_rnum(-1) && room != (*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(newexit.To_room))) {
-			act_to_room(argument, (*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(newexit.To_room))))
+		}()) != nil && newexit.To_room != room_rnum(-1) && room != &world[newexit.To_room] {
+			act_to_room(argument, &world[newexit.To_room])
 		}
 	}
 }
@@ -305,7 +291,7 @@ func do_wteleport(room *room_data, argument *byte, cmd int, subcmd int) {
 			}
 			char_from_room(ch)
 			char_to_room(ch, target)
-			enter_wtrigger((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room))), ch, -1)
+			enter_wtrigger(&world[ch.In_room], ch, -1)
 		}
 	} else {
 		if (func() *char_data {
@@ -315,7 +301,7 @@ func do_wteleport(room *room_data, argument *byte, cmd int, subcmd int) {
 			if valid_dg_target(ch, 1<<0) != 0 {
 				char_from_room(ch)
 				char_to_room(ch, target)
-				enter_wtrigger((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(ch.In_room))), ch, -1)
+				enter_wtrigger(&world[ch.In_room], ch, -1)
 			}
 		} else {
 			wld_log(room, libc.CString("wteleport: no target found"))
@@ -469,7 +455,7 @@ func do_wload(room *room_data, argument *byte, cmd int, subcmd int) {
 		two_arguments(target, &arg1[0], &arg2[0])
 		tch = get_char_in_room(room, &arg1[0])
 		if tch != nil {
-			if arg2 != nil && arg2[0] != 0 && (func() int {
+			if arg2[0] != 0 && (func() int {
 				pos = find_eq_pos_script(&arg2[0])
 				return pos
 			}()) >= 0 && (tch.Equipment[pos]) == nil && can_wear_on_pos(object, pos) != 0 {
@@ -544,10 +530,42 @@ func do_wat(room *room_data, argument *byte, cmd int, subcmd int) {
 		wld_log(room, libc.CString("wat: location not found (%s)"), &arg[0])
 		return
 	}
-	wld_command_interpreter((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(loc))), command)
+	wld_command_interpreter(&world[loc], command)
 }
 
-var wld_cmd_info [16]wld_command_info = [16]wld_command_info{{Command: libc.CString("RESERVED"), Command_pointer: nil, Subcmd: 0}, {Command: libc.CString("wasound "), Command_pointer: do_wasound, Subcmd: 0}, {Command: libc.CString("wdoor "), Command_pointer: do_wdoor, Subcmd: 0}, {Command: libc.CString("wecho "), Command_pointer: do_wecho, Subcmd: 0}, {Command: libc.CString("wechoaround "), Command_pointer: do_wsend, Subcmd: SCMD_WECHOAROUND}, {Command: libc.CString("wforce "), Command_pointer: do_wforce, Subcmd: 0}, {Command: libc.CString("wload "), Command_pointer: do_wload, Subcmd: 0}, {Command: libc.CString("wpurge "), Command_pointer: do_wpurge, Subcmd: 0}, {Command: libc.CString("wrecho "), Command_pointer: do_wrecho, Subcmd: 0}, {Command: libc.CString("wsend "), Command_pointer: do_wsend, Subcmd: SCMD_WSEND}, {Command: libc.CString("wteleport "), Command_pointer: do_wteleport, Subcmd: 0}, {Command: libc.CString("wzoneecho "), Command_pointer: do_wzoneecho, Subcmd: 0}, {Command: libc.CString("wdamage "), Command_pointer: do_wdamage, Subcmd: 0}, {Command: libc.CString("wat "), Command_pointer: do_wat, Subcmd: 0}, {Command: libc.CString("weffect "), Command_pointer: do_weffect, Subcmd: 0}, {Command: libc.CString("\n"), Command_pointer: nil, Subcmd: 0}}
+func initWldCmd() {
+	wld_cmd_info = []wld_command_info{{Command: libc.CString("RESERVED"), Command_pointer: nil, Subcmd: 0}, {Command: libc.CString("wasound "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wasound((*room_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("wdoor "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wdoor((*room_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("wecho "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wecho((*room_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("wechoaround "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wsend((*room_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: SCMD_WECHOAROUND}, {Command: libc.CString("wforce "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wforce((*room_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("wload "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wload((*room_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("wpurge "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wpurge((*room_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("wrecho "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wrecho((*room_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("wsend "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wsend((*room_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: SCMD_WSEND}, {Command: libc.CString("wteleport "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wteleport((*room_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("wzoneecho "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wzoneecho((*room_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("wdamage "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wdamage((*room_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("wat "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_wat((*room_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("weffect "), Command_pointer: func(ch *char_data, argument *byte, cmd int, subcmd int) {
+		do_weffect((*room_data)(unsafe.Pointer(ch)), argument, cmd, subcmd)
+	}, Subcmd: 0}, {Command: libc.CString("\n"), Command_pointer: nil, Subcmd: 0}}
+}
+
+var wld_cmd_info []wld_command_info
 
 func wld_command_interpreter(room *room_data, argument *byte) {
 	var (
@@ -575,6 +593,6 @@ func wld_command_interpreter(room *room_data, argument *byte) {
 	if *wld_cmd_info[cmd].Command == '\n' {
 		wld_log(room, libc.CString("Unknown world cmd: '%s'"), argument)
 	} else {
-		(wld_cmd_info[cmd].Command_pointer)(room, line, cmd, wld_cmd_info[cmd].Subcmd)
+		(wld_cmd_info[cmd].Command_pointer)((*char_data)(unsafe.Pointer(room)), line, cmd, wld_cmd_info[cmd].Subcmd)
 	}
 }

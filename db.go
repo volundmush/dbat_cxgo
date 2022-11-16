@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gotranspile/cxgo/runtime/libc"
 	"github.com/gotranspile/cxgo/runtime/stdio"
 	"math"
@@ -17,6 +18,7 @@ const DB_BOOT_SHP = 4
 const DB_BOOT_HLP = 5
 const DB_BOOT_TRG = 6
 const DB_BOOT_GLD = 7
+
 const LIB_USER = "user/"
 const LIB_INTRO = "intro/"
 const LIB_SENSE = "sense/"
@@ -44,9 +46,11 @@ const SUF_USER = "usr"
 const SUF_INTRO = "itr"
 const SUF_SENSE = "sen"
 const SUF_CUSTOM = "cus"
+
 const FASTBOOT_FILE = "../.fastboot"
 const KILLSCRIPT_FILE = "../.killscript"
 const PAUSE_FILE = "../pause"
+
 const INDEX_FILE = "index"
 const MINDEX_FILE = "index.mini"
 const HELP_FILE = "help.hlp"
@@ -66,6 +70,58 @@ const BANNED_SITE_LENGTH = 50
 const DISABLED_FILE = "disabled.cmds"
 const END_MARKER = "END"
 
+const WLD_PREFIX = LIB_WORLD + "wld" + SLASH /* room definitions	*/
+const MOB_PREFIX = LIB_WORLD + "mob" + SLASH /* monster prototypes	*/
+const OBJ_PREFIX = LIB_WORLD + "obj" + SLASH /* object prototypes	*/
+const ZON_PREFIX = LIB_WORLD + "zon" + SLASH /* zon defs & command tables */
+const SHP_PREFIX = LIB_WORLD + "shp" + SLASH /* shop definitions	*/
+const HLP_PREFIX = LIB_TEXT + "help" + SLASH /* for HELP <keyword>	*/
+const TRG_PREFIX = LIB_WORLD + "trg" + SLASH /* trigger files	*/
+const GLD_PREFIX = LIB_WORLD + "gld" + SLASH /* guild files		*/
+
+const CREDITS_FILE = LIB_TEXT + "credits"          /* for the 'credits' command	*/
+const NEWS_FILE = LIB_TEXT + "news"                /* for the 'news' command	*/
+const MOTD_FILE = LIB_TEXT + "motd"                /* messages of the day / mortal	*/
+const IMOTD_FILE = LIB_TEXT + "imotd"              /* messages of the day / immort	*/
+const GREETINGS_FILE = LIB_TEXT + "greetings"      /* The opening screen.	*/
+const GREETANSI_FILE = LIB_TEXT + "greetansi"      /* The opening screen.	*/
+const HELP_PAGE_FILE = LIB_TEXT_HELP + "screen"    /* for HELP <CR>	*/
+const CONTEXT_HELP_FILE = LIB_TEXT + "contexthelp" /* The opening screen.	*/
+const INFO_FILE = LIB_TEXT + "info"                /* for INFO		*/
+const WIZLIST_FILE = LIB_TEXT + "wizlist"          /* for WIZLIST		*/
+const IMMLIST_FILE = LIB_TEXT + "immlist"          /* for IMMLIST		*/
+const BACKGROUND_FILE = LIB_TEXT + "background"    /* for the background story	*/
+const POLICIES_FILE = LIB_TEXT + "policies"        /* player policies/rules	*/
+const HANDBOOK_FILE = LIB_TEXT + "handbook"        /* handbook for new immorts	*/
+const IHELP_PAGE_FILE = LIB_TEXT_HELP + "iscreen"  /* for HELP <CR>	*/
+
+const IDEA_FILE = LIB_MISC + "ideas"              /* for the 'idea'-command	*/
+const TYPO_FILE = LIB_MISC + "typos"              /*         'typo'		*/
+const BUG_FILE = LIB_MISC + "bugs"                /*         'bug'		*/
+const REQUEST_FILE = LIB_MISC + "request"         /*      RPP Requests         */
+const CUSTOM_FILE = LIB_MISC + "customs"          /*      Custom EQ            */
+const MESS_FILE = LIB_MISC + "messages"           /* damage messages		*/
+const SOCMESS_FILE = LIB_MISC + "socials"         /* messages for social acts	*/
+const SOCMESS_FILE_NEW = LIB_MISC + "socials.new" /* messages for social acts with aedit patch*/
+const XNAME_FILE = LIB_MISC + "xnames"            /* invalid name substrings	*/
+
+const CONFIG_FILE = LIB_ETC + "config"         /* OasisOLC * GAME CONFIG FL */
+const PLAYER_FILE = LIB_ETC + "players"        /* the player database	*/
+const MAIL_FILE = LIB_ETC + "plrmail"          /* for the mudmail system	*/
+const BAN_FILE = LIB_ETC + "badsites"          /* for the siteban system	*/
+const HCONTROL_FILE = LIB_ETC + "hcontrol"     /* for the house system	*/
+const TIME_FILE = LIB_ETC + "time"             /* for calendar system	*/
+const AUCTION_FILE = LIB_ETC + "auction"       /* for the auction house system */
+const ASSEMBLIES_FILE = LIB_ETC + "assemblies" /* for assemblies system 	*/
+const LEVEL_CONFIG = LIB_ETC + "levels"        /* set various level values  */
+
+type help_index_element struct {
+	Index     *byte
+	Keywords  *byte
+	Entry     *byte
+	Duplicate int
+	Min_level int
+}
 type reset_com struct {
 	Command int8
 	If_flag bool
@@ -87,10 +143,10 @@ type zone_data struct {
 	Top        room_vnum
 	Reset_mode int
 	Number     zone_vnum
-	Cmd        *reset_com
+	Cmd        []reset_com
 	Min_level  int
 	Max_level  int
-	Zone_flags [4]int
+	Zone_flags [4]bitvector_t
 }
 type reset_q_element struct {
 	Zone_to_reset zone_rnum
@@ -112,13 +168,6 @@ type player_index_element struct {
 	Played   libc.Time
 	Clan     *byte
 }
-type help_index_element struct {
-	Index     *byte
-	Keywords  *byte
-	Entry     *byte
-	Duplicate int
-	Min_level int
-}
 type ban_list_element struct {
 	Site [51]byte
 	Type int
@@ -126,38 +175,38 @@ type ban_list_element struct {
 	Name [21]byte
 	Next *ban_list_element
 }
+
 type disabled_data struct {
-	Next        *DISABLED_DATA
+	Next        *disabled_data
 	Command     *command_info
 	Disabled_by *byte
 	Level       int16
 	Subcmd      int
 }
-type DISABLED_DATA disabled_data
 
 const NUM_OBJ_UNIQUE_POOLS = 5000
 const ZO_DEAD = 999
 
 var config_info config_data
-var world *room_data = nil
+var world []room_data = nil
 var top_of_world room_rnum = 0
 var room_htree *htree_node = nil
 var character_list *char_data = nil
 var affect_list *char_data = nil
 var affectv_list *char_data = nil
-var mob_index *index_data
-var mob_proto *char_data
+var mob_index []index_data
+var mob_proto []char_data
 var top_of_mobt mob_rnum = 0
 var mob_htree *htree_node = nil
 var object_list *obj_data = nil
-var obj_index *index_data
-var obj_proto *obj_data
+var obj_index []index_data
+var obj_proto []obj_data
 var top_of_objt obj_rnum = 0
 var obj_htree *htree_node = nil
-var zone_table *zone_data
+var zone_table []zone_data
 var top_of_zone_table zone_rnum = 0
 var fight_messages [100]message_list
-var trig_index **index_data
+var trig_index []*index_data
 var trigger_list *trig_data = nil
 var top_of_trigt int = 0
 var max_mob_id int = MOB_ID_BASE
@@ -194,9 +243,9 @@ var background *byte = nil
 var handbook *byte = nil
 var policies *byte = nil
 var ihelp *byte = nil
-var help_table *help_index_element = nil
+var help_table []help_index_element = nil
 var top_of_helpt int = 0
-var soc_mess_list *social_messg = nil
+var soc_mess_list []social_messg = nil
 var top_of_socialt int = -1
 var time_info time_info_data
 var weather_info weather_data
@@ -338,7 +387,7 @@ func suntzu_armor_convert(obj *obj_data) int {
 	} else {
 		i /= 10
 	}
-	i = MAX(0, MIN(8, i))
+	i = int(MAX(0, MIN(8, int64(i))))
 	if OBJWEAR_FLAGGED(obj, ITEM_WEAR_SHIELD) {
 		if (obj.Value[6]) != 0 {
 			return conv
@@ -364,7 +413,7 @@ func suntzu_armor_convert(obj *obj_data) int {
 		obj.Value[6] = 0
 		conv = 1
 	}
-	basic_mud_log(libc.CString("Converted armor #%d [%s] armor=%d i=%d maxdex=%d acheck=%d sfail=%d"), (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(int64(uintptr(unsafe.Pointer(obj))-uintptr(unsafe.Pointer(obj_proto))))))).Vnum, obj.Short_description, obj.Value[0], i, obj.Value[2], obj.Value[3], obj.Value[6])
+	//basic_mud_log(libc.CString("Converted armor #%d [%s] armor=%d i=%d maxdex=%d acheck=%d sfail=%d"), obj_index[obj-&obj_proto[0]*(667*667)].Vnum, obj.Short_description, obj.Value[0], i, obj.Value[2], obj.Value[3], obj.Value[6])
 	return conv
 }
 func suntzu_weapon_convert(wp_type int) int {
@@ -609,77 +658,77 @@ func destroy_db() {
 		free_obj(objtmp)
 	}
 	for cnt = 0; cnt <= int64(top_of_world); cnt++ {
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(cnt)))).Name != nil {
-			libc.Free(unsafe.Pointer((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(cnt)))).Name))
+		if world[cnt].Name != nil {
+			libc.Free(unsafe.Pointer(world[cnt].Name))
 		}
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(cnt)))).Description != nil {
-			libc.Free(unsafe.Pointer((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(cnt)))).Description))
+		if world[cnt].Description != nil {
+			libc.Free(unsafe.Pointer(world[cnt].Description))
 		}
-		free_extra_descriptions((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(cnt)))).Ex_description)
-		if ((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(cnt)))).Script != nil {
-			extract_script(unsafe.Pointer((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(cnt)))), WLD_TRIGGER)
+		free_extra_descriptions(world[cnt].Ex_description)
+		if world[cnt].Script != nil {
+			extract_script(unsafe.Pointer(&world[cnt]), WLD_TRIGGER)
 		}
-		free_proto_script(unsafe.Pointer((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(cnt)))), WLD_TRIGGER)
+		free_proto_script(unsafe.Pointer(&world[cnt]), WLD_TRIGGER)
 		for itr = 0; itr < NUM_OF_DIRS; itr++ {
-			if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(cnt)))).Dir_option[itr] == nil {
+			if world[cnt].Dir_option[itr] == nil {
 				continue
 			}
-			if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(cnt)))).Dir_option[itr].General_description != nil {
-				libc.Free(unsafe.Pointer((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(cnt)))).Dir_option[itr].General_description))
+			if world[cnt].Dir_option[itr].General_description != nil {
+				libc.Free(unsafe.Pointer(world[cnt].Dir_option[itr].General_description))
 			}
-			if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(cnt)))).Dir_option[itr].Keyword != nil {
-				libc.Free(unsafe.Pointer((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(cnt)))).Dir_option[itr].Keyword))
+			if world[cnt].Dir_option[itr].Keyword != nil {
+				libc.Free(unsafe.Pointer(world[cnt].Dir_option[itr].Keyword))
 			}
-			libc.Free(unsafe.Pointer((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(cnt)))).Dir_option[itr]))
+			libc.Free(unsafe.Pointer(world[cnt].Dir_option[itr]))
 		}
 	}
-	libc.Free(unsafe.Pointer(world))
+	libc.Free(unsafe.Pointer(&world[0]))
 	top_of_world = 0
 	htree_free(room_htree)
 	for cnt = 0; cnt <= int64(top_of_objt); cnt++ {
-		if (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(cnt)))).Name != nil {
-			libc.Free(unsafe.Pointer((*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(cnt)))).Name))
+		if obj_proto[cnt].Name != nil {
+			libc.Free(unsafe.Pointer(obj_proto[cnt].Name))
 		}
-		if (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(cnt)))).Description != nil {
-			libc.Free(unsafe.Pointer((*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(cnt)))).Description))
+		if obj_proto[cnt].Description != nil {
+			libc.Free(unsafe.Pointer(obj_proto[cnt].Description))
 		}
-		if (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(cnt)))).Short_description != nil {
-			libc.Free(unsafe.Pointer((*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(cnt)))).Short_description))
+		if obj_proto[cnt].Short_description != nil {
+			libc.Free(unsafe.Pointer(obj_proto[cnt].Short_description))
 		}
-		if (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(cnt)))).Action_description != nil {
-			libc.Free(unsafe.Pointer((*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(cnt)))).Action_description))
+		if obj_proto[cnt].Action_description != nil {
+			libc.Free(unsafe.Pointer(obj_proto[cnt].Action_description))
 		}
-		if (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(cnt)))).Ex_description != nil {
-			free_extra_descriptions((*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(cnt)))).Ex_description)
+		if obj_proto[cnt].Ex_description != nil {
+			free_extra_descriptions(obj_proto[cnt].Ex_description)
 		}
-		free_proto_script(unsafe.Pointer((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(cnt)))), OBJ_TRIGGER)
+		free_proto_script(unsafe.Pointer(&obj_proto[cnt]), OBJ_TRIGGER)
 	}
-	libc.Free(unsafe.Pointer(obj_proto))
-	libc.Free(unsafe.Pointer(obj_index))
+	libc.Free(unsafe.Pointer(&obj_proto[0]))
+	libc.Free(unsafe.Pointer(&obj_index[0]))
 	htree_free(obj_htree)
 	for cnt = 0; cnt <= int64(top_of_mobt); cnt++ {
-		if (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(cnt)))).Name != nil {
-			libc.Free(unsafe.Pointer((*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(cnt)))).Name))
+		if mob_proto[cnt].Name != nil {
+			libc.Free(unsafe.Pointer(mob_proto[cnt].Name))
 		}
-		if (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(cnt)))).Title != nil {
-			libc.Free(unsafe.Pointer((*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(cnt)))).Title))
+		if mob_proto[cnt].Title != nil {
+			libc.Free(unsafe.Pointer(mob_proto[cnt].Title))
 		}
-		if (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(cnt)))).Short_descr != nil {
-			libc.Free(unsafe.Pointer((*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(cnt)))).Short_descr))
+		if mob_proto[cnt].Short_descr != nil {
+			libc.Free(unsafe.Pointer(mob_proto[cnt].Short_descr))
 		}
-		if (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(cnt)))).Long_descr != nil {
-			libc.Free(unsafe.Pointer((*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(cnt)))).Long_descr))
+		if mob_proto[cnt].Long_descr != nil {
+			libc.Free(unsafe.Pointer(mob_proto[cnt].Long_descr))
 		}
-		if (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(cnt)))).Description != nil {
-			libc.Free(unsafe.Pointer((*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(cnt)))).Description))
+		if mob_proto[cnt].Description != nil {
+			libc.Free(unsafe.Pointer(mob_proto[cnt].Description))
 		}
-		free_proto_script(unsafe.Pointer((*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(cnt)))), MOB_TRIGGER)
-		for (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(cnt)))).Affected != nil {
-			affect_remove((*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(cnt))), (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(cnt)))).Affected)
+		free_proto_script(unsafe.Pointer(&mob_proto[cnt]), MOB_TRIGGER)
+		for mob_proto[cnt].Affected != nil {
+			affect_remove(&mob_proto[cnt], mob_proto[cnt].Affected)
 		}
 	}
-	libc.Free(unsafe.Pointer(mob_proto))
-	libc.Free(unsafe.Pointer(mob_index))
+	libc.Free(unsafe.Pointer(&mob_proto[0]))
+	libc.Free(unsafe.Pointer(&mob_index[0]))
 	htree_free(mob_htree)
 	destroy_shops()
 	destroy_guilds()
@@ -695,27 +744,27 @@ func destroy_db() {
 		}
 	}
 	for cnt = 0; cnt <= int64(top_of_zone_table); cnt++ {
-		if (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(cnt)))).Name != nil {
-			libc.Free(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(cnt)))).Name))
+		if zone_table[cnt].Name != nil {
+			libc.Free(unsafe.Pointer(zone_table[cnt].Name))
 		}
-		if (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(cnt)))).Builders != nil {
-			libc.Free(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(cnt)))).Builders))
+		if zone_table[cnt].Builders != nil {
+			libc.Free(unsafe.Pointer(zone_table[cnt].Builders))
 		}
-		if (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(cnt)))).Cmd != nil {
-			for itr = 0; int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(cnt)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(itr)))).Command) != 'S'; itr++ {
-				if int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(cnt)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(itr)))).Command) == 'V' {
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(cnt)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(itr)))).Sarg1 != nil {
-						libc.Free(unsafe.Pointer((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(cnt)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(itr)))).Sarg1))
+		if zone_table[cnt].Cmd != nil {
+			for itr = 0; int(zone_table[cnt].Cmd[itr].Command) != 'S'; itr++ {
+				if int(zone_table[cnt].Cmd[itr].Command) == 'V' {
+					if zone_table[cnt].Cmd[itr].Sarg1 != nil {
+						libc.Free(unsafe.Pointer(zone_table[cnt].Cmd[itr].Sarg1))
 					}
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(cnt)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(itr)))).Sarg2 != nil {
-						libc.Free(unsafe.Pointer((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(cnt)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(itr)))).Sarg2))
+					if zone_table[cnt].Cmd[itr].Sarg2 != nil {
+						libc.Free(unsafe.Pointer(zone_table[cnt].Cmd[itr].Sarg2))
 					}
 				}
 			}
-			libc.Free(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(cnt)))).Cmd))
+			libc.Free(unsafe.Pointer(&zone_table[cnt].Cmd[0]))
 		}
 	}
-	libc.Free(unsafe.Pointer(zone_table))
+	libc.Free(unsafe.Pointer(&zone_table[0]))
 	if reset_q.Head != nil {
 		var (
 			ftemp *reset_q_element = reset_q.Head
@@ -728,13 +777,13 @@ func destroy_db() {
 		}
 	}
 	for cnt = 0; cnt < int64(top_of_trigt); cnt++ {
-		if (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(cnt)))).Proto != nil {
-			if (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(cnt)))).Proto.Cmdlist != nil {
+		if trig_index[cnt].Proto != nil {
+			if trig_index[cnt].Proto.Cmdlist != nil {
 				var (
 					i *cmdlist_element
 					j *cmdlist_element
 				)
-				i = (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(cnt)))).Proto.Cmdlist
+				i = trig_index[cnt].Proto.Cmdlist
 				for i != nil {
 					j = i.Next
 					if i.Cmd != nil {
@@ -744,11 +793,11 @@ func destroy_db() {
 					i = j
 				}
 			}
-			free_trigger((*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(cnt)))).Proto)
+			free_trigger(trig_index[cnt].Proto)
 		}
-		libc.Free(unsafe.Pointer(*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(cnt)))))
+		libc.Free(unsafe.Pointer(trig_index[cnt]))
 	}
-	libc.Free(unsafe.Pointer(trig_index))
+	libc.Free(unsafe.Pointer(&trig_index[0]))
 	event_free_all()
 	free_context_help()
 	free_feats()
@@ -777,13 +826,13 @@ func boot_db() {
 	file_to_string_alloc(libc.CString(LIB_TEXT), &credits)
 	file_to_string_alloc(libc.CString(LIB_TEXT), &motd)
 	file_to_string_alloc(libc.CString(LIB_TEXT), &imotd)
-	file_to_string_alloc(libc.CString(LIB_TEXT_HELP), &help)
 	file_to_string_alloc(libc.CString(LIB_TEXT), &info)
 	file_to_string_alloc(libc.CString(LIB_TEXT), &wizlist)
 	file_to_string_alloc(libc.CString(LIB_TEXT), &immlist)
 	file_to_string_alloc(libc.CString(LIB_TEXT), &policies)
 	file_to_string_alloc(libc.CString(LIB_TEXT), &handbook)
 	file_to_string_alloc(libc.CString(LIB_TEXT), &background)
+	file_to_string_alloc(libc.CString(LIB_TEXT_HELP), &help)
 	file_to_string_alloc(libc.CString(LIB_TEXT_HELP), &ihelp)
 	if file_to_string_alloc(libc.CString(LIB_TEXT), &GREETINGS) == 0 {
 		prune_crlf(GREETINGS)
@@ -858,7 +907,7 @@ func boot_db() {
 		House_boot()
 	}
 	for i = 0; i <= top_of_zone_table; i++ {
-		basic_mud_log(libc.CString("Resetting #%d: %s (rooms %d-%d)."), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Number, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Name, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Bot, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Top)
+		basic_mud_log(libc.CString("Resetting #%d: %s (rooms %d-%d)."), zone_table[i].Number, zone_table[i].Name, zone_table[i].Bot, zone_table[i].Top)
 		reset_zone(i)
 	}
 	reset_q.Head = func() *reset_q_element {
@@ -877,12 +926,8 @@ func auc_save() {
 	}()) == nil {
 		basic_mud_log(libc.CString("SYSERR: Can't write to '%s' auction file."), LIB_ETC)
 	} else {
-		var (
-			obj      *obj_data
-			next_obj *obj_data
-		)
-		for obj = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(real_room(80))))).Contents; obj != nil; obj = next_obj {
-			next_obj = obj.Next_content
+		var obj *obj_data
+		for obj = world[real_room(80)].Contents; obj != nil; obj = obj.Next_content {
 			if obj != nil {
 				stdio.Fprintf(fl, "%lld %s %d %d %d %d %ld\n", obj.Unique_id, obj.Auctname, obj.Aucter, obj.CurBidder, obj.Startbid, obj.Bid, obj.AucTime)
 			}
@@ -930,25 +975,25 @@ func reset_time() {
 		bgtime            *stdio.File
 	)
 	if (func() *stdio.File {
-		bgtime = stdio.FOpen(LIB_ETC, "r")
+		bgtime = stdio.FOpen(TIME_FILE, "r")
 		return bgtime
 	}()) == nil {
-		basic_mud_log(libc.CString("SYSERR: Can't read from '%s' time file."), LIB_ETC)
+		basic_mud_log(libc.CString("SYSERR: Can't read from '%s' time file."), TIME_FILE)
 	} else {
-		stdio.Fscanf(bgtime, "%lld\n", &beginning_of_time)
-		stdio.Fscanf(bgtime, "%lld\n", &NEWSUPDATE)
-		stdio.Fscanf(bgtime, "%lld\n", &BOARDNEWMORT)
-		stdio.Fscanf(bgtime, "%lld\n", &BOARDNEWDUO)
-		stdio.Fscanf(bgtime, "%lld\n", &BOARDNEWCOD)
-		stdio.Fscanf(bgtime, "%lld\n", &BOARDNEWBUI)
-		stdio.Fscanf(bgtime, "%lld\n", &BOARDNEWIMM)
-		stdio.Fscanf(bgtime, "%lld\n", &INTERESTTIME)
-		stdio.Fscanf(bgtime, "%lld\n", &LASTINTEREST)
+		stdio.Fscanf(bgtime, "%d\n", &beginning_of_time)
+		stdio.Fscanf(bgtime, "%d\n", &NEWSUPDATE)
+		stdio.Fscanf(bgtime, "%d\n", &BOARDNEWMORT)
+		stdio.Fscanf(bgtime, "%d\n", &BOARDNEWDUO)
+		stdio.Fscanf(bgtime, "%d\n", &BOARDNEWCOD)
+		stdio.Fscanf(bgtime, "%d\n", &BOARDNEWBUI)
+		stdio.Fscanf(bgtime, "%d\n", &BOARDNEWIMM)
+		stdio.Fscanf(bgtime, "%d\n", &INTERESTTIME)
+		stdio.Fscanf(bgtime, "%d\n", &LASTINTEREST)
 		stdio.Fscanf(bgtime, "%d\n", &HIGHPCOUNT)
-		stdio.Fscanf(bgtime, "%lld\n", &PCOUNTDATE)
+		stdio.Fscanf(bgtime, "%d\n", &PCOUNTDATE)
 		stdio.Fscanf(bgtime, "%d\n", &WISHTIME)
 		stdio.Fscanf(bgtime, "%d\n", &PCOUNT)
-		stdio.Fscanf(bgtime, "%lld\n", &LASTPAYOUT)
+		stdio.Fscanf(bgtime, "%d\n", &LASTPAYOUT)
 		stdio.Fscanf(bgtime, "%d\n", &LASTPAYTYPE)
 		stdio.Fscanf(bgtime, "%d\n", &LASTNEWS)
 		stdio.Fscanf(bgtime, "%d\n", &dballtime)
@@ -1074,6 +1119,7 @@ func count_alias_records(fl *stdio.File) int {
 ackeof:
 	basic_mud_log(libc.CString("SYSERR: Unexpected end of help file."))
 	os.Exit(1)
+	return -1
 }
 func count_hash_records(fl *stdio.File) int {
 	var (
@@ -1100,21 +1146,21 @@ func index_boot(mode int) {
 	)
 	switch mode {
 	case DB_BOOT_WLD:
-		prefix = libc.CString(LIB_WORLD)
+		prefix = libc.CString(WLD_PREFIX)
 	case DB_BOOT_MOB:
-		prefix = libc.CString(LIB_WORLD)
+		prefix = libc.CString(MOB_PREFIX)
 	case DB_BOOT_OBJ:
-		prefix = libc.CString(LIB_WORLD)
+		prefix = libc.CString(OBJ_PREFIX)
 	case DB_BOOT_ZON:
-		prefix = libc.CString(LIB_WORLD)
+		prefix = libc.CString(ZON_PREFIX)
 	case DB_BOOT_SHP:
-		prefix = libc.CString(LIB_WORLD)
+		prefix = libc.CString(SHP_PREFIX)
 	case DB_BOOT_HLP:
-		prefix = libc.CString(LIB_TEXT)
+		prefix = libc.CString(HLP_PREFIX)
 	case DB_BOOT_TRG:
-		prefix = libc.CString(LIB_WORLD)
+		prefix = libc.CString(TRG_PREFIX)
 	case DB_BOOT_GLD:
-		prefix = libc.CString(LIB_WORLD)
+		prefix = libc.CString(GLD_PREFIX)
 	default:
 		basic_mud_log(libc.CString("SYSERR: Unknown subcommand %d to index_boot!"), mode)
 		os.Exit(1)
@@ -1132,7 +1178,7 @@ func index_boot(mode int) {
 		basic_mud_log(libc.CString("SYSERR: opening index file '%s': %s"), &buf2[0], libc.StrError(libc.Errno))
 		os.Exit(1)
 	}
-	stdio.Fscanf(db_index, "%s\n", &buf1[0])
+	stdio.Fscanf(db_index, "%s\r\n", &buf1[0])
 	for buf1[0] != '$' {
 		stdio.Snprintf(&buf2[0], int(260), "%s%s", prefix, &buf1[0])
 		if (func() *stdio.File {
@@ -1163,33 +1209,33 @@ func index_boot(mode int) {
 	}
 	switch mode {
 	case DB_BOOT_TRG:
-		trig_index = &make([]*index_data, rec_count)[0]
+		trig_index = make([]*index_data, rec_count)
 	case DB_BOOT_WLD:
-		world = &make([]room_data, rec_count)[0]
+		world = make([]room_data, rec_count)
 		size[0] = rec_count * int(unsafe.Sizeof(room_data{}))
 		basic_mud_log(libc.CString("   %d rooms, %d bytes."), rec_count, size[0])
 	case DB_BOOT_MOB:
-		mob_proto = &make([]char_data, rec_count)[0]
-		mob_index = &make([]index_data, rec_count)[0]
+		mob_proto = make([]char_data, rec_count)
+		mob_index = make([]index_data, rec_count)
 		size[0] = rec_count * int(unsafe.Sizeof(index_data{}))
 		size[1] = rec_count * int(unsafe.Sizeof(char_data{}))
 		basic_mud_log(libc.CString("   %d mobs, %d bytes in index, %d bytes in prototypes."), rec_count, size[0], size[1])
 	case DB_BOOT_OBJ:
-		obj_proto = &make([]obj_data, rec_count)[0]
-		obj_index = &make([]index_data, rec_count)[0]
+		obj_proto = make([]obj_data, rec_count)
+		obj_index = make([]index_data, rec_count)
 		size[0] = rec_count * int(unsafe.Sizeof(index_data{}))
 		size[1] = rec_count * int(unsafe.Sizeof(obj_data{}))
 		basic_mud_log(libc.CString("   %d objs, %d bytes in index, %d bytes in prototypes."), rec_count, size[0], size[1])
 	case DB_BOOT_ZON:
-		zone_table = &make([]zone_data, rec_count)[0]
+		zone_table = make([]zone_data, rec_count)
 		size[0] = rec_count * int(unsafe.Sizeof(zone_data{}))
 		basic_mud_log(libc.CString("   %d zones, %d bytes."), rec_count, size[0])
 	case DB_BOOT_HLP:
-		help_table = &make([]help_index_element, rec_count)[0]
+		help_table = make([]help_index_element, rec_count)
 		size[0] = rec_count * int(unsafe.Sizeof(help_index_element{}))
 		basic_mud_log(libc.CString("   %d entries, %d bytes."), rec_count, size[0])
 	}
-	rewind(db_index)
+	db_index.Seek(0, 0)
 	stdio.Fscanf(db_index, "%s\n", &buf1[0])
 	for buf1[0] != '$' {
 		stdio.Snprintf(&buf2[0], int(260), "%s%s", prefix, &buf1[0])
@@ -1223,7 +1269,7 @@ func index_boot(mode int) {
 	}
 	db_index.Close()
 	if mode == DB_BOOT_HLP {
-		libc.Sort(unsafe.Pointer(help_table), uint32(int32(top_of_helpt)), uint32(unsafe.Sizeof(help_index_element{})), func(arg1 unsafe.Pointer, arg2 unsafe.Pointer) int32 {
+		libc.Sort(unsafe.Pointer(&help_table[0]), uint32(int32(top_of_helpt)), uint32(unsafe.Sizeof(help_index_element{})), func(arg1 unsafe.Pointer, arg2 unsafe.Pointer) int32 {
 			return int32(hsort(arg1, arg2))
 		})
 		top_of_helpt--
@@ -1347,11 +1393,11 @@ func parse_room(fl *stdio.File, virtual_nr int) {
 		letter    int8
 	)
 	stdio.Snprintf(&buf2[0], int(64936), "room #%d", virtual_nr)
-	if virtual_nr < int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot) {
+	if virtual_nr < int(zone_table[zone].Bot) {
 		basic_mud_log(libc.CString("SYSERR: Room #%d is below zone %d."), virtual_nr, zone)
 		os.Exit(1)
 	}
-	for virtual_nr > int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top) {
+	for virtual_nr > int(zone_table[zone].Top) {
 		if func() int {
 			p := &zone
 			*p++
@@ -1361,10 +1407,10 @@ func parse_room(fl *stdio.File, virtual_nr int) {
 			os.Exit(1)
 		}
 	}
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Zone = zone_rnum(zone)
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Number = room_vnum(virtual_nr)
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Name = fread_string(fl, &buf2[0])
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Description = fread_string(fl, &buf2[0])
+	world[room_nr].Zone = zone_rnum(zone)
+	world[room_nr].Number = room_vnum(virtual_nr)
+	world[room_nr].Name = fread_string(fl, &buf2[0])
+	world[room_nr].Description = fread_string(fl, &buf2[0])
 	if room_htree == nil {
 		room_htree = htree_init()
 	}
@@ -1381,70 +1427,70 @@ func parse_room(fl *stdio.File, virtual_nr int) {
 		os.Exit(1)
 	} else if retval == 3 && bitwarning == FALSE {
 		basic_mud_log(libc.CString("Converting room #%d to 128bits.."), virtual_nr)
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Room_flags[0] = asciiflag_conv(&flags[0])
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Room_flags[1] = 0
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Room_flags[2] = 0
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Room_flags[3] = 0
+		world[room_nr].Room_flags[0] = asciiflag_conv(&flags[0])
+		world[room_nr].Room_flags[1] = 0
+		world[room_nr].Room_flags[2] = 0
+		world[room_nr].Room_flags[3] = 0
 		stdio.Sprintf(&flags[0], "room #%d", virtual_nr)
-		check_bitvector_names((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Room_flags[0], room_bits_count, &flags[0], libc.CString("room"))
+		check_bitvector_names(world[room_nr].Room_flags[0], room_bits_count, &flags[0], libc.CString("room"))
 		if bitsavetodisk != 0 {
-			add_to_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(real_zone_by_thing(room_vnum(virtual_nr)))))).Number, 3)
+			add_to_save_list(zone_table[real_zone_by_thing(room_vnum(virtual_nr))].Number, 3)
 			converting = TRUE
 		}
 		basic_mud_log(libc.CString("   done."))
 	} else if retval == 6 {
 		var taeller int
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Room_flags[0] = asciiflag_conv(&flags[0])
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Room_flags[1] = asciiflag_conv(&flags2[0])
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Room_flags[2] = asciiflag_conv(&flags3[0])
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Room_flags[3] = asciiflag_conv(&flags4[0])
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Sector_type = t[2]
+		world[room_nr].Room_flags[0] = asciiflag_conv(&flags[0])
+		world[room_nr].Room_flags[1] = asciiflag_conv(&flags2[0])
+		world[room_nr].Room_flags[2] = asciiflag_conv(&flags3[0])
+		world[room_nr].Room_flags[3] = asciiflag_conv(&flags4[0])
+		world[room_nr].Sector_type = t[2]
 		stdio.Sprintf(&flags[0], "object #%d", virtual_nr)
 		for taeller = 0; taeller < AF_ARRAY_MAX; taeller++ {
-			check_bitvector_names((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Room_flags[taeller], room_bits_count, &flags[0], libc.CString("room"))
+			check_bitvector_names(world[room_nr].Room_flags[taeller], room_bits_count, &flags[0], libc.CString("room"))
 		}
 	} else {
 		basic_mud_log(libc.CString("SYSERR: Format error in roomflags/sector type of room #%d"), virtual_nr)
 		os.Exit(1)
 	}
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Func = nil
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Contents = nil
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).People = nil
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Light = 0
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Timed = -1
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Dmg = 0
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Gravity = 0
+	world[room_nr].Func = nil
+	world[room_nr].Contents = nil
+	world[room_nr].People = nil
+	world[room_nr].Light = 0
+	world[room_nr].Timed = -1
+	world[room_nr].Dmg = 0
+	world[room_nr].Gravity = 0
 	if ROOM_FLAGGED(room_rnum(room_nr), ROOM_VEGETA) || ROOM_FLAGGED(room_rnum(room_nr), ROOM_GRAVITYX10) {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Gravity = 10
+		world[room_nr].Gravity = 10
 	}
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Number >= 19800 && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Number <= 0x4DBB {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Gravity = 1000
+	if world[room_nr].Number >= 19800 && world[room_nr].Number <= 0x4DBB {
+		world[room_nr].Gravity = 1000
 	}
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Number >= 64000 && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Number <= 0xFA06 {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Gravity = 100
+	if world[room_nr].Number >= 64000 && world[room_nr].Number <= 0xFA06 {
+		world[room_nr].Gravity = 100
 	}
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Number >= 0xFA07 && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Number <= 0xFA10 {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Gravity = 300
+	if world[room_nr].Number >= 0xFA07 && world[room_nr].Number <= 0xFA10 {
+		world[room_nr].Gravity = 300
 	}
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Number >= 0xFA11 && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Number <= 64030 {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Gravity = 500
+	if world[room_nr].Number >= 0xFA11 && world[room_nr].Number <= 64030 {
+		world[room_nr].Gravity = 500
 	}
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Number >= 0xFA1F && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Number <= 0xFA30 {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Gravity = 1000
+	if world[room_nr].Number >= 0xFA1F && world[room_nr].Number <= 0xFA30 {
+		world[room_nr].Gravity = 1000
 	}
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Number >= 0xFA31 && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Number <= 64070 {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Gravity = 5000
+	if world[room_nr].Number >= 0xFA31 && world[room_nr].Number <= 64070 {
+		world[room_nr].Gravity = 5000
 	}
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Number >= 0xFA47 && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Number <= 0xFA60 {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Gravity = 10000
+	if world[room_nr].Number >= 0xFA47 && world[room_nr].Number <= 0xFA60 {
+		world[room_nr].Gravity = 10000
 	}
-	if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Number == 0xFA61 {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Gravity = 1000
+	if world[room_nr].Number == 0xFA61 {
+		world[room_nr].Gravity = 1000
 	}
 	for i = 0; i < NUM_OF_DIRS; i++ {
-		(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Dir_option[i] = nil
+		world[room_nr].Dir_option[i] = nil
 	}
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Ex_description = nil
+	world[room_nr].Ex_description = nil
 	stdio.Snprintf(&buf[0], int(128), "SYSERR: Format error in room #%d (expecting D/E/S)", virtual_nr)
 	for {
 		if get_line(fl, &line[0]) == 0 {
@@ -1467,13 +1513,13 @@ func parse_room(fl *stdio.File, virtual_nr int) {
 					new_descr.Description = tmp
 				}
 			}
-			new_descr.Next = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Ex_description
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))).Ex_description = new_descr
+			new_descr.Next = world[room_nr].Ex_description
+			world[room_nr].Ex_description = new_descr
 		case 'S':
 			letter = fread_letter(fl)
 			fl.UnGetC(int(letter))
 			for int(letter) == 'T' {
-				dg_read_trigger(fl, unsafe.Pointer((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room_nr)))), WLD_TRIGGER)
+				dg_read_trigger(fl, unsafe.Pointer(&world[room_nr]), WLD_TRIGGER)
 				letter = fread_letter(fl)
 				fl.UnGetC(int(letter))
 			}
@@ -1497,15 +1543,10 @@ func setup_dir(fl *stdio.File, room int, dir int) {
 		line   [256]byte
 		buf2   [128]byte
 	)
-	stdio.Snprintf(&buf2[0], int(128), "room #%d, direction D%d", (func() room_vnum {
-		if room != int(-1) && room <= int(top_of_world) {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Number
-		}
-		return -1
-	}())+1, dir)
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir] = new(room_direction_data)
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].General_description = fread_string(fl, &buf2[0])
-	(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Keyword = fread_string(fl, &buf2[0])
+	stdio.Snprintf(&buf2[0], int(128), "room #%d, direction D%d", int(libc.BoolToInt(GET_ROOM_VNUM(room_rnum(room))))+1, dir)
+	world[room].Dir_option[dir] = new(room_direction_data)
+	world[room].Dir_option[dir].General_description = fread_string(fl, &buf2[0])
+	world[room].Dir_option[dir].Keyword = fread_string(fl, &buf2[0])
 	if get_line(fl, &line[0]) == 0 {
 		basic_mud_log(libc.CString("SYSERR: Format error, %s"), &buf2[0])
 		os.Exit(1)
@@ -1518,75 +1559,75 @@ func setup_dir(fl *stdio.File, room int, dir int) {
 		os.Exit(1)
 	} else if bitwarning == FALSE {
 		if t[0] == 1 {
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Exit_info = 1 << 0
+			world[room].Dir_option[dir].Exit_info = 1 << 0
 		} else if t[0] == 2 {
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Exit_info = (1 << 0) | 1<<3
+			world[room].Dir_option[dir].Exit_info = (1 << 0) | 1<<3
 		} else if t[0] == 3 {
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Exit_info = (1 << 0) | 1<<4
+			world[room].Dir_option[dir].Exit_info = (1 << 0) | 1<<4
 		} else if t[0] == 4 {
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Exit_info = (1 << 0) | 1<<3 | 1<<4
+			world[room].Dir_option[dir].Exit_info = (1 << 0) | 1<<3 | 1<<4
 		} else {
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Exit_info = 0
+			world[room].Dir_option[dir].Exit_info = 0
 		}
 		if t[1] == -1 || t[1] == math.MaxUint16 {
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Key = -1
+			world[room].Dir_option[dir].Key = -1
 		} else {
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Key = obj_vnum(t[1])
+			world[room].Dir_option[dir].Key = obj_vnum(t[1])
 		}
 		if t[2] == -1 || t[2] == math.MaxUint16 {
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].To_room = -1
+			world[room].Dir_option[dir].To_room = -1
 		} else {
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].To_room = room_rnum(t[2])
+			world[room].Dir_option[dir].To_room = room_rnum(t[2])
 		}
 		if retval == 3 {
 			basic_mud_log(libc.CString("Converting world files to include DC add ons."))
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Dclock = 20
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Dchide = 20
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Dcskill = 0
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Dcmove = 0
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Failsavetype = 0
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Dcfailsave = 0
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Failroom = -1
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Totalfailroom = -1
+			world[room].Dir_option[dir].Dclock = 20
+			world[room].Dir_option[dir].Dchide = 20
+			world[room].Dir_option[dir].Dcskill = 0
+			world[room].Dir_option[dir].Dcmove = 0
+			world[room].Dir_option[dir].Failsavetype = 0
+			world[room].Dir_option[dir].Dcfailsave = 0
+			world[room].Dir_option[dir].Failroom = -1
+			world[room].Dir_option[dir].Totalfailroom = -1
 			if bitsavetodisk != 0 {
-				add_to_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Zone)))).Number, 3)
+				add_to_save_list(zone_table[world[room].Zone].Number, 3)
 				converting = TRUE
 			}
 		} else if retval == 5 {
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Dclock = t[3]
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Dchide = t[4]
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Dcskill = 0
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Dcmove = 0
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Failsavetype = 0
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Dcfailsave = 0
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Failroom = -1
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Totalfailroom = -1
+			world[room].Dir_option[dir].Dclock = t[3]
+			world[room].Dir_option[dir].Dchide = t[4]
+			world[room].Dir_option[dir].Dcskill = 0
+			world[room].Dir_option[dir].Dcmove = 0
+			world[room].Dir_option[dir].Failsavetype = 0
+			world[room].Dir_option[dir].Dcfailsave = 0
+			world[room].Dir_option[dir].Failroom = -1
+			world[room].Dir_option[dir].Totalfailroom = -1
 			if bitsavetodisk != 0 {
-				add_to_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Zone)))).Number, 3)
+				add_to_save_list(zone_table[world[room].Zone].Number, 3)
 				converting = TRUE
 			}
 		} else if retval == 7 {
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Dclock = t[3]
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Dchide = t[4]
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Dcskill = t[5]
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Dcmove = t[6]
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Failsavetype = 0
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Dcfailsave = 0
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Failroom = -1
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Totalfailroom = -1
+			world[room].Dir_option[dir].Dclock = t[3]
+			world[room].Dir_option[dir].Dchide = t[4]
+			world[room].Dir_option[dir].Dcskill = t[5]
+			world[room].Dir_option[dir].Dcmove = t[6]
+			world[room].Dir_option[dir].Failsavetype = 0
+			world[room].Dir_option[dir].Dcfailsave = 0
+			world[room].Dir_option[dir].Failroom = -1
+			world[room].Dir_option[dir].Totalfailroom = -1
 			if bitsavetodisk != 0 {
-				add_to_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Zone)))).Number, 3)
+				add_to_save_list(zone_table[world[room].Zone].Number, 3)
 				converting = TRUE
 			}
 		} else if retval == 11 {
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Dclock = t[3]
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Dchide = t[4]
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Dcskill = t[5]
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Dcmove = t[6]
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Failsavetype = t[7]
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Dcfailsave = t[8]
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Failroom = t[9]
-			(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[dir].Totalfailroom = t[10]
+			world[room].Dir_option[dir].Dclock = t[3]
+			world[room].Dir_option[dir].Dchide = t[4]
+			world[room].Dir_option[dir].Dcskill = t[5]
+			world[room].Dir_option[dir].Dcmove = t[6]
+			world[room].Dir_option[dir].Failsavetype = t[7]
+			world[room].Dir_option[dir].Dcfailsave = t[8]
+			world[room].Dir_option[dir].Failroom = t[9]
+			world[room].Dir_option[dir].Totalfailroom = t[10]
 		}
 	}
 }
@@ -1624,9 +1665,9 @@ func renum_world() {
 	)
 	for room = 0; room <= int(top_of_world); room++ {
 		for door = 0; door < NUM_OF_DIRS; door++ {
-			if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[door] != nil {
-				if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[door].To_room != room_rnum(-1) {
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[door].To_room = real_room(room_vnum((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(room)))).Dir_option[door].To_room))
+			if world[room].Dir_option[door] != nil {
+				if world[room].Dir_option[door].To_room != room_rnum(-1) {
+					world[room].Dir_option[door].To_room = real_room(room_vnum(world[room].Dir_option[door].To_room))
 				}
 			}
 		}
@@ -1648,7 +1689,7 @@ func renum_zone_table() {
 	var zone zone_rnum
 	var buf [128]byte
 	for zone = 0; zone <= top_of_zone_table; zone++ {
-		for cmd_no = 0; int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command) != 'S'; cmd_no++ {
+		for cmd_no = 0; int(zone_table[zone].Cmd[cmd_no].Command) != 'S'; cmd_no++ {
 			a = func() room_rnum {
 				b = func() room_rnum {
 					c = 0
@@ -1656,89 +1697,89 @@ func renum_zone_table() {
 				}()
 				return b
 			}()
-			olda = room_rnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)
-			oldb = room_rnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2)
-			oldc = room_rnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)
-			switch (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command {
+			olda = room_rnum(zone_table[zone].Cmd[cmd_no].Arg1)
+			oldb = room_rnum(zone_table[zone].Cmd[cmd_no].Arg2)
+			oldc = room_rnum(zone_table[zone].Cmd[cmd_no].Arg3)
+			switch zone_table[zone].Cmd[cmd_no].Command {
 			case 'M':
 				a = room_rnum(func() vnum {
-					p := &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 = vnum(real_mobile(mob_vnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)))
+					p := &zone_table[zone].Cmd[cmd_no].Arg1
+					zone_table[zone].Cmd[cmd_no].Arg1 = vnum(real_mobile(mob_vnum(zone_table[zone].Cmd[cmd_no].Arg1)))
 					return *p
 				}())
 				c = room_rnum(func() vnum {
-					p := &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 = vnum(real_room(room_vnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)))
+					p := &zone_table[zone].Cmd[cmd_no].Arg3
+					zone_table[zone].Cmd[cmd_no].Arg3 = vnum(real_room(room_vnum(zone_table[zone].Cmd[cmd_no].Arg3)))
 					return *p
 				}())
 			case 'O':
 				a = room_rnum(func() vnum {
-					p := &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 = vnum(real_object(obj_vnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)))
+					p := &zone_table[zone].Cmd[cmd_no].Arg1
+					zone_table[zone].Cmd[cmd_no].Arg1 = vnum(real_object(obj_vnum(zone_table[zone].Cmd[cmd_no].Arg1)))
 					return *p
 				}())
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 != vnum(-1) {
+				if zone_table[zone].Cmd[cmd_no].Arg3 != vnum(-1) {
 					c = room_rnum(func() vnum {
-						p := &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3
-						(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 = vnum(real_room(room_vnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)))
+						p := &zone_table[zone].Cmd[cmd_no].Arg3
+						zone_table[zone].Cmd[cmd_no].Arg3 = vnum(real_room(room_vnum(zone_table[zone].Cmd[cmd_no].Arg3)))
 						return *p
 					}())
 				}
 			case 'G':
 				a = room_rnum(func() vnum {
-					p := &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 = vnum(real_object(obj_vnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)))
+					p := &zone_table[zone].Cmd[cmd_no].Arg1
+					zone_table[zone].Cmd[cmd_no].Arg1 = vnum(real_object(obj_vnum(zone_table[zone].Cmd[cmd_no].Arg1)))
 					return *p
 				}())
 			case 'E':
 				a = room_rnum(func() vnum {
-					p := &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 = vnum(real_object(obj_vnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)))
+					p := &zone_table[zone].Cmd[cmd_no].Arg1
+					zone_table[zone].Cmd[cmd_no].Arg1 = vnum(real_object(obj_vnum(zone_table[zone].Cmd[cmd_no].Arg1)))
 					return *p
 				}())
 			case 'P':
 				a = room_rnum(func() vnum {
-					p := &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 = vnum(real_object(obj_vnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)))
+					p := &zone_table[zone].Cmd[cmd_no].Arg1
+					zone_table[zone].Cmd[cmd_no].Arg1 = vnum(real_object(obj_vnum(zone_table[zone].Cmd[cmd_no].Arg1)))
 					return *p
 				}())
 				c = room_rnum(func() vnum {
-					p := &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 = vnum(real_object(obj_vnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)))
+					p := &zone_table[zone].Cmd[cmd_no].Arg3
+					zone_table[zone].Cmd[cmd_no].Arg3 = vnum(real_object(obj_vnum(zone_table[zone].Cmd[cmd_no].Arg3)))
 					return *p
 				}())
 			case 'D':
 				a = room_rnum(func() vnum {
-					p := &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 = vnum(real_room(room_vnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)))
+					p := &zone_table[zone].Cmd[cmd_no].Arg1
+					zone_table[zone].Cmd[cmd_no].Arg1 = vnum(real_room(room_vnum(zone_table[zone].Cmd[cmd_no].Arg1)))
 					return *p
 				}())
 			case 'R':
 				a = room_rnum(func() vnum {
-					p := &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 = vnum(real_room(room_vnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)))
+					p := &zone_table[zone].Cmd[cmd_no].Arg1
+					zone_table[zone].Cmd[cmd_no].Arg1 = vnum(real_room(room_vnum(zone_table[zone].Cmd[cmd_no].Arg1)))
 					return *p
 				}())
 				b = room_rnum(func() vnum {
-					p := &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2 = vnum(real_object(obj_vnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2)))
+					p := &zone_table[zone].Cmd[cmd_no].Arg2
+					zone_table[zone].Cmd[cmd_no].Arg2 = vnum(real_object(obj_vnum(zone_table[zone].Cmd[cmd_no].Arg2)))
 					return *p
 				}())
 			case 'T':
 				b = room_rnum(func() vnum {
-					p := &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2 = vnum(real_trigger(trig_vnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2)))
+					p := &zone_table[zone].Cmd[cmd_no].Arg2
+					zone_table[zone].Cmd[cmd_no].Arg2 = vnum(real_trigger(trig_vnum(zone_table[zone].Cmd[cmd_no].Arg2)))
 					return *p
 				}())
 				c = room_rnum(func() vnum {
-					p := &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 = vnum(real_room(room_vnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)))
+					p := &zone_table[zone].Cmd[cmd_no].Arg3
+					zone_table[zone].Cmd[cmd_no].Arg3 = vnum(real_room(room_vnum(zone_table[zone].Cmd[cmd_no].Arg3)))
 					return *p
 				}())
 			case 'V':
 				b = room_rnum(func() vnum {
-					p := &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 = vnum(real_room(room_vnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)))
+					p := &zone_table[zone].Cmd[cmd_no].Arg3
+					zone_table[zone].Cmd[cmd_no].Arg3 = vnum(real_room(room_vnum(zone_table[zone].Cmd[cmd_no].Arg3)))
 					return *p
 				}())
 			}
@@ -1755,7 +1796,7 @@ func renum_zone_table() {
 					}())
 					log_zone_error(zone, cmd_no, &buf[0])
 				}
-				(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command = '*'
+				zone_table[zone].Cmd[cmd_no].Command = '*'
 			}
 		}
 	}
@@ -1818,7 +1859,7 @@ func parse_simple_mob(mob_f *stdio.File, ch *char_data, nr int) int {
 	ch.Saving_throw[SAVING_WILL] = 0
 	if int(ch.Race) != RACE_HUMAN {
 		if !AFF_FLAGGED(ch, AFF_INFRAVISION) {
-			ch.Affected_by[int(AFF_INFRAVISION/32)] |= 1 << (int(AFF_INFRAVISION % 32))
+			SET_BIT_AR(ch.Affected_by[:], AFF_INFRAVISION)
 		}
 	}
 	ch.Player_specials.Speaking = SKILL_LANG_COMMON
@@ -1862,21 +1903,21 @@ func interpret_espec(keyword *byte, value *byte, ch *char_data, nr int) {
 		matched = TRUE
 		return matched
 	}()) != 0 {
-		num_arg = MAX(0, MIN(99, num_arg))
+		num_arg = int(MAX(0, MIN(99, int64(num_arg))))
 		ch.Mob_specials.Attack_type = int8(num_arg)
 	}
 	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Size")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
-		num_arg = MAX(int(-1), MIN(int(NUM_SIZES-1), num_arg))
+		num_arg = int(MAX(int64(-1), MIN(int64(int(NUM_SIZES-1)), int64(num_arg))))
 		ch.Size = num_arg
 	}
 	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Str")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
-		num_arg = MAX(0, MIN(200, num_arg))
+		num_arg = int(MAX(0, MIN(200, int64(num_arg))))
 		ch.Real_abils.Str = int8(num_arg)
 	}
 	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("StrAdd")) == 0 && (func() int {
@@ -1889,77 +1930,77 @@ func interpret_espec(keyword *byte, value *byte, ch *char_data, nr int) {
 		matched = TRUE
 		return matched
 	}()) != 0 {
-		num_arg = MAX(0, MIN(200, num_arg))
+		num_arg = int(MAX(0, MIN(200, int64(num_arg))))
 		ch.Real_abils.Intel = int8(num_arg)
 	}
 	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Wis")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
-		num_arg = MAX(0, MIN(200, num_arg))
+		num_arg = int(MAX(0, MIN(200, int64(num_arg))))
 		ch.Real_abils.Wis = int8(num_arg)
 	}
 	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Dex")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
-		num_arg = MAX(0, MIN(200, num_arg))
+		num_arg = int(MAX(0, MIN(200, int64(num_arg))))
 		ch.Real_abils.Dex = int8(num_arg)
 	}
 	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Con")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
-		num_arg = MAX(0, MIN(200, num_arg))
+		num_arg = int(MAX(0, MIN(200, int64(num_arg))))
 		ch.Real_abils.Con = int8(num_arg)
 	}
 	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Cha")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
-		num_arg = MAX(0, MIN(200, num_arg))
+		num_arg = int(MAX(0, MIN(200, int64(num_arg))))
 		ch.Real_abils.Cha = int8(num_arg)
 	}
 	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Hit")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
-		num_arg = MAX(0, MIN(99999, num_arg))
+		num_arg = int(MAX(0, MIN(99999, int64(num_arg))))
 		ch.Hit = int64(num_arg)
 	}
 	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("MaxHit")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
-		num_arg = MAX(0, MIN(99999, num_arg))
+		num_arg = int(MAX(0, MIN(99999, int64(num_arg))))
 		ch.Max_hit = int64(num_arg)
 	}
 	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Mana")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
-		num_arg = MAX(0, MIN(99999, num_arg))
+		num_arg = int(MAX(0, MIN(99999, int64(num_arg))))
 		ch.Mana = int64(num_arg)
 	}
 	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("MaxMana")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
-		num_arg = MAX(0, MIN(99999, num_arg))
+		num_arg = int(MAX(0, MIN(99999, int64(num_arg))))
 		ch.Max_mana = int64(num_arg)
 	}
 	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Moves")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
-		num_arg = MAX(0, MIN(99999, num_arg))
+		num_arg = int(MAX(0, MIN(99999, int64(num_arg))))
 		ch.Move = int64(num_arg)
 	}
 	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("MaxMoves")) == 0 && (func() int {
 		matched = TRUE
 		return matched
 	}()) != 0 {
-		num_arg = MAX(0, MIN(99999, num_arg))
+		num_arg = int(MAX(0, MIN(99999, int64(num_arg))))
 		ch.Max_move = int64(num_arg)
 	}
 	if value != nil && matched == 0 && libc.StrCaseCmp(keyword, libc.CString("Affect")) == 0 && (func() int {
@@ -2126,7 +2167,7 @@ func parse_mobile_from_file(mob_f *stdio.File, ch *char_data) int {
 		f7     [128]byte
 		f8     [128]byte
 		buf2   [128]byte
-		nr     mob_vnum = (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(ch.Nr)))).Vnum
+		nr     mob_vnum = mob_index[ch.Nr].Vnum
 	)
 	ch.Player_specials = &dummy_mob
 	stdio.Sprintf(&buf2[0], "mob vnum %d", nr)
@@ -2160,28 +2201,28 @@ func parse_mobile_from_file(mob_f *stdio.File, ch *char_data) int {
 		ch.Act[2] = 0
 		ch.Act[3] = 0
 		check_bitvector_names(ch.Act[0], action_bits_count, &buf2[0], libc.CString("mobile"))
-		ch.Affected_by[0] = int(asciiflag_conv_aff(&f2[0]))
+		ch.Affected_by[0] = asciiflag_conv_aff(&f2[0])
 		ch.Affected_by[1] = 0
 		ch.Affected_by[2] = 0
 		ch.Affected_by[3] = 0
 		ch.Alignment = libc.Atoi(libc.GoString(&f3[0]))
-		ch.Affected_by[int(AFF_CHARM/32)] &= ^(1 << (int(AFF_CHARM % 32)))
-		ch.Affected_by[int(AFF_POISON/32)] &= ^(1 << (int(AFF_POISON % 32)))
-		ch.Affected_by[int(AFF_GROUP/32)] &= ^(1 << (int(AFF_GROUP % 32)))
-		ch.Affected_by[int(AFF_SLEEP/32)] &= ^(1 << (int(AFF_SLEEP % 32)))
+		REMOVE_BIT_AR(ch.Affected_by[:], AFF_CHARM)
+		REMOVE_BIT_AR(ch.Affected_by[:], AFF_POISON)
+		REMOVE_BIT_AR(ch.Affected_by[:], AFF_GROUP)
+		REMOVE_BIT_AR(ch.Affected_by[:], AFF_SLEEP)
 		if MOB_FLAGGED(ch, MOB_AGGRESSIVE) && MOB_FLAGGED(ch, MOB_AGGR_GOOD) {
-			ch.Act[int(MOB_AGGR_GOOD/32)] &= bitvector_t(int32(^(1 << (int(MOB_AGGR_GOOD % 32)))))
+			REMOVE_BIT_AR(ch.Act[:], MOB_AGGR_GOOD)
 		}
 		if MOB_FLAGGED(ch, MOB_AGGRESSIVE) && MOB_FLAGGED(ch, MOB_AGGR_NEUTRAL) {
-			ch.Act[int(MOB_AGGR_NEUTRAL/32)] &= bitvector_t(int32(^(1 << (int(MOB_AGGR_NEUTRAL % 32)))))
+			REMOVE_BIT_AR(ch.Act[:], MOB_AGGR_NEUTRAL)
 		}
 		if MOB_FLAGGED(ch, MOB_AGGRESSIVE) && MOB_FLAGGED(ch, MOB_AGGR_EVIL) {
-			ch.Act[int(MOB_AGGR_EVIL/32)] &= bitvector_t(int32(^(1 << (int(MOB_AGGR_EVIL % 32)))))
+			REMOVE_BIT_AR(ch.Act[:], MOB_AGGR_EVIL)
 		}
-		check_bitvector_names(bitvector_t(int32(ch.Affected_by[0])), affected_bits_count, &buf2[0], libc.CString("mobile affect"))
+		check_bitvector_names(ch.Affected_by[0], affected_bits_count, &buf2[0], libc.CString("mobile affect"))
 		letter = int8(f4[0])
 		if bitsavetodisk != 0 {
-			add_to_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(real_zone_by_thing(room_vnum(nr)))))).Number, 0)
+			add_to_save_list(zone_table[real_zone_by_thing(room_vnum(nr))].Number, 0)
 			converting = TRUE
 		}
 		basic_mud_log(libc.CString("   done."))
@@ -2194,22 +2235,22 @@ func parse_mobile_from_file(mob_f *stdio.File, ch *char_data) int {
 		for taeller = 0; taeller < AF_ARRAY_MAX; taeller++ {
 			check_bitvector_names(ch.Act[taeller], action_bits_count, &buf2[0], libc.CString("mobile"))
 		}
-		ch.Affected_by[0] = int(asciiflag_conv(&f5[0]))
-		ch.Affected_by[1] = int(asciiflag_conv(&f6[0]))
-		ch.Affected_by[2] = int(asciiflag_conv(&f7[0]))
-		ch.Affected_by[3] = int(asciiflag_conv(&f8[0]))
+		ch.Affected_by[0] = asciiflag_conv(&f5[0])
+		ch.Affected_by[1] = asciiflag_conv(&f6[0])
+		ch.Affected_by[2] = asciiflag_conv(&f7[0])
+		ch.Affected_by[3] = asciiflag_conv(&f8[0])
 		ch.Alignment = t[2]
 		for taeller = 0; taeller < AF_ARRAY_MAX; taeller++ {
-			check_bitvector_names(bitvector_t(int32(ch.Affected_by[taeller])), affected_bits_count, &buf2[0], libc.CString("mobile affect"))
+			check_bitvector_names(ch.Affected_by[taeller], affected_bits_count, &buf2[0], libc.CString("mobile affect"))
 		}
 	} else {
 		basic_mud_log(libc.CString("SYSERR: Format error after string section of mob #%d\n...expecting line of form '# # # {S | E}'"), nr)
 		os.Exit(1)
 	}
-	ch.Act[int(MOB_ISNPC/32)] |= bitvector_t(int32(1 << (int(MOB_ISNPC % 32))))
+	SET_BIT_AR(ch.Act[:], MOB_ISNPC)
 	if MOB_FLAGGED(ch, MOB_NOTDEADYET) {
 		basic_mud_log(libc.CString("SYSERR: Mob #%d has reserved bit MOB_NOTDEADYET set."), nr)
-		ch.Act[int(MOB_NOTDEADYET/32)] &= bitvector_t(int32(^(1 << (int(MOB_NOTDEADYET % 32)))))
+		REMOVE_BIT_AR(ch.Act[:], MOB_NOTDEADYET)
 	}
 	switch unicode.ToUpper(rune(letter)) {
 	case 'S':
@@ -2236,13 +2277,13 @@ func parse_mobile_from_file(mob_f *stdio.File, ch *char_data) int {
 }
 func parse_mobile(mob_f *stdio.File, nr int) {
 	var i int = 0
-	(*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Vnum = mob_vnum(nr)
-	(*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Number = 0
-	(*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Func = nil
-	clear_char((*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i))))
-	(*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Nr = mob_rnum(i)
-	(*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Desc = nil
-	if parse_mobile_from_file(mob_f, (*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))) != 0 {
+	mob_index[i].Vnum = mob_vnum(nr)
+	mob_index[i].Number = 0
+	mob_index[i].Func = nil
+	clear_char(&mob_proto[i])
+	mob_proto[i].Nr = mob_rnum(i)
+	mob_proto[i].Desc = nil
+	if parse_mobile_from_file(mob_f, &mob_proto[i]) != 0 {
 		if mob_htree == nil {
 			mob_htree = htree_init()
 		}
@@ -2280,27 +2321,27 @@ func parse_object(obj_f *stdio.File, nr int) *byte {
 		f12       [256]byte
 		new_descr *extra_descr_data
 	)
-	(*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Vnum = mob_vnum(nr)
-	(*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Number = 0
-	(*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Func = nil
+	obj_index[i].Vnum = mob_vnum(nr)
+	obj_index[i].Number = 0
+	obj_index[i].Func = nil
 	if obj_htree == nil {
 		obj_htree = htree_init()
 	}
 	htree_add(obj_htree, int64(nr), int64(i))
-	clear_object((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i))))
-	(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Item_number = obj_vnum(i)
+	clear_object(&obj_proto[i])
+	obj_proto[i].Item_number = obj_vnum(i)
 	stdio.Sprintf(&buf2[0], "object #%d", nr)
 	if (func() *byte {
-		p := &(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Name
-		(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Name = fread_string(obj_f, &buf2[0])
+		p := &obj_proto[i].Name
+		obj_proto[i].Name = fread_string(obj_f, &buf2[0])
 		return *p
 	}()) == nil {
 		basic_mud_log(libc.CString("SYSERR: Null obj name or format error at or near %s"), &buf2[0])
 		os.Exit(1)
 	}
 	tmpptr = func() *byte {
-		p := &(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Short_description
-		(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Short_description = fread_string(obj_f, &buf2[0])
+		p := &obj_proto[i].Short_description
+		obj_proto[i].Short_description = fread_string(obj_f, &buf2[0])
 		return *p
 	}()
 	if tmpptr != nil && *tmpptr != 0 {
@@ -2309,14 +2350,14 @@ func parse_object(obj_f *stdio.File, nr int) *byte {
 		}
 	}
 	tmpptr = func() *byte {
-		p := &(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Description
-		(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Description = fread_string(obj_f, &buf2[0])
+		p := &obj_proto[i].Description
+		obj_proto[i].Description = fread_string(obj_f, &buf2[0])
 		return *p
 	}()
 	if tmpptr != nil && *tmpptr != 0 {
 		CAP(tmpptr)
 	}
-	(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Action_description = fread_string(obj_f, &buf2[0])
+	obj_proto[i].Action_description = fread_string(obj_f, &buf2[0])
 	if get_line(obj_f, &line[0]) == 0 {
 		basic_mud_log(libc.CString("SYSERR: Expecting first numeric line of %s, but file ended!"), &buf2[0])
 		os.Exit(1)
@@ -2334,41 +2375,41 @@ func parse_object(obj_f *stdio.File, nr int) *byte {
 			t[3] = int(asciiflag_conv_aff(&f3[0]))
 		}
 		basic_mud_log(libc.CString("Converting object #%d to 128bits.."), nr)
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Extra_flags[0] = asciiflag_conv(&f1[0])
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Extra_flags[1] = 0
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Extra_flags[2] = 0
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Extra_flags[3] = 0
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Wear_flags[0] = int(asciiflag_conv(&f2[0]))
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Wear_flags[1] = 0
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Wear_flags[2] = 0
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Wear_flags[3] = 0
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Bitvector[0] = asciiflag_conv_aff(&f3[0])
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Bitvector[1] = 0
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Bitvector[2] = 0
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Bitvector[3] = 0
+		obj_proto[i].Extra_flags[0] = asciiflag_conv(&f1[0])
+		obj_proto[i].Extra_flags[1] = 0
+		obj_proto[i].Extra_flags[2] = 0
+		obj_proto[i].Extra_flags[3] = 0
+		obj_proto[i].Wear_flags[0] = asciiflag_conv(&f2[0])
+		obj_proto[i].Wear_flags[1] = 0
+		obj_proto[i].Wear_flags[2] = 0
+		obj_proto[i].Wear_flags[3] = 0
+		obj_proto[i].Bitvector[0] = asciiflag_conv_aff(&f3[0])
+		obj_proto[i].Bitvector[1] = 0
+		obj_proto[i].Bitvector[2] = 0
+		obj_proto[i].Bitvector[3] = 0
 		if bitsavetodisk != 0 {
-			add_to_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(real_zone_by_thing(room_vnum(nr)))))).Number, 1)
+			add_to_save_list(zone_table[real_zone_by_thing(room_vnum(nr))].Number, 1)
 			converting = TRUE
 		}
 		basic_mud_log(libc.CString("   done."))
 	} else if retval == 13 {
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Extra_flags[0] = asciiflag_conv(&f1[0])
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Extra_flags[1] = asciiflag_conv(&f2[0])
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Extra_flags[2] = asciiflag_conv(&f3[0])
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Extra_flags[3] = asciiflag_conv(&f4[0])
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Wear_flags[0] = int(asciiflag_conv(&f5[0]))
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Wear_flags[1] = int(asciiflag_conv(&f6[0]))
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Wear_flags[2] = int(asciiflag_conv(&f7[0]))
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Wear_flags[3] = int(asciiflag_conv(&f8[0]))
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Bitvector[0] = asciiflag_conv(&f9[0])
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Bitvector[1] = asciiflag_conv(&f10[0])
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Bitvector[2] = asciiflag_conv(&f11[0])
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Bitvector[3] = asciiflag_conv(&f12[0])
+		obj_proto[i].Extra_flags[0] = asciiflag_conv(&f1[0])
+		obj_proto[i].Extra_flags[1] = asciiflag_conv(&f2[0])
+		obj_proto[i].Extra_flags[2] = asciiflag_conv(&f3[0])
+		obj_proto[i].Extra_flags[3] = asciiflag_conv(&f4[0])
+		obj_proto[i].Wear_flags[0] = asciiflag_conv(&f5[0])
+		obj_proto[i].Wear_flags[1] = asciiflag_conv(&f6[0])
+		obj_proto[i].Wear_flags[2] = asciiflag_conv(&f7[0])
+		obj_proto[i].Wear_flags[3] = asciiflag_conv(&f8[0])
+		obj_proto[i].Bitvector[0] = asciiflag_conv(&f9[0])
+		obj_proto[i].Bitvector[1] = asciiflag_conv(&f10[0])
+		obj_proto[i].Bitvector[2] = asciiflag_conv(&f11[0])
+		obj_proto[i].Bitvector[3] = asciiflag_conv(&f12[0])
 	} else {
 		basic_mud_log(libc.CString("SYSERR: Format error in first numeric line (expecting 13 args, got %d), %s"), retval, &buf2[0])
 		os.Exit(1)
 	}
-	((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Type_flag = int8(t[0])
+	obj_proto[i].Type_flag = int8(t[0])
 	if get_line(obj_f, &line[0]) == 0 {
 		basic_mud_log(libc.CString("SYSERR: Expecting second numeric line of %s, but file ended!"), &buf2[0])
 		os.Exit(1)
@@ -2384,20 +2425,20 @@ func parse_object(obj_f *stdio.File, nr int) *byte {
 		os.Exit(1)
 	}
 	for j = 0; j < NUM_OBJ_VAL_POSITIONS; j++ {
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Value[j] = t[j]
+		obj_proto[i].Value[j] = t[j]
 	}
-	if (int(((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Type_flag) == ITEM_PORTAL || int(((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Type_flag) == ITEM_HATCH) && ((((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Value[VAL_DOOR_DCLOCK]) == 0 || (((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Value[VAL_DOOR_DCHIDE]) == 0) {
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Value[VAL_DOOR_DCLOCK] = 20
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Value[VAL_DOOR_DCHIDE] = 20
+	if (int(obj_proto[i].Type_flag) == ITEM_PORTAL || int(obj_proto[i].Type_flag) == ITEM_HATCH) && ((obj_proto[i].Value[VAL_DOOR_DCLOCK]) == 0 || (obj_proto[i].Value[VAL_DOOR_DCHIDE]) == 0) {
+		obj_proto[i].Value[VAL_DOOR_DCLOCK] = 20
+		obj_proto[i].Value[VAL_DOOR_DCHIDE] = 20
 		if bitsavetodisk != 0 {
-			add_to_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(real_zone_by_thing(room_vnum(nr)))))).Number, 1)
+			add_to_save_list(zone_table[real_zone_by_thing(room_vnum(nr))].Number, 1)
 			converting = TRUE
 		}
 	}
-	if int(((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Type_flag) == ITEM_WEAPON && (((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Value[0]) > 169 {
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Value[0] = suntzu_weapon_convert(t[0])
+	if int(obj_proto[i].Type_flag) == ITEM_WEAPON && (obj_proto[i].Value[0]) > 169 {
+		obj_proto[i].Value[0] = suntzu_weapon_convert(t[0])
 		if bitsavetodisk != 0 {
-			add_to_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(real_zone_by_thing(room_vnum(nr)))))).Number, 1)
+			add_to_save_list(zone_table[real_zone_by_thing(room_vnum(nr))].Number, 1)
 			converting = TRUE
 		}
 	}
@@ -2416,23 +2457,23 @@ func parse_object(obj_f *stdio.File, nr int) *byte {
 			os.Exit(1)
 		}
 	}
-	((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Weight = int64(t[0])
-	((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Cost = t[1]
-	((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Cost_per_day = t[2]
-	((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Level = t[3]
-	((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Size = SIZE_MEDIUM
-	if int(((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Type_flag) == ITEM_DRINKCON || int(((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Type_flag) == ITEM_FOUNTAIN {
-		if ((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Weight < int64(((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Value[1]) {
-			((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Weight = int64((((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Value[1]) + 5)
+	obj_proto[i].Weight = int64(t[0])
+	obj_proto[i].Cost = t[1]
+	obj_proto[i].Cost_per_day = t[2]
+	obj_proto[i].Level = t[3]
+	obj_proto[i].Size = SIZE_MEDIUM
+	if int(obj_proto[i].Type_flag) == ITEM_DRINKCON || int(obj_proto[i].Type_flag) == ITEM_FOUNTAIN {
+		if obj_proto[i].Weight < int64(obj_proto[i].Value[1]) {
+			obj_proto[i].Weight = int64((obj_proto[i].Value[1]) + 5)
 		}
 	}
-	if int(((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Type_flag) == ITEM_PORTAL {
-		((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Timer = -1
+	if int(obj_proto[i].Type_flag) == ITEM_PORTAL {
+		obj_proto[i].Timer = -1
 	}
 	for j = 0; j < MAX_OBJ_AFFECT; j++ {
-		(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Affected[j].Location = APPLY_NONE
-		(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Affected[j].Modifier = 0
-		(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Affected[j].Specific = 0
+		obj_proto[i].Affected[j].Location = APPLY_NONE
+		obj_proto[i].Affected[j].Modifier = 0
+		obj_proto[i].Affected[j].Specific = 0
 	}
 	libc.StrCat(&buf2[0], libc.CString(", after numeric constants\n...expecting 'E', 'A', '$', or next object number"))
 	j = 0
@@ -2446,8 +2487,8 @@ func parse_object(obj_f *stdio.File, nr int) *byte {
 			new_descr = new(extra_descr_data)
 			new_descr.Keyword = fread_string(obj_f, &buf2[0])
 			new_descr.Description = fread_string(obj_f, &buf2[0])
-			new_descr.Next = (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Ex_description
-			(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Ex_description = new_descr
+			new_descr.Next = obj_proto[i].Ex_description
+			obj_proto[i].Ex_description = new_descr
 		case 'A':
 			if j >= MAX_OBJ_AFFECT {
 				basic_mud_log(libc.CString("SYSERR: Too many A fields (%d max), %s"), MAX_OBJ_AFFECT, &buf2[0])
@@ -2468,11 +2509,11 @@ func parse_object(obj_f *stdio.File, nr int) *byte {
 				}
 			}
 			if t[0] >= APPLY_UNUSED3 && t[0] <= APPLY_UNUSED4 {
-				basic_mud_log(libc.CString("Warning: object #%d (%s) uses deprecated saving throw applies"), nr, ((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Short_description)
+				basic_mud_log(libc.CString("Warning: object #%d (%s) uses deprecated saving throw applies"), nr, obj_proto[i].Short_description)
 			}
-			(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Affected[j].Location = t[0]
-			(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Affected[j].Modifier = t[1]
-			(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Affected[j].Specific = t[2]
+			obj_proto[i].Affected[j].Location = t[0]
+			obj_proto[i].Affected[j].Modifier = t[1]
+			obj_proto[i].Affected[j].Specific = t[2]
 			j++
 		case 'S':
 			if j >= SPELLBOOK_SIZE {
@@ -2490,15 +2531,15 @@ func parse_object(obj_f *stdio.File, nr int) *byte {
 				basic_mud_log(libc.CString("SYSERR: Format error in 'S' field, %s\n...expecting 2 numeric arguments, got %d\n...offending line: '%s'"), &buf2[0], retval, &line[0])
 				os.Exit(1)
 			}
-			if (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Sbinfo == nil {
-				(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Sbinfo = &make([]obj_spellbook_spell, SPELLBOOK_SIZE)[0]
-				libc.MemSet(unsafe.Pointer((*byte)(unsafe.Pointer((*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Sbinfo))), 0, int(SPELLBOOK_SIZE*unsafe.Sizeof(obj_spellbook_spell{})))
+			if obj_proto[i].Sbinfo == nil {
+				obj_proto[i].Sbinfo = make([]obj_spellbook_spell, SPELLBOOK_SIZE)
+				libc.MemSet(unsafe.Pointer((*byte)(unsafe.Pointer(&obj_proto[i].Sbinfo[0]))), 0, int(SPELLBOOK_SIZE*unsafe.Sizeof(obj_spellbook_spell{})))
 			}
-			(*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer((*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(j)))).Spellname = t[0]
-			(*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer((*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(j)))).Pages = t[1]
+			obj_proto[i].Sbinfo[j].Spellname = t[0]
+			obj_proto[i].Sbinfo[j].Pages = t[1]
 			j++
 		case 'T':
-			dg_obj_trigger(&line[0], (*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i))))
+			dg_obj_trigger(&line[0], &obj_proto[i])
 		case 'Z':
 			if get_line(obj_f, &line[0]) == 0 {
 				basic_mud_log(libc.CString("SYSERR: Format error in 'Z' field, %s\n...expecting numeric constant but file ended!"), &buf2[0])
@@ -2508,16 +2549,16 @@ func parse_object(obj_f *stdio.File, nr int) *byte {
 				basic_mud_log(libc.CString("SYSERR: Format error in 'Z' field, %s\n...expecting numeric argument\n...offending line: '%s'"), &buf2[0], &line[0])
 				os.Exit(1)
 			}
-			((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Size = t[0]
+			obj_proto[i].Size = t[0]
 		case '$':
 			fallthrough
 		case '#':
-			if OBJAFF_FLAGGED((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i))), AFF_CHARM) {
+			if OBJAFF_FLAGGED(&obj_proto[i], AFF_CHARM) {
 				basic_mud_log(libc.CString("SYSERR: Object #%d has reserved bit AFF_CHARM set."), nr)
-				((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Bitvector[int(AFF_CHARM/32)] &= bitvector_t(int32(^(1 << (int(AFF_CHARM % 32)))))
+				REMOVE_BIT_AR(obj_proto[i].Bitvector[:], AFF_CHARM)
 			}
 			top_of_objt = obj_rnum(i)
-			check_object((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i))))
+			check_object(&obj_proto[i])
 			i++
 			return &line[0]
 		default:
@@ -2555,12 +2596,12 @@ func load_zones(fl *stdio.File, zonename *byte) {
 			num_of_cmds++
 		}
 	}
-	rewind(fl)
+	fl.Seek(0, 0)
 	if num_of_cmds == 0 {
 		basic_mud_log(libc.CString("SYSERR: %s is empty!"), &zname[0])
 		os.Exit(1)
 	} else {
-		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd = &make([]reset_com, num_of_cmds)[0]
+		zone_table[zone].Cmd = make([]reset_com, num_of_cmds)
 	}
 	line_num += get_line(fl, &buf[0])
 	if buf[0] == '@' {
@@ -2571,11 +2612,11 @@ func load_zones(fl *stdio.File, zonename *byte) {
 		}
 		line_num += get_line(fl, &buf[0])
 	}
-	if stdio.Sscanf(&buf[0], "#%hd", &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Number) != 1 {
+	if stdio.Sscanf(&buf[0], "#%hd", &zone_table[zone].Number) != 1 {
 		basic_mud_log(libc.CString("SYSERR: Format error in %s, line %d"), &zname[0], line_num)
 		os.Exit(1)
 	}
-	stdio.Snprintf(&buf2[0], int(64936), "beginning of zone #%d", (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Number)
+	stdio.Snprintf(&buf2[0], int(64936), "beginning of zone #%d", zone_table[zone].Number)
 	line_num += get_line(fl, &buf[0])
 	if (func() *byte {
 		ptr = libc.StrChr(&buf[0], '~')
@@ -2583,7 +2624,7 @@ func load_zones(fl *stdio.File, zonename *byte) {
 	}()) != nil {
 		*ptr = '\x00'
 	}
-	(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Builders = libc.StrDup(&buf[0])
+	zone_table[zone].Builders = libc.StrDup(&buf[0])
 	line_num += get_line(fl, &buf[0])
 	if (func() *byte {
 		ptr = libc.StrChr(&buf[0], '~')
@@ -2591,7 +2632,7 @@ func load_zones(fl *stdio.File, zonename *byte) {
 	}()) != nil {
 		*ptr = '\x00'
 	}
-	(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Name = libc.StrDup(&buf[0])
+	zone_table[zone].Name = libc.StrDup(&buf[0])
 	line_num += get_line(fl, &buf[0])
 	if version >= 2 {
 		var (
@@ -2600,29 +2641,29 @@ func load_zones(fl *stdio.File, zonename *byte) {
 			zbuf3 [64936]byte
 			zbuf4 [64936]byte
 		)
-		if stdio.Sscanf(&buf[0], " %hd %hd %d %d %s %s %s %s %d %d", &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Lifespan, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Reset_mode, &zbuf1[0], &zbuf2[0], &zbuf3[0], &zbuf4[0], &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Min_level, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Max_level) != 10 {
+		if stdio.Sscanf(&buf[0], " %hd %hd %d %d %s %s %s %s %d %d", &zone_table[zone].Bot, &zone_table[zone].Top, &zone_table[zone].Lifespan, &zone_table[zone].Reset_mode, &zbuf1[0], &zbuf2[0], &zbuf3[0], &zbuf4[0], &zone_table[zone].Min_level, &zone_table[zone].Max_level) != 10 {
 			basic_mud_log(libc.CString("SYSERR: Format error in 10-constant line of %s"), &zname[0])
 			os.Exit(1)
 		}
-		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Zone_flags[0] = int(asciiflag_conv(&zbuf1[0]))
-		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Zone_flags[1] = int(asciiflag_conv(&zbuf2[0]))
-		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Zone_flags[2] = int(asciiflag_conv(&zbuf3[0]))
-		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Zone_flags[3] = int(asciiflag_conv(&zbuf4[0]))
-	} else if stdio.Sscanf(&buf[0], " %hd %hd %d %d ", &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Lifespan, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Reset_mode) != 4 {
+		zone_table[zone].Zone_flags[0] = asciiflag_conv(&zbuf1[0])
+		zone_table[zone].Zone_flags[1] = asciiflag_conv(&zbuf2[0])
+		zone_table[zone].Zone_flags[2] = asciiflag_conv(&zbuf3[0])
+		zone_table[zone].Zone_flags[3] = asciiflag_conv(&zbuf4[0])
+	} else if stdio.Sscanf(&buf[0], " %hd %hd %d %d ", &zone_table[zone].Bot, &zone_table[zone].Top, &zone_table[zone].Lifespan, &zone_table[zone].Reset_mode) != 4 {
 		basic_mud_log(libc.CString("SYSERR: Format error in numeric constant line of %s, attempting to fix."), &zname[0])
-		if stdio.Sscanf((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Name, " %hd %hd %d %d ", &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Lifespan, &(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Reset_mode) != 4 {
+		if stdio.Sscanf(zone_table[zone].Name, " %hd %hd %d %d ", &zone_table[zone].Bot, &zone_table[zone].Top, &zone_table[zone].Lifespan, &zone_table[zone].Reset_mode) != 4 {
 			basic_mud_log(libc.CString("SYSERR: Could not fix previous error, aborting game."))
 			os.Exit(1)
 		} else {
-			libc.Free(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Name))
-			(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Name = libc.StrDup((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Builders)
-			libc.Free(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Builders))
-			(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Builders = libc.CString("None.")
+			libc.Free(unsafe.Pointer(zone_table[zone].Name))
+			zone_table[zone].Name = libc.StrDup(zone_table[zone].Builders)
+			libc.Free(unsafe.Pointer(zone_table[zone].Builders))
+			zone_table[zone].Builders = libc.CString("None.")
 			zone_fix = TRUE
 		}
 	}
-	if (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot > (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top {
-		basic_mud_log(libc.CString("SYSERR: Zone %d bottom (%d) > top (%d)."), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Number, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top)
+	if zone_table[zone].Bot > zone_table[zone].Top {
+		basic_mud_log(libc.CString("SYSERR: Zone %d bottom (%d) > top (%d)."), zone_table[zone].Number, zone_table[zone].Bot, zone_table[zone].Top)
 		os.Exit(1)
 	}
 	cmd_no = 0
@@ -2642,47 +2683,47 @@ func load_zones(fl *stdio.File, zonename *byte) {
 		ptr = &buf[0]
 		skip_spaces(&ptr)
 		if int(func() int8 {
-			p := &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command
-			(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command = int8(*ptr)
+			p := &zone_table[zone].Cmd[cmd_no].Command
+			zone_table[zone].Cmd[cmd_no].Command = int8(*ptr)
 			return *p
 		}()) == '*' {
 			continue
 		}
 		ptr = (*byte)(unsafe.Add(unsafe.Pointer(ptr), 1))
-		if int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command) == 'S' || int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command) == '$' {
-			(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command = 'S'
+		if int(zone_table[zone].Cmd[cmd_no].Command) == 'S' || int(zone_table[zone].Cmd[cmd_no].Command) == '$' {
+			zone_table[zone].Cmd[cmd_no].Command = 'S'
 			break
 		}
 		error = 0
-		if libc.StrChr(libc.CString("MOEPDTVG"), byte((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command)) == nil {
-			if stdio.Sscanf(ptr, " %d %d %d %d ", &tmp, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3) != 4 {
+		if libc.StrChr(libc.CString("MOEPDTVG"), byte(zone_table[zone].Cmd[cmd_no].Command)) == nil {
+			if stdio.Sscanf(ptr, " %d %d %d %d ", &tmp, &zone_table[zone].Cmd[cmd_no].Arg1, &zone_table[zone].Cmd[cmd_no].Arg2, &zone_table[zone].Cmd[cmd_no].Arg3) != 4 {
 				error = 1
 			}
-		} else if int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command) == 'V' {
-			if stdio.Sscanf(ptr, " %d %d %d %d %d %d %79s %79[^\f\n\r\t\v]", &tmp, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg4, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg5, &t1[0], &t2[0]) != 8 {
+		} else if int(zone_table[zone].Cmd[cmd_no].Command) == 'V' {
+			if stdio.Sscanf(ptr, " %d %d %d %d %d %d %79s %79[^\f\n\r\t\v]", &tmp, &zone_table[zone].Cmd[cmd_no].Arg1, &zone_table[zone].Cmd[cmd_no].Arg2, &zone_table[zone].Cmd[cmd_no].Arg3, &zone_table[zone].Cmd[cmd_no].Arg4, &zone_table[zone].Cmd[cmd_no].Arg5, &t1[0], &t2[0]) != 8 {
 				error = 1
 			} else {
-				(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Sarg1 = libc.StrDup(&t1[0])
-				(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Sarg2 = libc.StrDup(&t2[0])
+				zone_table[zone].Cmd[cmd_no].Sarg1 = libc.StrDup(&t1[0])
+				zone_table[zone].Cmd[cmd_no].Sarg2 = libc.StrDup(&t2[0])
 			}
 		} else {
 			if (func() int {
-				arg_num = stdio.Sscanf(ptr, " %d %d %d %d %d %d ", &tmp, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg4, &(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg5)
+				arg_num = stdio.Sscanf(ptr, " %d %d %d %d %d %d ", &tmp, &zone_table[zone].Cmd[cmd_no].Arg1, &zone_table[zone].Cmd[cmd_no].Arg2, &zone_table[zone].Cmd[cmd_no].Arg3, &zone_table[zone].Cmd[cmd_no].Arg4, &zone_table[zone].Cmd[cmd_no].Arg5)
 				return arg_num
 			}()) != 6 {
 				if arg_num != 5 {
 					error = 1
 				} else {
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg5 = 0
+					zone_table[zone].Cmd[cmd_no].Arg5 = 0
 				}
 			}
 		}
-		(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).If_flag = tmp != 0
+		zone_table[zone].Cmd[cmd_no].If_flag = tmp != 0
 		if error != 0 {
 			basic_mud_log(libc.CString("SYSERR: Format error in %s, line %d: '%s'"), &zname[0], line_num, &buf[0])
 			os.Exit(1)
 		}
-		(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Line = line_num
+		zone_table[zone].Cmd[cmd_no].Line = line_num
 		cmd_no++
 	}
 	if num_of_cmds != cmd_no+1 {
@@ -2716,14 +2757,14 @@ func free_help_table() {
 	if help_table != nil {
 		var hp int
 		for hp = 0; hp < top_of_helpt; hp++ {
-			if (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(hp)))).Keywords != nil {
-				libc.Free(unsafe.Pointer((*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(hp)))).Keywords))
+			if help_table[hp].Keywords != nil {
+				libc.Free(unsafe.Pointer(help_table[hp].Keywords))
 			}
-			if (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(hp)))).Entry != nil && (*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(hp)))).Duplicate == 0 {
-				libc.Free(unsafe.Pointer((*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(hp)))).Entry))
+			if help_table[hp].Entry != nil && help_table[hp].Duplicate == 0 {
+				libc.Free(unsafe.Pointer(help_table[hp].Entry))
 			}
 		}
-		libc.Free(unsafe.Pointer(help_table))
+		libc.Free(unsafe.Pointer(&help_table[0]))
 		help_table = nil
 	}
 	top_of_helpt = 0
@@ -2758,7 +2799,7 @@ func load_help(fl *stdio.File, name *byte) {
 				keysize  int
 				truncmsg *byte = libc.CString("\r\n*TRUNCATED*\r\n")
 			)
-			libc.StrCpy((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(&entry[32384]), -libc.StrLen(truncmsg)))), -1)), truncmsg)
+			libc.StrCpy((*byte)(unsafe.Add(unsafe.Pointer((*byte)(unsafe.Add(unsafe.Pointer(&entry[32383]), -libc.StrLen(truncmsg)))), -1)), truncmsg)
 			keysize = libc.StrLen(&key[0]) - 2
 			basic_mud_log(libc.CString("SYSERR: Help entry exceeded buffer space: %.*s"), keysize, &key[0])
 			for line[0] != '#' {
@@ -2776,12 +2817,12 @@ func load_help(fl *stdio.File, name *byte) {
 		scan = one_word(&key[0], &next_key[0])
 		for next_key[0] != 0 {
 			el.Keywords = libc.StrDup(&next_key[0])
-			*(*help_index_element)(unsafe.Add(unsafe.Pointer(help_table), unsafe.Sizeof(help_index_element{})*uintptr(func() int {
+			help_table[func() int {
 				p := &top_of_helpt
 				x := *p
 				*p++
 				return x
-			}()))) = el
+			}()] = el
 			el.Duplicate++
 			scan = one_word(scan, &next_key[0])
 		}
@@ -2803,13 +2844,13 @@ func vnum_mobile(searchname *byte, ch *char_data) int {
 		found int = 0
 	)
 	for nr = 0; nr <= int(top_of_mobt); nr++ {
-		if isname(searchname, (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(nr)))).Name) != 0 {
+		if isname(searchname, mob_proto[nr].Name) != 0 {
 			send_to_char(ch, libc.CString("%3d. [%5d] %-40s %s\r\n"), func() int {
 				p := &found
 				*p++
 				return *p
-			}(), (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(nr)))).Vnum, (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(nr)))).Short_descr, func() string {
-				if (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(nr)))).Proto_script != nil {
+			}(), mob_index[nr].Vnum, mob_proto[nr].Short_descr, func() string {
+				if mob_proto[nr].Proto_script != nil {
 					return "[TRIG]"
 				}
 				return ""
@@ -2824,13 +2865,13 @@ func vnum_object(searchname *byte, ch *char_data) int {
 		found int = 0
 	)
 	for nr = 0; nr <= int(top_of_objt); nr++ {
-		if isname(searchname, (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(nr)))).Name) != 0 {
+		if isname(searchname, obj_proto[nr].Name) != 0 {
 			send_to_char(ch, libc.CString("%3d. [%5d] %-40s %s\r\n"), func() int {
 				p := &found
 				*p++
 				return *p
-			}(), (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(nr)))).Vnum, (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(nr)))).Short_description, func() string {
-				if (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(nr)))).Proto_script != nil {
+			}(), obj_index[nr].Vnum, obj_proto[nr].Short_description, func() string {
+				if obj_proto[nr].Proto_script != nil {
 					return "[TRIG]"
 				}
 				return ""
@@ -2845,13 +2886,13 @@ func vnum_material(searchname *byte, ch *char_data) int {
 		found int = 0
 	)
 	for nr = 0; nr <= int(top_of_objt); nr++ {
-		if isname(searchname, material_names[(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(nr)))).Value[VAL_ALL_MATERIAL]]) != 0 {
+		if isname(searchname, material_names[obj_proto[nr].Value[VAL_ALL_MATERIAL]]) != 0 {
 			send_to_char(ch, libc.CString("%3d. [%5d] %-40s %s\r\n"), func() int {
 				p := &found
 				*p++
 				return *p
-			}(), (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(nr)))).Vnum, (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(nr)))).Short_description, func() string {
-				if (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(nr)))).Proto_script != nil {
+			}(), obj_index[nr].Vnum, obj_proto[nr].Short_description, func() string {
+				if obj_proto[nr].Proto_script != nil {
 					return "[TRIG]"
 				}
 				return ""
@@ -2866,14 +2907,14 @@ func vnum_weapontype(searchname *byte, ch *char_data) int {
 		found int = 0
 	)
 	for nr = 0; nr <= int(top_of_objt); nr++ {
-		if int((*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(nr)))).Type_flag) == ITEM_WEAPON {
-			if isname(searchname, weapon_type[(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(nr)))).Value[VAL_WEAPON_SKILL]]) != 0 {
+		if int(obj_proto[nr].Type_flag) == ITEM_WEAPON {
+			if isname(searchname, weapon_type[obj_proto[nr].Value[VAL_WEAPON_SKILL]]) != 0 {
 				send_to_char(ch, libc.CString("%3d. [%5d] %-40s %s\r\n"), func() int {
 					p := &found
 					*p++
 					return *p
-				}(), (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(nr)))).Vnum, (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(nr)))).Short_description, func() string {
-					if (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(nr)))).Proto_script != nil {
+				}(), obj_index[nr].Vnum, obj_proto[nr].Short_description, func() string {
+					if obj_proto[nr].Proto_script != nil {
 						return "[TRIG]"
 					}
 					return ""
@@ -2889,14 +2930,14 @@ func vnum_armortype(searchname *byte, ch *char_data) int {
 		found int = 0
 	)
 	for nr = 0; nr <= int(top_of_objt); nr++ {
-		if int((*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(nr)))).Type_flag) == ITEM_ARMOR {
-			if isname(searchname, armor_type[(*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(nr)))).Value[VAL_ARMOR_SKILL]]) != 0 {
+		if int(obj_proto[nr].Type_flag) == ITEM_ARMOR {
+			if isname(searchname, armor_type[obj_proto[nr].Value[VAL_ARMOR_SKILL]]) != 0 {
 				send_to_char(ch, libc.CString("%3d. [%5d] %-40s %s\r\n"), func() int {
 					p := &found
 					*p++
 					return *p
-				}(), (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(nr)))).Vnum, (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(nr)))).Short_description, func() string {
-					if (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(nr)))).Proto_script != nil {
+				}(), obj_index[nr].Vnum, obj_proto[nr].Short_description, func() string {
+					if obj_proto[nr].Proto_script != nil {
 						return "[TRIG]"
 					}
 					return ""
@@ -2941,7 +2982,7 @@ func read_mobile(nr mob_vnum, type_ int) *char_data {
 	}
 	mob = new(char_data)
 	clear_char(mob)
-	*mob = *(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))
+	*mob = mob_proto[i]
 	mob.Next = character_list
 	character_list = mob
 	mob.Next_affect = nil
@@ -3540,23 +3581,23 @@ func read_mobile(nr mob_vnum, type_ int) *char_data {
 		mob.Exp += int64(GET_LEVEL(mob) / 2)
 		mob.Exp += int64(GET_LEVEL(mob) / 3)
 		if int(mob.Race) == RACE_LIZARDFOLK {
-			mob.Exp *= int64(1.4)
+			mob.Exp += int64(float64(mob.Exp) * .4)
 		} else if int(mob.Race) == RACE_ANDROID {
-			mob.Exp *= int64(1.25)
+			mob.Exp += int64(float64(mob.Exp) * .25)
 		} else if int(mob.Race) == RACE_SAIYAN {
-			mob.Exp *= int64(1.1)
+			mob.Exp += int64(float64(mob.Exp) * .1)
 		} else if int(mob.Race) == RACE_BIO {
-			mob.Exp *= int64(1.2)
+			mob.Exp += int64(float64(mob.Exp) * .2)
 		} else if int(mob.Race) == RACE_MAJIN {
-			mob.Exp *= int64(1.25)
+			mob.Exp += int64(float64(mob.Exp) * .25)
 		} else if int(mob.Race) == RACE_DEMON {
-			mob.Exp *= int64(1.1)
+			mob.Exp += int64(float64(mob.Exp) * .1)
 		} else if int(mob.Chclass) == CLASS_SHADOWDANCER {
 			mob.Exp *= 2
 		}
 		if int(mob.Chclass) == CLASS_NPC_COMMONER && IS_HUMANOID(mob) && int(mob.Race) != RACE_LIZARDFOLK {
 			if int(mob.Race) != RACE_ANDROID && int(mob.Race) != RACE_SAIYAN && int(mob.Race) != RACE_BIO && int(mob.Race) != RACE_MAJIN {
-				mob.Exp *= int64(0.75)
+				mob.Exp = int64(float64(mob.Exp) * 0.75)
 			}
 		}
 		if GET_LEVEL(mob) > 90 {
@@ -3590,12 +3631,12 @@ func read_mobile(nr mob_vnum, type_ int) *char_data {
 	mob.Time.Logon = libc.GetTime(nil)
 	mob.Hometown = -1
 	if IS_HUMANOID(mob) {
-		mob.Act[int(MOB_RARM/32)] |= bitvector_t(int32(1 << (int(MOB_RARM % 32))))
-		mob.Act[int(MOB_LARM/32)] |= bitvector_t(int32(1 << (int(MOB_LARM % 32))))
-		mob.Act[int(MOB_RLEG/32)] |= bitvector_t(int32(1 << (int(MOB_RLEG % 32))))
-		mob.Act[int(MOB_LLEG/32)] |= bitvector_t(int32(1 << (int(MOB_LLEG % 32))))
+		SET_BIT_AR(mob.Act[:], MOB_RARM)
+		SET_BIT_AR(mob.Act[:], MOB_LARM)
+		SET_BIT_AR(mob.Act[:], MOB_RLEG)
+		SET_BIT_AR(mob.Act[:], MOB_LLEG)
 	}
-	(*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Number++
+	mob_index[i].Number++
 	mob.Id = int32(func() int {
 		p := &max_mob_id
 		x := *p
@@ -3603,7 +3644,7 @@ func read_mobile(nr mob_vnum, type_ int) *char_data {
 		return x
 	}())
 	add_to_lookup_table(int(mob.Id), unsafe.Pointer(mob))
-	copy_proto_script(unsafe.Pointer((*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))), unsafe.Pointer(mob), MOB_TRIGGER)
+	copy_proto_script(unsafe.Pointer(&mob_proto[i]), unsafe.Pointer(mob), MOB_TRIGGER)
 	assign_triggers(unsafe.Pointer(mob), MOB_TRIGGER)
 	racial_body_parts(mob)
 	if GET_MOB_VNUM(mob) >= 800 && GET_MOB_VNUM(mob) <= 805 {
@@ -3654,7 +3695,7 @@ func add_unique_id(obj *obj_data) {
 	}
 	if config_info.Play.All_items_unique != 0 {
 		if !OBJ_FLAGGED(obj, ITEM_UNIQUE_SAVE) {
-			obj.Extra_flags[int(ITEM_UNIQUE_SAVE/32)] |= bitvector_t(int32(1 << (int(ITEM_UNIQUE_SAVE % 32))))
+			SET_BIT_AR(obj.Extra_flags[:], ITEM_UNIQUE_SAVE)
 		}
 	}
 	elem = new(obj_unique_hash_elem)
@@ -3697,16 +3738,11 @@ func log_dupe_objects(obj1 *obj_data, obj2 *obj_data) {
 		}
 		return libc.CString("<No name>")
 	}(), GET_OBJ_VNUM(obj1), obj1.Generation, obj1.Unique_id)
-	mudlog(BRF, ADMLVL_GOD, TRUE, libc.CString("DUPE: First: In room: %d (%s), In object: %s, Carried by: %s, Worn by: %s"), func() room_vnum {
-		if obj1.In_room != room_rnum(-1) && obj1.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj1.In_room)))).Number
-		}
-		return -1
-	}(), func() string {
+	mudlog(BRF, ADMLVL_GOD, TRUE, libc.CString("DUPE: First: In room: %d (%s), In object: %s, Carried by: %s, Worn by: %s"), GET_ROOM_VNUM(obj1.In_room), func() string {
 		if obj1.In_room == room_rnum(-1) {
 			return "Nowhere"
 		}
-		return libc.GoString((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj1.In_room)))).Name)
+		return libc.GoString(world[obj1.In_room].Name)
 	}(), func() *byte {
 		if obj1.In_obj != nil {
 			return obj1.In_obj.Short_description
@@ -3723,16 +3759,11 @@ func log_dupe_objects(obj1 *obj_data, obj2 *obj_data) {
 		}
 		return libc.CString("Nobody")
 	}())
-	mudlog(BRF, ADMLVL_GOD, TRUE, libc.CString("DUPE: Newer: In room: %d (%s), In object: %s, Carried by: %s, Worn by: %s"), func() room_vnum {
-		if obj2.In_room != room_rnum(-1) && obj2.In_room <= top_of_world {
-			return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj2.In_room)))).Number
-		}
-		return -1
-	}(), func() string {
+	mudlog(BRF, ADMLVL_GOD, TRUE, libc.CString("DUPE: Newer: In room: %d (%s), In object: %s, Carried by: %s, Worn by: %s"), GET_ROOM_VNUM(obj2.In_room), func() string {
 		if obj2.In_room == room_rnum(-1) {
 			return "Nowhere"
 		}
-		return libc.GoString((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(obj2.In_room)))).Name)
+		return libc.GoString(world[obj2.In_room].Name)
 	}(), func() *byte {
 		if obj2.In_obj != nil {
 			return obj2.In_obj.Short_description
@@ -3762,7 +3793,7 @@ func check_unique_id(obj *obj_data) {
 		}
 		if elem.Generation == obj.Generation && elem.Unique_id == obj.Unique_id {
 			log_dupe_objects(elem.Obj, obj)
-			obj.Extra_flags[int(ITEM_PURGE/32)] |= bitvector_t(int32(1 << (int(ITEM_PURGE % 32))))
+			SET_BIT_AR(obj.Extra_flags[:], ITEM_PURGE)
 		}
 		elem = elem.Next_e
 	}
@@ -3866,11 +3897,11 @@ func read_object(nr obj_vnum, type_ int) *obj_data {
 	}
 	obj = new(obj_data)
 	clear_object(obj)
-	*obj = *(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))
+	*obj = obj_proto[i]
 	obj.Next = object_list
 	object_list = obj
 	obj.Room_loaded = -1
-	(*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Number++
+	obj_index[i].Number++
 	obj.Id = int32(func() int {
 		p := &max_obj_id
 		x := *p
@@ -3880,14 +3911,14 @@ func read_object(nr obj_vnum, type_ int) *obj_data {
 	add_to_lookup_table(int(obj.Id), unsafe.Pointer(obj))
 	obj.Generation = libc.GetTime(nil)
 	obj.Unique_id = -1
-	if (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Sbinfo != nil {
-		obj.Sbinfo = &make([]obj_spellbook_spell, SPELLBOOK_SIZE)[0]
+	if obj_proto[i].Sbinfo != nil {
+		obj.Sbinfo = make([]obj_spellbook_spell, SPELLBOOK_SIZE)
 		for j = 0; j < SPELLBOOK_SIZE; j++ {
-			(*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(j)))).Spellname = (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer((*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(j)))).Spellname
-			(*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(j)))).Pages = (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer((*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))).Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(j)))).Pages
+			obj.Sbinfo[j].Spellname = obj_proto[i].Sbinfo[j].Spellname
+			obj.Sbinfo[j].Pages = obj_proto[i].Sbinfo[j].Pages
 		}
 	}
-	copy_proto_script(unsafe.Pointer((*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(i)))), unsafe.Pointer(obj), OBJ_TRIGGER)
+	copy_proto_script(unsafe.Pointer(&obj_proto[i]), unsafe.Pointer(obj), OBJ_TRIGGER)
 	assign_triggers(unsafe.Pointer(obj), OBJ_TRIGGER)
 	if GET_OBJ_VNUM(obj) == 65 {
 		obj.Healcharge = 20
@@ -3914,10 +3945,10 @@ func zone_update() {
 	}() * (config_info.Ticks.Pulse_zone * (int(1000000 / OPT_USEC)))) / (int(1000000 / OPT_USEC))) >= 60 {
 		timer = 0
 		for i = 0; i <= int(top_of_zone_table); i++ {
-			if (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Age < (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Lifespan && (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Reset_mode != 0 {
-				(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Age++
+			if zone_table[i].Age < zone_table[i].Lifespan && zone_table[i].Reset_mode != 0 {
+				zone_table[i].Age++
 			}
-			if (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Age >= (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Lifespan && (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Age < ZO_DEAD && (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Reset_mode != 0 {
+			if zone_table[i].Age >= zone_table[i].Lifespan && zone_table[i].Age < ZO_DEAD && zone_table[i].Reset_mode != 0 {
 				update_u = new(reset_q_element)
 				update_u.Zone_to_reset = zone_rnum(i)
 				update_u.Next = nil
@@ -3931,14 +3962,14 @@ func zone_update() {
 					reset_q.Tail.Next = update_u
 					reset_q.Tail = update_u
 				}
-				(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(i)))).Age = ZO_DEAD
+				zone_table[i].Age = ZO_DEAD
 			}
 		}
 	}
 	for update_u = reset_q.Head; update_u != nil; update_u = update_u.Next {
-		if (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(update_u.Zone_to_reset)))).Reset_mode == 2 || is_empty(update_u.Zone_to_reset) != 0 {
+		if zone_table[update_u.Zone_to_reset].Reset_mode == 2 || is_empty(update_u.Zone_to_reset) != 0 {
 			reset_zone(update_u.Zone_to_reset)
-			mudlog(CMP, ADMLVL_GOD, FALSE, libc.CString("Auto zone reset: %s (Zone %d)"), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(update_u.Zone_to_reset)))).Name, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(update_u.Zone_to_reset)))).Number)
+			mudlog(CMP, ADMLVL_GOD, FALSE, libc.CString("Auto zone reset: %s (Zone %d)"), zone_table[update_u.Zone_to_reset].Name, zone_table[update_u.Zone_to_reset].Number)
 			if update_u == reset_q.Head {
 				reset_q.Head = reset_q.Head.Next
 			} else {
@@ -3956,7 +3987,7 @@ func zone_update() {
 }
 func log_zone_error(zone zone_rnum, cmd_no int, message *byte) {
 	mudlog(NRM, ADMLVL_GOD, TRUE, libc.CString("SYSERR: zone file: %s"), message)
-	mudlog(NRM, ADMLVL_GOD, TRUE, libc.CString("SYSERR: ...offending cmd: '%c' cmd in zone #%d, line %d"), (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Number, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Line)
+	mudlog(NRM, ADMLVL_GOD, TRUE, libc.CString("SYSERR: ...offending cmd: '%c' cmd in zone #%d, line %d"), zone_table[zone].Cmd[cmd_no].Command, zone_table[zone].Number, zone_table[zone].Cmd[cmd_no].Line)
 }
 func reset_zone(zone zone_rnum) {
 	var (
@@ -3972,48 +4003,39 @@ func reset_zone(zone zone_rnum) {
 		mob_load int        = FALSE
 		obj_load int        = FALSE
 	)
-	if int(libc.BoolToInt(pre_reset((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Number))) == FALSE {
-		for cmd_no = 0; int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command) != 'S'; cmd_no++ {
-			if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).If_flag && last_cmd == 0 && mob_load == 0 && obj_load == 0 {
+	if int(libc.BoolToInt(pre_reset(zone_table[zone].Number))) == FALSE {
+		for cmd_no = 0; int(zone_table[zone].Cmd[cmd_no].Command) != 'S'; cmd_no++ {
+			if zone_table[zone].Cmd[cmd_no].If_flag && last_cmd == 0 && mob_load == 0 && obj_load == 0 {
 				continue
 			}
-			if !(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).If_flag {
+			if !zone_table[zone].Cmd[cmd_no].If_flag {
 				mob_load = FALSE
 				obj_load = FALSE
 			}
-			switch (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command {
+			switch zone_table[zone].Cmd[cmd_no].Command {
 			case '*':
 				last_cmd = 0
 			case 'M':
-				if (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)))).Number < int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2) && rand_number(1, 100) >= int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg5) {
+				if mob_index[zone_table[zone].Cmd[cmd_no].Arg1].Number < int(zone_table[zone].Cmd[cmd_no].Arg2) && rand_number(1, 100) >= int(zone_table[zone].Cmd[cmd_no].Arg5) {
 					var (
 						room_max int = 0
 						i        *char_data
 					)
-					mob = read_mobile(mob_vnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1), REAL)
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg4 > 0 {
+					mob = read_mobile(mob_vnum(zone_table[zone].Cmd[cmd_no].Arg1), REAL)
+					if zone_table[zone].Cmd[cmd_no].Arg4 > 0 {
 						for i = character_list; i != nil; i = i.Next {
-							if i.Hometown == (func() room_vnum {
-								if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 != vnum(-1) && (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 <= vnum(top_of_world) {
-									return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)))).Number
-								}
-								return -1
-							}()) && GET_MOB_VNUM(i) == GET_MOB_VNUM(mob) {
+							if i.Hometown == room_vnum(libc.BoolToInt(GET_ROOM_VNUM(room_rnum(zone_table[zone].Cmd[cmd_no].Arg3)))) && GET_MOB_VNUM(i) == GET_MOB_VNUM(mob) {
 								room_max++
 							}
 						}
 					}
-					char_to_room(mob, room_rnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3))
-					if room_max != 0 && room_max >= int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg4) {
+					char_to_room(mob, room_rnum(zone_table[zone].Cmd[cmd_no].Arg3))
+					if room_max != 0 && room_max >= int(zone_table[zone].Cmd[cmd_no].Arg4) {
 						extract_char(mob)
 						extract_pending_chars()
 						break
 					}
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 != vnum(-1) && (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 <= vnum(top_of_world) {
-						mob.Hometown = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)))).Number
-					} else {
-						mob.Hometown = -1
-					}
+					mob.Hometown = room_vnum(libc.BoolToInt(GET_ROOM_VNUM(room_rnum(zone_table[zone].Cmd[cmd_no].Arg3))))
 					load_mtrigger(mob)
 					tmob = mob
 					last_cmd = 1
@@ -4023,42 +4045,17 @@ func reset_zone(zone zone_rnum) {
 				}
 				tobj = nil
 			case 'O':
-				if (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)))).Number < int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2) && rand_number(1, 100) >= int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg5) {
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 != vnum(-1) {
+				if obj_index[zone_table[zone].Cmd[cmd_no].Arg1].Number < int(zone_table[zone].Cmd[cmd_no].Arg2) && rand_number(1, 100) >= int(zone_table[zone].Cmd[cmd_no].Arg5) {
+					if zone_table[zone].Cmd[cmd_no].Arg3 != vnum(-1) {
 						var (
 							room_max int = 0
 							k        *obj_data
 						)
-						obj = read_object(obj_vnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1), REAL)
-						if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg4 > 0 {
+						obj = read_object(obj_vnum(zone_table[zone].Cmd[cmd_no].Arg1), REAL)
+						if zone_table[zone].Cmd[cmd_no].Arg4 > 0 {
 							for k = object_list; k != nil; k = k.Next {
-								if k.Room_loaded == (func() room_vnum {
-									if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 != vnum(-1) && (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 <= vnum(top_of_world) {
-										return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)))).Number
-									}
-									return -1
-								}()) && GET_OBJ_VNUM(k) == GET_OBJ_VNUM(obj) || GET_OBJ_VNUM(k) == GET_OBJ_VNUM(obj) && (func() room_vnum {
-									if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 != vnum(-1) && (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 <= vnum(top_of_world) {
-										return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)))).Number
-									}
-									return -1
-								}()) == (func() room_vnum {
-									if k.In_room != room_rnum(-1) && k.In_room <= top_of_world {
-										return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k.In_room)))).Number
-									}
-									return -1
-								}()) {
-									if k.In_room == room_rnum(-1) || (func() room_vnum {
-										if k.In_room != room_rnum(-1) && k.In_room <= top_of_world {
-											return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(k.In_room)))).Number
-										}
-										return -1
-									}()) != (func() room_vnum {
-										if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 != vnum(-1) && (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 <= vnum(top_of_world) {
-											return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)))).Number
-										}
-										return -1
-									}()) {
+								if k.Room_loaded == room_vnum(libc.BoolToInt(GET_ROOM_VNUM(room_rnum(zone_table[zone].Cmd[cmd_no].Arg3)))) && GET_OBJ_VNUM(k) == GET_OBJ_VNUM(obj) || GET_OBJ_VNUM(k) == GET_OBJ_VNUM(obj) && GET_ROOM_VNUM(room_rnum(zone_table[zone].Cmd[cmd_no].Arg3)) == GET_ROOM_VNUM(k.In_room) {
+									if k.In_room == room_rnum(-1) || GET_ROOM_VNUM(k.In_room) != GET_ROOM_VNUM(room_rnum(zone_table[zone].Cmd[cmd_no].Arg3)) {
 										continue
 									}
 									room_max++
@@ -4066,22 +4063,18 @@ func reset_zone(zone zone_rnum) {
 							}
 						}
 						add_unique_id(obj)
-						obj_to_room(obj, room_rnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3))
-						if room_max != 0 && room_max >= int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg4) {
+						obj_to_room(obj, room_rnum(zone_table[zone].Cmd[cmd_no].Arg3))
+						if room_max != 0 && room_max >= int(zone_table[zone].Cmd[cmd_no].Arg4) {
 							extract_obj(obj)
 							break
 						}
-						if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 != vnum(-1) && (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 <= vnum(top_of_world) {
-							obj.Room_loaded = (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)))).Number
-						} else {
-							obj.Room_loaded = -1
-						}
+						obj.Room_loaded = room_vnum(libc.BoolToInt(GET_ROOM_VNUM(room_rnum(zone_table[zone].Cmd[cmd_no].Arg3))))
 						last_cmd = 1
 						load_otrigger(obj)
 						tobj = obj
 						obj_load = TRUE
 					} else {
-						obj = read_object(obj_vnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1), REAL)
+						obj = read_object(obj_vnum(zone_table[zone].Cmd[cmd_no].Arg1), REAL)
 						add_unique_id(obj)
 						obj.In_room = -1
 						last_cmd = 1
@@ -4093,15 +4086,15 @@ func reset_zone(zone zone_rnum) {
 				}
 				tmob = nil
 			case 'P':
-				if (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)))).Number < int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2) && obj_load != 0 && rand_number(1, 100) >= int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg5) {
-					obj = read_object(obj_vnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1), REAL)
+				if obj_index[zone_table[zone].Cmd[cmd_no].Arg1].Number < int(zone_table[zone].Cmd[cmd_no].Arg2) && obj_load != 0 && rand_number(1, 100) >= int(zone_table[zone].Cmd[cmd_no].Arg5) {
+					obj = read_object(obj_vnum(zone_table[zone].Cmd[cmd_no].Arg1), REAL)
 					if (func() *obj_data {
-						obj_to = get_obj_num(obj_rnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3))
+						obj_to = get_obj_num(obj_rnum(zone_table[zone].Cmd[cmd_no].Arg3))
 						return obj_to
 					}()) == nil {
 						log_zone_error(zone, cmd_no, libc.CString("target obj not found, command disabled"))
 						last_cmd = 0
-						(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command = '*'
+						zone_table[zone].Cmd[cmd_no].Command = '*'
 						break
 					}
 					add_unique_id(obj)
@@ -4117,11 +4110,11 @@ func reset_zone(zone zone_rnum) {
 				if mob == nil {
 					log_zone_error(zone, cmd_no, libc.CString("attempt to give obj to non-existant mob, command disabled"))
 					last_cmd = 0
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command = '*'
+					zone_table[zone].Cmd[cmd_no].Command = '*'
 					break
 				}
-				if (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)))).Number < int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2) && mob_load != 0 && rand_number(1, 100) >= int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg5) {
-					obj = read_object(obj_vnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1), REAL)
+				if obj_index[zone_table[zone].Cmd[cmd_no].Arg1].Number < int(zone_table[zone].Cmd[cmd_no].Arg2) && mob_load != 0 && rand_number(1, 100) >= int(zone_table[zone].Cmd[cmd_no].Arg5) {
+					obj = read_object(obj_vnum(zone_table[zone].Cmd[cmd_no].Arg1), REAL)
 					add_unique_id(obj)
 					obj_to_char(obj, mob)
 					if libc.FuncAddr(GET_MOB_SPEC(mob)) != libc.FuncAddr(shop_keeper) {
@@ -4138,21 +4131,21 @@ func reset_zone(zone zone_rnum) {
 				if mob == nil {
 					log_zone_error(zone, cmd_no, libc.CString("trying to equip non-existant mob, command disabled"))
 					last_cmd = 0
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command = '*'
+					zone_table[zone].Cmd[cmd_no].Command = '*'
 					break
 				}
-				if (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)))).Number < int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2) && mob_load != 0 && rand_number(1, 100) >= int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg5) {
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 < 0 || (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 >= NUM_WEARS {
+				if obj_index[zone_table[zone].Cmd[cmd_no].Arg1].Number < int(zone_table[zone].Cmd[cmd_no].Arg2) && mob_load != 0 && rand_number(1, 100) >= int(zone_table[zone].Cmd[cmd_no].Arg5) {
+					if zone_table[zone].Cmd[cmd_no].Arg3 < 0 || zone_table[zone].Cmd[cmd_no].Arg3 >= NUM_WEARS {
 						log_zone_error(zone, cmd_no, libc.CString("invalid equipment pos number"))
 						last_cmd = 0
 					} else {
-						obj = read_object(obj_vnum((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1), REAL)
+						obj = read_object(obj_vnum(zone_table[zone].Cmd[cmd_no].Arg1), REAL)
 						add_unique_id(obj)
 						obj.In_room = mob.In_room
 						load_otrigger(obj)
-						if wear_otrigger(obj, mob, int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)) != 0 {
+						if wear_otrigger(obj, mob, int(zone_table[zone].Cmd[cmd_no].Arg3)) != 0 {
 							obj.In_room = -1
-							equip_char(mob, obj, int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3))
+							equip_char(mob, obj, int(zone_table[zone].Cmd[cmd_no].Arg3))
 						} else {
 							obj_to_char(obj, mob)
 						}
@@ -4165,7 +4158,7 @@ func reset_zone(zone zone_rnum) {
 				tmob = nil
 			case 'R':
 				if (func() *obj_data {
-					obj = get_obj_in_list_num(int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2), (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)))).Contents)
+					obj = get_obj_in_list_num(int(zone_table[zone].Cmd[cmd_no].Arg2), world[zone_table[zone].Cmd[cmd_no].Arg1].Contents)
 					return obj
 				}()) != nil {
 					extract_obj(obj)
@@ -4174,77 +4167,77 @@ func reset_zone(zone zone_rnum) {
 				tmob = nil
 				tobj = nil
 			case 'D':
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2 < 0 || (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2 >= NUM_OF_DIRS || (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)))).Dir_option[(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2] == nil {
+				if zone_table[zone].Cmd[cmd_no].Arg2 < 0 || zone_table[zone].Cmd[cmd_no].Arg2 >= NUM_OF_DIRS || world[zone_table[zone].Cmd[cmd_no].Arg1].Dir_option[zone_table[zone].Cmd[cmd_no].Arg2] == nil {
 					log_zone_error(zone, cmd_no, libc.CString("door does not exist, command disabled"))
 					last_cmd = 0
-					(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command = '*'
+					zone_table[zone].Cmd[cmd_no].Command = '*'
 				} else {
-					switch (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 {
+					switch zone_table[zone].Cmd[cmd_no].Arg3 {
 					case 0:
-						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)))).Dir_option[(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2].Exit_info &= ^(1 << 2)
-						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)))).Dir_option[(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2].Exit_info &= ^(1 << 1)
+						world[zone_table[zone].Cmd[cmd_no].Arg1].Dir_option[zone_table[zone].Cmd[cmd_no].Arg2].Exit_info &= ^(bitvector_t(1) << 2)
+						world[zone_table[zone].Cmd[cmd_no].Arg1].Dir_option[zone_table[zone].Cmd[cmd_no].Arg2].Exit_info &= ^(bitvector_t(1) << 1)
 					case 1:
-						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)))).Dir_option[(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2].Exit_info |= 1 << 1
-						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)))).Dir_option[(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2].Exit_info &= ^(1 << 2)
+						world[zone_table[zone].Cmd[cmd_no].Arg1].Dir_option[zone_table[zone].Cmd[cmd_no].Arg2].Exit_info |= 1 << 1
+						world[zone_table[zone].Cmd[cmd_no].Arg1].Dir_option[zone_table[zone].Cmd[cmd_no].Arg2].Exit_info &= ^(bitvector_t(1) << 2)
 					case 2:
-						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)))).Dir_option[(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2].Exit_info |= 1 << 2
-						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1)))).Dir_option[(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2].Exit_info |= 1 << 1
+						world[zone_table[zone].Cmd[cmd_no].Arg1].Dir_option[zone_table[zone].Cmd[cmd_no].Arg2].Exit_info |= 1 << 2
+						world[zone_table[zone].Cmd[cmd_no].Arg1].Dir_option[zone_table[zone].Cmd[cmd_no].Arg2].Exit_info |= 1 << 1
 					}
 				}
 				last_cmd = 1
 				tmob = nil
 				tobj = nil
 			case 'T':
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 == MOB_TRIGGER && tmob != nil {
+				if zone_table[zone].Cmd[cmd_no].Arg1 == MOB_TRIGGER && tmob != nil {
 					if tmob.Script == nil {
 						tmob.Script = new(script_data)
 					}
-					add_trigger(tmob.Script, read_trigger(int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2)), -1)
+					add_trigger(tmob.Script, read_trigger(int(zone_table[zone].Cmd[cmd_no].Arg2)), -1)
 					last_cmd = 1
-				} else if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 == OBJ_TRIGGER && tobj != nil {
+				} else if zone_table[zone].Cmd[cmd_no].Arg1 == OBJ_TRIGGER && tobj != nil {
 					if tobj.Script == nil {
 						tobj.Script = new(script_data)
 					}
-					add_trigger(tobj.Script, read_trigger(int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2)), -1)
+					add_trigger(tobj.Script, read_trigger(int(zone_table[zone].Cmd[cmd_no].Arg2)), -1)
 					last_cmd = 1
-				} else if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 == WLD_TRIGGER {
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 == vnum(-1) || (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 > vnum(top_of_world) {
+				} else if zone_table[zone].Cmd[cmd_no].Arg1 == WLD_TRIGGER {
+					if zone_table[zone].Cmd[cmd_no].Arg3 == vnum(-1) || zone_table[zone].Cmd[cmd_no].Arg3 > vnum(top_of_world) {
 						log_zone_error(zone, cmd_no, libc.CString("Invalid room number in trigger assignment"))
 						last_cmd = 0
 					}
-					if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)))).Script == nil {
-						(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)))).Script = new(script_data)
+					if world[zone_table[zone].Cmd[cmd_no].Arg3].Script == nil {
+						world[zone_table[zone].Cmd[cmd_no].Arg3].Script = new(script_data)
 					}
-					add_trigger((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)))).Script, read_trigger(int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2)), -1)
+					add_trigger(world[zone_table[zone].Cmd[cmd_no].Arg3].Script, read_trigger(int(zone_table[zone].Cmd[cmd_no].Arg2)), -1)
 					last_cmd = 1
 				}
 			case 'V':
-				if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 == MOB_TRIGGER && tmob != nil {
+				if zone_table[zone].Cmd[cmd_no].Arg1 == MOB_TRIGGER && tmob != nil {
 					if tmob.Script == nil {
 						log_zone_error(zone, cmd_no, libc.CString("Attempt to give variable to scriptless mobile"))
 						last_cmd = 0
 					} else {
-						add_var(&tmob.Script.Global_vars, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Sarg1, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Sarg2, int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3))
+						add_var(&tmob.Script.Global_vars, zone_table[zone].Cmd[cmd_no].Sarg1, zone_table[zone].Cmd[cmd_no].Sarg2, int(zone_table[zone].Cmd[cmd_no].Arg3))
 					}
 					last_cmd = 1
-				} else if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 == OBJ_TRIGGER && tobj != nil {
+				} else if zone_table[zone].Cmd[cmd_no].Arg1 == OBJ_TRIGGER && tobj != nil {
 					if tobj.Script == nil {
 						log_zone_error(zone, cmd_no, libc.CString("Attempt to give variable to scriptless object"))
 						last_cmd = 0
 					} else {
-						add_var(&tobj.Script.Global_vars, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Sarg1, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Sarg2, int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3))
+						add_var(&tobj.Script.Global_vars, zone_table[zone].Cmd[cmd_no].Sarg1, zone_table[zone].Cmd[cmd_no].Sarg2, int(zone_table[zone].Cmd[cmd_no].Arg3))
 					}
 					last_cmd = 1
-				} else if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg1 == WLD_TRIGGER {
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 == vnum(-1) || (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3 > vnum(top_of_world) {
+				} else if zone_table[zone].Cmd[cmd_no].Arg1 == WLD_TRIGGER {
+					if zone_table[zone].Cmd[cmd_no].Arg3 == vnum(-1) || zone_table[zone].Cmd[cmd_no].Arg3 > vnum(top_of_world) {
 						log_zone_error(zone, cmd_no, libc.CString("Invalid room number in variable assignment"))
 						last_cmd = 0
 					} else {
-						if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)))).Script == nil {
+						if world[zone_table[zone].Cmd[cmd_no].Arg3].Script == nil {
 							log_zone_error(zone, cmd_no, libc.CString("Attempt to give variable to scriptless object"))
 							last_cmd = 0
 						} else {
-							add_var(&(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg3)))).Script.Global_vars, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Sarg1, (*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Sarg2, int((*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Arg2))
+							add_var(&world[zone_table[zone].Cmd[cmd_no].Arg3].Script.Global_vars, zone_table[zone].Cmd[cmd_no].Sarg1, zone_table[zone].Cmd[cmd_no].Sarg2, int(zone_table[zone].Cmd[cmd_no].Arg2))
 						}
 						last_cmd = 1
 					}
@@ -4252,84 +4245,59 @@ func reset_zone(zone zone_rnum) {
 			default:
 				log_zone_error(zone, cmd_no, libc.CString("unknown cmd in reset table; cmd disabled"))
 				last_cmd = 0
-				(*(*reset_com)(unsafe.Add(unsafe.Pointer((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Cmd), unsafe.Sizeof(reset_com{})*uintptr(cmd_no)))).Command = '*'
+				zone_table[zone].Cmd[cmd_no].Command = '*'
 			}
 		}
-		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Age = 0
-		rvnum = (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Bot
-		for rvnum <= (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Top {
+		zone_table[zone].Age = 0
+		rvnum = zone_table[zone].Bot
+		for rvnum <= zone_table[zone].Top {
 			rrnum = real_room(rvnum)
 			if rrnum != room_rnum(-1) {
-				reset_wtrigger((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum))))
+				reset_wtrigger(&world[rrnum])
 				if ROOM_FLAGGED(rrnum, ROOM_AURA) && rand_number(1, 5) >= 4 {
 					send_to_room(rrnum, libc.CString("The aura of regeneration covering the surrounding area disappears.\r\n"))
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Room_flags[int(ROOM_AURA/32)] &= bitvector_t(int32(^(1 << (int(ROOM_AURA % 32)))))
+					REMOVE_BIT_AR(world[rrnum].Room_flags[:], ROOM_AURA)
 				}
-				if (func() int {
-					if rrnum != room_rnum(-1) && rrnum <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_LAVA {
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Geffect = 5
+				if SECT(rrnum) == SECT_LAVA {
+					world[rrnum].Geffect = 5
 				}
-				if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Geffect < -1 {
+				if world[rrnum].Geffect < -1 {
 					send_to_room(rrnum, libc.CString("The area loses some of the water flooding it.\r\n"))
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Geffect += 1
-				} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Geffect == -1 {
+					world[rrnum].Geffect += 1
+				} else if world[rrnum].Geffect == -1 {
 					send_to_room(rrnum, libc.CString("The area loses the last of the water flooding it in one large rush.\r\n"))
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Geffect = 0
+					world[rrnum].Geffect = 0
 				}
-				if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Dmg >= 100 {
+				if world[rrnum].Dmg >= 100 {
 					send_to_room(rrnum, libc.CString("The area gets rebuilt a little.\r\n"))
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Dmg -= rand_number(5, 10)
-				} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Dmg >= 50 {
+					world[rrnum].Dmg -= rand_number(5, 10)
+				} else if world[rrnum].Dmg >= 50 {
 					send_to_room(rrnum, libc.CString("The area gets rebuilt a little.\r\n"))
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Dmg -= rand_number(1, 10)
-				} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Dmg >= 10 {
+					world[rrnum].Dmg -= rand_number(1, 10)
+				} else if world[rrnum].Dmg >= 10 {
 					send_to_room(rrnum, libc.CString("The area gets rebuilt a little.\r\n"))
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Dmg -= rand_number(1, 10)
-				} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Dmg > 1 {
+					world[rrnum].Dmg -= rand_number(1, 10)
+				} else if world[rrnum].Dmg > 1 {
 					send_to_room(rrnum, libc.CString("The area gets rebuilt a little.\r\n"))
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Dmg -= rand_number(1, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Dmg)
-				} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Dmg > 0 {
+					world[rrnum].Dmg -= rand_number(1, world[rrnum].Dmg)
+				} else if world[rrnum].Dmg > 0 {
 					send_to_room(rrnum, libc.CString("The area gets rebuilt a little.\r\n"))
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Dmg--
+					world[rrnum].Dmg--
 				}
-				if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Geffect >= 1 && rand_number(1, 4) == 4 && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Geffect >= 0 && (func() int {
-					if rrnum != room_rnum(-1) && rrnum <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) != SECT_UNDERWATER) && (func() int {
-					if rrnum != room_rnum(-1) && rrnum <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) != SECT_LAVA {
+				if world[rrnum].Geffect >= 1 && rand_number(1, 4) == 4 && !SUNKEN(rrnum) && SECT(rrnum) != SECT_LAVA {
 					send_to_room(rrnum, libc.CString("The lava has cooled and become solid rock.\r\n"))
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Geffect = 0
-				} else if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Geffect >= 1 && rand_number(1, 2) == 2 && ((*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Geffect < 0 || (func() int {
-					if rrnum != room_rnum(-1) && rrnum <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) == SECT_UNDERWATER) && (func() int {
-					if rrnum != room_rnum(-1) && rrnum <= top_of_world {
-						return (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Sector_type
-					}
-					return SECT_INSIDE
-				}()) != SECT_LAVA {
+					world[rrnum].Geffect = 0
+				} else if world[rrnum].Geffect >= 1 && rand_number(1, 2) == 2 && SUNKEN(rrnum) && SECT(rrnum) != SECT_LAVA {
 					send_to_room(rrnum, libc.CString("The water has cooled the lava and it has become solid rock.\r\n"))
-					(*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(rrnum)))).Geffect = 0
+					world[rrnum].Geffect = 0
 				}
 			}
 			rvnum++
 		}
 	} else {
-		(*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Age = 0
+		zone_table[zone].Age = 0
 	}
-	post_reset((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone)))).Number)
+	post_reset(zone_table[zone].Number)
 }
 func is_empty(zone_nr zone_rnum) int {
 	var i *descriptor_data
@@ -4340,7 +4308,7 @@ func is_empty(zone_nr zone_rnum) int {
 		if i.Character.In_room == room_rnum(-1) {
 			continue
 		}
-		if (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i.Character.In_room)))).Zone != zone_nr {
+		if world[i.Character.In_room].Zone != zone_nr {
 			continue
 		}
 		if IS_NPC(i.Character) {
@@ -4373,9 +4341,7 @@ func fread_string(fl *stdio.File, error *byte) *byte {
 				if int(fl.IsEOF()) != 0 {
 					return "EOF"
 				}
-				if ferror(fl) != 0 {
-					return "read error"
-				}
+
 				return "unknown error"
 			}(), error)
 			os.Exit(1)
@@ -4402,7 +4368,8 @@ func fread_string(fl *stdio.File, error *byte) *byte {
 				return *p
 			}()) = '\x00'
 		}
-		templength = int(uintptr(unsafe.Pointer(point - tmp)))
+		// TODO: figure this out
+		//templength = int(uintptr(unsafe.Pointer(point - tmp)))
 		if length+templength >= MAX_STRING_LENGTH {
 			basic_mud_log(libc.CString("SYSERR: fread_string: string too large (db.c)"))
 			basic_mud_log(libc.CString("%s"), error)
@@ -4500,22 +4467,22 @@ func free_char(ch *char_data) {
 		i = int(ch.Nr)
 		return i
 	}()) != int(-1) {
-		if ch.Name != nil && ch.Name != (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Name {
+		if ch.Name != nil && ch.Name != mob_proto[i].Name {
 			libc.Free(unsafe.Pointer(ch.Name))
 		}
-		if ch.Title != nil && ch.Title != (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Title {
+		if ch.Title != nil && ch.Title != mob_proto[i].Title {
 			libc.Free(unsafe.Pointer(ch.Title))
 		}
-		if ch.Short_descr != nil && ch.Short_descr != (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Short_descr {
+		if ch.Short_descr != nil && ch.Short_descr != mob_proto[i].Short_descr {
 			libc.Free(unsafe.Pointer(ch.Short_descr))
 		}
-		if ch.Long_descr != nil && ch.Long_descr != (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Long_descr {
+		if ch.Long_descr != nil && ch.Long_descr != mob_proto[i].Long_descr {
 			libc.Free(unsafe.Pointer(ch.Long_descr))
 		}
-		if ch.Description != nil && ch.Description != (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Description {
+		if ch.Description != nil && ch.Description != mob_proto[i].Description {
 			libc.Free(unsafe.Pointer(ch.Description))
 		}
-		if ch.Proto_script != nil && ch.Proto_script != (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(i)))).Proto_script {
+		if ch.Proto_script != nil && ch.Proto_script != mob_proto[i].Proto_script {
 			free_proto_script(unsafe.Pointer(ch), MOB_TRIGGER)
 		}
 	}
@@ -4556,7 +4523,7 @@ func free_obj(obj *obj_data) {
 		free_proto_script(unsafe.Pointer(obj), OBJ_TRIGGER)
 	} else {
 		free_object_strings_proto(obj)
-		if obj.Proto_script != (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(obj.Item_number)))).Proto_script {
+		if obj.Proto_script != obj_proto[obj.Item_number].Proto_script {
 			free_proto_script(unsafe.Pointer(obj), OBJ_TRIGGER)
 		}
 	}
@@ -4568,7 +4535,7 @@ func free_obj(obj *obj_data) {
 	}
 	remove_from_lookup_table(int(obj.Id))
 	if obj.Sbinfo != nil {
-		libc.Free(unsafe.Pointer(obj.Sbinfo))
+		libc.Free(unsafe.Pointer(&obj.Sbinfo[0]))
 	}
 	libc.Free(unsafe.Pointer(obj))
 }
@@ -4734,7 +4701,7 @@ func init_char(ch *char_data) {
 		i = get_ptable_by_name(GET_NAME(ch))
 		return i
 	}()) != -1 {
-		(*(*player_index_element)(unsafe.Add(unsafe.Pointer(player_table), unsafe.Sizeof(player_index_element{})*uintptr(i)))).Id = int(func() int32 {
+		player_table[i].Id = int(func() int32 {
 			p := &ch.Idnum
 			ch.Idnum = int32(func() int {
 				p := &top_idnum
@@ -4795,7 +4762,7 @@ func real_room(vnum room_vnum) room_rnum {
 		last_top room_rnum
 	)
 	i = room_rnum(htree_find(room_htree, int64(vnum)))
-	if i != room_rnum(-1) && (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(i)))).Number == vnum {
+	if i != room_rnum(-1) && world[i].Number == vnum {
 		return i
 	} else {
 		bot = 0
@@ -4803,7 +4770,7 @@ func real_room(vnum room_vnum) room_rnum {
 		for {
 			last_top = top
 			mid = (bot + top) / 2
-			if ((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(mid)))).Number == vnum {
+			if world[mid].Number == vnum {
 				basic_mud_log(libc.CString("room_htree sync fix: %d: %d -> %d"), vnum, i, mid)
 				htree_add(room_htree, int64(vnum), int64(mid))
 				return mid
@@ -4811,7 +4778,7 @@ func real_room(vnum room_vnum) room_rnum {
 			if bot >= top {
 				return -1
 			}
-			if ((*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(mid)))).Number > vnum {
+			if world[mid].Number > vnum {
 				top = mid - 1
 			} else {
 				bot = mid + 1
@@ -4831,7 +4798,7 @@ func real_mobile(vnum mob_vnum) mob_rnum {
 		last_top mob_rnum
 	)
 	i = mob_rnum(htree_find(mob_htree, int64(vnum)))
-	if i != mob_rnum(-1) && (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Vnum == vnum {
+	if i != mob_rnum(-1) && mob_index[i].Vnum == vnum {
 		return i
 	} else {
 		bot = 0
@@ -4839,7 +4806,7 @@ func real_mobile(vnum mob_vnum) mob_rnum {
 		for {
 			last_top = top
 			mid = (bot + top) / 2
-			if ((*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(mid)))).Vnum == vnum {
+			if mob_index[mid].Vnum == vnum {
 				basic_mud_log(libc.CString("mob_htree sync fix: %d: %d -> %d"), vnum, i, mid)
 				htree_add(mob_htree, int64(vnum), int64(mid))
 				return mid
@@ -4847,7 +4814,7 @@ func real_mobile(vnum mob_vnum) mob_rnum {
 			if bot >= top {
 				return -1
 			}
-			if ((*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(mid)))).Vnum > vnum {
+			if mob_index[mid].Vnum > vnum {
 				top = mid - 1
 			} else {
 				bot = mid + 1
@@ -4867,7 +4834,7 @@ func real_object(vnum obj_vnum) obj_rnum {
 		last_top obj_rnum
 	)
 	i = obj_rnum(htree_find(obj_htree, int64(vnum)))
-	if i != obj_rnum(-1) && (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(i)))).Vnum == mob_vnum(vnum) {
+	if i != obj_rnum(-1) && obj_index[i].Vnum == mob_vnum(vnum) {
 		return i
 	} else {
 		bot = 0
@@ -4875,7 +4842,7 @@ func real_object(vnum obj_vnum) obj_rnum {
 		for {
 			last_top = top
 			mid = (bot + top) / 2
-			if ((*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(mid)))).Vnum == mob_vnum(vnum) {
+			if obj_index[mid].Vnum == mob_vnum(vnum) {
 				basic_mud_log(libc.CString("obj_htree sync fix: %d: %d -> %d"), vnum, i, mid)
 				htree_add(obj_htree, int64(vnum), int64(mid))
 				return mid
@@ -4883,7 +4850,7 @@ func real_object(vnum obj_vnum) obj_rnum {
 			if bot >= top {
 				return -1
 			}
-			if ((*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(mid)))).Vnum > mob_vnum(vnum) {
+			if obj_index[mid].Vnum > mob_vnum(vnum) {
 				top = mid - 1
 			} else {
 				bot = mid + 1
@@ -4906,13 +4873,13 @@ func real_zone(vnum zone_vnum) zone_rnum {
 	for {
 		last_top = top
 		mid = (bot + top) / 2
-		if ((*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(mid)))).Number == vnum {
+		if zone_table[mid].Number == vnum {
 			return mid
 		}
 		if bot >= top {
 			return -1
 		}
-		if ((*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(mid)))).Number > vnum {
+		if zone_table[mid].Number > vnum {
 			top = mid - 1
 		} else {
 			bot = mid + 1
@@ -4942,7 +4909,7 @@ func check_object(obj *obj_data) int {
 	}
 	stdio.Snprintf(&objname[0], int(2080), "Object #%d (%s)", GET_OBJ_VNUM(obj), obj.Short_description)
 	for y = 0; y < TW_ARRAY_MAX; y++ {
-		error |= check_bitvector_names(bitvector_t(int32(obj.Wear_flags[y])), wear_bits_count, &objname[0], libc.CString("object wear"))
+		error |= check_bitvector_names(obj.Wear_flags[y], wear_bits_count, &objname[0], libc.CString("object wear"))
 		error |= check_bitvector_names(obj.Extra_flags[y], extra_bits_count, &objname[0], libc.CString("object extra"))
 		error |= check_bitvector_names(obj.Bitvector[y], affected_bits_count, &objname[0], libc.CString("object affect"))
 	}
@@ -5115,10 +5082,10 @@ func my_obj_save_to_disk(fp *stdio.File, obj *obj_data, locate int) int {
 	}
 	if obj.Sbinfo != nil {
 		for i = 0; i < SPELLBOOK_SIZE; i++ {
-			if (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(i)))).Spellname == 0 {
+			if obj.Sbinfo[i].Spellname == 0 {
 				break
 			}
-			stdio.Fprintf(fp, "S\n%d %d\n", (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(i)))).Spellname, (*(*obj_spellbook_spell)(unsafe.Add(unsafe.Pointer(obj.Sbinfo), unsafe.Sizeof(obj_spellbook_spell{})*uintptr(i)))).Pages)
+			stdio.Fprintf(fp, "S\n%d %d\n", obj.Sbinfo[i].Spellname, obj.Sbinfo[i].Pages)
 			continue
 		}
 	}
@@ -5235,18 +5202,20 @@ func load_config() {
 		buf  [2048]byte
 	)
 	load_default_config()
+
 	stdio.Snprintf(&buf[0], int(2048), "%s/%s", DFLT_DIR, config_info.CONFFILE)
 	if (func() *stdio.File {
-		fl = stdio.FOpen(libc.GoString(config_info.CONFFILE), "r")
+		fl = stdio.FOpen(config_info.CONFFILE, "r")
 		return fl
 	}()) == nil && (func() *stdio.File {
 		fl = stdio.FOpen(libc.GoString(&buf[0]), "r")
 		return fl
 	}()) == nil {
 		stdio.Snprintf(&buf[0], int(2048), "Game Config File: %s", config_info.CONFFILE)
-		perror(&buf[0])
+		fmt.Println(&buf[0])
 		return
 	}
+
 	for get_line(fl, &line[0]) != 0 {
 		split_argument(&line[0], &tag[0])
 		num = libc.Atoi(libc.GoString(&line[0]))
@@ -5301,7 +5270,7 @@ func load_config() {
 				if config_info.Operation.DFLT_DIR != nil {
 					libc.Free(unsafe.Pointer(config_info.Operation.DFLT_DIR))
 				}
-				if line != nil && line[0] != 0 {
+				if line[0] != 0 {
 					config_info.Operation.DFLT_DIR = libc.StrDup(&line[0])
 				} else {
 					config_info.Operation.DFLT_DIR = libc.StrDup(DFLT_DIR)
@@ -5310,7 +5279,7 @@ func load_config() {
 				if config_info.Operation.DFLT_IP != nil {
 					libc.Free(unsafe.Pointer(config_info.Operation.DFLT_IP))
 				}
-				if line != nil && line[0] != 0 {
+				if line[0] != 0 {
 					config_info.Operation.DFLT_IP = libc.StrDup(&line[0])
 				} else {
 					config_info.Operation.DFLT_IP = nil
@@ -5364,7 +5333,7 @@ func load_config() {
 				if config_info.Operation.LOGNAME != nil {
 					libc.Free(unsafe.Pointer(config_info.Operation.LOGNAME))
 				}
-				if line != nil && line[0] != 0 {
+				if line[0] != 0 {
 					config_info.Operation.LOGNAME = libc.StrDup(&line[0])
 				} else {
 					config_info.Operation.LOGNAME = nil

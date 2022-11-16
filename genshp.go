@@ -24,9 +24,9 @@ func copy_shop(tshop *shop_data, fshop *shop_data, free_old_strings int) {
 	tshop.Profit_buy = fshop.Profit_buy
 	tshop.Profit_sell = fshop.Profit_sell
 	tshop.Func = fshop.Func
-	copy_list((**int64)(unsafe.Pointer(&tshop.In_room)), (*int64)(unsafe.Pointer(fshop.In_room)))
-	copy_list((**int64)(unsafe.Pointer(&tshop.Producing)), (*int64)(unsafe.Pointer(fshop.Producing)))
-	copy_type_list(&tshop.Type, fshop.Type)
+	copy_list((**int64)(unsafe.Pointer(&tshop.In_room[0])), (*int64)(unsafe.Pointer(&fshop.In_room[0])))
+	copy_list((**int64)(unsafe.Pointer(&tshop.Producing[0])), (*int64)(unsafe.Pointer(&fshop.Producing[0])))
+	copy_type_list((**shop_buy_data)(unsafe.Pointer(&tshop.Type[0])), &fshop.Type[0])
 	if free_old_strings != 0 {
 		free_shop_strings(tshop)
 	}
@@ -198,9 +198,9 @@ func free_type_list(list **shop_buy_data) {
 }
 func free_shop(shop *shop_data) {
 	free_shop_strings(shop)
-	free_type_list(&shop.Type)
-	libc.Free(unsafe.Pointer(shop.In_room))
-	libc.Free(unsafe.Pointer(shop.Producing))
+	free_type_list((**shop_buy_data)(unsafe.Pointer(&shop.Type[0])))
+	libc.Free(unsafe.Pointer(&shop.In_room[0]))
+	libc.Free(unsafe.Pointer(&shop.Producing[0]))
 	libc.Free(unsafe.Pointer(shop))
 }
 func real_shop(vnum shop_vnum) shop_rnum {
@@ -218,13 +218,13 @@ func real_shop(vnum shop_vnum) shop_rnum {
 	for {
 		last_top = top
 		mid = (bot + top) / 2
-		if (*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(mid)))).Vnum == room_vnum(vnum) {
+		if shop_index[mid].Vnum == room_vnum(vnum) {
 			return mid
 		}
 		if bot >= top {
 			return -1
 		}
-		if (*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(mid)))).Vnum > room_vnum(vnum) {
+		if shop_index[mid].Vnum > room_vnum(vnum) {
 			top = mid
 		} else {
 			bot = mid + 1
@@ -260,35 +260,36 @@ func add_shop(nshp *shop_data) int {
 		rshop = real_shop(shop_vnum(nshp.Vnum))
 		return rshop
 	}()) != shop_rnum(-1) {
-		copy_shop((*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(rshop))), nshp, TRUE)
+		copy_shop(&shop_index[rshop], nshp, TRUE)
 		if rznum != zone_rnum(-1) {
-			add_to_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(rznum)))).Number, SL_SHP)
+			add_to_save_list(zone_table[rznum].Number, SL_SHP)
 		} else {
 			mudlog(BRF, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: GenOLC: Cannot determine shop zone."))
 		}
 		return int(rshop)
 	}
 	top_shop++
-	shop_index = (*shop_data)(libc.Realloc(unsafe.Pointer(shop_index), top_shop*int(unsafe.Sizeof(shop_data{}))+1))
+	// TODO: figure this out
+	//shop_index = []shop_data((*shop_data)(libc.Realloc(unsafe.Pointer(&shop_index[0]), top_shop*int(unsafe.Sizeof(shop_data{}))+1)))
 	for rshop = shop_rnum(top_shop); rshop > 0; rshop-- {
-		if nshp.Vnum > (*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(rshop-1)))).Vnum {
+		if nshp.Vnum > shop_index[rshop-1].Vnum {
 			found = int(rshop)
-			(*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(rshop)))).In_room = nil
-			(*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(rshop)))).Producing = nil
-			(*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(rshop)))).Type = nil
-			copy_shop((*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(rshop))), nshp, FALSE)
+			shop_index[rshop].In_room = nil
+			shop_index[rshop].Producing = nil
+			shop_index[rshop].Type = nil
+			copy_shop(&shop_index[rshop], nshp, FALSE)
 			break
 		}
-		*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(rshop))) = *(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(rshop-1)))
+		shop_index[rshop] = shop_index[rshop-1]
 	}
 	if found == 0 {
-		(*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(rshop)))).In_room = nil
-		(*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(rshop)))).Producing = nil
-		(*(*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(rshop)))).Type = nil
-		copy_shop((*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*0)), nshp, FALSE)
+		shop_index[rshop].In_room = nil
+		shop_index[rshop].Producing = nil
+		shop_index[rshop].Type = nil
+		copy_shop(&shop_index[0], nshp, FALSE)
 	}
 	if rznum != zone_rnum(-1) {
-		add_to_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(rznum)))).Number, SL_SHP)
+		add_to_save_list(zone_table[rznum].Number, SL_SHP)
 	} else {
 		mudlog(BRF, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: GenOLC: Cannot determine shop zone."))
 	}
@@ -308,7 +309,7 @@ func save_shops(zone_num zone_rnum) int {
 		basic_mud_log(libc.CString("SYSERR: GenOLC: save_shops: Invalid real zone number %d. (0-%d)"), zone_num, top_of_zone_table)
 		return FALSE
 	}
-	stdio.Snprintf(&fname[0], int(128), "%s%d.new", LIB_WORLD, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number)
+	stdio.Snprintf(&fname[0], int(128), "%s%d.new", LIB_WORLD, zone_table[zone_num].Number)
 	if (func() *stdio.File {
 		shop_file = stdio.FOpen(libc.GoString(&fname[0]), "w")
 		return shop_file
@@ -320,22 +321,22 @@ func save_shops(zone_num zone_rnum) int {
 		shop_file.Close()
 		return FALSE
 	}
-	for i = int(genolc_zone_bottom(zone_num)); i <= int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Top); i++ {
+	for i = int(genolc_zone_bottom(zone_num)); i <= int(zone_table[zone_num].Top); i++ {
 		if (func() int {
 			rshop = int(real_shop(shop_vnum(i)))
 			return rshop
 		}()) != int(-1) {
 			stdio.Fprintf(shop_file, "#%d~\n", i)
-			shop = (*shop_data)(unsafe.Add(unsafe.Pointer(shop_index), unsafe.Sizeof(shop_data{})*uintptr(rshop)))
-			for j = 0; (*(*obj_vnum)(unsafe.Add(unsafe.Pointer(shop.Producing), unsafe.Sizeof(obj_vnum(0))*uintptr(j)))) != obj_vnum(-1); j++ {
-				stdio.Fprintf(shop_file, "%d\n", (*(*index_data)(unsafe.Add(unsafe.Pointer(obj_index), unsafe.Sizeof(index_data{})*uintptr(*(*obj_vnum)(unsafe.Add(unsafe.Pointer(shop.Producing), unsafe.Sizeof(obj_vnum(0))*uintptr(j))))))).Vnum)
+			shop = &shop_index[rshop]
+			for j = 0; (shop.Producing[j]) != obj_vnum(-1); j++ {
+				stdio.Fprintf(shop_file, "%d\n", obj_index[shop.Producing[j]].Vnum)
 			}
 			stdio.Fprintf(shop_file, "-1\n")
 			stdio.Fprintf(shop_file, "%1.2f\n%1.2f\n", shop.Profit_buy, shop.Profit_sell)
-			for j = 0; (*(*shop_buy_data)(unsafe.Add(unsafe.Pointer(shop.Type), unsafe.Sizeof(shop_buy_data{})*uintptr(j)))).Type != int(-1); j++ {
-				stdio.Fprintf(shop_file, "%d%s\n", (*(*shop_buy_data)(unsafe.Add(unsafe.Pointer(shop.Type), unsafe.Sizeof(shop_buy_data{})*uintptr(j)))).Type, func() *byte {
-					if (*(*shop_buy_data)(unsafe.Add(unsafe.Pointer(shop.Type), unsafe.Sizeof(shop_buy_data{})*uintptr(j)))).Keywords != nil {
-						return (*(*shop_buy_data)(unsafe.Add(unsafe.Pointer(shop.Type), unsafe.Sizeof(shop_buy_data{})*uintptr(j)))).Keywords
+			for j = 0; (shop.Type[j]).Type != int(-1); j++ {
+				stdio.Fprintf(shop_file, "%d%s\n", (shop.Type[j]).Type, func() *byte {
+					if (shop.Type[j]).Keywords != nil {
+						return (shop.Type[j]).Keywords
 					}
 					return libc.CString("")
 				}())
@@ -380,7 +381,7 @@ func save_shops(zone_num zone_rnum) int {
 				if shop.Keeper == mob_rnum(-1) {
 					return -1
 				}
-				return (*(*index_data)(unsafe.Add(unsafe.Pointer(mob_index), unsafe.Sizeof(index_data{})*uintptr(shop.Keeper)))).Vnum
+				return mob_index[shop.Keeper].Vnum
 			}())
 			for j = 0; j < SW_ARRAY_MAX; j++ {
 				stdio.Fprintf(shop_file, "%s%d", func() string {
@@ -391,8 +392,8 @@ func save_shops(zone_num zone_rnum) int {
 				}(), shop.With_who[j])
 			}
 			stdio.Fprintf(shop_file, "\n")
-			for j = 0; (*(*room_vnum)(unsafe.Add(unsafe.Pointer(shop.In_room), unsafe.Sizeof(room_vnum(0))*uintptr(j)))) != room_vnum(-1); j++ {
-				stdio.Fprintf(shop_file, "%d\n", *(*room_vnum)(unsafe.Add(unsafe.Pointer(shop.In_room), unsafe.Sizeof(room_vnum(0))*uintptr(j))))
+			for j = 0; (shop.In_room[j]) != room_vnum(-1); j++ {
+				stdio.Fprintf(shop_file, "%d\n", shop.In_room[j])
 			}
 			stdio.Fprintf(shop_file, "-1\n")
 			stdio.Fprintf(shop_file, "%d\n%d\n%d\n%d\n", shop.Open1, shop.Close1, shop.Open2, shop.Close2)
@@ -400,12 +401,12 @@ func save_shops(zone_num zone_rnum) int {
 	}
 	stdio.Fprintf(shop_file, "$~\n")
 	shop_file.Close()
-	stdio.Snprintf(&oldname[0], int(128), "%s%d.shp", LIB_WORLD, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number)
+	stdio.Snprintf(&oldname[0], int(128), "%s%d.shp", LIB_WORLD, zone_table[zone_num].Number)
 	stdio.Remove(libc.GoString(&oldname[0]))
 	stdio.Rename(libc.GoString(&fname[0]), libc.GoString(&oldname[0]))
-	if in_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number, SL_SHP) != 0 {
-		remove_from_save_list((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number, SL_SHP)
-		create_world_index(int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(zone_num)))).Number), libc.CString("shp"))
+	if in_save_list(zone_table[zone_num].Number, SL_SHP) != 0 {
+		remove_from_save_list(zone_table[zone_num].Number, SL_SHP)
+		create_world_index(int(zone_table[zone_num].Number), libc.CString("shp"))
 		basic_mud_log(libc.CString("GenOLC: save_shops: Saving shops '%s'"), &oldname[0])
 	}
 	return TRUE

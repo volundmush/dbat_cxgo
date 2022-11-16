@@ -229,7 +229,7 @@ func genolc_zonep_bottom(zone *zone_data) room_vnum {
 	return zone.Bot
 }
 func genolc_zone_bottom(rznum zone_rnum) zone_vnum {
-	return zone_vnum((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(rznum)))).Bot)
+	return zone_vnum(zone_table[rznum].Bot)
 }
 func sprintascii(out *byte, bits bitvector_t) int {
 	var (

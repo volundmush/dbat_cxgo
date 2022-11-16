@@ -60,7 +60,7 @@ func do_oasis_trigedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if can_edit_zone(ch, d.Olc.Zone_num) == 0 {
-		send_cannot_edit(ch, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number)
+		send_cannot_edit(ch, zone_table[d.Olc.Zone_num].Number)
 		libc.Free(unsafe.Pointer(d.Olc))
 		d.Olc = nil
 		return
@@ -81,8 +81,8 @@ func do_oasis_trigedit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		disp = 1
 	}
 	act(libc.CString("$n starts using OLC."), TRUE, d.Character, nil, nil, TO_ROOM)
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
-	mudlog(CMP, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing zone %d [trigger](allowed zone %d)"), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number, ch.Player_specials.Olc_zone)
+	SET_BIT_AR(ch.Act[:], PLR_WRITING)
+	mudlog(CMP, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing zone %d [trigger](allowed zone %d)"), GET_NAME(ch), zone_table[d.Olc.Zone_num].Number, ch.Player_specials.Olc_zone)
 }
 func script_save_to_disk(fp *stdio.File, item unsafe.Pointer, type_ int) {
 	var t *trig_proto_list
@@ -119,7 +119,7 @@ func trigedit_setup_existing(d *descriptor_data, rtrg_num int) {
 		c    *cmdlist_element
 	)
 	trig = new(trig_data)
-	trig_data_copy(trig, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(rtrg_num)))).Proto)
+	trig_data_copy(trig, trig_index[rtrg_num].Proto)
 	c = trig.Cmdlist
 	d.Olc.Storage = (*byte)(unsafe.Pointer(&make([]int8, MAX_CMD_LENGTH)[0]))
 	libc.StrCpy(d.Olc.Storage, libc.CString(""))
@@ -186,7 +186,8 @@ func trigedit_disp_types(d *descriptor_data) {
 			return ""
 		}())
 	}
-	sprintbit(bitvector_t(int32(d.Olc.Trig.Trigger_type)), ([0]*byte)(types), &bitbuf[0], uint64(64936))
+	// TODO: Figure this out
+	//sprintbit(bitvector_t(int32(d.Olc.Trig.Trigger_type)), ([]*byte)(types), &bitbuf[0], uint64(64936))
 	write_to_output(d, libc.CString("\r\nCurrent types : @c%s@n\r\nEnter type (0 to quit) : "), &bitbuf[0])
 }
 func trigedit_parse(d *descriptor_data, arg *byte) {
@@ -251,7 +252,7 @@ func trigedit_parse(d *descriptor_data, arg *byte) {
 		switch unicode.ToLower(rune(*arg)) {
 		case 'y':
 			trigedit_save(d)
-			mudlog(CMP, MAX(ADMLVL_BUILDER, int(d.Character.Player_specials.Invis_level)), TRUE, libc.CString("OLC: %s edits trigger %d"), GET_NAME(d.Character), d.Olc.Number)
+			mudlog(CMP, int(MAX(ADMLVL_BUILDER, int64(d.Character.Player_specials.Invis_level))), TRUE, libc.CString("OLC: %s edits trigger %d"), GET_NAME(d.Character), d.Olc.Number)
 			fallthrough
 		case 'n':
 			cleanup_olc(d, CLEANUP_ALL)
@@ -280,7 +281,7 @@ func trigedit_parse(d *descriptor_data, arg *byte) {
 		}
 		d.Olc.Value++
 	case TRIGEDIT_NARG:
-		d.Olc.Trig.Narg = MIN(100, MAX(libc.Atoi(libc.GoString(arg)), 0))
+		d.Olc.Trig.Narg = int(MIN(100, MAX(int64(libc.Atoi(libc.GoString(arg))), 0)))
 		d.Olc.Value++
 	case TRIGEDIT_ARGUMENT:
 		smash_tilde(arg)
@@ -340,7 +341,7 @@ func trigedit_save(d *descriptor_data) {
 		rnum = real_trigger(trig_vnum(d.Olc.Number))
 		return rnum
 	}()) != trig_rnum(-1) {
-		proto = (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(rnum)))).Proto
+		proto = trig_index[rnum].Proto
 		for cmd = proto.Cmdlist; cmd != nil; cmd = next_cmd {
 			next_cmd = cmd.Next
 			if cmd.Cmd != nil {
@@ -433,7 +434,7 @@ func trigedit_save(d *descriptor_data) {
 		}
 		for i = 0; i < top_of_trigt; i++ {
 			if found == 0 {
-				if (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i)))).Vnum > mob_vnum(d.Olc.Number) {
+				if trig_index[i].Vnum > mob_vnum(d.Olc.Number) {
 					found = TRUE
 					rnum = trig_rnum(i)
 					*(**index_data)(unsafe.Add(unsafe.Pointer(new_index), unsafe.Sizeof((*index_data)(nil))*uintptr(rnum))) = new(index_data)
@@ -444,15 +445,15 @@ func trigedit_save(d *descriptor_data) {
 					proto = new(trig_data)
 					(*(**index_data)(unsafe.Add(unsafe.Pointer(new_index), unsafe.Sizeof((*index_data)(nil))*uintptr(rnum)))).Proto = proto
 					trig_data_copy(proto, trig)
-					*(**index_data)(unsafe.Add(unsafe.Pointer(new_index), unsafe.Sizeof((*index_data)(nil))*uintptr(rnum+1))) = *(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(rnum)))
-					proto = (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(rnum)))).Proto
+					*(**index_data)(unsafe.Add(unsafe.Pointer(new_index), unsafe.Sizeof((*index_data)(nil))*uintptr(rnum+1))) = trig_index[rnum]
+					proto = trig_index[rnum].Proto
 					proto.Nr = int64(rnum + 1)
 				} else {
-					*(**index_data)(unsafe.Add(unsafe.Pointer(new_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i))) = *(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i)))
+					*(**index_data)(unsafe.Add(unsafe.Pointer(new_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i))) = trig_index[i]
 				}
 			} else {
-				*(**index_data)(unsafe.Add(unsafe.Pointer(new_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i+1))) = *(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i)))
-				proto = (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i)))).Proto
+				*(**index_data)(unsafe.Add(unsafe.Pointer(new_index), unsafe.Sizeof((*index_data)(nil))*uintptr(i+1))) = trig_index[i]
+				proto = trig_index[i].Proto
 				proto.Nr = int64(i + 1)
 			}
 		}
@@ -467,8 +468,9 @@ func trigedit_save(d *descriptor_data) {
 			(*(**index_data)(unsafe.Add(unsafe.Pointer(new_index), unsafe.Sizeof((*index_data)(nil))*uintptr(rnum)))).Proto = proto
 			trig_data_copy(proto, trig)
 		}
-		libc.Free(unsafe.Pointer(trig_index))
-		trig_index = new_index
+		libc.Free(unsafe.Pointer(&trig_index[0]))
+		// TODO: figure this out
+		//trig_index = ([]*index_data)(new_index)
 		top_of_trigt++
 		for live_trig = trigger_list; live_trig != nil; live_trig = live_trig.Next_in_world {
 			live_trig.Nr += int64(libc.BoolToInt(live_trig.Nr != int64(-1) && live_trig.Nr > int64(rnum)))
@@ -481,24 +483,24 @@ func trigedit_save(d *descriptor_data) {
 			}
 		}
 	}
-	zone = int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number)
-	top = int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Top)
+	zone = int(zone_table[d.Olc.Zone_num].Number)
+	top = int(zone_table[d.Olc.Zone_num].Top)
 	stdio.Snprintf(&fname[0], int(2048), "%s/%i.new", LIB_WORLD, zone)
 	if (func() *stdio.File {
 		trig_file = stdio.FOpen(libc.GoString(&fname[0]), "w")
 		return trig_file
 	}()) == nil {
-		mudlog(BRF, MAX(ADMLVL_GOD, int(d.Character.Player_specials.Invis_level)), TRUE, libc.CString("SYSERR: OLC: Can't open trig file \"%s\""), &fname[0])
+		mudlog(BRF, int(MAX(ADMLVL_GOD, int64(d.Character.Player_specials.Invis_level))), TRUE, libc.CString("SYSERR: OLC: Can't open trig file \"%s\""), &fname[0])
 		return
 	}
-	for i = int((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Bot); i <= top; i++ {
+	for i = int(zone_table[d.Olc.Zone_num].Bot); i <= top; i++ {
 		if (func() trig_rnum {
 			rnum = real_trigger(trig_vnum(i))
 			return rnum
 		}()) != trig_rnum(-1) {
-			trig = (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(rnum)))).Proto
+			trig = trig_index[rnum].Proto
 			if stdio.Fprintf(trig_file, "#%d\n", i) < 0 {
-				mudlog(BRF, MAX(ADMLVL_GOD, int(d.Character.Player_specials.Invis_level)), TRUE, libc.CString("SYSERR: OLC: Can't write trig file!"))
+				mudlog(BRF, int(MAX(ADMLVL_GOD, int64(d.Character.Player_specials.Invis_level))), TRUE, libc.CString("SYSERR: OLC: Can't write trig file!"))
 				trig_file.Close()
 				return
 			}
@@ -508,7 +510,7 @@ func trigedit_save(d *descriptor_data) {
 					return trig.Name
 				}
 				return libc.CString("unknown trigger")
-			}(), STRING_TERMINATOR, trig.Attach_type, &func() [2048]byte {
+			}(), STRING_TERMINATOR, trig.Attach_type, func() [2048]byte {
 				if bitBuf[0] != 0 {
 					return bitBuf
 				}
@@ -585,8 +587,8 @@ func dg_script_menu(d *descriptor_data) {
 			p := &i
 			*p++
 			return *p
-		}(), editscript.Vnum, (*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(real_trigger(trig_vnum(editscript.Vnum)))))).Proto.Name)
-		if int((*(**index_data)(unsafe.Add(unsafe.Pointer(trig_index), unsafe.Sizeof((*index_data)(nil))*uintptr(real_trigger(trig_vnum(editscript.Vnum)))))).Proto.Attach_type) != d.Olc.Item_type {
+		}(), editscript.Vnum, trig_index[real_trigger(trig_vnum(editscript.Vnum))].Proto.Name)
+		if int(trig_index[real_trigger(trig_vnum(editscript.Vnum))].Proto.Attach_type) != d.Olc.Item_type {
 			write_to_output(d, libc.CString("   @g** Mis-matched Trigger Type **@n\r\n"))
 		} else {
 			write_to_output(d, libc.CString("\r\n"))

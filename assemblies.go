@@ -22,18 +22,17 @@ type assembly_data struct {
 	LVnum           int
 	LNumComponents  int
 	UchAssemblyType uint8
-	PComponents     *component_data
+	PComponents     []component_data
 }
-type ASSEMBLY assembly_data
+
 type component_data struct {
 	BExtract bool
 	BInRoom  bool
 	LVnum    int
 }
-type COMPONENT component_data
 
 var g_lNumAssemblies int = 0
-var g_pAssemblyTable *ASSEMBLY = nil
+var g_pAssemblyTable *assembly_data = nil
 
 func assemblyBootAssemblies() {
 	var (
@@ -91,11 +90,11 @@ func assemblyBootAssemblies() {
 }
 func assemblySaveAssemblies() {
 	var (
-		szType    [64936]byte = [64936]byte{0: '\x00'}
-		i         int         = 0
-		j         int         = 0
-		pAssembly *ASSEMBLY   = nil
-		pFile     *stdio.File = nil
+		szType    [64936]byte    = [64936]byte{0: '\x00'}
+		i         int            = 0
+		j         int            = 0
+		pAssembly *assembly_data = nil
+		pFile     *stdio.File    = nil
 	)
 	if (func() *stdio.File {
 		pFile = stdio.FOpen(LIB_ETC, "wt")
@@ -105,17 +104,17 @@ func assemblySaveAssemblies() {
 		return
 	}
 	for i = 0; i < g_lNumAssemblies; i++ {
-		pAssembly = (*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(i)))
+		pAssembly = (*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(i)))
 		sprinttype(int(pAssembly.UchAssemblyType), AssemblyTypes[:], &szType[0], uint64(64936))
 		stdio.Fprintf(pFile, "Vnum                #%ld %s\n", pAssembly.LVnum, &szType[0])
 		for j = 0; j < pAssembly.LNumComponents; j++ {
-			stdio.Fprintf(pFile, "Component           #%ld %d %d\n", (*(*component_data)(unsafe.Add(unsafe.Pointer(pAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(j)))).LVnum, func() int {
-				if (*(*component_data)(unsafe.Add(unsafe.Pointer(pAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(j)))).BExtract {
+			stdio.Fprintf(pFile, "Component           #%ld %d %d\n", pAssembly.PComponents[j].LVnum, func() int {
+				if pAssembly.PComponents[j].BExtract {
 					return 1
 				}
 				return 0
 			}(), func() int {
-				if (*(*component_data)(unsafe.Add(unsafe.Pointer(pAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(j)))).BInRoom {
+				if pAssembly.PComponents[j].BInRoom {
 					return 1
 				}
 				return 0
@@ -145,30 +144,30 @@ func assemblyListToChar(pCharacter *char_data) {
 	send_to_char(pCharacter, libc.CString("The following assemblies exists:\r\n"))
 	for i = 0; i < g_lNumAssemblies; i++ {
 		if (func() int {
-			lRnum = int(real_object(obj_vnum((*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(i)))).LVnum)))
+			lRnum = int(real_object(obj_vnum((*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(i)))).LVnum)))
 			return lRnum
 		}()) < 0 {
 			send_to_char(pCharacter, libc.CString("[-----] ***RESERVED***\r\n"))
-			basic_mud_log(libc.CString("SYSERR: assemblyListToChar(): Invalid vnum #%ld in assembly table."), (*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(i)))).LVnum)
+			basic_mud_log(libc.CString("SYSERR: assemblyListToChar(): Invalid vnum #%ld in assembly table."), (*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(i)))).LVnum)
 		} else {
-			sprinttype(int((*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(i)))).UchAssemblyType), AssemblyTypes[:], &szAssmType[0], uint64(2048))
-			stdio.Sprintf(&szBuffer[0], "[%5ld] %s (%s)\r\n", (*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(i)))).LVnum, (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(lRnum)))).Short_description, &szAssmType[0])
+			sprinttype(int((*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(i)))).UchAssemblyType), AssemblyTypes[:], &szAssmType[0], uint64(2048))
+			stdio.Sprintf(&szBuffer[0], "[%5ld] %s (%s)\r\n", (*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(i)))).LVnum, obj_proto[lRnum].Short_description, &szAssmType[0])
 			send_to_char(pCharacter, &szBuffer[0])
-			for j = 0; j < (*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(i)))).LNumComponents; j++ {
+			for j = 0; j < (*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(i)))).LNumComponents; j++ {
 				if (func() int {
-					lRnum = int(real_object(obj_vnum((*(*component_data)(unsafe.Add(unsafe.Pointer((*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(i)))).PComponents), unsafe.Sizeof(component_data{})*uintptr(j)))).LVnum)))
+					lRnum = int(real_object(obj_vnum((*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(i)))).PComponents[j].LVnum)))
 					return lRnum
 				}()) < 0 {
 					send_to_char(pCharacter, libc.CString(" -----: ***RESERVED***\r\n"))
-					basic_mud_log(libc.CString("SYSERR: assemblyListToChar(): Invalid component vnum #%ld in assembly for vnum #%ld."), (*(*component_data)(unsafe.Add(unsafe.Pointer((*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(i)))).PComponents), unsafe.Sizeof(component_data{})*uintptr(j)))).LVnum, (*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(i)))).LVnum)
+					basic_mud_log(libc.CString("SYSERR: assemblyListToChar(): Invalid component vnum #%ld in assembly for vnum #%ld."), (*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(i)))).PComponents[j].LVnum, (*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(i)))).LVnum)
 				} else {
-					stdio.Sprintf(&szBuffer[0], " %5ld: %-20.20s Extract=%-3.3s InRoom=%-3.3s\r\n", +(*(*component_data)(unsafe.Add(unsafe.Pointer((*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(i)))).PComponents), unsafe.Sizeof(component_data{})*uintptr(j)))).LVnum, (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(lRnum)))).Short_description, func() string {
-						if (*(*component_data)(unsafe.Add(unsafe.Pointer((*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(i)))).PComponents), unsafe.Sizeof(component_data{})*uintptr(j)))).BExtract {
+					stdio.Sprintf(&szBuffer[0], " %5ld: %-20.20s Extract=%-3.3s InRoom=%-3.3s\r\n", +(*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(i)))).PComponents[j].LVnum, obj_proto[lRnum].Short_description, func() string {
+						if (*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(i)))).PComponents[j].BExtract {
 							return "Yes"
 						}
 						return "No"
 					}(), func() string {
-						if (*(*component_data)(unsafe.Add(unsafe.Pointer((*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(i)))).PComponents), unsafe.Sizeof(component_data{})*uintptr(j)))).BInRoom {
+						if (*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(i)))).PComponents[j].BInRoom {
 							return "Yes"
 						}
 						return "No"
@@ -180,8 +179,8 @@ func assemblyListToChar(pCharacter *char_data) {
 	}
 }
 func assemblyAddComponent(lVnum int, lComponentVnum int, bExtract bool, bInRoom bool) bool {
-	var pAssembly *ASSEMBLY = nil
-	if (func() *ASSEMBLY {
+	var pAssembly *assembly_data = nil
+	if (func() *assembly_data {
 		pAssembly = assemblyGetAssemblyPtr(lVnum)
 		return pAssembly
 	}()) == nil {
@@ -192,28 +191,28 @@ func assemblyAddComponent(lVnum int, lComponentVnum int, bExtract bool, bInRoom 
 		return FALSE != 0
 	}
 	if pAssembly.PComponents == nil {
-		pAssembly.PComponents = (*component_data)(unsafe.Pointer(&make([]COMPONENT, pAssembly.LNumComponents+1)[0]))
+		pAssembly.PComponents = make([]component_data, pAssembly.LNumComponents+1)
 	} else {
-		pAssembly.PComponents = (*component_data)(unsafe.Pointer((*COMPONENT)(libc.Realloc(unsafe.Pointer(pAssembly.PComponents), pAssembly.LNumComponents*int(unsafe.Sizeof(COMPONENT{}))+1))))
+		//pAssembly.PComponents = []component_data((*component_data)(libc.Realloc(unsafe.Pointer(&pAssembly.PComponents[0]), pAssembly.LNumComponents*int(unsafe.Sizeof(component_data{}))+1)))
 	}
-	(*(*component_data)(unsafe.Add(unsafe.Pointer(pAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(pAssembly.LNumComponents)))).LVnum = lComponentVnum
-	(*(*component_data)(unsafe.Add(unsafe.Pointer(pAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(pAssembly.LNumComponents)))).BExtract = bExtract
-	(*(*component_data)(unsafe.Add(unsafe.Pointer(pAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(pAssembly.LNumComponents)))).BInRoom = bInRoom
+	pAssembly.PComponents[pAssembly.LNumComponents].LVnum = lComponentVnum
+	pAssembly.PComponents[pAssembly.LNumComponents].BExtract = bExtract
+	pAssembly.PComponents[pAssembly.LNumComponents].BInRoom = bInRoom
 	pAssembly.LNumComponents += 1
 	return TRUE != 0
 }
 func assemblyCheckComponents(lVnum int, pCharacter *char_data, extract_yes int) bool {
 	var (
-		bOk                bool       = TRUE != 0
-		i                  int        = 0
-		lRnum              int        = 0
-		ppComponentObjects **obj_data = nil
-		pAssembly          *ASSEMBLY  = nil
+		bOk                bool           = TRUE != 0
+		i                  int            = 0
+		lRnum              int            = 0
+		ppComponentObjects **obj_data     = nil
+		pAssembly          *assembly_data = nil
 	)
 	if pCharacter == nil {
 		basic_mud_log(libc.CString("SYSERR: NULL assemblyCheckComponents(): 'pCharacter'."))
 		return FALSE != 0
-	} else if (func() *ASSEMBLY {
+	} else if (func() *assembly_data {
 		pAssembly = assemblyGetAssemblyPtr(lVnum)
 		return pAssembly
 	}()) == nil {
@@ -228,15 +227,15 @@ func assemblyCheckComponents(lVnum int, pCharacter *char_data, extract_yes int) 
 	ppComponentObjects = &make([]*obj_data, pAssembly.LNumComponents)[0]
 	for i = 0; i < pAssembly.LNumComponents && bOk; i++ {
 		if (func() int {
-			lRnum = int(real_object(obj_vnum((*(*component_data)(unsafe.Add(unsafe.Pointer(pAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(i)))).LVnum)))
+			lRnum = int(real_object(obj_vnum(pAssembly.PComponents[i].LVnum)))
 			return lRnum
 		}()) < 0 {
 			bOk = FALSE != 0
 		} else {
-			if (*(*component_data)(unsafe.Add(unsafe.Pointer(pAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(i)))).BInRoom {
+			if pAssembly.PComponents[i].BInRoom {
 				if (func() *obj_data {
 					p := (**obj_data)(unsafe.Add(unsafe.Pointer(ppComponentObjects), unsafe.Sizeof((*obj_data)(nil))*uintptr(i)))
-					*(**obj_data)(unsafe.Add(unsafe.Pointer(ppComponentObjects), unsafe.Sizeof((*obj_data)(nil))*uintptr(i))) = get_obj_in_list_num(lRnum, (*(*room_data)(unsafe.Add(unsafe.Pointer(world), unsafe.Sizeof(room_data{})*uintptr(pCharacter.In_room)))).Contents)
+					*(**obj_data)(unsafe.Add(unsafe.Pointer(ppComponentObjects), unsafe.Sizeof((*obj_data)(nil))*uintptr(i))) = get_obj_in_list_num(lRnum, world[pCharacter.In_room].Contents)
 					return *p
 				}()) == nil {
 					bOk = FALSE != 0
@@ -260,9 +259,9 @@ func assemblyCheckComponents(lVnum int, pCharacter *char_data, extract_yes int) 
 		if *(**obj_data)(unsafe.Add(unsafe.Pointer(ppComponentObjects), unsafe.Sizeof((*obj_data)(nil))*uintptr(i))) == nil {
 			continue
 		}
-		if (*(*component_data)(unsafe.Add(unsafe.Pointer(pAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(i)))).BExtract && bOk && extract_yes == TRUE {
+		if pAssembly.PComponents[i].BExtract && bOk && extract_yes == TRUE {
 			extract_obj(*(**obj_data)(unsafe.Add(unsafe.Pointer(ppComponentObjects), unsafe.Sizeof((*obj_data)(nil))*uintptr(i))))
-		} else if (*(*component_data)(unsafe.Add(unsafe.Pointer(pAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(i)))).BInRoom {
+		} else if pAssembly.PComponents[i].BInRoom {
 			obj_to_room(*(**obj_data)(unsafe.Add(unsafe.Pointer(ppComponentObjects), unsafe.Sizeof((*obj_data)(nil))*uintptr(i))), pCharacter.In_room)
 		} else {
 			obj_to_char(*(**obj_data)(unsafe.Add(unsafe.Pointer(ppComponentObjects), unsafe.Sizeof((*obj_data)(nil))*uintptr(i))), pCharacter)
@@ -273,10 +272,10 @@ func assemblyCheckComponents(lVnum int, pCharacter *char_data, extract_yes int) 
 }
 func assemblyCreate(lVnum int, iAssembledType int) bool {
 	var (
-		lBottom           int       = 0
-		lMiddle           int       = 0
-		lTop              int       = 0
-		pNewAssemblyTable *ASSEMBLY = nil
+		lBottom           int            = 0
+		lMiddle           int            = 0
+		lTop              int            = 0
+		pNewAssemblyTable *assembly_data = nil
 	)
 	if lVnum < 0 {
 		return FALSE != 0
@@ -284,46 +283,46 @@ func assemblyCreate(lVnum int, iAssembledType int) bool {
 		return FALSE != 0
 	}
 	if g_pAssemblyTable == nil {
-		g_pAssemblyTable = new(ASSEMBLY)
+		g_pAssemblyTable = new(assembly_data)
 		g_lNumAssemblies = 1
 	} else {
 		lTop = g_lNumAssemblies - 1
 		for {
 			lMiddle = (lBottom + lTop) / 2
-			if (*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(lMiddle)))).LVnum == lVnum {
+			if (*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(lMiddle)))).LVnum == lVnum {
 				return FALSE != 0
 			} else if lBottom >= lTop {
 				break
-			} else if (*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(lMiddle)))).LVnum > lVnum {
+			} else if (*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(lMiddle)))).LVnum > lVnum {
 				lTop = lMiddle - 1
 			} else {
 				lBottom = lMiddle + 1
 			}
 		}
-		if (*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(lMiddle)))).LVnum <= lVnum {
+		if (*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(lMiddle)))).LVnum <= lVnum {
 			lMiddle += 1
 		}
-		pNewAssemblyTable = &make([]ASSEMBLY, g_lNumAssemblies+1)[0]
+		pNewAssemblyTable = &make([]assembly_data, g_lNumAssemblies+1)[0]
 		if lMiddle > 0 {
-			libc.MemMove(unsafe.Pointer(pNewAssemblyTable), unsafe.Pointer(g_pAssemblyTable), lMiddle*int(unsafe.Sizeof(ASSEMBLY{})))
+			libc.MemMove(unsafe.Pointer(pNewAssemblyTable), unsafe.Pointer(g_pAssemblyTable), lMiddle*int(unsafe.Sizeof(assembly_data{})))
 		}
 		if lMiddle <= g_lNumAssemblies-1 {
-			libc.MemMove(unsafe.Pointer((*ASSEMBLY)(unsafe.Add(unsafe.Pointer((*ASSEMBLY)(unsafe.Add(unsafe.Pointer(pNewAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(lMiddle)))), unsafe.Sizeof(ASSEMBLY{})*1))), unsafe.Pointer((*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(lMiddle)))), (g_lNumAssemblies-lMiddle)*int(unsafe.Sizeof(ASSEMBLY{})))
+			libc.MemMove(unsafe.Pointer((*assembly_data)(unsafe.Add(unsafe.Pointer((*assembly_data)(unsafe.Add(unsafe.Pointer(pNewAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(lMiddle)))), unsafe.Sizeof(assembly_data{})*1))), unsafe.Pointer((*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(lMiddle)))), (g_lNumAssemblies-lMiddle)*int(unsafe.Sizeof(assembly_data{})))
 		}
 		libc.Free(unsafe.Pointer(g_pAssemblyTable))
 		g_pAssemblyTable = pNewAssemblyTable
 		g_lNumAssemblies += 1
 	}
-	(*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(lMiddle)))).LNumComponents = 0
-	(*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(lMiddle)))).LVnum = lVnum
-	(*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(lMiddle)))).PComponents = nil
-	(*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(lMiddle)))).UchAssemblyType = uint8(int8(iAssembledType))
+	(*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(lMiddle)))).LNumComponents = 0
+	(*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(lMiddle)))).LVnum = lVnum
+	(*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(lMiddle)))).PComponents = nil
+	(*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(lMiddle)))).UchAssemblyType = uint8(int8(iAssembledType))
 	return TRUE != 0
 }
 func assemblyDestroy(lVnum int) bool {
 	var (
-		lIndex            int       = 0
-		pNewAssemblyTable *ASSEMBLY = nil
+		lIndex            int            = 0
+		pNewAssemblyTable *assembly_data = nil
 	)
 	if g_pAssemblyTable == nil || (func() int {
 		lIndex = assemblyGetAssemblyIndex(lVnum)
@@ -332,16 +331,16 @@ func assemblyDestroy(lVnum int) bool {
 		basic_mud_log(libc.CString("SYSERR: assemblyDestroy(): Invalid 'lVnum' #%ld."), lVnum)
 		return FALSE != 0
 	}
-	if (*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(lIndex)))).PComponents != nil {
-		libc.Free(unsafe.Pointer((*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(lIndex)))).PComponents))
+	if (*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(lIndex)))).PComponents != nil {
+		libc.Free(unsafe.Pointer(&(*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(lIndex)))).PComponents[0]))
 	}
 	if g_lNumAssemblies > 1 {
-		pNewAssemblyTable = &make([]ASSEMBLY, g_lNumAssemblies-1)[0]
+		pNewAssemblyTable = &make([]assembly_data, g_lNumAssemblies-1)[0]
 		if lIndex > 0 {
-			libc.MemMove(unsafe.Pointer(pNewAssemblyTable), unsafe.Pointer(g_pAssemblyTable), lIndex*int(unsafe.Sizeof(ASSEMBLY{})))
+			libc.MemMove(unsafe.Pointer(pNewAssemblyTable), unsafe.Pointer(g_pAssemblyTable), lIndex*int(unsafe.Sizeof(assembly_data{})))
 		}
 		if lIndex < g_lNumAssemblies-1 {
-			libc.MemMove(unsafe.Pointer((*ASSEMBLY)(unsafe.Add(unsafe.Pointer(pNewAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(lIndex)))), unsafe.Pointer((*ASSEMBLY)(unsafe.Add(unsafe.Pointer((*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(lIndex)))), unsafe.Sizeof(ASSEMBLY{})*1))), (g_lNumAssemblies-lIndex-1)*int(unsafe.Sizeof(ASSEMBLY{})))
+			libc.MemMove(unsafe.Pointer((*assembly_data)(unsafe.Add(unsafe.Pointer(pNewAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(lIndex)))), unsafe.Pointer((*assembly_data)(unsafe.Add(unsafe.Pointer((*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(lIndex)))), unsafe.Sizeof(assembly_data{})*1))), (g_lNumAssemblies-lIndex-1)*int(unsafe.Sizeof(assembly_data{})))
 		}
 	}
 	libc.Free(unsafe.Pointer(g_pAssemblyTable))
@@ -350,8 +349,8 @@ func assemblyDestroy(lVnum int) bool {
 	return TRUE != 0
 }
 func assemblyHasComponent(lVnum int, lComponentVnum int) bool {
-	var pAssembly *ASSEMBLY = nil
-	if (func() *ASSEMBLY {
+	var pAssembly *assembly_data = nil
+	if (func() *assembly_data {
 		pAssembly = assemblyGetAssemblyPtr(lVnum)
 		return pAssembly
 	}()) == nil {
@@ -362,11 +361,11 @@ func assemblyHasComponent(lVnum int, lComponentVnum int) bool {
 }
 func assemblyRemoveComponent(lVnum int, lComponentVnum int) bool {
 	var (
-		lIndex         int        = 0
-		pAssembly      *ASSEMBLY  = nil
-		pNewComponents *COMPONENT = nil
+		lIndex         int             = 0
+		pAssembly      *assembly_data  = nil
+		pNewComponents *component_data = nil
 	)
-	if (func() *ASSEMBLY {
+	if (func() *assembly_data {
 		pAssembly = assemblyGetAssemblyPtr(lVnum)
 		return pAssembly
 	}()) == nil {
@@ -380,22 +379,22 @@ func assemblyRemoveComponent(lVnum int, lComponentVnum int) bool {
 		return FALSE != 0
 	}
 	if pAssembly.PComponents != nil && pAssembly.LNumComponents > 1 {
-		pNewComponents = &make([]COMPONENT, pAssembly.LNumComponents-1)[0]
+		pNewComponents = &make([]component_data, pAssembly.LNumComponents-1)[0]
 		if lIndex > 0 {
-			libc.MemMove(unsafe.Pointer(pNewComponents), unsafe.Pointer(pAssembly.PComponents), lIndex*int(unsafe.Sizeof(COMPONENT{})))
+			libc.MemMove(unsafe.Pointer(pNewComponents), unsafe.Pointer(&pAssembly.PComponents[0]), lIndex*int(unsafe.Sizeof(component_data{})))
 		}
 		if lIndex < pAssembly.LNumComponents-1 {
-			libc.MemMove(unsafe.Pointer((*COMPONENT)(unsafe.Add(unsafe.Pointer(pNewComponents), unsafe.Sizeof(COMPONENT{})*uintptr(lIndex)))), unsafe.Pointer((*component_data)(unsafe.Add(unsafe.Pointer((*component_data)(unsafe.Add(unsafe.Pointer(pAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(lIndex)))), unsafe.Sizeof(component_data{})*1))), (pAssembly.LNumComponents-lIndex-1)*int(unsafe.Sizeof(COMPONENT{})))
+			libc.MemMove(unsafe.Pointer((*component_data)(unsafe.Add(unsafe.Pointer(pNewComponents), unsafe.Sizeof(component_data{})*uintptr(lIndex)))), unsafe.Pointer(&pAssembly.PComponents[lIndex+1]), (pAssembly.LNumComponents-lIndex-1)*int(unsafe.Sizeof(component_data{})))
 		}
 	}
-	libc.Free(unsafe.Pointer(pAssembly.PComponents))
-	pAssembly.PComponents = (*component_data)(unsafe.Pointer(pNewComponents))
+	libc.Free(unsafe.Pointer(&pAssembly.PComponents[0]))
+	//pAssembly.PComponents = []component_data(pNewComponents)
 	pAssembly.LNumComponents -= 1
 	return TRUE != 0
 }
 func assemblyGetType(lVnum int) int {
-	var pAssembly *ASSEMBLY = nil
-	if (func() *ASSEMBLY {
+	var pAssembly *assembly_data = nil
+	if (func() *assembly_data {
 		pAssembly = assemblyGetAssemblyPtr(lVnum)
 		return pAssembly
 	}()) == nil {
@@ -405,8 +404,8 @@ func assemblyGetType(lVnum int) int {
 	return int(pAssembly.UchAssemblyType)
 }
 func assemblyCountComponents(lVnum int) int {
-	var pAssembly *ASSEMBLY = nil
-	if (func() *ASSEMBLY {
+	var pAssembly *assembly_data = nil
+	if (func() *assembly_data {
 		pAssembly = assemblyGetAssemblyPtr(lVnum)
 		return pAssembly
 	}()) == nil {
@@ -427,12 +426,12 @@ func assemblyFindAssembly(pszAssemblyName *byte) int {
 	}
 	for i = 0; i < g_lNumAssemblies; i++ {
 		if (func() int {
-			lRnum = int(real_object(obj_vnum((*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(i)))).LVnum)))
+			lRnum = int(real_object(obj_vnum((*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(i)))).LVnum)))
 			return lRnum
 		}()) < 0 {
-			basic_mud_log(libc.CString("SYSERR: assemblyFindAssembly(): Invalid vnum #%ld in assembly table."), (*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(i)))).LVnum)
-		} else if isname(pszAssemblyName, (*(*obj_data)(unsafe.Add(unsafe.Pointer(obj_proto), unsafe.Sizeof(obj_data{})*uintptr(lRnum)))).Name) != 0 {
-			return (*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(i)))).LVnum
+			basic_mud_log(libc.CString("SYSERR: assemblyFindAssembly(): Invalid vnum #%ld in assembly table."), (*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(i)))).LVnum)
+		} else if isname(pszAssemblyName, obj_proto[lRnum].Name) != 0 {
+			return (*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(i)))).LVnum
 		}
 	}
 	return -1
@@ -446,30 +445,30 @@ func assemblyGetAssemblyIndex(lVnum int) int {
 	lTop = g_lNumAssemblies - 1
 	for {
 		lMiddle = (lBottom + lTop) / 2
-		if (*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(lMiddle)))).LVnum == lVnum {
+		if (*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(lMiddle)))).LVnum == lVnum {
 			return lMiddle
 		} else if lBottom >= lTop {
 			return -1
-		} else if (*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(lMiddle)))).LVnum > lVnum {
+		} else if (*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(lMiddle)))).LVnum > lVnum {
 			lTop = lMiddle - 1
 		} else {
 			lBottom = lMiddle + 1
 		}
 	}
 }
-func assemblyGetComponentIndex(pAssembly *ASSEMBLY, lComponentVnum int) int {
+func assemblyGetComponentIndex(pAssembly *assembly_data, lComponentVnum int) int {
 	var i int = 0
 	if pAssembly == nil {
 		return -1
 	}
 	for i = 0; i < pAssembly.LNumComponents; i++ {
-		if (*(*component_data)(unsafe.Add(unsafe.Pointer(pAssembly.PComponents), unsafe.Sizeof(component_data{})*uintptr(i)))).LVnum == lComponentVnum {
+		if pAssembly.PComponents[i].LVnum == lComponentVnum {
 			return i
 		}
 	}
 	return -1
 }
-func assemblyGetAssemblyPtr(lVnum int) *ASSEMBLY {
+func assemblyGetAssemblyPtr(lVnum int) *assembly_data {
 	var lIndex int = 0
 	if g_pAssemblyTable == nil {
 		return nil
@@ -478,7 +477,7 @@ func assemblyGetAssemblyPtr(lVnum int) *ASSEMBLY {
 		lIndex = assemblyGetAssemblyIndex(lVnum)
 		return lIndex
 	}()) >= 0 {
-		return (*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(lIndex)))
+		return (*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(lIndex)))
 	}
 	return nil
 }
@@ -488,10 +487,10 @@ func free_assemblies() {
 		return
 	}
 	for i = 0; i < g_lNumAssemblies; i++ {
-		if (*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(i)))).PComponents != nil {
-			libc.Free(unsafe.Pointer((*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(i)))).PComponents))
+		if (*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(i)))).PComponents != nil {
+			libc.Free(unsafe.Pointer(&(*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(i)))).PComponents[0]))
 		}
-		(*(*ASSEMBLY)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(ASSEMBLY{})*uintptr(i)))).LNumComponents = 0
+		(*(*assembly_data)(unsafe.Add(unsafe.Pointer(g_pAssemblyTable), unsafe.Sizeof(assembly_data{})*uintptr(i)))).LNumComponents = 0
 	}
 	libc.Free(unsafe.Pointer(g_pAssemblyTable))
 }

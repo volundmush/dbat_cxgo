@@ -76,14 +76,14 @@ func do_oasis_medit(ch *char_data, argument *byte, cmd int, subcmd int) {
 		return
 	}
 	if can_edit_zone(ch, d.Olc.Zone_num) == 0 {
-		send_cannot_edit(ch, (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number)
+		send_cannot_edit(ch, zone_table[d.Olc.Zone_num].Number)
 		libc.Free(unsafe.Pointer(d.Olc))
 		d.Olc = nil
 		return
 	}
 	if save != 0 {
-		send_to_char(ch, libc.CString("Saving all mobiles in zone %d.\r\n"), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number)
-		mudlog(CMP, MAX(ADMLVL_BUILDER, int(ch.Player_specials.Invis_level)), TRUE, libc.CString("OLC: %s saves mobile info for zone %d."), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number)
+		send_to_char(ch, libc.CString("Saving all mobiles in zone %d.\r\n"), zone_table[d.Olc.Zone_num].Number)
+		mudlog(CMP, int(MAX(ADMLVL_BUILDER, int64(ch.Player_specials.Invis_level))), TRUE, libc.CString("OLC: %s saves mobile info for zone %d."), GET_NAME(ch), zone_table[d.Olc.Zone_num].Number)
 		save_mobiles(d.Olc.Zone_num)
 		libc.Free(unsafe.Pointer(d.Olc))
 		d.Olc = nil
@@ -101,8 +101,8 @@ func do_oasis_medit(ch *char_data, argument *byte, cmd int, subcmd int) {
 	medit_disp_menu(d)
 	d.Connected = CON_MEDIT
 	act(libc.CString("$n starts using OLC."), TRUE, d.Character, nil, nil, TO_ROOM)
-	ch.Act[int(PLR_WRITING/32)] |= bitvector_t(int32(1 << (int(PLR_WRITING % 32))))
-	mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing zone %d allowed zone %d"), GET_NAME(ch), (*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(d.Olc.Zone_num)))).Number, ch.Player_specials.Olc_zone)
+	SET_BIT_AR(ch.Act[:], PLR_WRITING)
+	mudlog(BRF, ADMLVL_IMMORT, TRUE, libc.CString("OLC: %s starts editing zone %d allowed zone %d"), GET_NAME(ch), zone_table[d.Olc.Zone_num].Number, ch.Player_specials.Olc_zone)
 }
 func medit_save_to_disk(foo zone_vnum) {
 	save_mobiles(real_zone(foo))
@@ -129,7 +129,7 @@ func medit_setup_new(d *descriptor_data) {
 func medit_setup_existing(d *descriptor_data, rmob_num int) {
 	var mob *char_data
 	mob = new(char_data)
-	copy_mobile(mob, (*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(rmob_num))))
+	copy_mobile(mob, &mob_proto[rmob_num])
 	d.Olc.Mob = mob
 	d.Olc.Item_type = MOB_TRIGGER
 	dg_olc_script_copy(d)
@@ -165,7 +165,7 @@ func init_mobile(mob *char_data) {
 		return *p
 	}()
 	mob.Aff_abils = mob.Real_abils
-	mob.Act[int(MOB_ISNPC/32)] |= bitvector_t(int32(1 << (int(MOB_ISNPC % 32))))
+	SET_BIT_AR(mob.Act[:], MOB_ISNPC)
 	mob.Player_specials = &dummy_mob
 }
 func medit_save_internally(d *descriptor_data) {
@@ -183,10 +183,10 @@ func medit_save_internally(d *descriptor_data) {
 		basic_mud_log(libc.CString("medit_save_internally: add_mobile failed."))
 		return
 	}
-	if (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(new_rnum)))).Proto_script != nil && (*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(new_rnum)))).Proto_script != d.Olc.Script {
-		free_proto_script(unsafe.Pointer((*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(new_rnum)))), MOB_TRIGGER)
+	if mob_proto[new_rnum].Proto_script != nil && mob_proto[new_rnum].Proto_script != d.Olc.Script {
+		free_proto_script(unsafe.Pointer(&mob_proto[new_rnum]), MOB_TRIGGER)
 	}
-	(*(*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(new_rnum)))).Proto_script = d.Olc.Script
+	mob_proto[new_rnum].Proto_script = d.Olc.Script
 	for mob = character_list; mob != nil; mob = mob.Next {
 		if mob.Nr != new_rnum {
 			continue
@@ -195,7 +195,7 @@ func medit_save_internally(d *descriptor_data) {
 			extract_script(unsafe.Pointer(mob), MOB_TRIGGER)
 		}
 		free_proto_script(unsafe.Pointer(mob), MOB_TRIGGER)
-		copy_proto_script(unsafe.Pointer((*char_data)(unsafe.Add(unsafe.Pointer(mob_proto), unsafe.Sizeof(char_data{})*uintptr(new_rnum)))), unsafe.Pointer(mob), MOB_TRIGGER)
+		copy_proto_script(unsafe.Pointer(&mob_proto[new_rnum]), unsafe.Pointer(mob), MOB_TRIGGER)
 		assign_triggers(unsafe.Pointer(mob), MOB_TRIGGER)
 	}
 	if i == 0 {
@@ -210,10 +210,10 @@ func medit_save_internally(d *descriptor_data) {
 	}
 	for dsc = descriptor_list; dsc != nil; dsc = dsc.Next {
 		if dsc.Connected == CON_ZEDIT {
-			for i = 0; int((*(*reset_com)(unsafe.Add(unsafe.Pointer(dsc.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(i)))).Command) != 'S'; i++ {
-				if int((*(*reset_com)(unsafe.Add(unsafe.Pointer(dsc.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(i)))).Command) == 'M' {
-					if (*(*reset_com)(unsafe.Add(unsafe.Pointer(dsc.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(i)))).Arg1 >= vnum(new_rnum) {
-						(*(*reset_com)(unsafe.Add(unsafe.Pointer(dsc.Olc.Zone.Cmd), unsafe.Sizeof(reset_com{})*uintptr(i)))).Arg1++
+			for i = 0; int(dsc.Olc.Zone.Cmd[i].Command) != 'S'; i++ {
+				if int(dsc.Olc.Zone.Cmd[i].Command) == 'M' {
+					if dsc.Olc.Zone.Cmd[i].Arg1 >= vnum(new_rnum) {
+						dsc.Olc.Zone.Cmd[i].Arg1++
 					}
 				}
 			}
@@ -387,15 +387,15 @@ func medit_parse(d *descriptor_data, arg *byte) {
 	}
 	switch d.Olc.Mode {
 	case MEDIT_CONFIRM_SAVESTRING:
-		d.Olc.Mob.Act[int(MOB_ISNPC/32)] |= bitvector_t(int32(1 << (int(MOB_ISNPC % 32))))
+		SET_BIT_AR(d.Olc.Mob.Act[:], MOB_ISNPC)
 		switch *arg {
 		case 'y':
 			fallthrough
 		case 'Y':
 			medit_save_internally(d)
-			mudlog(CMP, MAX(ADMLVL_BUILDER, int(d.Character.Player_specials.Invis_level)), TRUE, libc.CString("OLC: %s edits mob %d"), GET_NAME(d.Character), d.Olc.Number)
+			mudlog(CMP, int(MAX(ADMLVL_BUILDER, int64(d.Character.Player_specials.Invis_level))), TRUE, libc.CString("OLC: %s edits mob %d"), GET_NAME(d.Character), d.Olc.Number)
 			if config_info.Operation.Auto_save_olc != 0 {
-				medit_save_to_disk((*(*zone_data)(unsafe.Add(unsafe.Pointer(zone_table), unsafe.Sizeof(zone_data{})*uintptr(real_zone_by_thing(d.Olc.Number))))).Number)
+				medit_save_to_disk(zone_table[real_zone_by_thing(d.Olc.Number)].Number)
 				write_to_output(d, libc.CString("Mobile saved to disk.\r\n"))
 			} else {
 				write_to_output(d, libc.CString("Mobile saved to memory.\r\n"))
@@ -626,7 +626,7 @@ func medit_parse(d *descriptor_data, arg *byte) {
 		}()) <= 0 {
 			break
 		} else if i <= NUM_MOB_FLAGS {
-			d.Olc.Mob.Act[(i-1)/32] = bitvector_t(int32(int(d.Olc.Mob.Act[(i-1)/32]) ^ 1<<((i-1)%32)))
+			TOGGLE_BIT_AR(d.Olc.Mob.Act[:], bitvector_t(int32(i-1)))
 		}
 		medit_disp_mob_flags(d)
 		return
@@ -648,72 +648,72 @@ func medit_parse(d *descriptor_data, arg *byte) {
 		}()) <= 0 {
 			break
 		} else if i <= NUM_AFF_FLAGS {
-			d.Olc.Mob.Affected_by[i/32] = d.Olc.Mob.Affected_by[i/32] ^ 1<<(i%32)
+			TOGGLE_BIT_AR(d.Olc.Mob.Affected_by[:], bitvector_t(int32(i)))
 		}
-		d.Olc.Mob.Affected_by[(int(AFF_CHARM|AFF_POISON)|AFF_GROUP|AFF_SLEEP)/32] &= ^(1 << ((int(AFF_CHARM|AFF_POISON) | AFF_GROUP | AFF_SLEEP) % 32))
+		REMOVE_BIT_AR(d.Olc.Mob.Affected_by[:], bitvector_t(int32(int(AFF_CHARM|AFF_POISON)|AFF_GROUP|AFF_SLEEP)))
 		medit_disp_aff_flags(d)
 		return
 	case MEDIT_SEX:
-		d.Olc.Mob.Sex = int8(MIN(int(NUM_GENDERS-1), MAX(i, 0)))
+		d.Olc.Mob.Sex = int8(MIN(int64(int(NUM_GENDERS-1)), MAX(int64(i), 0)))
 	case MEDIT_ACCURACY:
-		d.Olc.Mob.Accuracy_mod = MIN(50, MAX(i, 0))
+		d.Olc.Mob.Accuracy_mod = int(MIN(50, MAX(int64(i), 0)))
 		if MOB_FLAGGED(d.Olc.Mob, MOB_AUTOBALANCE) {
-			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = bitvector_t(int32(int(d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)]) ^ 1<<(int(MOB_AUTOBALANCE%32))))
+			TOGGLE_BIT_AR(d.Olc.Mob.Act[:], MOB_AUTOBALANCE)
 		}
 	case MEDIT_DAMAGE:
-		d.Olc.Mob.Damage_mod = MIN(50, MAX(i, 0))
+		d.Olc.Mob.Damage_mod = int(MIN(50, MAX(int64(i), 0)))
 		if MOB_FLAGGED(d.Olc.Mob, MOB_AUTOBALANCE) {
-			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = bitvector_t(int32(int(d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)]) ^ 1<<(int(MOB_AUTOBALANCE%32))))
+			TOGGLE_BIT_AR(d.Olc.Mob.Act[:], MOB_AUTOBALANCE)
 		}
 	case MEDIT_NDD:
-		d.Olc.Mob.Mob_specials.Damnodice = int8(MIN(30, MAX(i, 0)))
+		d.Olc.Mob.Mob_specials.Damnodice = int8(MIN(30, MAX(int64(i), 0)))
 		if MOB_FLAGGED(d.Olc.Mob, MOB_AUTOBALANCE) {
-			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = bitvector_t(int32(int(d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)]) ^ 1<<(int(MOB_AUTOBALANCE%32))))
+			TOGGLE_BIT_AR(d.Olc.Mob.Act[:], MOB_AUTOBALANCE)
 		}
 	case MEDIT_SDD:
-		d.Olc.Mob.Mob_specials.Damsizedice = int8(MIN(math.MaxInt8, MAX(i, 0)))
+		d.Olc.Mob.Mob_specials.Damsizedice = int8(MIN(math.MaxInt8, MAX(int64(i), 0)))
 		if MOB_FLAGGED(d.Olc.Mob, MOB_AUTOBALANCE) {
-			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = bitvector_t(int32(int(d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)]) ^ 1<<(int(MOB_AUTOBALANCE%32))))
+			TOGGLE_BIT_AR(d.Olc.Mob.Act[:], MOB_AUTOBALANCE)
 		}
 	case MEDIT_NUM_HP_DICE:
-		d.Olc.Mob.Hit = int64(MIN(config_info.Play.Level_cap, MAX(i, 0)))
+		d.Olc.Mob.Hit = MIN(int64(config_info.Play.Level_cap), MAX(int64(i), 0))
 		if MOB_FLAGGED(d.Olc.Mob, MOB_AUTOBALANCE) {
-			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = bitvector_t(int32(int(d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)]) ^ 1<<(int(MOB_AUTOBALANCE%32))))
+			TOGGLE_BIT_AR(d.Olc.Mob.Act[:], MOB_AUTOBALANCE)
 		}
 	case MEDIT_SIZE_HP_DICE:
-		d.Olc.Mob.Mana = int64(MIN(1000, MAX(i, 0)))
+		d.Olc.Mob.Mana = MIN(1000, MAX(int64(i), 0))
 		if MOB_FLAGGED(d.Olc.Mob, MOB_AUTOBALANCE) {
-			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = bitvector_t(int32(int(d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)]) ^ 1<<(int(MOB_AUTOBALANCE%32))))
+			TOGGLE_BIT_AR(d.Olc.Mob.Act[:], MOB_AUTOBALANCE)
 		}
 	case MEDIT_ADD_HP:
-		d.Olc.Mob.Move = int64(MIN(30000, MAX(i, 0)))
+		d.Olc.Mob.Move = MIN(30000, MAX(int64(i), 0))
 		if MOB_FLAGGED(d.Olc.Mob, MOB_AUTOBALANCE) {
-			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = bitvector_t(int32(int(d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)]) ^ 1<<(int(MOB_AUTOBALANCE%32))))
+			TOGGLE_BIT_AR(d.Olc.Mob.Act[:], MOB_AUTOBALANCE)
 		}
 	case MEDIT_AC:
-		d.Olc.Mob.Armor = MIN(200000, MAX(i, 10))
+		d.Olc.Mob.Armor = int(MIN(200000, MAX(int64(i), 10)))
 		if MOB_FLAGGED(d.Olc.Mob, MOB_AUTOBALANCE) {
-			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = bitvector_t(int32(int(d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)]) ^ 1<<(int(MOB_AUTOBALANCE%32))))
+			TOGGLE_BIT_AR(d.Olc.Mob.Act[:], MOB_AUTOBALANCE)
 		}
 	case MEDIT_EXP:
-		d.Olc.Mob.Exp = int64(MIN(MAX_MOB_EXP, MAX(i, 0)))
+		d.Olc.Mob.Exp = MIN(MAX_MOB_EXP, MAX(int64(i), 0))
 		if MOB_FLAGGED(d.Olc.Mob, MOB_AUTOBALANCE) {
-			d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)] = bitvector_t(int32(int(d.Olc.Mob.Act[int(MOB_AUTOBALANCE/32)]) ^ 1<<(int(MOB_AUTOBALANCE%32))))
+			TOGGLE_BIT_AR(d.Olc.Mob.Act[:], MOB_AUTOBALANCE)
 		}
 	case MEDIT_GOLD:
-		d.Olc.Mob.Gold = MIN(MAX_MOB_GOLD, MAX(i, 0))
+		d.Olc.Mob.Gold = int(MIN(MAX_MOB_GOLD, MAX(int64(i), 0)))
 	case MEDIT_POS:
-		d.Olc.Mob.Position = int8(MIN(int(NUM_POSITIONS-1), MAX(i, 0)))
+		d.Olc.Mob.Position = int8(MIN(int64(int(NUM_POSITIONS-1)), MAX(int64(i), 0)))
 	case MEDIT_DEFAULT_POS:
-		d.Olc.Mob.Mob_specials.Default_pos = int8(MIN(int(NUM_POSITIONS-1), MAX(i, 0)))
+		d.Olc.Mob.Mob_specials.Default_pos = int8(MIN(int64(int(NUM_POSITIONS-1)), MAX(int64(i), 0)))
 	case MEDIT_ATTACK:
-		d.Olc.Mob.Mob_specials.Attack_type = int8(MIN(int(NUM_ATTACK_TYPES-1), MAX(i, 0)))
+		d.Olc.Mob.Mob_specials.Attack_type = int8(MIN(int64(int(NUM_ATTACK_TYPES-1)), MAX(int64(i), 0)))
 	case MEDIT_LEVEL:
-		d.Olc.Mob.Race_level = MIN(150, MAX(i, 1))
+		d.Olc.Mob.Race_level = int(MIN(150, MAX(int64(i), 1)))
 	case MEDIT_ALIGNMENT:
-		d.Olc.Mob.Alignment = MIN(1000, MAX(i, -1000))
+		d.Olc.Mob.Alignment = int(MIN(1000, MAX(int64(i), -1000)))
 	case MEDIT_CLASS:
-		d.Olc.Mob.Chclass = int8(MIN(NUM_CLASSES, MAX(i, 0)))
+		d.Olc.Mob.Chclass = int8(MIN(NUM_CLASSES, MAX(int64(i), 0)))
 		d.Olc.Mob.Mana = int64(class_hit_die_size[d.Olc.Mob.Chclass])
 	case MEDIT_COPY:
 		if (func() int {
@@ -741,10 +741,10 @@ func medit_parse(d *descriptor_data, arg *byte) {
 			write_to_output(d, libc.CString("Please answer 'Y' or 'N': "))
 		}
 	case MEDIT_RACE:
-		d.Olc.Mob.Race = int8(MIN(NUM_RACES, MAX(i, 0)))
+		d.Olc.Mob.Race = int8(MIN(NUM_RACES, MAX(int64(i), 0)))
 		d.Olc.Mob.Size = race_def_sizetable[d.Olc.Mob.Race]
 	case MEDIT_SIZE:
-		d.Olc.Mob.Size = MIN(int(NUM_SIZES-1), MAX(i, -1))
+		d.Olc.Mob.Size = int(MIN(int64(int(NUM_SIZES-1)), MAX(int64(i), -1)))
 	default:
 		cleanup_olc(d, CLEANUP_ALL)
 		mudlog(BRF, ADMLVL_BUILDER, TRUE, libc.CString("SYSERR: OLC: medit_parse(): Reached default case!"))
