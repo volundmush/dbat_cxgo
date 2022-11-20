@@ -1,0 +1,9 @@
+git.maze.io/go/math32 v0.0.0-20181106113604-c78ed91899f1 h1:VptAfeYGT/FPuzWFzyvne+vdXT881tTmEMhV+txQ+E0=
+github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
+github.com/gotranspile/cxgo v0.3.8-0.20221113084938-59e2620ff902 h1:Jp2nXuFhfotMO8ZDjwvnJcVnUnEej+QzGakuC30MPv0=
+github.com/gotranspile/cxgo v0.3.8-0.20221113084938-59e2620ff902/go.mod h1:p9E8PgL2UuFGTDKHgvdVseqO1FOKqEy5criArdDkfbw=
+github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
+github.com/stretchr/testify v1.4.0 h1:2E4SXV/wtOkTonXsotYi4li6zVWxYlZuYNCXe9XRJyk=
+gopkg.in/yaml.v2 v2.4.0 h1:D8xgwECY7CYvx+Y2n4sBz93Jn9JRvxdiyyo8CTfuKaY=
+maze.io/x/math32 v0.0.0-20181106113604-c78ed91899f1 h1:SgIJGhlYkU+wmyP0xBEOdLVRIwVR4HSp/9kfv1BSvKQ=
+maze.io/x/math32 v0.0.0-20181106113604-c78ed91899f1/go.mod h1:OL5aVu+KUQ0mSadkiIseNiKIX6dJ2Ul1RlNWSMCP5y8=
